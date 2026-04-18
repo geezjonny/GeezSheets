@@ -3,216 +3,478 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GeezVTT Character Sheets v1.1</title>
+  <title>GeezVTT Character Sheets v1.3</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{--bg:#0d0b09;--surface:#141210;--surface2:#100e0b;--border:rgba(180,130,60,.2);--gold:#b8822a;--gold-hi:#dba84a;--text:#e8dcc8;--dim:#7a6a52;--red:#7a1a1a;--green:#2f6d3b;--blue:#244c6a}
+    :root{--bg:#0d0b09;--surface:#141210;--surface2:#100e0b;--border:rgba(180,130,60,.2);--gold:#b8822a;--gold-hi:#dba84a;--text:#e8dcc8;--dim:#7a6a52;--red:#7a1a1a;--green:#3f6a3f}
     body{background:var(--bg);color:var(--text);font-family:'IM Fell English',Georgia,serif;height:100vh;overflow:hidden}
-    button,input,textarea,select{font:inherit}
-    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;align-items:center;justify-content:center}.overlay.open{display:flex}
-    .modal{background:var(--surface2);border:1px solid var(--gold);width:min(680px,94vw);max-height:92vh;overflow:auto;padding:1.25rem 1.35rem;box-shadow:0 20px 60px rgba(0,0,0,.8)}
-    .modal h3{font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem;letter-spacing:.12em;margin-bottom:.85rem;text-transform:uppercase}
-    .f{margin-bottom:.75rem}.f label{display:block;font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin-bottom:.25rem}
-    .f input,.f textarea,.f select{width:100%;background:rgba(0,0,0,.45);border:1px solid var(--border);color:var(--text);padding:.45rem .6rem;outline:none}.f input:focus,.f textarea:focus,.f select:focus{border-color:var(--gold)}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem}
-    .btn{background:transparent;border:1px solid var(--border);color:var(--gold);padding:.42rem .7rem;cursor:pointer;font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;transition:all .12s}
-    .btn:hover{border-color:var(--gold);background:rgba(180,130,60,.08)} .btn.primary{background:linear-gradient(135deg,#7a1a1a,#561010);color:var(--text);border-color:#9a2a2a}.btn.primary:hover{background:linear-gradient(135deg,#9a2020,#7a1a1a)} .btn.green{border-color:rgba(80,160,100,.35);color:#9fe0a9}.btn.green:hover{border-color:#7ddc7d;background:rgba(80,160,100,.08)} .btn.blue{border-color:rgba(80,120,180,.35);color:#9dc8ff}.btn.blue:hover{border-color:#7fb3ff;background:rgba(80,120,180,.08)} .btn.warn{border-color:rgba(160,70,70,.35);color:#ffaaaa}.btn.warn:hover{border-color:#9a2a2a;background:rgba(122,26,26,.08)}
-    #setup{height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 35%,#1e1408 0%,#060402 100%)}
-    .card{background:var(--surface2);border:1px solid var(--gold);width:min(420px,92vw);padding:1.6rem 1.9rem;position:relative}.card::after{content:'';position:absolute;inset:4px;border:1px solid rgba(180,130,60,.08);pointer-events:none}
-    .card h1{font-family:'Cinzel',serif;font-size:1.8rem;color:var(--gold-hi);letter-spacing:.14em;text-align:center;margin-bottom:.2rem}.sub{font-style:italic;color:var(--dim);text-align:center;margin-bottom:1.35rem}
-    #app{display:none;height:100vh;grid-template-rows:44px 1fr}
-    #top{display:flex;align-items:center;gap:.45rem;padding:0 .75rem;background:var(--surface);border-bottom:1px solid var(--border);overflow:auto} #top::-webkit-scrollbar{display:none}
-    .logo{font-family:'Cinzel',serif;color:var(--gold);font-size:.75rem;letter-spacing:.15em;white-space:nowrap}.vsep{width:1px;height:18px;background:var(--border);flex-shrink:0} #top-right{margin-left:auto;display:flex;align-items:center;gap:.45rem;white-space:nowrap} #sid-lbl{font-size:.72rem;color:rgba(180,130,60,.45);cursor:pointer;padding:.12rem .32rem;border:1px solid transparent} #sid-lbl:hover{border-color:var(--border);color:var(--gold)}
-    #main{display:grid;grid-template-columns:280px 1fr 360px;overflow:hidden;min-height:0} #left,#center,#right{min-height:0;overflow:hidden;background:var(--surface)} #left{border-right:1px solid var(--border);display:flex;flex-direction:column} #center{display:flex;flex-direction:column;background:#0b0907} #right{border-left:1px solid var(--border);display:flex;flex-direction:column}
-    .pane-head{padding:.75rem .85rem;border-bottom:1px solid var(--border);font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
-    .scroll{flex:1;overflow:auto;padding:.8rem}.scroll::-webkit-scrollbar{width:4px}.scroll::-webkit-scrollbar-thumb{background:var(--border)}
-    .char-list{display:flex;flex-direction:column;gap:.35rem}.char-item{display:flex;align-items:center;gap:.5rem;padding:.35rem .45rem;background:rgba(0,0,0,.16);border:1px solid transparent;cursor:pointer;transition:all .12s}.char-item:hover{border-color:var(--border)}.char-item.sel{border-color:var(--gold);background:rgba(180,130,60,.08)} .char-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border);background:#080604;flex-shrink:0} .char-name{font-family:'Cinzel',serif;font-size:.65rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .char-meta{font-size:.58rem;color:var(--dim);white-space:nowrap}
-    .char-actions{display:flex;gap:.35rem;margin-top:.65rem;flex-wrap:wrap}.empty{font-size:.8rem;color:var(--dim);font-style:italic;line-height:1.6}
-    .sheet-wrap{display:flex;flex-direction:column;height:100%}.sheet-toolbar{display:flex;gap:.45rem;flex-wrap:wrap;padding:.8rem;border-bottom:1px solid var(--border);background:rgba(0,0,0,.18)} .sheet-body{flex:1;overflow:auto;padding:1rem}.sheet-body::-webkit-scrollbar{width:4px}.sheet-body::-webkit-scrollbar-thumb{background:var(--border)}
-    .sheet-card{background:rgba(0,0,0,.16);border:1px solid var(--border);padding:1rem;margin-bottom:.8rem}
-    .hero{display:grid;grid-template-columns:92px 1fr;gap:1rem;align-items:start} .hero img{width:92px;height:92px;border-radius:50%;object-fit:cover;border:2px solid var(--border);background:#080604} .hero-name{font-family:'Cinzel',serif;font-size:1.15rem;color:var(--gold-hi);letter-spacing:.04em} .hero-sub{font-size:.8rem;color:var(--dim);font-style:italic;margin-top:.15rem}
-    .stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-top:.8rem}.stat{border:1px solid var(--border);background:rgba(0,0,0,.18);padding:.5rem;text-align:center}.stat .k{font-family:'Cinzel',serif;font-size:.5rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}.stat .v{font-size:1rem;color:var(--gold-hi);margin-top:.18rem}
-    .ability-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:.45rem}.ab{border:1px solid var(--border);background:rgba(0,0,0,.18);padding:.45rem;text-align:center}.ab .k{font-family:'Cinzel',serif;font-size:.52rem;color:var(--dim);letter-spacing:.08em}.ab .s{font-size:.95rem;color:var(--gold-hi);margin:.15rem 0}.ab .m{font-size:.72rem;color:var(--text)}
-    .section-title{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:.55rem}
-    details.fold{border:1px solid var(--border);background:rgba(0,0,0,.14);margin-bottom:.55rem} details.fold summary{cursor:pointer;list-style:none;padding:.55rem .7rem;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.08em;color:var(--gold-hi);display:flex;justify-content:space-between;align-items:center} details.fold summary::-webkit-details-marker{display:none} .fold-body{padding:.2rem .7rem .7rem}
-    .line-list{display:flex;flex-direction:column;gap:.35rem}.line{display:flex;align-items:flex-start;gap:.45rem;padding:.42rem .5rem;background:rgba(0,0,0,.18);border:1px solid rgba(180,130,60,.08)} .line-main{flex:1}.line-name{font-family:'Cinzel',serif;font-size:.62rem;color:var(--text)}.line-sub{font-size:.72rem;color:var(--dim);margin-top:.15rem;line-height:1.5}
-    .pill{display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border);padding:.12rem .35rem;font-size:.55rem;font-family:'Cinzel',serif;color:var(--gold);white-space:nowrap}
-    .slot-row{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin-bottom:.45rem}.slot-dot{width:18px;height:18px;border-radius:50%;border:1px solid var(--gold);background:rgba(180,130,60,.06);cursor:pointer;transition:all .12s}.slot-dot.used{background:rgba(122,26,26,.55);border-color:#9a2a2a}
-    .status-row{display:flex;gap:.35rem;flex-wrap:wrap}.status-chip{padding:.22rem .5rem;border:1px solid var(--border);font-size:.58rem;font-family:'Cinzel',serif;color:var(--text);background:rgba(0,0,0,.18)}
-    .party{display:flex;flex-direction:column;gap:.4rem}.party-row{display:grid;grid-template-columns:1fr auto auto;gap:.45rem;align-items:center;padding:.4rem .5rem;background:rgba(0,0,0,.16);border:1px solid rgba(180,130,60,.08)} .party-row .n{font-family:'Cinzel',serif;font-size:.62rem}.party-row .hp,.party-row .ac{font-size:.7rem;color:var(--dim)}
-    .mini-log{display:flex;flex-direction:column;gap:.25rem}.log{font-size:.74rem;padding:.28rem .38rem;background:rgba(0,0,0,.18);border-left:2px solid transparent}.log.good{border-left-color:#5aa56b}.log.warn{border-left-color:#9a2a2a}
-    .small{font-size:.72rem;color:var(--dim);line-height:1.55}
-    #toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%) translateY(60px);background:rgba(10,8,6,.97);border:1px solid var(--gold);color:var(--text);font-family:'Cinzel',serif;font-size:.64rem;letter-spacing:.08em;padding:.45rem 1rem;z-index:2000;transition:transform .2s} #toast.show{transform:translateX(-50%) translateY(0)}
-    @media (max-width:1200px){#main{grid-template-columns:240px 1fr 320px}} @media (max-width:980px){#main{grid-template-columns:1fr}#left,#right{display:none}}
+    #setup{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 35%,#1e1408 0%,#060402 100%)}
+    #setup h1{font-family:'Cinzel',serif;font-size:2.4rem;font-weight:700;color:var(--gold-hi);letter-spacing:.18em;text-shadow:0 0 40px rgba(184,130,42,.4);margin-bottom:.1rem}
+    #setup .sub{font-style:italic;color:var(--dim);font-size:.95rem;margin-bottom:2rem;letter-spacing:.06em}
+    .card{background:#100e0b;border:1px solid var(--gold);width:430px;max-width:92vw;padding:1.8rem 2.2rem;position:relative}
+    .card::after{content:'';position:absolute;inset:4px;border:1px solid rgba(180,130,60,.09);pointer-events:none}
+    .card h2{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.22em;color:var(--gold);text-align:center;margin-bottom:1.5rem;text-transform:uppercase}
+    .f{margin-bottom:.8rem}.f label{display:block;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:.28rem}
+    .f input,.f select,.f textarea{width:100%;background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:.95rem;padding:.48rem .65rem;outline:none;transition:border-color .15s;border-radius:1px;resize:vertical}
+    .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--gold)} .f select option{background:#100e0b}
+    .f .note{font-size:.7rem;color:rgba(232,220,200,.3);margin-top:.22rem;font-style:italic}
+    .btn-p,.btn-g,.tb,.action-btn{cursor:pointer;border-radius:1px;transition:all .15s}
+    .btn-p{width:100%;padding:.68rem;font-family:'Cinzel',serif;font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;background:linear-gradient(135deg,#7a1a1a,#561010);color:var(--text);border:1px solid #9a2a2a;margin-top:.25rem}
+    .btn-p:hover{background:linear-gradient(135deg,#9a2020,#7a1a1a);transform:translateY(-1px)}
+    .btn-g{width:100%;padding:.56rem;font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;background:transparent;color:var(--gold);border:1px solid var(--border);margin-top:.45rem}
+    .btn-g:hover{border-color:var(--gold);background:rgba(180,130,60,.06)}
+    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:800;align-items:center;justify-content:center}.overlay.open{display:flex}
+    .modal{background:#100e0b;border:1px solid var(--gold);padding:1.35rem 1.5rem;width:1180px;max-width:96vw;max-height:92vh;overflow-y:auto;border-radius:1px;box-shadow:0 20px 60px rgba(0,0,0,.9)}
+    .small-modal{width:520px;max-width:94vw}.modal h3{font-family:'Cinzel',serif;color:var(--gold);font-size:.88rem;letter-spacing:.12em;margin-bottom:.85rem}
+    .modal-btns{display:flex;gap:.6rem;margin-top:1rem}.modal-btns .btn-p,.modal-btns .btn-g{margin:0}
+    .sheet-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:1rem}.sheet-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}.sheet-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:.45rem}
+    .sheet-col h4{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:.45rem}
+    #app{display:none;height:100vh;flex-direction:column}
+    #topbar{height:44px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 .8rem;gap:.6rem}
+    .brand{font-family:'Cinzel',serif;font-size:.75rem;color:var(--gold);letter-spacing:.16em;white-space:nowrap}.topbar-right{display:flex;align-items:center;gap:.5rem}
+    #conn-dot{width:7px;height:7px;border-radius:50%;background:#333;transition:all .25s}#conn-dot.ok{background:#5aad5a;box-shadow:0 0 5px rgba(90,173,90,.5)}
+    #session-label{font-size:.72rem;color:rgba(180,130,60,.4);cursor:pointer;padding:.14rem .32rem;border:1px solid transparent;border-radius:1px;transition:all .15s}#session-label:hover{border-color:var(--border);color:var(--gold)}
+    .tb{background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.09em;padding:.25rem .55rem;text-transform:uppercase}.tb:hover{border-color:var(--gold);color:var(--gold-hi);background:rgba(180,130,60,.06)}
+    .gm{display:none!important} body.is-gm .gm{display:inline-flex!important}
+    #main{display:grid;grid-template-columns:280px minmax(0,1fr) 280px;flex:1;overflow:hidden}
+    #left-panel,#right-panel{background:var(--surface);overflow:hidden;display:flex;flex-direction:column}#left-panel{border-right:1px solid var(--border)}#right-panel{border-left:1px solid var(--border)}
+    .panel-head{padding:.8rem .9rem;border-bottom:1px solid var(--border);font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase}
+    .panel-body{padding:.8rem;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem}
+    #party-list{display:flex;flex-direction:column;gap:.35rem;overflow-y:auto}
+    .party-item{display:flex;align-items:center;gap:.55rem;padding:.4rem;background:rgba(0,0,0,.18);border:1px solid transparent;cursor:pointer;transition:all .12s}.party-item:hover{border-color:var(--border)}.party-item.sel{border-color:var(--gold);background:rgba(180,130,60,.07)}
+    .party-portrait{width:38px;height:38px;border-radius:50%;object-fit:cover;background:#080604;border:1px solid var(--border);flex-shrink:0}.party-meta{min-width:0;flex:1}.party-name{font-family:'Cinzel',serif;font-size:.62rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.party-sub{font-size:.72rem;color:var(--dim)}.party-badge{font-family:'Cinzel',serif;font-size:.5rem;padding:.12rem .28rem;border:1px solid var(--border);color:var(--dim);text-transform:uppercase}
+    #center-panel{overflow-y:auto;padding:1rem;background:linear-gradient(180deg,#0a0806,#0d0b09)}
+    #sheet-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;color:var(--dim)}#sheet-empty h2{font-family:'Cinzel',serif;font-size:1rem;color:rgba(180,130,60,.5);letter-spacing:.08em}
+    #sheet-view{display:none;max-width:1100px;margin:0 auto;flex-direction:column;gap:1rem}
+    #sheet-header{display:flex;gap:1rem;align-items:flex-start;background:rgba(16,14,11,.95);border:1px solid var(--border);padding:1rem}
+    #sheet-portrait{width:120px;height:120px;border-radius:6px;object-fit:cover;background:#080604;border:1px solid var(--border)}
+    .sheet-header-meta{flex:1;min-width:0}.sheet-title-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+    #sheet-name{font-family:'Cinzel',serif;font-size:1.35rem;color:var(--gold-hi);letter-spacing:.04em}#sheet-kind-badge{font-family:'Cinzel',serif;font-size:.58rem;padding:.16rem .4rem;border:1px solid var(--border);text-transform:uppercase;color:var(--dim)}
+    #sheet-subline,#sheet-owner-line{font-size:.85rem;color:var(--dim);margin-top:.25rem}.sheet-action-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}
+    .card-sec{background:rgba(16,14,11,.95);border:1px solid var(--border);padding:.9rem}.card-title{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.16em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;list-style:none;cursor:pointer}details.card-sec summary::-webkit-details-marker{display:none}
+    .core-grid,.abilities-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:.6rem}.stat-card,.abil-card{background:rgba(0,0,0,.2);border:1px solid var(--border);padding:.55rem;text-align:center}.stat-label,.abil-label{font-family:'Cinzel',serif;font-size:.52rem;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}.stat-value{font-size:1.2rem;color:var(--gold-hi);margin-top:.2rem}.abil-score{font-size:1rem;color:var(--gold-hi);margin-top:.15rem}.abil-mod{font-size:.8rem;color:var(--dim);margin-top:.15rem}
+    .quick-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}.action-btn{padding:.38rem .6rem;font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;background:transparent;color:var(--gold);border:1px solid var(--border)}.action-btn:hover{border-color:var(--gold);background:rgba(180,130,60,.07)}
+    #sheet-statuses{display:flex;flex-wrap:wrap;gap:.35rem}.status-pill{font-family:'Cinzel',serif;font-size:.54rem;padding:.18rem .4rem;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text)}
+    .quick-edit-block{margin-top:.8rem;display:flex;flex-direction:column;gap:.4rem}.quick-edit-block label{font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+    .list-stack{display:flex;flex-direction:column;gap:.5rem}.row-card{background:rgba(0,0,0,.2);border:1px solid var(--border);padding:.55rem}.row-title{font-family:'Cinzel',serif;font-size:.62rem;color:var(--gold-hi)}.row-sub{font-size:.78rem;color:var(--dim);margin-top:.2rem;line-height:1.45}
+    .slot-row{display:grid;grid-template-columns:80px 1fr auto;gap:.6rem;align-items:center;margin-bottom:.45rem}.slot-pips{display:flex;gap:.35rem;flex-wrap:wrap}.slot-pip{width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:rgba(0,0,0,.3);cursor:pointer}.slot-pip.used{background:rgba(122,26,26,.5);border-color:#9a2a2a}
+    .inv-list{display:flex;flex-direction:column;gap:.25rem}.inv-item{padding:.3rem .45rem;background:rgba(0,0,0,.16);border:1px solid rgba(180,130,60,.08)}.notes-box{white-space:pre-wrap;line-height:1.6;color:var(--text)}
+    .session-box{background:rgba(0,0,0,.18);border:1px solid var(--border);padding:.65rem}.session-line{display:flex;justify-content:space-between;gap:.5rem;font-size:.8rem}.session-line .lbl,.mini-title{font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.08em;color:var(--gold);text-transform:uppercase}.help-copy{font-size:.78rem;line-height:1.55;color:var(--dim)}
+    #toast{position:fixed;bottom:1.1rem;left:50%;transform:translateX(-50%) translateY(60px);background:rgba(10,8,6,.97);border:1px solid var(--gold);color:var(--text);font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.1em;padding:.45rem 1.1rem;border-radius:1px;box-shadow:0 4px 18px rgba(0,0,0,.6);z-index:9999;transition:transform .22s;white-space:nowrap}#toast.show{transform:translateX(-50%) translateY(0)}
+    @media (max-width:1200px){#main{grid-template-columns:240px minmax(0,1fr) 240px}.core-grid,.abilities-grid{grid-template-columns:repeat(3,1fr)}.sheet-grid{grid-template-columns:1fr}.sheet-row-6{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:900px){#main{grid-template-columns:1fr}#left-panel,#right-panel{display:none}#center-panel{padding:.7rem}#sheet-header{flex-direction:column}#sheet-portrait{width:100px;height:100px}}
   </style>
 </head>
 <body>
-  <div id="setup">
-    <div class="card">
-      <h1>Character Sheets</h1>
-      <div class="sub">separate from the board · syncs through Firebase</div>
-      <div class="f"><label>Your Name</label><input id="inp-name" type="text" maxlength="24" placeholder="Player / DM Name"></div>
-      <div class="f"><label>Role</label><select id="inp-role"><option value="player">Player</option><option value="gm">Game Master</option></select></div>
-      <div class="f"><label>Session ID</label><input id="inp-sid" type="text" maxlength="40" placeholder="same as map session"></div>
-      <button class="btn primary" onclick="enterApp()" style="width:100%">Enter</button>
-      <button class="btn" onclick="openCfg()" style="margin-top:.55rem;width:100%">⚙ Firebase Config</button>
+<div id="setup">
+  <h1>Character Sheets</h1>
+  <p class="sub">party · spells · weapons · notes</p>
+  <div class="card">
+    <h2>Join the Ledger</h2>
+    <div class="f"><label>Your Name</label><input id="inp-name" type="text" placeholder="Thorin..." maxlength="24"></div>
+    <div class="f"><label>Role</label><select id="inp-role"><option value="player">Player</option><option value="gm">Game Master</option></select></div>
+    <div class="f"><label>Session ID</label><input id="inp-sid" type="text" placeholder="avernus-campaign" maxlength="40"><div class="note">Use the same session ID as your table if you want the same campaign namespace</div></div>
+    <button class="btn-p" onclick="enter()">Enter</button>
+    <button class="btn-g" onclick="openCfg()">⚙ Firebase Config</button>
+  </div>
+</div>
+
+<div class="overlay" id="cfg-modal">
+  <div class="modal small-modal">
+    <h3>⚙ Firebase Config</h3>
+    <div class="f"><label>API Key</label><input id="c-key" type="text"></div>
+    <div class="f"><label>Auth Domain</label><input id="c-auth" type="text"></div>
+    <div class="f"><label>Database URL</label><input id="c-db" type="text"></div>
+    <div class="f"><label>Project ID</label><input id="c-pid" type="text"></div>
+    <div class="modal-btns"><button class="btn-p" onclick="saveCfg()">Save</button><button class="btn-g" onclick="closeCfg()">Cancel</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="sheet-modal">
+  <div class="modal">
+    <h3 id="sheet-modal-title">Create Character</h3>
+    <div class="sheet-grid">
+      <div class="sheet-col">
+        <div class="f"><label>Name</label><input id="m-name" type="text" maxlength="40"></div>
+        <div class="f"><label>Kind</label><select id="m-kind"><option value="pc">PC</option><option value="npc">NPC</option></select></div>
+        <div class="f"><label>Portrait URL</label><input id="m-portrait" type="text" placeholder="https://..."></div>
+        <div class="f"><label>Class</label><input id="m-class" type="text"></div>
+        <div class="f"><label>Race</label><input id="m-race" type="text"></div>
+        <div class="sheet-row-3">
+          <div class="f"><label>Level</label><input id="m-level" type="number" min="1" max="20" value="1"></div>
+          <div class="f"><label>Prof</label><input id="m-prof" type="number" min="0" max="20" value="2"></div>
+          <div class="f"><label>Speed</label><input id="m-spd" type="number" min="0" max="999" value="30"></div>
+        </div>
+        <div class="sheet-row-3">
+          <div class="f"><label>HP</label><input id="m-hp" type="number" value="1"></div>
+          <div class="f"><label>Max HP</label><input id="m-maxhp" type="number" value="1"></div>
+          <div class="f"><label>Temp HP</label><input id="m-temphp" type="number" value="0"></div>
+        </div>
+        <div class="sheet-row-3">
+          <div class="f"><label>AC</label><input id="m-ac" type="number" value="10"></div>
+          <div class="f"><label>Init</label><input id="m-init" type="number" value="0"></div>
+          <div class="f"><label>Visible to Players</label><select id="m-visible"><option value="true">Yes</option><option value="false">No</option></select></div>
+        </div>
+      </div>
+      <div class="sheet-col">
+        <h4>Abilities</h4>
+        <div class="sheet-row-6">
+          <div class="f"><label>STR</label><input id="m-str" type="number" value="10"></div>
+          <div class="f"><label>DEX</label><input id="m-dex" type="number" value="10"></div>
+          <div class="f"><label>CON</label><input id="m-con" type="number" value="10"></div>
+          <div class="f"><label>INT</label><input id="m-int" type="number" value="10"></div>
+          <div class="f"><label>WIS</label><input id="m-wis" type="number" value="10"></div>
+          <div class="f"><label>CHA</label><input id="m-cha" type="number" value="10"></div>
+        </div>
+        <div class="f"><label>Status Conditions (comma separated)</label><input id="m-statuses" type="text" placeholder="poisoned, concentrating"></div>
+        <div class="f"><label>Weapons (JSON array)</label><textarea id="m-weapons" rows="5" placeholder='[{"name":"Longsword","toHit":"+5","damage":"1d8+3 slashing"}]'></textarea></div>
+        <div class="f"><label>Spell Slots (JSON object)</label><textarea id="m-slots" rows="4" placeholder='{"1":{"max":4,"used":0},"2":{"max":2,"used":0}}'></textarea></div>
+      </div>
+      <div class="sheet-col">
+        <div class="f"><label>Cantrips (JSON array)</label><textarea id="m-cantrips" rows="5" placeholder='[{"name":"Fire Bolt","actionType":"Action","range":"120 ft","roll":"Ranged Spell Attack","description":"1d10 fire"}]'></textarea></div>
+        <div class="f"><label>Spells (JSON array)</label><textarea id="m-spells" rows="6" placeholder='[{"name":"Magic Missile","level":1,"actionType":"Action","range":"120 ft","cost":"1st-level slot","roll":"No roll","description":"3 darts"}]'></textarea></div>
+        <div class="f"><label>Feats / Features (JSON array)</label><textarea id="m-feats" rows="5" placeholder='[{"name":"Second Wind","actionType":"Bonus Action","description":"Regain 1d10+level HP"}]'></textarea></div>
+      </div>
+    </div>
+    <div class="f"><label>Inventory (one per line)</label><textarea id="m-inventory" rows="4" placeholder="Potion of Healing&#10;Rope (50 ft)"></textarea></div>
+    <div class="f"><label>Notes</label><textarea id="m-notes" rows="5"></textarea></div>
+    <div class="modal-btns"><button class="btn-p" onclick="saveSheetModal()">Save Sheet</button><button class="btn-g" onclick="closeSheetModal()">Cancel</button></div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="topbar">
+    <div class="brand">📜 Character Sheets</div>
+    <div class="topbar-right">
+      <span id="conn-dot"></span>
+      <span id="session-label" onclick="copySid()" title="Copy session ID"></span>
+      <button class="tb gm" onclick="openCreateSheet()">+ Create Sheet</button>
     </div>
   </div>
-
-  <div class="overlay" id="cfg-modal"><div class="modal"><h3>Firebase Config</h3><div class="f"><label>API Key</label><input id="c-key" type="text"></div><div class="f"><label>Auth Domain</label><input id="c-auth" type="text"></div><div class="f"><label>Database URL</label><input id="c-db" type="text"></div><div class="f"><label>Project ID</label><input id="c-pid" type="text"></div><div class="row"><button class="btn primary" onclick="saveCfg()">Save</button><button class="btn" onclick="closeCfg()">Cancel</button></div></div></div>
-
-  <div class="overlay" id="char-modal">
-    <div class="modal">
-      <h3 id="char-modal-title">DM Full Sheet Edit</h3>
-      <div class="row"><div class="f"><label>Name</label><input id="f-name" type="text"></div><div class="f"><label>Portrait URL</label><input id="f-portrait" type="text"></div></div>
-      <div class="row"><div class="f"><label>Class / Subclass</label><input id="f-class" type="text"></div><div class="f"><label>Race / Species</label><input id="f-race" type="text"></div></div>
-      <div class="row3"><div class="f"><label>Level</label><input id="f-level" type="number" min="1" max="20" value="1"></div><div class="f"><label>Proficiency</label><input id="f-prof" type="number" min="0" max="10" value="2"></div><div class="f"><label>Owner Name</label><input id="f-owner-name" type="text" placeholder="Optional"></div></div>
-      <div class="row3"><div class="f"><label>HP</label><input id="f-hp" type="number" value="10"></div><div class="f"><label>Max HP</label><input id="f-maxhp" type="number" value="10"></div><div class="f"><label>Temp HP</label><input id="f-temphp" type="number" value="0"></div></div>
-      <div class="row3"><div class="f"><label>AC</label><input id="f-ac" type="number" value="10"></div><div class="f"><label>Init</label><input id="f-init" type="number" value="0"></div><div class="f"><label>Speed</label><input id="f-spd" type="number" value="30"></div></div>
-      <div class="row3"><div class="f"><label>STR</label><input id="f-str" type="number" value="10"></div><div class="f"><label>DEX</label><input id="f-dex" type="number" value="10"></div><div class="f"><label>CON</label><input id="f-con" type="number" value="10"></div></div>
-      <div class="row3"><div class="f"><label>INT</label><input id="f-int" type="number" value="10"></div><div class="f"><label>WIS</label><input id="f-wis" type="number" value="10"></div><div class="f"><label>CHA</label><input id="f-cha" type="number" value="10"></div></div>
-      <div class="f"><label>Status Conditions (comma-separated)</label><input id="f-statuses" type="text" placeholder="Blessed, Poisoned"></div>
-      <div class="f"><label>Weapons (one per line)</label><textarea id="f-weapons" rows="5" placeholder="Longsword | +5 | 1d8+3 slashing | melee"></textarea></div>
-      <div class="f"><label>Spell Slots</label><input id="f-slots" type="text" placeholder="1:4,2:3,3:2"></div>
-      <div class="f"><label>Cantrips (one per line)</label><textarea id="f-cantrips" rows="4" placeholder="Fire Bolt | Action | 120 ft | Ranged spell attack | 1d10 fire"></textarea></div>
-      <div class="f"><label>Spells (one per line)</label><textarea id="f-spells" rows="6" placeholder="Magic Missile | Action | 1st | 120 ft | auto hit | 3 darts = 1d4+1 each"></textarea></div>
-      <div class="f"><label>Feats / Features (one per line)</label><textarea id="f-feats" rows="4" placeholder="Second Wind | Bonus Action | Regain 1d10+level HP"></textarea></div>
-      <div class="f"><label>Inventory (one per line)</label><textarea id="f-inventory" rows="4"></textarea></div>
-      <div class="f"><label>Notes</label><textarea id="f-notes" rows="4"></textarea></div>
-      <div class="row"><button class="btn primary" onclick="saveCharacter()">Save Sheet</button><button class="btn" onclick="closeCharModal()">Cancel</button></div>
-    </div>
-  </div>
-
-  <div class="overlay" id="quick-modal">
-    <div class="modal">
-      <h3>Player Quick Update</h3>
-      <div class="row3"><div class="f"><label>HP</label><input id="q-hp" type="number"></div><div class="f"><label>Temp HP</label><input id="q-temphp" type="number"></div><div class="f"><label>Status (comma-separated)</label><input id="q-statuses" type="text"></div></div>
-      <div class="f"><label>Inventory (one per line)</label><textarea id="q-inventory" rows="5"></textarea></div>
-      <div class="f"><label>Notes</label><textarea id="q-notes" rows="6"></textarea></div>
-      <div class="row"><button class="btn primary" onclick="saveQuickEdit()">Save Updates</button><button class="btn" onclick="closeQuickModal()">Cancel</button></div>
-    </div>
-  </div>
-
-  <div id="app">
-    <div id="top">
-      <div class="logo">⚔ Character Sheets</div>
-      <div class="vsep"></div>
-      <button class="btn primary" onclick="openCharModal()">+ New Sheet</button>
-      <button class="btn blue" onclick="bindMeToSelected()">Bind Me</button>
-      <button class="btn green" onclick="openQuickEdit()">Quick Update</button>
-      <button class="btn" onclick="claimSelectedAsMine()">Claim My Sheet</button>
-      <div class="vsep"></div>
-      <button class="btn" onclick="refreshSelected()">Refresh</button>
-      <div id="top-right"><span id="sid-lbl" onclick="copySid()"></span></div>
-    </div>
-
-    <div id="main">
-      <aside id="left">
-        <div class="pane-head">Characters</div>
-        <div class="scroll">
-          <div id="char-list" class="char-list"></div>
-          <div class="char-actions">
-            <button class="btn" onclick="openCharModal()">+ Create</button>
-            <button class="btn" onclick="duplicateSelected()">Duplicate</button>
-            <button class="btn warn" onclick="deleteSelected()">Delete</button>
+  <div id="main">
+    <aside id="left-panel">
+      <div class="panel-head">Party</div>
+      <div class="panel-body" id="party-list"></div>
+    </aside>
+    <main id="center-panel">
+      <div id="sheet-empty"><h2>No character selected</h2><p>Select a sheet from the party list.</p></div>
+      <div id="sheet-view">
+        <div id="sheet-header">
+          <img id="sheet-portrait" src="" alt="portrait">
+          <div class="sheet-header-meta">
+            <div class="sheet-title-row"><h2 id="sheet-name"></h2><span id="sheet-kind-badge"></span></div>
+            <div id="sheet-subline"></div>
+            <div id="sheet-owner-line"></div>
+            <div class="sheet-action-row">
+              <button class="action-btn gm" id="btn-edit-sheet" onclick="openEditSelected()">Edit Sheet</button>
+              <button class="action-btn" id="btn-set-mine" onclick="setSelectedAsMine()">Set as My Character</button>
+              <button class="action-btn" id="btn-long-rest" onclick="longRestSelected()">Long Rest</button>
+            </div>
           </div>
         </div>
-      </aside>
-
-      <main id="center">
-        <div class="pane-head">Sheet</div>
-        <div id="sheet-host" class="sheet-wrap"><div class="sheet-body"><div class="empty">No character selected yet.</div></div></div>
-      </main>
-
-      <aside id="right">
-        <div class="pane-head">Party / Session</div>
-        <div class="scroll">
-          <div class="section-title">Party Overview</div>
-          <div id="party-list" class="party"></div>
-          <div style="height:.9rem"></div>
-          <div class="section-title">Activity</div>
-          <div id="activity-log" class="mini-log"></div>
-          <div style="height:.9rem"></div>
-          <div class="section-title">Permissions</div>
-          <div class="small">Players can update: HP, temp HP, status, inventory, notes, and spell slots. DM can edit the full sheet.</div>
+        <section class="card-sec">
+          <div class="card-title">Core</div>
+          <div class="core-grid">
+            <div class="stat-card"><div class="stat-label">HP</div><div class="stat-value" id="v-hp"></div></div>
+            <div class="stat-card"><div class="stat-label">Temp HP</div><div class="stat-value" id="v-temphp"></div></div>
+            <div class="stat-card"><div class="stat-label">AC</div><div class="stat-value" id="v-ac"></div></div>
+            <div class="stat-card"><div class="stat-label">Init</div><div class="stat-value" id="v-init"></div></div>
+            <div class="stat-card"><div class="stat-label">Speed</div><div class="stat-value" id="v-spd"></div></div>
+            <div class="stat-card"><div class="stat-label">Prof</div><div class="stat-value" id="v-prof"></div></div>
+          </div>
+          <div class="quick-row" id="player-quick-row">
+            <button class="action-btn" onclick="adjustHpSelected(-1)">HP -1</button>
+            <button class="action-btn" onclick="adjustHpSelected(-5)">HP -5</button>
+            <button class="action-btn" onclick="adjustHpSelected(1)">HP +1</button>
+            <button class="action-btn" onclick="adjustHpSelected(5)">HP +5</button>
+            <button class="action-btn" onclick="clearTempHpSelected()">Clear Temp HP</button>
+          </div>
+        </section>
+        <section class="card-sec">
+          <div class="card-title">Conditions</div>
+          <div id="sheet-statuses"></div>
+          <div class="quick-edit-block" id="player-status-block">
+            <label>Update Conditions (comma separated)</label>
+            <input id="player-status-input" type="text" placeholder="poisoned, concentrating">
+            <button class="action-btn" onclick="savePlayerStatuses()">Save Conditions</button>
+          </div>
+        </section>
+        <section class="card-sec">
+          <div class="card-title">Abilities</div>
+          <div class="abilities-grid">
+            <div class="abil-card"><div class="abil-label">STR</div><div class="abil-score" id="v-str"></div><div class="abil-mod" id="m-str-mod"></div></div>
+            <div class="abil-card"><div class="abil-label">DEX</div><div class="abil-score" id="v-dex"></div><div class="abil-mod" id="m-dex-mod"></div></div>
+            <div class="abil-card"><div class="abil-label">CON</div><div class="abil-score" id="v-con"></div><div class="abil-mod" id="m-con-mod"></div></div>
+            <div class="abil-card"><div class="abil-label">INT</div><div class="abil-score" id="v-int"></div><div class="abil-mod" id="m-int-mod"></div></div>
+            <div class="abil-card"><div class="abil-label">WIS</div><div class="abil-score" id="v-wis"></div><div class="abil-mod" id="m-wis-mod"></div></div>
+            <div class="abil-card"><div class="abil-label">CHA</div><div class="abil-score" id="v-cha"></div><div class="abil-mod" id="m-cha-mod"></div></div>
+          </div>
+        </section>
+        <details class="card-sec" open><summary class="card-title">Weapons</summary><div id="sheet-weapons"></div></details>
+        <details class="card-sec" open><summary class="card-title">Spell Slots</summary><div id="sheet-slots"></div></details>
+        <details class="card-sec"><summary class="card-title">Cantrips</summary><div id="sheet-cantrips"></div></details>
+        <details class="card-sec"><summary class="card-title">Spells</summary><div id="sheet-spells"></div></details>
+        <details class="card-sec"><summary class="card-title">Feats / Features</summary><div id="sheet-feats"></div></details>
+        <details class="card-sec" open>
+          <summary class="card-title">Inventory</summary>
+          <div id="sheet-inventory"></div>
+          <div class="quick-edit-block" id="player-inventory-block">
+            <label>Update Inventory (one per line)</label>
+            <textarea id="player-inventory-input" rows="4"></textarea>
+            <button class="action-btn" onclick="savePlayerInventory()">Save Inventory</button>
+          </div>
+        </details>
+        <details class="card-sec" open>
+          <summary class="card-title">Notes</summary>
+          <div id="sheet-notes"></div>
+          <div class="quick-edit-block" id="player-notes-block">
+            <label>Update Notes</label>
+            <textarea id="player-notes-input" rows="5"></textarea>
+            <button class="action-btn" onclick="savePlayerNotes()">Save Notes</button>
+          </div>
+        </details>
+      </div>
+    </main>
+    <aside id="right-panel">
+      <div class="panel-head">Session</div>
+      <div class="panel-body">
+        <div class="session-box">
+          <div class="session-line"><span class="lbl">You</span><span id="me-line"></span></div>
+          <div class="session-line"><span class="lbl">My Character</span><span id="my-char-line">—</span></div>
         </div>
-      </aside>
-    </div>
+        <div class="session-box">
+          <div class="mini-title">Quick Actions</div>
+          <button class="action-btn" onclick="focusMyCharacter()">Focus My Character</button>
+          <button class="action-btn gm" onclick="openCreateSheet()">Create New Sheet</button>
+          <button class="action-btn gm" onclick="duplicateSelectedSheet()">Duplicate Selected</button>
+          <button class="action-btn gm" onclick="clearSelectedOwner()">Clear Owner</button>
+          <button class="action-btn gm" onclick="deleteSelectedSheet()">Delete Selected</button>
+        </div>
+        <div class="session-box">
+          <div class="mini-title">Permissions</div>
+          <p class="help-copy">Players can edit HP, temp HP, conditions, inventory, notes, and spell slots on sheets they own. GM can edit everything.</p>
+        </div>
+      </div>
+    </aside>
   </div>
+</div>
 
-  <div id="toast"></div>
+<div id="toast"></div>
 
-  <script type="module">
-    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-    import { getDatabase, ref, set, update, remove, onValue, push } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-    const HARDCODED_CFG = { apiKey:'AIzaSyBxhgU7Ef039EywGNuIWwjuxz1Vsn_ekrE', authDomain:'disney-vtt.firebaseapp.com', databaseURL:'https://disney-vtt-default-rtdb.firebaseio.com', projectId:'disney-vtt' };
-    let db,sid='',myId='',myName='',isGM=false,chars={},bindings={},selectedId=null,editingId=null,charsRef,bindRef,activityRef;
-    const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');
-    const getUserId=()=>{let id=localStorage.getItem('vtt-sheet-user-id'); if(!id){id=Math.random().toString(36).slice(2,10); localStorage.setItem('vtt-sheet-user-id',id);} return id;};
-    const loadCfg=()=>{try{return JSON.parse(localStorage.getItem('vtt7-cfg')||'null')}catch{return null}};
-    const mod=n=>{const m=Math.floor((Number(n||10)-10)/2); return (m>=0?'+':'')+m;};
-    function defaultChar(){return {name:'New Character',portrait:'',className:'',race:'',level:1,prof:2,hp:10,maxHp:10,tempHp:0,ac:10,init:0,spd:30,abilities:{str:10,dex:10,con:10,int:10,wis:10,cha:10},statuses:[],weapons:[],spellSlots:{},cantrips:[],spells:[],feats:[],inventory:[],notes:'',ownerId:'',ownerName:'',updatedAt:Date.now()};}
-    function parseLines(text,kind){return String(text||'').split('\n').map(x=>x.trim()).filter(Boolean).map(line=>{const p=line.split('|').map(s=>s.trim()); if(kind==='weapon') return {name:p[0]||'Weapon',toHit:p[1]||'',damage:p[2]||'',notes:p[3]||''}; if(kind==='cantrip') return {name:p[0]||'Cantrip',action:p[1]||'',range:p[2]||'',roll:p[3]||'',desc:p[4]||''}; if(kind==='spell') return {name:p[0]||'Spell',action:p[1]||'',level:p[2]||'',range:p[3]||'',roll:p[4]||'',desc:p[5]||''}; if(kind==='feat') return {name:p[0]||'Feature',action:p[1]||'',text:p[2]||''}; return line;});}
-    function parseSlots(text){const out={}; String(text||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(chunk=>{const [lvl,val]=chunk.split(':').map(s=>s.trim()); if(lvl&&val) out[lvl]={max:Number(val)||0,used:0};}); return out;}
-    function mergeSlotUsage(nextSlots,prevSlots){const out={}; Object.entries(nextSlots).forEach(([lvl,slot])=>{const prev=prevSlots?.[lvl]; out[lvl]={max:Number(slot.max||0),used:Math.min(Number(prev?.used||0),Number(slot.max||0))};}); return out;}
-    function myBoundCharacterId(){return bindings[myId]||null;} function selectedChar(){return selectedId?chars[selectedId]:null;} function isOwner(c){return !!c && (c.ownerId===myId || isGM);} function canPlayerQuickEdit(c){return !!c && (c.ownerId===myId || bindings[myId]===selectedId || isGM);} 
+const HARDCODED_CFG = {
+  apiKey:"AIzaSyBxhgU7Ef039EywGNuIWwjuxz1Vsn_ekrE",
+  authDomain:"disney-vtt.firebaseapp.com",
+  databaseURL:"https://disney-vtt-default-rtdb.firebaseio.com",
+  projectId:"disney-vtt"
+};
 
-    window.openCfg=()=>{const c=loadCfg()||HARDCODED_CFG; $('c-key').value=c.apiKey||''; $('c-auth').value=c.authDomain||''; $('c-db').value=c.databaseURL||''; $('c-pid').value=c.projectId||''; $('cfg-modal').classList.add('open');};
-    window.closeCfg=()=>$('cfg-modal').classList.remove('open');
-    window.saveCfg=()=>{localStorage.setItem('vtt7-cfg',JSON.stringify({apiKey:$('c-key').value.trim(),authDomain:$('c-auth').value.trim(),databaseURL:$('c-db').value.trim(),projectId:$('c-pid').value.trim()})); closeCfg(); toast('Firebase config saved');};
+let db;
+let sid='', myId='', myName='', isGM=false;
+let charsRef;
+let characters = {};
+let selectedCharId = null;
+let editingCharId = null;
+let toastT;
+let myCharacterId = localStorage.getItem('geezvtt-my-char-id') || '';
 
-    window.enterApp=async()=>{myName=$('inp-name').value.trim(); sid=$('inp-sid').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-')||'default'; isGM=$('inp-role').value==='gm'; myId=getUserId(); if(!myName){toast('Enter your name'); return;} const cfg=loadCfg()||HARDCODED_CFG; try{const app=initializeApp(cfg,'sheet-'+myId); db=getDatabase(app);}catch(e){toast('Firebase: '+e.message); return;} charsRef=ref(db,`s/${sid}/characters`); bindRef=ref(db,`s/${sid}/characterBindings`); activityRef=ref(db,`s/${sid}/sheetActivity`);
-      onValue(charsRef,snap=>{chars=snap.val()||{}; if(selectedId&&!chars[selectedId]) selectedId=null; if(!selectedId){ const mine=Object.entries(chars).find(([id,c])=>c.ownerId===myId)|| (myBoundCharacterId()? [myBoundCharacterId(), chars[myBoundCharacterId()]]:null) || Object.entries(chars)[0]; if(mine) selectedId=mine[0]; } renderCharList(); renderSheet(); renderParty();});
-      onValue(bindRef,snap=>{bindings=snap.val()||{}; if(!selectedId){const mine=myBoundCharacterId(); if(mine&&chars[mine]) selectedId=mine;} renderCharList(); renderSheet(); renderParty();});
-      onValue(activityRef,snap=>renderActivity(snap.val()||{}));
-      $('setup').style.display='none'; $('app').style.display='grid'; $('sid-lbl').textContent=sid; toast(`Joined ${sid}`); };
+const loadCfg = () => { try { return JSON.parse(localStorage.getItem('geezvtt-sheet-cfg') || 'null'); } catch { return null; } };
+const escHtml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function uid(){ let id = localStorage.getItem('geezvtt-sheet-uid'); if(!id){ id = Math.random().toString(36).slice(2,10); localStorage.setItem('geezvtt-sheet-uid', id); } return id; }
+function signedMod(n){ n = Number(n || 0); return n >= 0 ? `+${n}` : `${n}`; }
+function abilMod(score){ return Math.floor(((Number(score)||10)-10)/2); }
+function normalizeArray(v){ return Array.isArray(v) ? v : []; }
+function normalizeInventory(v){ return Array.isArray(v) ? v : (typeof v === 'string' ? v.split(/\r?\n/).map(x=>x.trim()).filter(Boolean) : []); }
+function normalizeStatuses(v){ return Array.isArray(v) ? v : (typeof v === 'string' ? v.split(',').map(x=>x.trim()).filter(Boolean) : []); }
+function normalizeSlots(v){ return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; }
+function normalizeChar(raw = {}){
+  const abilities = raw.abilities || {};
+  return {
+    name: raw.name || 'Unnamed', kind: raw.kind === 'npc' ? 'npc' : 'pc', portrait: raw.portrait || '', className: raw.className || '', race: raw.race || '',
+    level: Number(raw.level || 1), prof: Number(raw.prof || 2), hp: Number(raw.hp ?? 1), maxHp: Number(raw.maxHp ?? raw.hp ?? 1), tempHp: Number(raw.tempHp || 0),
+    ac: Number(raw.ac || 10), init: Number(raw.init || 0), spd: Number(raw.spd || 30), visibleToPlayers: raw.visibleToPlayers !== false,
+    ownerId: raw.ownerId || '', ownerName: raw.ownerName || '',
+    abilities: { str:Number(abilities.str||10), dex:Number(abilities.dex||10), con:Number(abilities.con||10), int:Number(abilities.int||10), wis:Number(abilities.wis||10), cha:Number(abilities.cha||10) },
+    statuses: normalizeStatuses(raw.statuses), weapons: normalizeArray(raw.weapons), spellSlots: normalizeSlots(raw.spellSlots), cantrips: normalizeArray(raw.cantrips), spells: normalizeArray(raw.spells), feats: normalizeArray(raw.feats), inventory: normalizeInventory(raw.inventory), notes: raw.notes || '',
+    ts: raw.ts || 0, updatedAt: raw.updatedAt || 0,
+  };
+}
+function visibleCharacters(){
+  return Object.entries(characters).map(([id, raw]) => [id, normalizeChar(raw)]).filter(([, c]) => isGM || (c.kind === 'pc' && c.visibleToPlayers !== false)).sort((a,b) => (a[1].kind === b[1].kind ? a[1].name.localeCompare(b[1].name) : (a[1].kind === 'pc' ? -1 : 1)));
+}
+function getSelectedVisible(){
+  const vis = Object.fromEntries(visibleCharacters());
+  if (selectedCharId && vis[selectedCharId]) return { id: selectedCharId, char: vis[selectedCharId] };
+  if (myCharacterId && vis[myCharacterId]) return { id: myCharacterId, char: vis[myCharacterId] };
+  const first = Object.entries(vis)[0];
+  return first ? { id: first[0], char: first[1] } : null;
+}
+function canPlayerEdit(c){ return !!c && c.kind === 'pc' && c.ownerId === myId; }
+function canEditSelected(){ const chosen = getSelectedVisible(); return !!chosen && (isGM || canPlayerEdit(chosen.char)); }
+function selectedRawRef(){ return selectedCharId ? ref(db, `vtt/${sid}/characters/${selectedCharId}`) : null; }
+function toast(msg){ const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>el.classList.remove('show'), 2600); }
+function fallbackPortrait(name, size=160){ return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="100%" height="100%" fill="#1a140d"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#b8822a" font-size="${Math.round(size*0.18)}">${(name||'?').slice(0,2).toUpperCase()}</text></svg>`); }
 
-    function renderCharList(){const host=$('char-list'); host.innerHTML=''; const entries=Object.entries(chars).sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')); if(!entries.length){host.innerHTML='<div class="empty">No characters yet.</div>'; return;} entries.forEach(([id,c])=>{const row=document.createElement('div'); row.className='char-item'+(selectedId===id?' sel':''); const boundUsers=Object.entries(bindings).filter(([,cid])=>cid===id).length; row.innerHTML=`<img class="char-avatar" src="${esc(c.portrait||'')}" alt=""><div class="char-name">${esc(c.name||'Character')}</div><div class="char-meta">HP ${Number(c.hp||0)}/${Number(c.maxHp||0)} · AC ${Number(c.ac||0)}${boundUsers?` · 👤${boundUsers}`:''}</div>`; row.onclick=()=>{selectedId=id; renderCharList(); renderSheet();}; host.appendChild(row);});}
+function renderPartyList(){
+  const list = document.getElementById('party-list');
+  const vis = visibleCharacters();
+  list.innerHTML = '';
+  if (!vis.length) { list.innerHTML = '<div class="help-copy">No visible sheets yet.</div>'; return; }
+  vis.forEach(([id, c]) => {
+    const div = document.createElement('div');
+    div.className = 'party-item' + (id === selectedCharId ? ' sel' : '');
+    div.innerHTML = `<img class="party-portrait" src="${c.portrait || fallbackPortrait(c.name,80)}"><div class="party-meta"><div class="party-name">${escHtml(c.name)}</div><div class="party-sub">HP ${c.hp}/${c.maxHp} · AC ${c.ac}</div></div><div class="party-badge">${c.kind}</div>`;
+    div.onclick = () => { selectedCharId = id; renderPartyList(); renderSelected(); };
+    list.appendChild(div);
+  });
+}
 
-    function renderSheet(){const host=$('sheet-host'); const c=selectedChar(); if(!c){host.innerHTML='<div class="sheet-body"><div class="empty">No character selected yet.</div></div>'; return;} const owner=isOwner(c), quick=canPlayerQuickEdit(c), ab=c.abilities||{}, slots=c.spellSlots||{}, slotLevels=Object.keys(slots).sort((a,b)=>Number(a)-Number(b)); const weapons=Array.isArray(c.weapons)?c.weapons:[]; const cantrips=Array.isArray(c.cantrips)?c.cantrips:[]; const spells=Array.isArray(c.spells)?c.spells:[]; const feats=Array.isArray(c.feats)?c.feats:[]; const inventory=Array.isArray(c.inventory)?c.inventory:[]; const statuses=Array.isArray(c.statuses)?c.statuses:[];
-      host.innerHTML=`<div class="sheet-toolbar">${isGM?'<button class="btn primary" onclick="openEditSelected()">DM Full Edit</button>':''}${quick?'<button class="btn green" onclick="openQuickEdit()">Quick Update</button>':''}<button class="btn green" onclick="adjustHp(-1)">-1 HP</button><button class="btn green" onclick="adjustHp(1)">+1 HP</button><button class="btn" onclick="openHpPrompt()">Set HP</button><button class="btn" onclick="resetTempHp()">Clear Temp HP</button><button class="btn blue" onclick="longRestSelected()">Long Rest</button><button class="btn" onclick="claimSelectedAsMine()">Claim My Sheet</button></div>
-      <div class="sheet-body">
-        <div class="sheet-card"><div class="hero"><img src="${esc(c.portrait||'')}" alt=""><div><div class="hero-name">${esc(c.name||'Character')}</div><div class="hero-sub">${esc(c.race||'')}${c.race&&c.className?' · ':''}${esc(c.className||'')} · Level ${Number(c.level||1)}</div><div class="small" style="margin-top:.4rem">Owner: ${esc(c.ownerName||'Unclaimed')} · ${bindings[myId]===selectedId?'Bound to you':''}</div><div class="stat-grid"><div class="stat"><div class="k">HP</div><div class="v">${Number(c.hp||0)}/${Number(c.maxHp||0)}</div></div><div class="stat"><div class="k">Temp</div><div class="v">${Number(c.tempHp||0)}</div></div><div class="stat"><div class="k">AC</div><div class="v">${Number(c.ac||0)}</div></div><div class="stat"><div class="k">Speed</div><div class="v">${Number(c.spd||0)}</div></div></div></div></div></div>
-        <div class="sheet-card"><div class="section-title">Core Stats</div><div class="stat-grid" style="margin-top:0"><div class="stat"><div class="k">Prof</div><div class="v">+${Number(c.prof||0)}</div></div><div class="stat"><div class="k">Init</div><div class="v">${Number(c.init||0)>=0?'+':''}${Number(c.init||0)}</div></div><div class="stat"><div class="k">Level</div><div class="v">${Number(c.level||1)}</div></div><div class="stat"><div class="k">Status</div><div class="v">${Number(c.hp||0)<=0?'DOWN':'UP'}</div></div></div><div style="height:.65rem"></div><div class="section-title">Conditions</div><div class="status-row">${statuses.length?statuses.map(s=>`<span class="status-chip">${esc(s)}</span>`).join(''):'<span class="small">No active conditions.</span>'}</div></div>
-        <div class="sheet-card"><div class="section-title">Abilities</div><div class="ability-grid">${['str','dex','con','int','wis','cha'].map(k=>`<div class="ab"><div class="k">${k.toUpperCase()}</div><div class="s">${Number(ab[k]||10)}</div><div class="m">${mod(ab[k])}</div></div>`).join('')}</div></div>
-        <details class="fold" open><summary>Weapons <span class="pill">${weapons.length}</span></summary><div class="fold-body line-list">${weapons.length?weapons.map((w,idx)=>`<div class="line"><div class="line-main"><div class="line-name">${esc(w.name||`Weapon ${idx+1}`)}</div><div class="line-sub">To Hit: ${esc(w.toHit||'—')} · Damage: ${esc(w.damage||'—')} ${w.notes?`· ${esc(w.notes)}`:''}</div></div></div>`).join(''):'<div class="empty">No weapons listed.</div>'}</div></details>
-        <details class="fold" open><summary>Spell Slots <span class="pill">${slotLevels.length}</span></summary><div class="fold-body">${slotLevels.length?slotLevels.map(level=>{const s=slots[level]||{max:0,used:0}; const dots=Array.from({length:Number(s.max||0)},(_,i)=>`<button class="slot-dot ${i<Number(s.used||0)?'used':''}" onclick="toggleSlot('${selectedId}','${level}',${i})"></button>`).join(''); return `<div class="slot-row"><span class="pill">Lvl ${esc(level)}</span>${dots||'<span class="small">0 slots</span>'}</div>`;}).join(''):'<div class="empty">No spell slots configured.</div>'}</div></details>
-        <details class="fold" open><summary>Cantrips <span class="pill">${cantrips.length}</span></summary><div class="fold-body line-list">${cantrips.length?cantrips.map((s,idx)=>`<div class="line"><div class="line-main"><div class="line-name">${esc(s.name||`Cantrip ${idx+1}`)}</div><div class="line-sub">${esc(s.action||'—')} · ${esc(s.range||'—')} · ${esc(s.roll||'—')}${s.desc?` · ${esc(s.desc)}`:''}</div></div></div>`).join(''):'<div class="empty">No cantrips listed.</div>'}</div></details>
-        <details class="fold" open><summary>Spells <span class="pill">${spells.length}</span></summary><div class="fold-body line-list">${spells.length?spells.map((s,idx)=>`<div class="line"><div class="line-main"><div class="line-name">${esc(s.name||`Spell ${idx+1}`)}</div><div class="line-sub">${esc(s.action||'—')} · ${esc(s.level||'—')} · ${esc(s.range||'—')} · ${esc(s.roll||'—')}${s.desc?` · ${esc(s.desc)}`:''}</div></div></div>`).join(''):'<div class="empty">No spells listed.</div>'}</div></details>
-        <details class="fold"><summary>Feats / Features <span class="pill">${feats.length}</span></summary><div class="fold-body line-list">${feats.length?feats.map((f,idx)=>`<div class="line"><div class="line-main"><div class="line-name">${esc(f.name||`Feature ${idx+1}`)}</div><div class="line-sub">${esc(f.action||'—')}${f.text?` · ${esc(f.text)}`:''}</div></div></div>`).join(''):'<div class="empty">No feats/features listed.</div>'}</div></details>
-        <details class="fold" open><summary>Inventory <span class="pill">${inventory.length}</span></summary><div class="fold-body line-list">${inventory.length?inventory.map(item=>`<div class="line"><div class="line-main"><div class="line-sub">${esc(item)}</div></div></div>`).join(''):'<div class="empty">Inventory empty.</div>'}</div></details>
-        <details class="fold" open><summary>Notes</summary><div class="fold-body"><div class="small" style="white-space:pre-wrap">${esc(c.notes||'No notes.')}</div></div></details>
-      </div>`; }
+function renderRows(arr, emptyMsg){
+  const list = normalizeArray(arr);
+  if (!list.length) return `<div class="help-copy">${emptyMsg}</div>`;
+  return `<div class="list-stack">${list.map(item => {
+    if (typeof item === 'string') return `<div class="row-card"><div class="row-title">${escHtml(item)}</div></div>`;
+    const meta = [item.toHit, item.damage, item.actionType, item.range, item.cost, item.roll].filter(Boolean).join(' · ');
+    const desc = [meta, item.description].filter(Boolean).join(meta && item.description ? ' — ' : '');
+    return `<div class="row-card"><div class="row-title">${escHtml(item.name || 'Unnamed')}</div>${desc ? `<div class="row-sub">${escHtml(desc)}</div>` : ''}</div>`;
+  }).join('')}</div>`;
+}
 
-    function renderParty(){const host=$('party-list'); host.innerHTML=''; const entries=Object.entries(chars).sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')); if(!entries.length){host.innerHTML='<div class="empty">No party members yet.</div>'; return;} entries.forEach(([id,c])=>{const row=document.createElement('div'); row.className='party-row'; row.innerHTML=`<div class="n">${esc(c.name||'Character')}${bindings[myId]===id?' ⭐':''}</div><div class="hp">HP ${Number(c.hp||0)}/${Number(c.maxHp||0)}</div><div class="ac">AC ${Number(c.ac||0)}</div>`; row.onclick=()=>{selectedId=id; renderCharList(); renderSheet();}; host.appendChild(row);});}
-    function renderActivity(data){const host=$('activity-log'); const entries=Object.values(data).sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,14); host.innerHTML=entries.length?entries.map(e=>`<div class="log ${e.kind==='warn'?'warn':'good'}">${esc(e.text||'')}</div>`).join(''):'<div class="empty">No recent sheet activity.</div>';}
-    async function logActivity(text,kind='good'){if(!db) return; const id=push(activityRef).key; await set(ref(db,`s/${sid}/sheetActivity/${id}`),{text,kind,ts:Date.now()});}
+function renderSlotsHtml(slots){
+  const data = normalizeSlots(slots);
+  const levels = Object.keys(data).sort((a,b)=>Number(a)-Number(b));
+  if (!levels.length) return '<div class="help-copy">No spell slots tracked.</div>';
+  return levels.map(level => {
+    const row = data[level] || {};
+    const max = Number(row.max || 0);
+    const used = Math.max(0, Math.min(max, Number(row.used || 0)));
+    const pips = Array.from({length:max}, (_,i) => `<button class="slot-pip${i < used ? ' used' : ''}" data-level="${level}" data-index="${i}"></button>`).join('');
+    return `<div class="slot-row"><div class="row-title">Level ${level}</div><div class="slot-pips">${pips || '<span class="help-copy">0 slots</span>'}</div><div class="row-sub">${Math.max(0,max-used)}/${max}</div></div>`;
+  }).join('');
+}
 
-    window.openCharModal=()=>{if(!isGM){toast('Only the DM can full-edit sheets'); return;} editingId=null; $('char-modal-title').textContent='DM Full Sheet Edit'; fillCharForm(defaultChar()); $('char-modal').classList.add('open');};
-    window.closeCharModal=()=>$('char-modal').classList.remove('open');
-    window.openEditSelected=()=>{if(!isGM){toast('Only the DM can full-edit sheets'); return;} const c=selectedChar(); if(!c){toast('Select a character first'); return;} editingId=selectedId; fillCharForm(c); $('char-modal').classList.add('open');};
-    function fillCharForm(c){$('f-name').value=c.name||''; $('f-portrait').value=c.portrait||''; $('f-class').value=c.className||''; $('f-race').value=c.race||''; $('f-level').value=Number(c.level||1); $('f-prof').value=Number(c.prof||2); $('f-owner-name').value=c.ownerName||''; $('f-hp').value=Number(c.hp||10); $('f-maxhp').value=Number(c.maxHp||10); $('f-temphp').value=Number(c.tempHp||0); $('f-ac').value=Number(c.ac||10); $('f-init').value=Number(c.init||0); $('f-spd').value=Number(c.spd||30); const ab=c.abilities||{}; $('f-str').value=Number(ab.str||10); $('f-dex').value=Number(ab.dex||10); $('f-con').value=Number(ab.con||10); $('f-int').value=Number(ab.int||10); $('f-wis').value=Number(ab.wis||10); $('f-cha').value=Number(ab.cha||10); $('f-statuses').value=(c.statuses||[]).join(', '); $('f-weapons').value=(c.weapons||[]).map(w=>[w.name,w.toHit,w.damage,w.notes].filter(Boolean).join(' | ')).join('\n'); $('f-slots').value=Object.entries(c.spellSlots||{}).map(([lvl,s])=>`${lvl}:${Number(s.max||0)}`).join(','); $('f-cantrips').value=(c.cantrips||[]).map(s=>[s.name,s.action,s.range,s.roll,s.desc].filter(Boolean).join(' | ')).join('\n'); $('f-spells').value=(c.spells||[]).map(s=>[s.name,s.action,s.level,s.range,s.roll,s.desc].filter(Boolean).join(' | ')).join('\n'); $('f-feats').value=(c.feats||[]).map(f=>[f.name,f.action,f.text].filter(Boolean).join(' | ')).join('\n'); $('f-inventory').value=(c.inventory||[]).join('\n'); $('f-notes').value=c.notes||'';}
-    window.saveCharacter=async()=>{if(!isGM){toast('Only the DM can full-edit sheets'); return;} const id=editingId||push(charsRef).key; const existing=chars[id]||defaultChar(); const ownerName=$('f-owner-name').value.trim(); const payload={...existing,name:$('f-name').value.trim()||'Character',portrait:$('f-portrait').value.trim(),className:$('f-class').value.trim(),race:$('f-race').value.trim(),level:Number($('f-level').value||1),prof:Number($('f-prof').value||2),hp:Number($('f-hp').value||0),maxHp:Number($('f-maxhp').value||0),tempHp:Number($('f-temphp').value||0),ac:Number($('f-ac').value||10),init:Number($('f-init').value||0),spd:Number($('f-spd').value||30),abilities:{str:Number($('f-str').value||10),dex:Number($('f-dex').value||10),con:Number($('f-con').value||10),int:Number($('f-int').value||10),wis:Number($('f-wis').value||10),cha:Number($('f-cha').value||10)},statuses:String($('f-statuses').value||'').split(',').map(x=>x.trim()).filter(Boolean),weapons:parseLines($('f-weapons').value,'weapon'),spellSlots:existing.spellSlots&&editingId?mergeSlotUsage(parseSlots($('f-slots').value),existing.spellSlots):parseSlots($('f-slots').value),cantrips:parseLines($('f-cantrips').value,'cantrip'),spells:parseLines($('f-spells').value,'spell'),feats:parseLines($('f-feats').value,'feat'),inventory:String($('f-inventory').value||'').split('\n').map(x=>x.trim()).filter(Boolean),notes:$('f-notes').value,updatedAt:Date.now(),ownerId:existing.ownerId||'',ownerName:ownerName||existing.ownerName||''}; await set(ref(db,`s/${sid}/characters/${id}`),payload); selectedId=id; closeCharModal(); await logActivity(`${myName} ${editingId?'updated':'created'} ${payload.name}`); toast(`Saved ${payload.name}`);};
+function renderSelected(){
+  const chosen = getSelectedVisible();
+  const empty = document.getElementById('sheet-empty');
+  const view = document.getElementById('sheet-view');
+  if (!chosen) { empty.style.display = 'flex'; view.style.display = 'none'; document.getElementById('my-char-line').textContent = '—'; return; }
+  selectedCharId = chosen.id;
+  const c = chosen.char;
+  empty.style.display = 'none'; view.style.display = 'flex';
+  document.getElementById('my-char-line').textContent = myCharacterId && characters[myCharacterId] ? normalizeChar(characters[myCharacterId]).name : '—';
+  document.getElementById('sheet-portrait').src = c.portrait || fallbackPortrait(c.name,160);
+  document.getElementById('sheet-name').textContent = c.name;
+  document.getElementById('sheet-kind-badge').textContent = c.kind.toUpperCase();
+  document.getElementById('sheet-subline').textContent = [c.race, c.className, `Lvl ${c.level}`].filter(Boolean).join(' · ') || 'Unspecified';
+  document.getElementById('sheet-owner-line').textContent = c.ownerName ? `Owner: ${c.ownerName}` : 'Owner: Unassigned';
+  document.getElementById('v-hp').textContent = `${c.hp}/${c.maxHp}`; document.getElementById('v-temphp').textContent = c.tempHp; document.getElementById('v-ac').textContent = c.ac; document.getElementById('v-init').textContent = signedMod(c.init); document.getElementById('v-spd').textContent = c.spd; document.getElementById('v-prof').textContent = signedMod(c.prof);
+  ['str','dex','con','int','wis','cha'].forEach(k => { document.getElementById(`v-${k}`).textContent = c.abilities[k]; document.getElementById(`m-${k}-mod`).textContent = signedMod(abilMod(c.abilities[k])); });
+  document.getElementById('sheet-statuses').innerHTML = c.statuses.length ? c.statuses.map(s => `<span class="status-pill">${escHtml(s)}</span>`).join('') : '<div class="help-copy">No active conditions.</div>';
+  document.getElementById('sheet-weapons').innerHTML = renderRows(c.weapons, 'No weapons listed.');
+  document.getElementById('sheet-cantrips').innerHTML = renderRows(c.cantrips, 'No cantrips listed.');
+  document.getElementById('sheet-spells').innerHTML = renderRows(c.spells, 'No spells listed.');
+  document.getElementById('sheet-feats').innerHTML = renderRows(c.feats, 'No feats or features listed.');
+  document.getElementById('sheet-slots').innerHTML = renderSlotsHtml(c.spellSlots);
+  document.getElementById('sheet-inventory').innerHTML = c.inventory.length ? `<div class="inv-list">${c.inventory.map(i => `<div class="inv-item">${escHtml(i)}</div>`).join('')}</div>` : '<div class="help-copy">No inventory listed.</div>';
+  document.getElementById('sheet-notes').innerHTML = `<div class="notes-box">${escHtml(c.notes || 'No notes yet.')}</div>`;
+  document.getElementById('player-status-input').value = c.statuses.join(', ');
+  document.getElementById('player-inventory-input').value = c.inventory.join('\n');
+  document.getElementById('player-notes-input').value = c.notes || '';
+  const editable = isGM || canPlayerEdit(c);
+  document.getElementById('btn-set-mine').style.display = 'inline-flex';
+  document.getElementById('btn-long-rest').style.display = editable ? 'inline-flex' : 'none';
+  document.getElementById('btn-edit-sheet').style.display = isGM ? 'inline-flex' : 'none';
+  document.getElementById('player-quick-row').style.display = editable ? 'flex' : 'none';
+  document.getElementById('player-status-block').style.display = editable ? 'flex' : 'none';
+  document.getElementById('player-inventory-block').style.display = editable ? 'flex' : 'none';
+  document.getElementById('player-notes-block').style.display = editable ? 'flex' : 'none';
+}
 
-    window.openQuickEdit=()=>{const c=selectedChar(); if(!c){toast('Select a character first'); return;} if(!canPlayerQuickEdit(c)){toast('Only the owner / bound player / DM can quick edit'); return;} $('q-hp').value=Number(c.hp||0); $('q-temphp').value=Number(c.tempHp||0); $('q-statuses').value=(c.statuses||[]).join(', '); $('q-inventory').value=(c.inventory||[]).join('\n'); $('q-notes').value=c.notes||''; $('quick-modal').classList.add('open');};
-    window.closeQuickModal=()=>$('quick-modal').classList.remove('open');
-    window.saveQuickEdit=async()=>{const c=selectedChar(); if(!c){toast('Select a character first'); return;} if(!canPlayerQuickEdit(c)){toast('Only the owner / bound player / DM can quick edit'); return;} const hp=Math.max(0,Math.min(Number(c.maxHp||0),Number($('q-hp').value||0))); await update(ref(db,`s/${sid}/characters/${selectedId}`),{hp,tempHp:Number($('q-temphp').value||0),statuses:String($('q-statuses').value||'').split(',').map(x=>x.trim()).filter(Boolean),inventory:String($('q-inventory').value||'').split('\n').map(x=>x.trim()).filter(Boolean),notes:$('q-notes').value,updatedAt:Date.now()}); closeQuickModal(); await logActivity(`${myName} updated ${c.name} quick fields`); toast('Quick updates saved');};
+function setModalFromChar(c){
+  document.getElementById('m-name').value = c.name || '';
+  document.getElementById('m-kind').value = c.kind || 'pc';
+  document.getElementById('m-portrait').value = c.portrait || '';
+  document.getElementById('m-class').value = c.className || '';
+  document.getElementById('m-race').value = c.race || '';
+  document.getElementById('m-level').value = c.level || 1;
+  document.getElementById('m-prof').value = c.prof || 2;
+  document.getElementById('m-spd').value = c.spd || 30;
+  document.getElementById('m-hp').value = c.hp ?? 1;
+  document.getElementById('m-maxhp').value = c.maxHp ?? 1;
+  document.getElementById('m-temphp').value = c.tempHp || 0;
+  document.getElementById('m-ac').value = c.ac || 10;
+  document.getElementById('m-init').value = c.init || 0;
+  document.getElementById('m-visible').value = c.visibleToPlayers === false ? 'false' : 'true';
+  document.getElementById('m-str').value = c.abilities?.str ?? 10; document.getElementById('m-dex').value = c.abilities?.dex ?? 10; document.getElementById('m-con').value = c.abilities?.con ?? 10; document.getElementById('m-int').value = c.abilities?.int ?? 10; document.getElementById('m-wis').value = c.abilities?.wis ?? 10; document.getElementById('m-cha').value = c.abilities?.cha ?? 10;
+  document.getElementById('m-statuses').value = normalizeStatuses(c.statuses).join(', ');
+  document.getElementById('m-weapons').value = JSON.stringify(normalizeArray(c.weapons), null, 2);
+  document.getElementById('m-slots').value = JSON.stringify(normalizeSlots(c.spellSlots), null, 2);
+  document.getElementById('m-cantrips').value = JSON.stringify(normalizeArray(c.cantrips), null, 2);
+  document.getElementById('m-spells').value = JSON.stringify(normalizeArray(c.spells), null, 2);
+  document.getElementById('m-feats').value = JSON.stringify(normalizeArray(c.feats), null, 2);
+  document.getElementById('m-inventory').value = normalizeInventory(c.inventory).join('\n');
+  document.getElementById('m-notes').value = c.notes || '';
+}
+function parseJsonField(id, fallback){ const raw = document.getElementById(id).value.trim(); if (!raw) return fallback; try { return JSON.parse(raw); } catch { throw new Error(`${id} is not valid JSON`); } }
+function readModalChar(){
+  const hp = Number(document.getElementById('m-hp').value || 1); const maxHp = Number(document.getElementById('m-maxhp').value || hp || 1);
+  return {
+    name: document.getElementById('m-name').value.trim() || 'Unnamed', kind: document.getElementById('m-kind').value === 'npc' ? 'npc' : 'pc', portrait: document.getElementById('m-portrait').value.trim(), className: document.getElementById('m-class').value.trim(), race: document.getElementById('m-race').value.trim(),
+    level: Number(document.getElementById('m-level').value || 1), prof: Number(document.getElementById('m-prof').value || 2), spd: Number(document.getElementById('m-spd').value || 30), hp, maxHp, tempHp: Number(document.getElementById('m-temphp').value || 0), ac: Number(document.getElementById('m-ac').value || 10), init: Number(document.getElementById('m-init').value || 0), visibleToPlayers: document.getElementById('m-visible').value === 'true',
+    abilities: { str:Number(document.getElementById('m-str').value||10), dex:Number(document.getElementById('m-dex').value||10), con:Number(document.getElementById('m-con').value||10), int:Number(document.getElementById('m-int').value||10), wis:Number(document.getElementById('m-wis').value||10), cha:Number(document.getElementById('m-cha').value||10) },
+    statuses: document.getElementById('m-statuses').value.split(',').map(x=>x.trim()).filter(Boolean), weapons: parseJsonField('m-weapons', []), spellSlots: parseJsonField('m-slots', {}), cantrips: parseJsonField('m-cantrips', []), spells: parseJsonField('m-spells', []), feats: parseJsonField('m-feats', []), inventory: document.getElementById('m-inventory').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean), notes: document.getElementById('m-notes').value,
+  };
+}
 
-    window.toggleSlot=async(charId,level,idx)=>{const c=chars[charId]; if(!c) return; if(!(c.ownerId===myId || bindings[myId]===charId || isGM)){toast('Only the owner / bound player / DM can change slots'); return;} const slots=structuredClone(c.spellSlots||{}); const slot=slots[level]; if(!slot) return; slot.used=idx<Number(slot.used||0)?idx:idx+1; await update(ref(db,`s/${sid}/characters/${charId}`),{spellSlots:slots,updatedAt:Date.now()});};
-    window.adjustHp=async(delta)=>{const c=selectedChar(); if(!c){toast('Select a character first'); return;} if(!canPlayerQuickEdit(c)){toast('Only the owner / bound player / DM can change HP'); return;} const next=Math.max(0,Math.min(Number(c.maxHp||0),Number(c.hp||0)+Number(delta||0))); await update(ref(db,`s/${sid}/characters/${selectedId}`),{hp:next,updatedAt:Date.now()}); await logActivity(`${c.name}: HP ${c.hp} → ${next}`,next<=0?'warn':'good');};
-    window.openHpPrompt=async()=>{const c=selectedChar(); if(!c){toast('Select a character first'); return;} if(!canPlayerQuickEdit(c)){toast('Only the owner / bound player / DM can change HP'); return;} const val=prompt(`Set HP for ${c.name}`,String(c.hp??0)); if(val===null) return; const next=Math.max(0,Math.min(Number(c.maxHp||0),Number(val||0))); await update(ref(db,`s/${sid}/characters/${selectedId}`),{hp:next,updatedAt:Date.now()}); await logActivity(`${c.name}: HP set to ${next}`,next<=0?'warn':'good');};
-    window.resetTempHp=async()=>{const c=selectedChar(); if(!c){toast('Select a character first'); return;} if(!canPlayerQuickEdit(c)){toast('Only the owner / bound player / DM can change temp HP'); return;} await update(ref(db,`s/${sid}/characters/${selectedId}`),{tempHp:0,updatedAt:Date.now()}); await logActivity(`${c.name}: temp HP cleared`);};
-    window.longRestSelected=async()=>{const c=selectedChar(); if(!c){toast('Select a character first'); return;} if(!canPlayerQuickEdit(c)){toast('Only the owner / bound player / DM can long rest'); return;} const slots=structuredClone(c.spellSlots||{}); Object.values(slots).forEach(s=>s.used=0); await update(ref(db,`s/${sid}/characters/${selectedId}`),{hp:Number(c.maxHp||0),tempHp:0,spellSlots:slots,updatedAt:Date.now()}); await logActivity(`${c.name} completed a long rest`); toast('Long rest applied');};
+window.openCfg = () => { const c = loadCfg() || HARDCODED_CFG; document.getElementById('c-key').value = c.apiKey || ''; document.getElementById('c-auth').value = c.authDomain || ''; document.getElementById('c-db').value = c.databaseURL || ''; document.getElementById('c-pid').value = c.projectId || ''; document.getElementById('cfg-modal').classList.add('open'); };
+window.closeCfg = () => document.getElementById('cfg-modal').classList.remove('open');
+window.saveCfg = () => { const c = { apiKey:document.getElementById('c-key').value.trim(), authDomain:document.getElementById('c-auth').value.trim(), databaseURL:document.getElementById('c-db').value.trim(), projectId:document.getElementById('c-pid').value.trim() }; if (!c.databaseURL) return toast('Database URL required'); localStorage.setItem('geezvtt-sheet-cfg', JSON.stringify(c)); closeCfg(); toast('Config saved'); };
+window.enter = async () => {
+  myName = document.getElementById('inp-name').value.trim(); myId = uid(); sid = document.getElementById('inp-sid').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-') || 'default'; if (!myName) return toast('Enter your name');
+  isGM = document.getElementById('inp-role').value === 'gm'; const cfg = loadCfg() || HARDCODED_CFG;
+  try { const app = initializeApp(cfg, 'sheet-' + myId); db = getDatabase(app); } catch (e) { return toast('Firebase: ' + e.message); }
+  if (isGM) document.body.classList.add('is-gm');
+  charsRef = ref(db, `vtt/${sid}/characters`);
+  onValue(charsRef, snap => { characters = snap.val() || {}; const chosen = getSelectedVisible(); selectedCharId = chosen ? chosen.id : null; renderPartyList(); renderSelected(); });
+  document.getElementById('setup').style.display = 'none'; document.getElementById('app').style.display = 'flex'; document.getElementById('conn-dot').classList.add('ok'); document.getElementById('session-label').textContent = sid; document.getElementById('me-line').textContent = `${myName} (${isGM ? 'GM' : 'Player'})`; toast(`Welcome, ${myName}`);
+};
+window.closeSheetModal = () => document.getElementById('sheet-modal').classList.remove('open');
+window.openCreateSheet = () => { if (!isGM) return toast('GM only'); editingCharId = null; document.getElementById('sheet-modal-title').textContent = 'Create Character'; setModalFromChar(normalizeChar({ ownerId:'', ownerName:'' })); document.getElementById('sheet-modal').classList.add('open'); };
+window.openEditSelected = () => { if (!isGM) return toast('GM only'); const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); editingCharId = chosen.id; document.getElementById('sheet-modal-title').textContent = `Edit Character — ${chosen.char.name}`; setModalFromChar(chosen.char); document.getElementById('sheet-modal').classList.add('open'); };
+window.saveSheetModal = async () => {
+  if (!isGM) return toast('GM only');
+  try {
+    const payload = readModalChar(); const id = editingCharId || push(charsRef).key; const prev = normalizeChar(characters[id] || {});
+    await set(ref(db, `vtt/${sid}/characters/${id}`), { ...payload, ownerId: prev.ownerId || '', ownerName: prev.ownerName || '', ts: characters[id]?.ts || Date.now(), updatedAt: Date.now() });
+    selectedCharId = id; closeSheetModal(); toast(editingCharId ? 'Sheet updated' : 'Sheet created');
+  } catch (e) { toast((e.message || 'Could not save sheet').replace(/^m-/, 'Field ')); }
+};
+window.setSelectedAsMine = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!isGM && chosen.char.kind !== 'pc') return toast('Players can only claim PCs'); await update(ref(db, `vtt/${sid}/characters/${chosen.id}`), { ownerId: myId, ownerName: myName, updatedAt: Date.now() }); myCharacterId = chosen.id; localStorage.setItem('geezvtt-my-char-id', myCharacterId); toast(`${chosen.char.name} is now your character`); };
+window.focusMyCharacter = () => { if (!myCharacterId || !characters[myCharacterId]) return toast('No claimed character yet'); const vis = Object.fromEntries(visibleCharacters()); if (!vis[myCharacterId]) return toast('Your character is not visible here'); selectedCharId = myCharacterId; renderPartyList(); renderSelected(); };
+window.adjustHpSelected = async delta => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const c = chosen.char; const next = Math.max(0, Math.min(c.maxHp, c.hp + Number(delta || 0))); await update(selectedRawRef(), { hp: next, updatedAt: Date.now() }); };
+window.clearTempHpSelected = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); await update(selectedRawRef(), { tempHp: 0, updatedAt: Date.now() }); };
+window.savePlayerStatuses = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const statuses = document.getElementById('player-status-input').value.split(',').map(x=>x.trim()).filter(Boolean); await update(selectedRawRef(), { statuses, updatedAt: Date.now() }); toast('Conditions updated'); };
+window.savePlayerInventory = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const inventory = document.getElementById('player-inventory-input').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean); await update(selectedRawRef(), { inventory, updatedAt: Date.now() }); toast('Inventory updated'); };
+window.savePlayerNotes = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const notes = document.getElementById('player-notes-input').value; await update(selectedRawRef(), { notes, updatedAt: Date.now() }); toast('Notes updated'); };
+window.longRestSelected = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const c = chosen.char; const slots = JSON.parse(JSON.stringify(normalizeSlots(c.spellSlots))); Object.keys(slots).forEach(k => { slots[k].used = 0; }); await update(selectedRawRef(), { hp: c.maxHp, tempHp: 0, spellSlots: slots, updatedAt: Date.now() }); toast('Long rest applied'); };
+window.deleteSelectedSheet = async () => { if (!isGM) return toast('GM only'); const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!confirm(`Delete ${chosen.char.name}? This cannot be undone.`)) return; await remove(ref(db, `vtt/${sid}/characters/${chosen.id}`)); if (myCharacterId === chosen.id) { myCharacterId = ''; localStorage.removeItem('geezvtt-my-char-id'); } if (selectedCharId === chosen.id) selectedCharId = null; toast('Sheet deleted'); };
+window.duplicateSelectedSheet = async () => { if (!isGM) return toast('GM only'); const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); const c = chosen.char; const id = push(charsRef).key; await set(ref(db, `vtt/${sid}/characters/${id}`), { ...c, name: `${c.name} Copy`, ownerId:'', ownerName:'', ts: Date.now(), updatedAt: Date.now() }); selectedCharId = id; toast('Sheet duplicated'); };
+window.clearSelectedOwner = async () => { if (!isGM) return toast('GM only'); const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); await update(ref(db, `vtt/${sid}/characters/${chosen.id}`), { ownerId:'', ownerName:'', updatedAt: Date.now() }); if (myCharacterId === chosen.id) { myCharacterId = ''; localStorage.removeItem('geezvtt-my-char-id'); } toast('Owner cleared'); };
+window.copySid = () => navigator.clipboard.writeText(sid).then(()=>toast('Session ID copied'));
 
-    window.bindMeToSelected=async()=>{if(!selectedId){toast('Select a character first'); return;} await set(ref(db,`s/${sid}/characterBindings/${myId}`),selectedId); await logActivity(`${myName} bound to ${selectedChar()?.name||'character'}`); toast('Bound to selected character');};
-    window.claimSelectedAsMine=async()=>{const c=selectedChar(); if(!c){toast('Select a character first'); return;} if(c.ownerId && c.ownerId!==myId && !isGM){toast('This sheet already has an owner'); return;} await update(ref(db,`s/${sid}/characters/${selectedId}`),{ownerId:myId,ownerName:myName,updatedAt:Date.now()}); await logActivity(`${myName} claimed ${c.name}`); toast('You now own this sheet');};
-    window.refreshSelected=()=>renderSheet();
-    window.duplicateSelected=async()=>{if(!isGM){toast('Only the DM can duplicate sheets'); return;} const c=selectedChar(); if(!c){toast('Select a character first'); return;} const id=push(charsRef).key; const clone=structuredClone(c); clone.name=`${c.name} Copy`; clone.ownerId=''; clone.ownerName=''; clone.updatedAt=Date.now(); await set(ref(db,`s/${sid}/characters/${id}`),clone); selectedId=id; await logActivity(`${myName} duplicated ${c.name}`);};
-    window.deleteSelected=async()=>{if(!isGM){toast('Only the DM can delete sheets'); return;} const c=selectedChar(); if(!c){toast('Select a character first'); return;} if(!confirm(`Delete ${c.name}?`)) return; await remove(ref(db,`s/${sid}/characters/${selectedId}`)); const bindEntries=Object.entries(bindings).filter(([,cid])=>cid===selectedId); for(const [uid] of bindEntries){ await remove(ref(db,`s/${sid}/characterBindings/${uid}`)); } await logActivity(`${myName} deleted ${c.name}`,'warn'); selectedId=null;};
-    window.copySid=async()=>{try{await navigator.clipboard.writeText(sid); toast('Session ID copied');}catch{toast('Could not copy')}};
-    let toastTimer; function toast(msg){const el=$('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2200);} 
-  </script>
+document.addEventListener('click', async (e) => {
+  const pip = e.target.closest('.slot-pip');
+  if (!pip) return;
+  const chosen = getSelectedVisible(); if (!chosen) return;
+  if (!canEditSelected()) return toast('You cannot edit this sheet');
+  const level = pip.dataset.level; const index = Number(pip.dataset.index || 0); const c = chosen.char; const slots = JSON.parse(JSON.stringify(normalizeSlots(c.spellSlots))); if (!slots[level]) return;
+  const max = Number(slots[level].max || 0); let used = Number(slots[level].used || 0); used = index < used ? index : Math.min(max, index + 1); slots[level].used = used;
+  await update(selectedRawRef(), { spellSlots: slots, updatedAt: Date.now() });
+});
+</script>
 </body>
 </html>
