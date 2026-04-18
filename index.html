@@ -263,7 +263,7 @@
 <div id="toast"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getDatabase, ref, set, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const HARDCODED_CFG = {
@@ -436,7 +436,12 @@ window.saveCfg = () => { const c = { apiKey:document.getElementById('c-key').val
 window.enter = async () => {
   myName = document.getElementById('inp-name').value.trim(); myId = uid(); sid = document.getElementById('inp-sid').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-') || 'default'; if (!myName) return toast('Enter your name');
   isGM = document.getElementById('inp-role').value === 'gm'; const cfg = loadCfg() || HARDCODED_CFG;
-  try { const app = initializeApp(cfg, 'sheet-' + myId); db = getDatabase(app); } catch (e) { return toast('Firebase: ' + e.message); }
+  try {
+    const app = getApps().length ? getApp() : initializeApp(cfg);
+    db = getDatabase(app);
+  } catch (e) {
+    return toast('Firebase: ' + e.message);
+  }
   if (isGM) document.body.classList.add('is-gm');
   charsRef = ref(db, `vtt/${sid}/characters`);
   onValue(charsRef, snap => { characters = snap.val() || {}; const chosen = getSelectedVisible(); selectedCharId = chosen ? chosen.id : null; renderPartyList(); renderSelected(); });
