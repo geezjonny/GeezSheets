@@ -3,483 +3,429 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GeezVTT Character Sheets v1.3</title>
+  <title>DM Toolkit Dashboard</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=IM+Fell+English:ital@0;1&display=swap');
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{--bg:#0d0b09;--surface:#141210;--surface2:#100e0b;--border:rgba(180,130,60,.2);--gold:#b8822a;--gold-hi:#dba84a;--text:#e8dcc8;--dim:#7a6a52;--red:#7a1a1a;--green:#3f6a3f}
-    body{background:var(--bg);color:var(--text);font-family:'IM Fell English',Georgia,serif;height:100vh;overflow:hidden}
-    #setup{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 35%,#1e1408 0%,#060402 100%)}
-    #setup h1{font-family:'Cinzel',serif;font-size:2.4rem;font-weight:700;color:var(--gold-hi);letter-spacing:.18em;text-shadow:0 0 40px rgba(184,130,42,.4);margin-bottom:.1rem}
-    #setup .sub{font-style:italic;color:var(--dim);font-size:.95rem;margin-bottom:2rem;letter-spacing:.06em}
-    .card{background:#100e0b;border:1px solid var(--gold);width:430px;max-width:92vw;padding:1.8rem 2.2rem;position:relative}
-    .card::after{content:'';position:absolute;inset:4px;border:1px solid rgba(180,130,60,.09);pointer-events:none}
-    .card h2{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.22em;color:var(--gold);text-align:center;margin-bottom:1.5rem;text-transform:uppercase}
-    .f{margin-bottom:.8rem}.f label{display:block;font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:.28rem}
-    .f input,.f select,.f textarea{width:100%;background:rgba(0,0,0,.5);border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:.95rem;padding:.48rem .65rem;outline:none;transition:border-color .15s;border-radius:1px;resize:vertical}
-    .f input:focus,.f select:focus,.f textarea:focus{border-color:var(--gold)} .f select option{background:#100e0b}
-    .f .note{font-size:.7rem;color:rgba(232,220,200,.3);margin-top:.22rem;font-style:italic}
-    .btn-p,.btn-g,.tb,.action-btn{cursor:pointer;border-radius:1px;transition:all .15s}
-    .btn-p{width:100%;padding:.68rem;font-family:'Cinzel',serif;font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;background:linear-gradient(135deg,#7a1a1a,#561010);color:var(--text);border:1px solid #9a2a2a;margin-top:.25rem}
-    .btn-p:hover{background:linear-gradient(135deg,#9a2020,#7a1a1a);transform:translateY(-1px)}
-    .btn-g{width:100%;padding:.56rem;font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;background:transparent;color:var(--gold);border:1px solid var(--border);margin-top:.45rem}
-    .btn-g:hover{border-color:var(--gold);background:rgba(180,130,60,.06)}
-    .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:800;align-items:center;justify-content:center}.overlay.open{display:flex}
-    .modal{background:#100e0b;border:1px solid var(--gold);padding:1.35rem 1.5rem;width:1180px;max-width:96vw;max-height:92vh;overflow-y:auto;border-radius:1px;box-shadow:0 20px 60px rgba(0,0,0,.9)}
-    .small-modal{width:520px;max-width:94vw}.modal h3{font-family:'Cinzel',serif;color:var(--gold);font-size:.88rem;letter-spacing:.12em;margin-bottom:.85rem}
-    .modal-btns{display:flex;gap:.6rem;margin-top:1rem}.modal-btns .btn-p,.modal-btns .btn-g{margin:0}
-    .sheet-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:1rem}.sheet-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem}.sheet-row-6{display:grid;grid-template-columns:repeat(6,1fr);gap:.45rem}
-    .sheet-col h4{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:.45rem}
-    #app{display:none;height:100vh;flex-direction:column}
-    #topbar{height:44px;flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 .8rem;gap:.6rem}
-    .brand{font-family:'Cinzel',serif;font-size:.75rem;color:var(--gold);letter-spacing:.16em;white-space:nowrap}.topbar-right{display:flex;align-items:center;gap:.5rem}
-    #conn-dot{width:7px;height:7px;border-radius:50%;background:#333;transition:all .25s}#conn-dot.ok{background:#5aad5a;box-shadow:0 0 5px rgba(90,173,90,.5)}
-    #session-label{font-size:.72rem;color:rgba(180,130,60,.4);cursor:pointer;padding:.14rem .32rem;border:1px solid transparent;border-radius:1px;transition:all .15s}#session-label:hover{border-color:var(--border);color:var(--gold)}
-    .tb{background:transparent;border:1px solid var(--border);color:var(--dim);font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.09em;padding:.25rem .55rem;text-transform:uppercase}.tb:hover{border-color:var(--gold);color:var(--gold-hi);background:rgba(180,130,60,.06)}
-    .gm{display:none!important} body.is-gm .gm{display:inline-flex!important}
-    #main{display:grid;grid-template-columns:280px minmax(0,1fr) 280px;flex:1;overflow:hidden}
-    #left-panel,#right-panel{background:var(--surface);overflow:hidden;display:flex;flex-direction:column}#left-panel{border-right:1px solid var(--border)}#right-panel{border-left:1px solid var(--border)}
-    .panel-head{padding:.8rem .9rem;border-bottom:1px solid var(--border);font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase}
-    .panel-body{padding:.8rem;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem}
-    #party-list{display:flex;flex-direction:column;gap:.35rem;overflow-y:auto}
-    .party-item{display:flex;align-items:center;gap:.55rem;padding:.4rem;background:rgba(0,0,0,.18);border:1px solid transparent;cursor:pointer;transition:all .12s}.party-item:hover{border-color:var(--border)}.party-item.sel{border-color:var(--gold);background:rgba(180,130,60,.07)}
-    .party-portrait{width:38px;height:38px;border-radius:50%;object-fit:cover;background:#080604;border:1px solid var(--border);flex-shrink:0}.party-meta{min-width:0;flex:1}.party-name{font-family:'Cinzel',serif;font-size:.62rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.party-sub{font-size:.72rem;color:var(--dim)}.party-badge{font-family:'Cinzel',serif;font-size:.5rem;padding:.12rem .28rem;border:1px solid var(--border);color:var(--dim);text-transform:uppercase}
-    #center-panel{overflow-y:auto;padding:1rem;background:linear-gradient(180deg,#0a0806,#0d0b09)}
-    #sheet-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;color:var(--dim)}#sheet-empty h2{font-family:'Cinzel',serif;font-size:1rem;color:rgba(180,130,60,.5);letter-spacing:.08em}
-    #sheet-view{display:none;max-width:1100px;margin:0 auto;flex-direction:column;gap:1rem}
-    #sheet-header{display:flex;gap:1rem;align-items:flex-start;background:rgba(16,14,11,.95);border:1px solid var(--border);padding:1rem}
-    #sheet-portrait{width:120px;height:120px;border-radius:6px;object-fit:cover;background:#080604;border:1px solid var(--border)}
-    .sheet-header-meta{flex:1;min-width:0}.sheet-title-row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
-    #sheet-name{font-family:'Cinzel',serif;font-size:1.35rem;color:var(--gold-hi);letter-spacing:.04em}#sheet-kind-badge{font-family:'Cinzel',serif;font-size:.58rem;padding:.16rem .4rem;border:1px solid var(--border);text-transform:uppercase;color:var(--dim)}
-    #sheet-subline,#sheet-owner-line{font-size:.85rem;color:var(--dim);margin-top:.25rem}.sheet-action-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}
-    .card-sec{background:rgba(16,14,11,.95);border:1px solid var(--border);padding:.9rem}.card-title{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.16em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;list-style:none;cursor:pointer}details.card-sec summary::-webkit-details-marker{display:none}
-    .core-grid,.abilities-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:.6rem}.stat-card,.abil-card{background:rgba(0,0,0,.2);border:1px solid var(--border);padding:.55rem;text-align:center}.stat-label,.abil-label{font-family:'Cinzel',serif;font-size:.52rem;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}.stat-value{font-size:1.2rem;color:var(--gold-hi);margin-top:.2rem}.abil-score{font-size:1rem;color:var(--gold-hi);margin-top:.15rem}.abil-mod{font-size:.8rem;color:var(--dim);margin-top:.15rem}
-    .quick-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.75rem}.action-btn{padding:.38rem .6rem;font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;background:transparent;color:var(--gold);border:1px solid var(--border)}.action-btn:hover{border-color:var(--gold);background:rgba(180,130,60,.07)}
-    #sheet-statuses{display:flex;flex-wrap:wrap;gap:.35rem}.status-pill{font-family:'Cinzel',serif;font-size:.54rem;padding:.18rem .4rem;border:1px solid var(--border);background:rgba(0,0,0,.25);color:var(--text)}
-    .quick-edit-block{margin-top:.8rem;display:flex;flex-direction:column;gap:.4rem}.quick-edit-block label{font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
-    .list-stack{display:flex;flex-direction:column;gap:.5rem}.row-card{background:rgba(0,0,0,.2);border:1px solid var(--border);padding:.55rem}.row-title{font-family:'Cinzel',serif;font-size:.62rem;color:var(--gold-hi)}.row-sub{font-size:.78rem;color:var(--dim);margin-top:.2rem;line-height:1.45}
-    .slot-row{display:grid;grid-template-columns:80px 1fr auto;gap:.6rem;align-items:center;margin-bottom:.45rem}.slot-pips{display:flex;gap:.35rem;flex-wrap:wrap}.slot-pip{width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:rgba(0,0,0,.3);cursor:pointer}.slot-pip.used{background:rgba(122,26,26,.5);border-color:#9a2a2a}
-    .inv-list{display:flex;flex-direction:column;gap:.25rem}.inv-item{padding:.3rem .45rem;background:rgba(0,0,0,.16);border:1px solid rgba(180,130,60,.08)}.notes-box{white-space:pre-wrap;line-height:1.6;color:var(--text)}
-    .session-box{background:rgba(0,0,0,.18);border:1px solid var(--border);padding:.65rem}.session-line{display:flex;justify-content:space-between;gap:.5rem;font-size:.8rem}.session-line .lbl,.mini-title{font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.08em;color:var(--gold);text-transform:uppercase}.help-copy{font-size:.78rem;line-height:1.55;color:var(--dim)}
-    #toast{position:fixed;bottom:1.1rem;left:50%;transform:translateX(-50%) translateY(60px);background:rgba(10,8,6,.97);border:1px solid var(--gold);color:var(--text);font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.1em;padding:.45rem 1.1rem;border-radius:1px;box-shadow:0 4px 18px rgba(0,0,0,.6);z-index:9999;transition:transform .22s;white-space:nowrap}#toast.show{transform:translateX(-50%) translateY(0)}
-    @media (max-width:1200px){#main{grid-template-columns:240px minmax(0,1fr) 240px}.core-grid,.abilities-grid{grid-template-columns:repeat(3,1fr)}.sheet-grid{grid-template-columns:1fr}.sheet-row-6{grid-template-columns:repeat(3,1fr)}}
-    @media (max-width:900px){#main{grid-template-columns:1fr}#left-panel,#right-panel{display:none}#center-panel{padding:.7rem}#sheet-header{flex-direction:column}#sheet-portrait{width:100px;height:100px}}
+    :root {
+      --bg: #0b1020;
+      --bg2: #111827;
+      --panel: rgba(17, 24, 39, 0.95);
+      --line: #374151;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --accent2: #93c5fd;
+      --good: #22c55e;
+      --warn: #f59e0b;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 1.35rem;
+      line-height: 1.1;
+    }
+
+    .title-wrap p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.9rem;
+      transition: 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0b1220;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent2);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+      transform: translateY(-1px);
+    }
+
+    .status {
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      font-size: 0.9rem;
+      color: var(--text);
+      min-width: 220px;
+    }
+
+    .tabbar-wrap {
+      background: rgba(15, 23, 42, 0.8);
+      border-bottom: 1px solid var(--line);
+      padding: 10px 14px;
+      position: sticky;
+      top: 74px;
+      z-index: 9;
+      backdrop-filter: blur(8px);
+    }
+
+    .tabbar {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tab-btn {
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      flex: 0 0 auto;
+      transition: 0.15s ease;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--accent);
+    }
+
+    .tab-btn.active {
+      background: rgba(96,165,250,0.12);
+      border-color: var(--accent);
+      color: var(--accent2);
+      box-shadow: 0 0 0 1px rgba(96,165,250,0.18);
+    }
+
+    .content {
+      flex: 1;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .frame-shell {
+      flex: 1;
+      min-height: 0;
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.25);
+      position: relative;
+    }
+
+    .frame-panel {
+      display: none;
+      width: 100%;
+      height: calc(100vh - 170px);
+      min-height: 650px;
+      border: none;
+      background: #0b1220;
+    }
+
+    .frame-panel.active {
+      display: block;
+    }
+
+    .footer {
+      padding: 10px 16px;
+      border-top: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--muted);
+      font-size: 0.82rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .mono {
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        position: static;
+      }
+
+      .tabbar-wrap {
+        position: static;
+      }
+
+      .frame-panel {
+        height: calc(100vh - 210px);
+        min-height: 600px;
+      }
+    }
   </style>
 </head>
 <body>
-<div id="setup">
-  <h1>Character Sheets</h1>
-  <p class="sub">party · spells · weapons · notes</p>
-  <div class="card">
-    <h2>Join the Ledger</h2>
-    <div class="f"><label>Your Name</label><input id="inp-name" type="text" placeholder="Thorin..." maxlength="24"></div>
-    <div class="f"><label>Role</label><select id="inp-role"><option value="player">Player</option><option value="gm">Game Master</option></select></div>
-    <div class="f"><label>Session ID</label><input id="inp-sid" type="text" placeholder="avernus-campaign" maxlength="40"><div class="note">Use the same session ID as your table if you want the same campaign namespace</div></div>
-    <button class="btn-p" onclick="enter()">Enter</button>
-    <button class="btn-g" onclick="openCfg()">⚙ Firebase Config</button>
-  </div>
-</div>
-
-<div class="overlay" id="cfg-modal">
-  <div class="modal small-modal">
-    <h3>⚙ Firebase Config</h3>
-    <div class="f"><label>API Key</label><input id="c-key" type="text"></div>
-    <div class="f"><label>Auth Domain</label><input id="c-auth" type="text"></div>
-    <div class="f"><label>Database URL</label><input id="c-db" type="text"></div>
-    <div class="f"><label>Project ID</label><input id="c-pid" type="text"></div>
-    <div class="modal-btns"><button class="btn-p" onclick="saveCfg()">Save</button><button class="btn-g" onclick="closeCfg()">Cancel</button></div>
-  </div>
-</div>
-
-<div class="overlay" id="sheet-modal">
-  <div class="modal">
-    <h3 id="sheet-modal-title">Create Character</h3>
-    <div class="sheet-grid">
-      <div class="sheet-col">
-        <div class="f"><label>Name</label><input id="m-name" type="text" maxlength="40"></div>
-        <div class="f"><label>Kind</label><select id="m-kind"><option value="pc">PC</option><option value="npc">NPC</option></select></div>
-        <div class="f"><label>Portrait URL</label><input id="m-portrait" type="text" placeholder="https://..."></div>
-        <div class="f"><label>Class</label><input id="m-class" type="text"></div>
-        <div class="f"><label>Race</label><input id="m-race" type="text"></div>
-        <div class="sheet-row-3">
-          <div class="f"><label>Level</label><input id="m-level" type="number" min="1" max="20" value="1"></div>
-          <div class="f"><label>Prof</label><input id="m-prof" type="number" min="0" max="20" value="2"></div>
-          <div class="f"><label>Speed</label><input id="m-spd" type="number" min="0" max="999" value="30"></div>
-        </div>
-        <div class="sheet-row-3">
-          <div class="f"><label>HP</label><input id="m-hp" type="number" value="1"></div>
-          <div class="f"><label>Max HP</label><input id="m-maxhp" type="number" value="1"></div>
-          <div class="f"><label>Temp HP</label><input id="m-temphp" type="number" value="0"></div>
-        </div>
-        <div class="sheet-row-3">
-          <div class="f"><label>AC</label><input id="m-ac" type="number" value="10"></div>
-          <div class="f"><label>Init</label><input id="m-init" type="number" value="0"></div>
-          <div class="f"><label>Visible to Players</label><select id="m-visible"><option value="true">Yes</option><option value="false">No</option></select></div>
-        </div>
+  <div class="app">
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1>DM Toolkit Dashboard</h1>
+        <p>One-page shell. Each tool loads in its own internal tab via iframe.</p>
       </div>
-      <div class="sheet-col">
-        <h4>Abilities</h4>
-        <div class="sheet-row-6">
-          <div class="f"><label>STR</label><input id="m-str" type="number" value="10"></div>
-          <div class="f"><label>DEX</label><input id="m-dex" type="number" value="10"></div>
-          <div class="f"><label>CON</label><input id="m-con" type="number" value="10"></div>
-          <div class="f"><label>INT</label><input id="m-int" type="number" value="10"></div>
-          <div class="f"><label>WIS</label><input id="m-wis" type="number" value="10"></div>
-          <div class="f"><label>CHA</label><input id="m-cha" type="number" value="10"></div>
-        </div>
-        <div class="f"><label>Status Conditions (comma separated)</label><input id="m-statuses" type="text" placeholder="poisoned, concentrating"></div>
-        <div class="f"><label>Weapons (JSON array)</label><textarea id="m-weapons" rows="5" placeholder='[{"name":"Longsword","toHit":"+5","damage":"1d8+3 slashing"}]'></textarea></div>
-        <div class="f"><label>Spell Slots (JSON object)</label><textarea id="m-slots" rows="4" placeholder='{"1":{"max":4,"used":0},"2":{"max":2,"used":0}}'></textarea></div>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" id="refreshCurrentBtn">Refresh Current Tab</button>
+        <button class="btn btn-secondary" id="refreshAllBtn">Refresh All Tabs</button>
+        <button class="btn btn-secondary" id="openCurrentBtn">Open Current in New Tab</button>
       </div>
-      <div class="sheet-col">
-        <div class="f"><label>Cantrips (JSON array)</label><textarea id="m-cantrips" rows="5" placeholder='[{"name":"Fire Bolt","actionType":"Action","range":"120 ft","roll":"Ranged Spell Attack","description":"1d10 fire"}]'></textarea></div>
-        <div class="f"><label>Spells (JSON array)</label><textarea id="m-spells" rows="6" placeholder='[{"name":"Magic Missile","level":1,"actionType":"Action","range":"120 ft","cost":"1st-level slot","roll":"No roll","description":"3 darts"}]'></textarea></div>
-        <div class="f"><label>Feats / Features (JSON array)</label><textarea id="m-feats" rows="5" placeholder='[{"name":"Second Wind","actionType":"Bonus Action","description":"Regain 1d10+level HP"}]'></textarea></div>
+
+      <div class="status" id="statusBox">Ready.</div>
+    </div>
+
+    <!-- TAB BAR -->
+    <div class="tabbar-wrap">
+      <div class="tabbar" id="tabBar"></div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <div class="frame-shell" id="frameShell">
+        <!-- Iframes injected here -->
       </div>
     </div>
-    <div class="f"><label>Inventory (one per line)</label><textarea id="m-inventory" rows="4" placeholder="Potion of Healing&#10;Rope (50 ft)"></textarea></div>
-    <div class="f"><label>Notes</label><textarea id="m-notes" rows="5"></textarea></div>
-    <div class="modal-btns"><button class="btn-p" onclick="saveSheetModal()">Save Sheet</button><button class="btn-g" onclick="closeSheetModal()">Cancel</button></div>
-  </div>
-</div>
 
-<div id="app">
-  <div id="topbar">
-    <div class="brand">📜 Character Sheets</div>
-    <div class="topbar-right">
-      <span id="conn-dot"></span>
-      <span id="session-label" onclick="copySid()" title="Copy session ID"></span>
-      <button class="tb gm" onclick="openCreateSheet()">+ Create Sheet</button>
+    <!-- FOOTER -->
+    <div class="footer">
+      <div>
+        Current Tool: <span class="mono" id="currentToolLabel">character.html</span>
+      </div>
+      <div>
+        Files: <span class="mono">character.html • party.html • saves.html • mapsetup.html • vtt.html</span>
+      </div>
     </div>
   </div>
-  <div id="main">
-    <aside id="left-panel">
-      <div class="panel-head">Party</div>
-      <div class="panel-body" id="party-list"></div>
-    </aside>
-    <main id="center-panel">
-      <div id="sheet-empty"><h2>No character selected</h2><p>Select a sheet from the party list.</p></div>
-      <div id="sheet-view">
-        <div id="sheet-header">
-          <img id="sheet-portrait" src="" alt="portrait">
-          <div class="sheet-header-meta">
-            <div class="sheet-title-row"><h2 id="sheet-name"></h2><span id="sheet-kind-badge"></span></div>
-            <div id="sheet-subline"></div>
-            <div id="sheet-owner-line"></div>
-            <div class="sheet-action-row">
-              <button class="action-btn gm" id="btn-edit-sheet" onclick="openEditSelected()">Edit Sheet</button>
-              <button class="action-btn" id="btn-set-mine" onclick="setSelectedAsMine()">Set as My Character</button>
-              <button class="action-btn" id="btn-long-rest" onclick="longRestSelected()">Long Rest</button>
-            </div>
-          </div>
-        </div>
-        <section class="card-sec">
-          <div class="card-title">Core</div>
-          <div class="core-grid">
-            <div class="stat-card"><div class="stat-label">HP</div><div class="stat-value" id="v-hp"></div></div>
-            <div class="stat-card"><div class="stat-label">Temp HP</div><div class="stat-value" id="v-temphp"></div></div>
-            <div class="stat-card"><div class="stat-label">AC</div><div class="stat-value" id="v-ac"></div></div>
-            <div class="stat-card"><div class="stat-label">Init</div><div class="stat-value" id="v-init"></div></div>
-            <div class="stat-card"><div class="stat-label">Speed</div><div class="stat-value" id="v-spd"></div></div>
-            <div class="stat-card"><div class="stat-label">Prof</div><div class="stat-value" id="v-prof"></div></div>
-          </div>
-          <div class="quick-row" id="player-quick-row">
-            <button class="action-btn" onclick="adjustHpSelected(-1)">HP -1</button>
-            <button class="action-btn" onclick="adjustHpSelected(-5)">HP -5</button>
-            <button class="action-btn" onclick="adjustHpSelected(1)">HP +1</button>
-            <button class="action-btn" onclick="adjustHpSelected(5)">HP +5</button>
-            <button class="action-btn" onclick="clearTempHpSelected()">Clear Temp HP</button>
-          </div>
-        </section>
-        <section class="card-sec">
-          <div class="card-title">Conditions</div>
-          <div id="sheet-statuses"></div>
-          <div class="quick-edit-block" id="player-status-block">
-            <label>Update Conditions (comma separated)</label>
-            <input id="player-status-input" type="text" placeholder="poisoned, concentrating">
-            <button class="action-btn" onclick="savePlayerStatuses()">Save Conditions</button>
-          </div>
-        </section>
-        <section class="card-sec">
-          <div class="card-title">Abilities</div>
-          <div class="abilities-grid">
-            <div class="abil-card"><div class="abil-label">STR</div><div class="abil-score" id="v-str"></div><div class="abil-mod" id="m-str-mod"></div></div>
-            <div class="abil-card"><div class="abil-label">DEX</div><div class="abil-score" id="v-dex"></div><div class="abil-mod" id="m-dex-mod"></div></div>
-            <div class="abil-card"><div class="abil-label">CON</div><div class="abil-score" id="v-con"></div><div class="abil-mod" id="m-con-mod"></div></div>
-            <div class="abil-card"><div class="abil-label">INT</div><div class="abil-score" id="v-int"></div><div class="abil-mod" id="m-int-mod"></div></div>
-            <div class="abil-card"><div class="abil-label">WIS</div><div class="abil-score" id="v-wis"></div><div class="abil-mod" id="m-wis-mod"></div></div>
-            <div class="abil-card"><div class="abil-label">CHA</div><div class="abil-score" id="v-cha"></div><div class="abil-mod" id="m-cha-mod"></div></div>
-          </div>
-        </section>
-        <details class="card-sec" open><summary class="card-title">Weapons</summary><div id="sheet-weapons"></div></details>
-        <details class="card-sec" open><summary class="card-title">Spell Slots</summary><div id="sheet-slots"></div></details>
-        <details class="card-sec"><summary class="card-title">Cantrips</summary><div id="sheet-cantrips"></div></details>
-        <details class="card-sec"><summary class="card-title">Spells</summary><div id="sheet-spells"></div></details>
-        <details class="card-sec"><summary class="card-title">Feats / Features</summary><div id="sheet-feats"></div></details>
-        <details class="card-sec" open>
-          <summary class="card-title">Inventory</summary>
-          <div id="sheet-inventory"></div>
-          <div class="quick-edit-block" id="player-inventory-block">
-            <label>Update Inventory (one per line)</label>
-            <textarea id="player-inventory-input" rows="4"></textarea>
-            <button class="action-btn" onclick="savePlayerInventory()">Save Inventory</button>
-          </div>
-        </details>
-        <details class="card-sec" open>
-          <summary class="card-title">Notes</summary>
-          <div id="sheet-notes"></div>
-          <div class="quick-edit-block" id="player-notes-block">
-            <label>Update Notes</label>
-            <textarea id="player-notes-input" rows="5"></textarea>
-            <button class="action-btn" onclick="savePlayerNotes()">Save Notes</button>
-          </div>
-        </details>
-      </div>
-    </main>
-    <aside id="right-panel">
-      <div class="panel-head">Session</div>
-      <div class="panel-body">
-        <div class="session-box">
-          <div class="session-line"><span class="lbl">You</span><span id="me-line"></span></div>
-          <div class="session-line"><span class="lbl">My Character</span><span id="my-char-line">—</span></div>
-        </div>
-        <div class="session-box">
-          <div class="mini-title">Quick Actions</div>
-          <button class="action-btn" onclick="focusMyCharacter()">Focus My Character</button>
-          <button class="action-btn gm" onclick="openCreateSheet()">Create New Sheet</button>
-          <button class="action-btn gm" onclick="duplicateSelectedSheet()">Duplicate Selected</button>
-          <button class="action-btn gm" onclick="clearSelectedOwner()">Clear Owner</button>
-          <button class="action-btn gm" onclick="deleteSelectedSheet()">Delete Selected</button>
-        </div>
-        <div class="session-box">
-          <div class="mini-title">Permissions</div>
-          <p class="help-copy">Players can edit HP, temp HP, conditions, inventory, notes, and spell slots on sheets they own. GM can edit everything.</p>
-        </div>
-      </div>
-    </aside>
-  </div>
-</div>
 
-<div id="toast"></div>
+  <script>
+    // -------------------------
+    // Tool registry (your actual files)
+    // -------------------------
+    const tools = [
+      {
+        id: "character",
+        label: "Character",
+        file: "character.html"
+      },
+      {
+        id: "party",
+        label: "Party",
+        file: "party.html"
+      },
+      {
+        id: "saves",
+        label: "Saves",
+        file: "saves.html"
+      },
+      {
+        id: "mapsetup",
+        label: "Map Setup",
+        file: "mapsetup.html"
+      },
+      {
+        id: "vtt",
+        label: "VTT",
+        file: "vtt.html"
+      }
+    ];
 
-<script type="module">
-import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    const tabBar = document.getElementById("tabBar");
+    const frameShell = document.getElementById("frameShell");
+    const statusBox = document.getElementById("statusBox");
+    const currentToolLabel = document.getElementById("currentToolLabel");
 
-const HARDCODED_CFG = {
-  apiKey:"AIzaSyBxhgU7Ef039EywGNuIWwjuxz1Vsn_ekrE",
-  authDomain:"disney-vtt.firebaseapp.com",
-  databaseURL:"https://disney-vtt-default-rtdb.firebaseio.com",
-  projectId:"disney-vtt"
-};
+    let activeToolId = tools[0].id;
+    const iframeMap = {};
 
-let db;
-let sid='', myId='', myName='', isGM=false;
-let charsRef;
-let characters = {};
-let selectedCharId = null;
-let editingCharId = null;
-let toastT;
-let myCharacterId = localStorage.getItem('geezvtt-my-char-id') || '';
+    // -------------------------
+    // Helpers
+    // -------------------------
+    function setStatus(message, type = "info") {
+      statusBox.textContent = message;
 
-const loadCfg = () => { try { return JSON.parse(localStorage.getItem('geezvtt-sheet-cfg') || 'null'); } catch { return null; } };
-const escHtml = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-function uid(){ let id = localStorage.getItem('geezvtt-sheet-uid'); if(!id){ id = Math.random().toString(36).slice(2,10); localStorage.setItem('geezvtt-sheet-uid', id); } return id; }
-function signedMod(n){ n = Number(n || 0); return n >= 0 ? `+${n}` : `${n}`; }
-function abilMod(score){ return Math.floor(((Number(score)||10)-10)/2); }
-function normalizeArray(v){ return Array.isArray(v) ? v : []; }
-function normalizeInventory(v){ return Array.isArray(v) ? v : (typeof v === 'string' ? v.split(/\r?\n/).map(x=>x.trim()).filter(Boolean) : []); }
-function normalizeStatuses(v){ return Array.isArray(v) ? v : (typeof v === 'string' ? v.split(',').map(x=>x.trim()).filter(Boolean) : []); }
-function normalizeSlots(v){ return (v && typeof v === 'object' && !Array.isArray(v)) ? v : {}; }
-function normalizeChar(raw = {}){
-  const abilities = raw.abilities || {};
-  return {
-    name: raw.name || 'Unnamed', kind: raw.kind === 'npc' ? 'npc' : 'pc', portrait: raw.portrait || '', className: raw.className || '', race: raw.race || '',
-    level: Number(raw.level || 1), prof: Number(raw.prof || 2), hp: Number(raw.hp ?? 1), maxHp: Number(raw.maxHp ?? raw.hp ?? 1), tempHp: Number(raw.tempHp || 0),
-    ac: Number(raw.ac || 10), init: Number(raw.init || 0), spd: Number(raw.spd || 30), visibleToPlayers: raw.visibleToPlayers !== false,
-    ownerId: raw.ownerId || '', ownerName: raw.ownerName || '',
-    abilities: { str:Number(abilities.str||10), dex:Number(abilities.dex||10), con:Number(abilities.con||10), int:Number(abilities.int||10), wis:Number(abilities.wis||10), cha:Number(abilities.cha||10) },
-    statuses: normalizeStatuses(raw.statuses), weapons: normalizeArray(raw.weapons), spellSlots: normalizeSlots(raw.spellSlots), cantrips: normalizeArray(raw.cantrips), spells: normalizeArray(raw.spells), feats: normalizeArray(raw.feats), inventory: normalizeInventory(raw.inventory), notes: raw.notes || '',
-    ts: raw.ts || 0, updatedAt: raw.updatedAt || 0,
-  };
-}
-function visibleCharacters(){
-  return Object.entries(characters).map(([id, raw]) => [id, normalizeChar(raw)]).filter(([, c]) => isGM || (c.kind === 'pc' && c.visibleToPlayers !== false)).sort((a,b) => (a[1].kind === b[1].kind ? a[1].name.localeCompare(b[1].name) : (a[1].kind === 'pc' ? -1 : 1)));
-}
-function getSelectedVisible(){
-  const vis = Object.fromEntries(visibleCharacters());
-  if (selectedCharId && vis[selectedCharId]) return { id: selectedCharId, char: vis[selectedCharId] };
-  if (myCharacterId && vis[myCharacterId]) return { id: myCharacterId, char: vis[myCharacterId] };
-  const first = Object.entries(vis)[0];
-  return first ? { id: first[0], char: first[1] } : null;
-}
-function canPlayerEdit(c){ return !!c && c.kind === 'pc' && c.ownerId === myId; }
-function canEditSelected(){ const chosen = getSelectedVisible(); return !!chosen && (isGM || canPlayerEdit(chosen.char)); }
-function selectedRawRef(){ return selectedCharId ? ref(db, `vtt/${sid}/characters/${selectedCharId}`) : null; }
-function toast(msg){ const el = document.getElementById('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>el.classList.remove('show'), 2600); }
-function fallbackPortrait(name, size=160){ return 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><rect width="100%" height="100%" fill="#1a140d"/><text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" fill="#b8822a" font-size="${Math.round(size*0.18)}">${(name||'?').slice(0,2).toUpperCase()}</text></svg>`); }
+      if (type === "success") {
+        statusBox.style.borderColor = "#166534";
+        statusBox.style.color = "#86efac";
+      } else if (type === "error") {
+        statusBox.style.borderColor = "#7f1d1d";
+        statusBox.style.color = "#fca5a5";
+      } else if (type === "warn") {
+        statusBox.style.borderColor = "#92400e";
+        statusBox.style.color = "#fcd34d";
+      } else {
+        statusBox.style.borderColor = "#374151";
+        statusBox.style.color = "#e5e7eb";
+      }
+    }
 
-function renderPartyList(){
-  const list = document.getElementById('party-list');
-  const vis = visibleCharacters();
-  list.innerHTML = '';
-  if (!vis.length) { list.innerHTML = '<div class="help-copy">No visible sheets yet.</div>'; return; }
-  vis.forEach(([id, c]) => {
-    const div = document.createElement('div');
-    div.className = 'party-item' + (id === selectedCharId ? ' sel' : '');
-    div.innerHTML = `<img class="party-portrait" src="${c.portrait || fallbackPortrait(c.name,80)}"><div class="party-meta"><div class="party-name">${escHtml(c.name)}</div><div class="party-sub">HP ${c.hp}/${c.maxHp} · AC ${c.ac}</div></div><div class="party-badge">${c.kind}</div>`;
-    div.onclick = () => { selectedCharId = id; renderPartyList(); renderSelected(); };
-    list.appendChild(div);
-  });
-}
+    function getToolById(toolId) {
+      return tools.find(t => t.id === toolId);
+    }
 
-function renderRows(arr, emptyMsg){
-  const list = normalizeArray(arr);
-  if (!list.length) return `<div class="help-copy">${emptyMsg}</div>`;
-  return `<div class="list-stack">${list.map(item => {
-    if (typeof item === 'string') return `<div class="row-card"><div class="row-title">${escHtml(item)}</div></div>`;
-    const meta = [item.toHit, item.damage, item.actionType, item.range, item.cost, item.roll].filter(Boolean).join(' · ');
-    const desc = [meta, item.description].filter(Boolean).join(meta && item.description ? ' — ' : '');
-    return `<div class="row-card"><div class="row-title">${escHtml(item.name || 'Unnamed')}</div>${desc ? `<div class="row-sub">${escHtml(desc)}</div>` : ''}</div>`;
-  }).join('')}</div>`;
-}
+    function getActiveTool() {
+      return getToolById(activeToolId);
+    }
 
-function renderSlotsHtml(slots){
-  const data = normalizeSlots(slots);
-  const levels = Object.keys(data).sort((a,b)=>Number(a)-Number(b));
-  if (!levels.length) return '<div class="help-copy">No spell slots tracked.</div>';
-  return levels.map(level => {
-    const row = data[level] || {};
-    const max = Number(row.max || 0);
-    const used = Math.max(0, Math.min(max, Number(row.used || 0)));
-    const pips = Array.from({length:max}, (_,i) => `<button class="slot-pip${i < used ? ' used' : ''}" data-level="${level}" data-index="${i}"></button>`).join('');
-    return `<div class="slot-row"><div class="row-title">Level ${level}</div><div class="slot-pips">${pips || '<span class="help-copy">0 slots</span>'}</div><div class="row-sub">${Math.max(0,max-used)}/${max}</div></div>`;
-  }).join('');
-}
+    function createTabs() {
+      tabBar.innerHTML = "";
 
-function renderSelected(){
-  const chosen = getSelectedVisible();
-  const empty = document.getElementById('sheet-empty');
-  const view = document.getElementById('sheet-view');
-  if (!chosen) { empty.style.display = 'flex'; view.style.display = 'none'; document.getElementById('my-char-line').textContent = '—'; return; }
-  selectedCharId = chosen.id;
-  const c = chosen.char;
-  empty.style.display = 'none'; view.style.display = 'flex';
-  document.getElementById('my-char-line').textContent = myCharacterId && characters[myCharacterId] ? normalizeChar(characters[myCharacterId]).name : '—';
-  document.getElementById('sheet-portrait').src = c.portrait || fallbackPortrait(c.name,160);
-  document.getElementById('sheet-name').textContent = c.name;
-  document.getElementById('sheet-kind-badge').textContent = c.kind.toUpperCase();
-  document.getElementById('sheet-subline').textContent = [c.race, c.className, `Lvl ${c.level}`].filter(Boolean).join(' · ') || 'Unspecified';
-  document.getElementById('sheet-owner-line').textContent = c.ownerName ? `Owner: ${c.ownerName}` : 'Owner: Unassigned';
-  document.getElementById('v-hp').textContent = `${c.hp}/${c.maxHp}`; document.getElementById('v-temphp').textContent = c.tempHp; document.getElementById('v-ac').textContent = c.ac; document.getElementById('v-init').textContent = signedMod(c.init); document.getElementById('v-spd').textContent = c.spd; document.getElementById('v-prof').textContent = signedMod(c.prof);
-  ['str','dex','con','int','wis','cha'].forEach(k => { document.getElementById(`v-${k}`).textContent = c.abilities[k]; document.getElementById(`m-${k}-mod`).textContent = signedMod(abilMod(c.abilities[k])); });
-  document.getElementById('sheet-statuses').innerHTML = c.statuses.length ? c.statuses.map(s => `<span class="status-pill">${escHtml(s)}</span>`).join('') : '<div class="help-copy">No active conditions.</div>';
-  document.getElementById('sheet-weapons').innerHTML = renderRows(c.weapons, 'No weapons listed.');
-  document.getElementById('sheet-cantrips').innerHTML = renderRows(c.cantrips, 'No cantrips listed.');
-  document.getElementById('sheet-spells').innerHTML = renderRows(c.spells, 'No spells listed.');
-  document.getElementById('sheet-feats').innerHTML = renderRows(c.feats, 'No feats or features listed.');
-  document.getElementById('sheet-slots').innerHTML = renderSlotsHtml(c.spellSlots);
-  document.getElementById('sheet-inventory').innerHTML = c.inventory.length ? `<div class="inv-list">${c.inventory.map(i => `<div class="inv-item">${escHtml(i)}</div>`).join('')}</div>` : '<div class="help-copy">No inventory listed.</div>';
-  document.getElementById('sheet-notes').innerHTML = `<div class="notes-box">${escHtml(c.notes || 'No notes yet.')}</div>`;
-  document.getElementById('player-status-input').value = c.statuses.join(', ');
-  document.getElementById('player-inventory-input').value = c.inventory.join('\n');
-  document.getElementById('player-notes-input').value = c.notes || '';
-  const editable = isGM || canPlayerEdit(c);
-  document.getElementById('btn-set-mine').style.display = 'inline-flex';
-  document.getElementById('btn-long-rest').style.display = editable ? 'inline-flex' : 'none';
-  document.getElementById('btn-edit-sheet').style.display = isGM ? 'inline-flex' : 'none';
-  document.getElementById('player-quick-row').style.display = editable ? 'flex' : 'none';
-  document.getElementById('player-status-block').style.display = editable ? 'flex' : 'none';
-  document.getElementById('player-inventory-block').style.display = editable ? 'flex' : 'none';
-  document.getElementById('player-notes-block').style.display = editable ? 'flex' : 'none';
-}
+      tools.forEach(tool => {
+        const btn = document.createElement("button");
+        btn.className = "tab-btn" + (tool.id === activeToolId ? " active" : "");
+        btn.textContent = tool.label;
 
-function setModalFromChar(c){
-  document.getElementById('m-name').value = c.name || '';
-  document.getElementById('m-kind').value = c.kind || 'pc';
-  document.getElementById('m-portrait').value = c.portrait || '';
-  document.getElementById('m-class').value = c.className || '';
-  document.getElementById('m-race').value = c.race || '';
-  document.getElementById('m-level').value = c.level || 1;
-  document.getElementById('m-prof').value = c.prof || 2;
-  document.getElementById('m-spd').value = c.spd || 30;
-  document.getElementById('m-hp').value = c.hp ?? 1;
-  document.getElementById('m-maxhp').value = c.maxHp ?? 1;
-  document.getElementById('m-temphp').value = c.tempHp || 0;
-  document.getElementById('m-ac').value = c.ac || 10;
-  document.getElementById('m-init').value = c.init || 0;
-  document.getElementById('m-visible').value = c.visibleToPlayers === false ? 'false' : 'true';
-  document.getElementById('m-str').value = c.abilities?.str ?? 10; document.getElementById('m-dex').value = c.abilities?.dex ?? 10; document.getElementById('m-con').value = c.abilities?.con ?? 10; document.getElementById('m-int').value = c.abilities?.int ?? 10; document.getElementById('m-wis').value = c.abilities?.wis ?? 10; document.getElementById('m-cha').value = c.abilities?.cha ?? 10;
-  document.getElementById('m-statuses').value = normalizeStatuses(c.statuses).join(', ');
-  document.getElementById('m-weapons').value = JSON.stringify(normalizeArray(c.weapons), null, 2);
-  document.getElementById('m-slots').value = JSON.stringify(normalizeSlots(c.spellSlots), null, 2);
-  document.getElementById('m-cantrips').value = JSON.stringify(normalizeArray(c.cantrips), null, 2);
-  document.getElementById('m-spells').value = JSON.stringify(normalizeArray(c.spells), null, 2);
-  document.getElementById('m-feats').value = JSON.stringify(normalizeArray(c.feats), null, 2);
-  document.getElementById('m-inventory').value = normalizeInventory(c.inventory).join('\n');
-  document.getElementById('m-notes').value = c.notes || '';
-}
-function parseJsonField(id, fallback){ const raw = document.getElementById(id).value.trim(); if (!raw) return fallback; try { return JSON.parse(raw); } catch { throw new Error(`${id} is not valid JSON`); } }
-function readModalChar(){
-  const hp = Number(document.getElementById('m-hp').value || 1); const maxHp = Number(document.getElementById('m-maxhp').value || hp || 1);
-  return {
-    name: document.getElementById('m-name').value.trim() || 'Unnamed', kind: document.getElementById('m-kind').value === 'npc' ? 'npc' : 'pc', portrait: document.getElementById('m-portrait').value.trim(), className: document.getElementById('m-class').value.trim(), race: document.getElementById('m-race').value.trim(),
-    level: Number(document.getElementById('m-level').value || 1), prof: Number(document.getElementById('m-prof').value || 2), spd: Number(document.getElementById('m-spd').value || 30), hp, maxHp, tempHp: Number(document.getElementById('m-temphp').value || 0), ac: Number(document.getElementById('m-ac').value || 10), init: Number(document.getElementById('m-init').value || 0), visibleToPlayers: document.getElementById('m-visible').value === 'true',
-    abilities: { str:Number(document.getElementById('m-str').value||10), dex:Number(document.getElementById('m-dex').value||10), con:Number(document.getElementById('m-con').value||10), int:Number(document.getElementById('m-int').value||10), wis:Number(document.getElementById('m-wis').value||10), cha:Number(document.getElementById('m-cha').value||10) },
-    statuses: document.getElementById('m-statuses').value.split(',').map(x=>x.trim()).filter(Boolean), weapons: parseJsonField('m-weapons', []), spellSlots: parseJsonField('m-slots', {}), cantrips: parseJsonField('m-cantrips', []), spells: parseJsonField('m-spells', []), feats: parseJsonField('m-feats', []), inventory: document.getElementById('m-inventory').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean), notes: document.getElementById('m-notes').value,
-  };
-}
+        btn.addEventListener("click", () => {
+          switchTab(tool.id);
+        });
 
-window.openCfg = () => { const c = loadCfg() || HARDCODED_CFG; document.getElementById('c-key').value = c.apiKey || ''; document.getElementById('c-auth').value = c.authDomain || ''; document.getElementById('c-db').value = c.databaseURL || ''; document.getElementById('c-pid').value = c.projectId || ''; document.getElementById('cfg-modal').classList.add('open'); };
-window.closeCfg = () => document.getElementById('cfg-modal').classList.remove('open');
-window.saveCfg = () => { const c = { apiKey:document.getElementById('c-key').value.trim(), authDomain:document.getElementById('c-auth').value.trim(), databaseURL:document.getElementById('c-db').value.trim(), projectId:document.getElementById('c-pid').value.trim() }; if (!c.databaseURL) return toast('Database URL required'); localStorage.setItem('geezvtt-sheet-cfg', JSON.stringify(c)); closeCfg(); toast('Config saved'); };
-window.enter = async () => {
-  myName = document.getElementById('inp-name').value.trim(); myId = uid(); sid = document.getElementById('inp-sid').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'-') || 'default'; if (!myName) return toast('Enter your name');
-  isGM = document.getElementById('inp-role').value === 'gm'; const cfg = loadCfg() || HARDCODED_CFG;
-  try {
-    const app = getApps().length ? getApp() : initializeApp(cfg);
-    db = getDatabase(app);
-  } catch (e) {
-    return toast('Firebase: ' + e.message);
-  }
-  if (isGM) document.body.classList.add('is-gm');
-  charsRef = ref(db, `vtt/${sid}/characters`);
-  onValue(charsRef, snap => { characters = snap.val() || {}; const chosen = getSelectedVisible(); selectedCharId = chosen ? chosen.id : null; renderPartyList(); renderSelected(); });
-  document.getElementById('setup').style.display = 'none'; document.getElementById('app').style.display = 'flex'; document.getElementById('conn-dot').classList.add('ok'); document.getElementById('session-label').textContent = sid; document.getElementById('me-line').textContent = `${myName} (${isGM ? 'GM' : 'Player'})`; toast(`Welcome, ${myName}`);
-};
-window.closeSheetModal = () => document.getElementById('sheet-modal').classList.remove('open');
-window.openCreateSheet = () => { if (!isGM) return toast('GM only'); editingCharId = null; document.getElementById('sheet-modal-title').textContent = 'Create Character'; setModalFromChar(normalizeChar({ ownerId:'', ownerName:'' })); document.getElementById('sheet-modal').classList.add('open'); };
-window.openEditSelected = () => { if (!isGM) return toast('GM only'); const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); editingCharId = chosen.id; document.getElementById('sheet-modal-title').textContent = `Edit Character — ${chosen.char.name}`; setModalFromChar(chosen.char); document.getElementById('sheet-modal').classList.add('open'); };
-window.saveSheetModal = async () => {
-  if (!isGM) return toast('GM only');
-  try {
-    const payload = readModalChar(); const id = editingCharId || push(charsRef).key; const prev = normalizeChar(characters[id] || {});
-    await set(ref(db, `vtt/${sid}/characters/${id}`), { ...payload, ownerId: prev.ownerId || '', ownerName: prev.ownerName || '', ts: characters[id]?.ts || Date.now(), updatedAt: Date.now() });
-    selectedCharId = id; closeSheetModal(); toast(editingCharId ? 'Sheet updated' : 'Sheet created');
-  } catch (e) { toast((e.message || 'Could not save sheet').replace(/^m-/, 'Field ')); }
-};
-window.setSelectedAsMine = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!isGM && chosen.char.kind !== 'pc') return toast('Players can only claim PCs'); await update(ref(db, `vtt/${sid}/characters/${chosen.id}`), { ownerId: myId, ownerName: myName, updatedAt: Date.now() }); myCharacterId = chosen.id; localStorage.setItem('geezvtt-my-char-id', myCharacterId); toast(`${chosen.char.name} is now your character`); };
-window.focusMyCharacter = () => { if (!myCharacterId || !characters[myCharacterId]) return toast('No claimed character yet'); const vis = Object.fromEntries(visibleCharacters()); if (!vis[myCharacterId]) return toast('Your character is not visible here'); selectedCharId = myCharacterId; renderPartyList(); renderSelected(); };
-window.adjustHpSelected = async delta => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const c = chosen.char; const next = Math.max(0, Math.min(c.maxHp, c.hp + Number(delta || 0))); await update(selectedRawRef(), { hp: next, updatedAt: Date.now() }); };
-window.clearTempHpSelected = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); await update(selectedRawRef(), { tempHp: 0, updatedAt: Date.now() }); };
-window.savePlayerStatuses = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const statuses = document.getElementById('player-status-input').value.split(',').map(x=>x.trim()).filter(Boolean); await update(selectedRawRef(), { statuses, updatedAt: Date.now() }); toast('Conditions updated'); };
-window.savePlayerInventory = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const inventory = document.getElementById('player-inventory-input').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean); await update(selectedRawRef(), { inventory, updatedAt: Date.now() }); toast('Inventory updated'); };
-window.savePlayerNotes = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const notes = document.getElementById('player-notes-input').value; await update(selectedRawRef(), { notes, updatedAt: Date.now() }); toast('Notes updated'); };
-window.longRestSelected = async () => { const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!canEditSelected()) return toast('You cannot edit this sheet'); const c = chosen.char; const slots = JSON.parse(JSON.stringify(normalizeSlots(c.spellSlots))); Object.keys(slots).forEach(k => { slots[k].used = 0; }); await update(selectedRawRef(), { hp: c.maxHp, tempHp: 0, spellSlots: slots, updatedAt: Date.now() }); toast('Long rest applied'); };
-window.deleteSelectedSheet = async () => { if (!isGM) return toast('GM only'); const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); if (!confirm(`Delete ${chosen.char.name}? This cannot be undone.`)) return; await remove(ref(db, `vtt/${sid}/characters/${chosen.id}`)); if (myCharacterId === chosen.id) { myCharacterId = ''; localStorage.removeItem('geezvtt-my-char-id'); } if (selectedCharId === chosen.id) selectedCharId = null; toast('Sheet deleted'); };
-window.duplicateSelectedSheet = async () => { if (!isGM) return toast('GM only'); const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); const c = chosen.char; const id = push(charsRef).key; await set(ref(db, `vtt/${sid}/characters/${id}`), { ...c, name: `${c.name} Copy`, ownerId:'', ownerName:'', ts: Date.now(), updatedAt: Date.now() }); selectedCharId = id; toast('Sheet duplicated'); };
-window.clearSelectedOwner = async () => { if (!isGM) return toast('GM only'); const chosen = getSelectedVisible(); if (!chosen) return toast('No sheet selected'); await update(ref(db, `vtt/${sid}/characters/${chosen.id}`), { ownerId:'', ownerName:'', updatedAt: Date.now() }); if (myCharacterId === chosen.id) { myCharacterId = ''; localStorage.removeItem('geezvtt-my-char-id'); } toast('Owner cleared'); };
-window.copySid = () => navigator.clipboard.writeText(sid).then(()=>toast('Session ID copied'));
+        tabBar.appendChild(btn);
+      });
+    }
 
-document.addEventListener('click', async (e) => {
-  const pip = e.target.closest('.slot-pip');
-  if (!pip) return;
-  const chosen = getSelectedVisible(); if (!chosen) return;
-  if (!canEditSelected()) return toast('You cannot edit this sheet');
-  const level = pip.dataset.level; const index = Number(pip.dataset.index || 0); const c = chosen.char; const slots = JSON.parse(JSON.stringify(normalizeSlots(c.spellSlots))); if (!slots[level]) return;
-  const max = Number(slots[level].max || 0); let used = Number(slots[level].used || 0); used = index < used ? index : Math.min(max, index + 1); slots[level].used = used;
-  await update(selectedRawRef(), { spellSlots: slots, updatedAt: Date.now() });
-});
-</script>
+    function createIframes() {
+      frameShell.innerHTML = "";
+
+      tools.forEach(tool => {
+        const iframe = document.createElement("iframe");
+        iframe.className = "frame-panel" + (tool.id === activeToolId ? " active" : "");
+        iframe.src = tool.file;
+        iframe.title = tool.label;
+        iframe.dataset.toolId = tool.id;
+
+        iframe.addEventListener("load", () => {
+          if (tool.id === activeToolId) {
+            setStatus(`Loaded ${tool.file}`, "success");
+          }
+        });
+
+        iframeMap[tool.id] = iframe;
+        frameShell.appendChild(iframe);
+      });
+    }
+
+    function switchTab(toolId) {
+      activeToolId = toolId;
+
+      document.querySelectorAll(".tab-btn").forEach((btn, index) => {
+        const tool = tools[index];
+        btn.classList.toggle("active", tool.id === toolId);
+      });
+
+      document.querySelectorAll(".frame-panel").forEach(frame => {
+        frame.classList.toggle("active", frame.dataset.toolId === toolId);
+      });
+
+      const activeTool = getActiveTool();
+      currentToolLabel.textContent = activeTool.file;
+      setStatus(`Switched to ${activeTool.file}`, "info");
+    }
+
+    function refreshCurrentTab() {
+      const activeTool = getActiveTool();
+      const iframe = iframeMap[activeTool.id];
+
+      if (!iframe) {
+        setStatus("No active iframe found.", "error");
+        return;
+      }
+
+      const currentSrc = iframe.src;
+      iframe.src = currentSrc;
+      setStatus(`Refreshing ${activeTool.file}...`, "warn");
+    }
+
+    function refreshAllTabs() {
+      tools.forEach(tool => {
+        const iframe = iframeMap[tool.id];
+        if (iframe) {
+          const currentSrc = iframe.src;
+          iframe.src = currentSrc;
+        }
+      });
+
+      setStatus("Refreshing all tabs...", "warn");
+    }
+
+    function openCurrentInNewTab() {
+      const activeTool = getActiveTool();
+      window.open(activeTool.file, "_blank", "noopener,noreferrer");
+      setStatus(`Opened ${activeTool.file} in new tab.`, "info");
+    }
+
+    // -------------------------
+    // Wire up
+    // -------------------------
+    document.getElementById("refreshCurrentBtn").addEventListener("click", refreshCurrentTab);
+    document.getElementById("refreshAllBtn").addEventListener("click", refreshAllTabs);
+    document.getElementById("openCurrentBtn").addEventListener("click", openCurrentInNewTab);
+
+    createTabs();
+    createIframes();
+    currentToolLabel.textContent = getActiveTool().file;
+    setStatus(`Loaded ${getActiveTool().file}`, "success");
+  </script>
 </body>
 </html>

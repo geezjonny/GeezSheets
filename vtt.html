@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maps v3 - Zoom + Ruler + Calibrate</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg2: #111827;
+      --panel: rgba(17, 24, 39, 0.92);
+      --line: #374151;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --accent2: #2563eb;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --blue: #38bdf8;
+      --shadow: 0 10px 28px rgba(0,0,0,0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(37,99,235,0.12), transparent 35%),
+        radial-gradient(circle at top left, rgba(56,189,248,0.06), transparent 30%),
+        linear-gradient(180deg, #0b1020 0%, #111827 100%);
+      color: var(--text);
+      padding: 18px;
+    }
+
+    .app {
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 1.9rem;
+      letter-spacing: 0.2px;
+    }
+
+    .title-wrap p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .status {
+      min-width: 320px;
+      padding: 11px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      font-size: 0.95rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      backdrop-filter: blur(6px);
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+      color: #dbeafe;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 8px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button, input[type="file"], input {
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font: inherit;
+    }
+
+    button {
+      border: none;
+      padding: 11px 14px;
+      cursor: pointer;
+      font-weight: 800;
+      transition: 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .btn-primary {
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: #fff;
+    }
+
+    .btn-secondary:hover { background: #475569; }
+
+    .btn-danger {
+      background: linear-gradient(180deg, #b91c1c, #7f1d1d);
+      color: #fff;
+    }
+
+    .btn-heal {
+      background: linear-gradient(180deg, #22c55e, #15803d);
+      color: #fff;
+    }
+
+    .btn-active {
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18), 0 0 0 2px rgba(96,165,250,0.18);
+      filter: brightness(1.05);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr) 360px;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .token-list {
+      display: grid;
+      gap: 10px;
+      max-height: 75vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .token-row {
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(255,255,255,0.03);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .token-row:hover {
+      border-color: rgba(96,165,250,0.35);
+      background: rgba(96,165,250,0.05);
+    }
+
+    .token-row.selected {
+      border-color: rgba(96,165,250,0.6);
+      background: rgba(96,165,250,0.08);
+      box-shadow: inset 0 0 0 1px rgba(96,165,250,0.15);
+    }
+
+    .token-preview {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      color: #fff;
+      border: 2px solid rgba(255,255,255,0.16);
+      flex: 0 0 auto;
+    }
+
+    .token-meta { min-width: 0; }
+    .token-name { font-weight: 800; font-size: 0.95rem; }
+    .token-sub { font-size: 0.8rem; color: var(--muted); }
+
+    .map-wrap {
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: #0b1220;
+      padding: 8px;
+    }
+
+    canvas {
+      display: block;
+      background: #000;
+      border-radius: 12px;
+      cursor: grab;
+      width: 100%;
+      height: auto;
+      max-height: 78vh;
+      user-select: none;
+    }
+
+    .legend {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .muted { color: var(--muted); }
+    .empty { color: var(--muted); font-style: italic; }
+
+    .inspector-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .inspector-name {
+      font-size: 1.35rem;
+      font-weight: 900;
+      line-height: 1.1;
+      color: #dbeafe;
+    }
+
+    .inspector-sub {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .quick-box {
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .quick-label {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .quick-value {
+      font-size: 1.05rem;
+      font-weight: 900;
+      line-height: 1.3;
+    }
+
+    .hp-bar-wrap {
+      border-radius: 999px;
+      height: 12px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .hp-bar {
+      height: 100%;
+      width: 0%;
+      transition: width 0.15s ease;
+    }
+
+    .hp-controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .temp-row {
+      display: grid;
+      grid-template-columns: 1fr 120px;
+      gap: 8px;
+    }
+
+    input {
+      width: 100%;
+      background: #0f172a;
+      color: var(--text);
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(96,165,250,0.18);
+    }
+
+    .small-note {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .measure-box {
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .measure-box strong {
+      color: #dbeafe;
+    }
+
+    @media (max-width: 1350px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .quick-grid,
+      .hp-controls,
+      .temp-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="title-wrap">
+        <h1>Maps</h1>
+        <p>True pan + zoom + token inspector + grid calibration + ruler.</p>
+      </div>
+      <div class="status" id="statusBox">Ready.</div>
+    </div>
+
+    <div class="card">
+      <h2>Controls</h2>
+      <div class="toolbar">
+        <input id="mapFileInput" type="file" accept=".png,image/png,image/*" />
+        <button class="btn-primary" id="loadPcsBtn" type="button">Load PCs</button>
+        <button class="btn-secondary" id="zoomOutBtn" type="button">Zoom -</button>
+        <button class="btn-secondary" id="zoomInBtn" type="button">Zoom +</button>
+        <button class="btn-secondary" id="resetViewBtn" type="button">Reset View</button>
+        <button class="btn-secondary" id="calibrateBtn" type="button">Calibrate Grid</button>
+        <button class="btn-secondary" id="rulerBtn" type="button">Ruler</button>
+        <button class="btn-secondary" id="centerTokensBtn" type="button">Center Tokens</button>
+        <button class="btn-danger" id="resetPositionsBtn" type="button">Reset Saved Positions</button>
+      </div>
+      <div class="legend">
+        <strong>Modes:</strong> Normal = select token / drag selected token / drag empty space to pan. <br />
+        <strong>Calibrate:</strong> click-drag between grid intersections, then enter how many squares. <br />
+        <strong>Ruler:</strong> click-drag to measure. <br />
+        Saves map settings to <strong>/maps/default/settings</strong> and token positions to <strong>/maps/default/pc_positions/{pcId}</strong>.
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- LEFT -->
+      <div class="card">
+        <h2>PC Tokens</h2>
+        <div id="tokenList" class="token-list">
+          <div class="muted">Click <strong>Load PCs</strong> to fetch /characters/pcs</div>
+        </div>
+      </div>
+
+      <!-- CENTER -->
+      <div class="card">
+        <h2>Battle Map</h2>
+        <div class="map-wrap">
+          <canvas id="mapCanvas" width="1400" height="900"></canvas>
+        </div>
+        <div class="legend">
+          Mouse wheel = zoom. Drag empty map = pan. Drag selected token = move. <br />
+          HP ring: green = healthy, yellow = mid, red = low. Blue outer glow = Temp HP.
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div class="card">
+        <h2>Inspector</h2>
+        <div id="inspectorWrap" class="inspector-grid">
+          <div class="empty">Click a token to inspect it.</div>
+        </div>
+
+        <div style="height:14px;"></div>
+
+        <h2>Map Measurement</h2>
+        <div id="measureInfo" class="measure-box">
+          <div><strong>Pixels / Square:</strong> <span id="pixelsPerSquareOut">70.00</span></div>
+          <div><strong>Feet / Square:</strong> <span id="feetPerSquareOut">5</span></div>
+          <div><strong>Zoom:</strong> <span id="zoomOutText">1.00x</span></div>
+          <div id="measureReadout" class="small-note" style="margin-top:8px;">No active measurement.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+      authDomain: "sheets-e5838.firebaseapp.com",
+      databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
+      projectId: "sheets-e5838",
+      storageBucket: "sheets-e5838.firebasestorage.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const $ = (id) => document.getElementById(id);
+
+    const MAP_PATH = "maps/default";
+    const POSITIONS_PATH = `${MAP_PATH}/pc_positions`;
+    const SETTINGS_PATH = `${MAP_PATH}/settings`;
+
+    const canvas = $("mapCanvas");
+    const ctx = canvas.getContext("2d");
+
+    // Viewport canvas size (fixed display surface)
+    const VIEW_W = 1400;
+    const VIEW_H = 900;
+    canvas.width = VIEW_W;
+    canvas.height = VIEW_H;
+
+    // World / map
+    let mapImage = null;
+    let mapWorldWidth = VIEW_W;
+    let mapWorldHeight = VIEW_H;
+
+    // Grid calibration
+    let pixelsPerSquare = 70;
+    let feetPerSquare = 5;
+
+    // Camera
+    let cameraX = 0;
+    let cameraY = 0;
+    let zoom = 1;
+
+    // Data
+    let pcs = [];
+    let tokens = [];
+    let selectedTokenId = null;
+
+    // Modes
+    let mode = "normal"; // normal | calibrate | ruler
+
+    // Interaction state
+    let draggingTokenId = null;
+    let dragTokenOffsetWorldX = 0;
+    let dragTokenOffsetWorldY = 0;
+
+    let isPanning = false;
+    let panStartMouseX = 0;
+    let panStartMouseY = 0;
+    let panStartCameraX = 0;
+    let panStartCameraY = 0;
+
+    let isMeasuring = false;
+    let measureStartWorld = null;
+    let measureEndWorld = null;
+
+    let isCalibrating = false;
+    let calibrateStartWorld = null;
+    let calibrateEndWorld = null;
+
+    const tokenColors = [
+      "#ef4444", "#3b82f6", "#22c55e", "#a855f7",
+      "#f59e0b", "#06b6d4", "#ec4899", "#84cc16"
+    ];
+
+    function setStatus(message, type = "info") {
+      const box = $("statusBox");
+      box.textContent = message;
+
+      if (type === "success") {
+        box.style.borderColor = "#166534";
+        box.style.color = "#86efac";
+      } else if (type === "error") {
+        box.style.borderColor = "#7f1d1d";
+        box.style.color = "#fca5a5";
+      } else if (type === "warn") {
+        box.style.borderColor = "#92400e";
+        box.style.color = "#fcd34d";
+      } else {
+        box.style.borderColor = "#374151";
+        box.style.color = "#e5e7eb";
+      }
+    }
+
+    function safe(value, fallback = "") {
+      return value === undefined || value === null || value === "" ? fallback : value;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function fmt(n, decimals = 2) {
+      return Number(n || 0).toFixed(decimals);
+    }
+
+    function getInitials(name) {
+      const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+      if (!parts.length) return "?";
+      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+
+    function getCanvasMousePos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (evt.clientX - rect.left) * scaleX,
+        y: (evt.clientY - rect.top) * scaleY
+      };
+    }
+
+    function screenToWorld(screenX, screenY) {
+      return {
+        x: cameraX + (screenX / zoom),
+        y: cameraY + (screenY / zoom)
+      };
+    }
+
+    function worldToScreen(worldX, worldY) {
+      return {
+        x: (worldX - cameraX) * zoom,
+        y: (worldY - cameraY) * zoom
+      };
+    }
+
+    function clampCamera() {
+      const visibleWorldW = VIEW_W / zoom;
+      const visibleWorldH = VIEW_H / zoom;
+
+      const maxX = Math.max(0, mapWorldWidth - visibleWorldW);
+      const maxY = Math.max(0, mapWorldHeight - visibleWorldH);
+
+      cameraX = clamp(cameraX, 0, maxX);
+      cameraY = clamp(cameraY, 0, maxY);
+    }
+
+    function getPcById(id) {
+      return pcs.find(pc => pc.id === id) || null;
+    }
+
+    function getSelectedToken() {
+      return tokens.find(t => t.id === selectedTokenId) || null;
+    }
+
+    function getTokenAtScreen(screenX, screenY) {
+      for (let i = tokens.length - 1; i >= 0; i--) {
+        const t = tokens[i];
+        const screen = worldToScreen(t.worldX, t.worldY);
+        const dx = screenX - screen.x;
+        const dy = screenY - screen.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist <= t.radius * zoom) return t;
+      }
+      return null;
+    }
+
+    function getHpColor(token) {
+      const combat = token.pc?.combat || {};
+      const hpMax = Math.max(0, Number(combat.hp_max ?? 0));
+      const hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
+
+      if (hpMax <= 0) return "#94a3b8";
+
+      const pct = hpCurrent / hpMax;
+      if (pct >= 0.67) return "#22c55e";
+      if (pct >= 0.34) return "#f59e0b";
+      return "#ef4444";
+    }
+
+    function hasTempHp(token) {
+      return Math.max(0, Number(token.pc?.combat?.temp_hp ?? 0)) > 0;
+    }
+
+    function getSpellSlotsSummary(pc) {
+      const raw = String(pc?.spellcasting?.spell_slots || "").trim();
+      if (!raw) return "None";
+
+      const cleaned = raw
+        .replace(/\\n/g, " / ")
+        .replace(/\r\n/g, " / ")
+        .replace(/\n/g, " / ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+
+      return cleaned.length > 80 ? cleaned.slice(0, 80) + "…" : cleaned;
+    }
+
+    function distance(a, b) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function snapWorldToGridIntersection(worldPoint) {
+      return {
+        x: Math.round(worldPoint.x / pixelsPerSquare) * pixelsPerSquare,
+        y: Math.round(worldPoint.y / pixelsPerSquare) * pixelsPerSquare
+      };
+    }
+
+    function snapWorldToGridCenter(worldPoint) {
+      return {
+        x: Math.round((worldPoint.x - pixelsPerSquare / 2) / pixelsPerSquare) * pixelsPerSquare + pixelsPerSquare / 2,
+        y: Math.round((worldPoint.y - pixelsPerSquare / 2) / pixelsPerSquare) * pixelsPerSquare + pixelsPerSquare / 2
+      };
+    }
+
+    function tokenWorldToGrid(token) {
+      return {
+        gridX: Math.round((token.worldX - pixelsPerSquare / 2) / pixelsPerSquare),
+        gridY: Math.round((token.worldY - pixelsPerSquare / 2) / pixelsPerSquare)
+      };
+    }
+
+    function gridToTokenWorld(gridX, gridY) {
+      return {
+        x: gridX * pixelsPerSquare + pixelsPerSquare / 2,
+        y: gridY * pixelsPerSquare + pixelsPerSquare / 2
+      };
+    }
+
+    async function saveMapSettings() {
+      try {
+        await set(ref(db, SETTINGS_PATH), {
+          pixels_per_square: pixelsPerSquare,
+          feet_per_square: feetPerSquare,
+          updated_at_iso: new Date().toISOString()
+        });
+      } catch (err) {
+        console.error(err);
+        setStatus(`Map settings save failed: ${err.message}`, "error");
+      }
+    }
+
+    function saveTokenPosition(token) {
+      const g = tokenWorldToGrid(token);
+
+      token.gridX = g.gridX;
+      token.gridY = g.gridY;
+
+      return set(ref(db, `${POSITIONS_PATH}/${token.id}`), {
+        x: token.gridX,
+        y: token.gridY,
+        updated_at_iso: new Date().toISOString()
+      });
+    }
+
+    async function syncPcCombat(pcId, newCombat) {
+      const pc = getPcById(pcId);
+      if (!pc) {
+        setStatus("PC not found.", "error");
+        return;
+      }
+
+      try {
+        const updatedPc = {
+          ...pc,
+          combat: {
+            ...(pc.combat || {}),
+            ...newCombat
+          }
+        };
+
+        await set(ref(db, `characters/pcs/${pcId}`), updatedPc);
+
+        const pcIndex = pcs.findIndex(p => p.id === pcId);
+        if (pcIndex >= 0) pcs[pcIndex] = updatedPc;
+
+        const token = tokens.find(t => t.id === pcId);
+        if (token) token.pc = updatedPc;
+
+        renderTokenList();
+        renderInspector();
+        draw();
+        setStatus(`Updated ${updatedPc.name || pcId}.`, "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`Combat update failed: ${err.message}`, "error");
+      }
+    }
+
+    async function loadMapSettings() {
+      try {
+        const snap = await get(ref(db, SETTINGS_PATH));
+        if (!snap.exists()) {
+          updateMeasurePanel();
+          return;
+        }
+
+        const data = snap.val();
+        if (Number(data.pixels_per_square) > 0) {
+          pixelsPerSquare = Number(data.pixels_per_square);
+        }
+        if (Number(data.feet_per_square) > 0) {
+          feetPerSquare = Number(data.feet_per_square);
+        }
+
+        updateMeasurePanel();
+        setStatus("Loaded saved map settings.", "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`Map settings load failed: ${err.message}`, "error");
+      }
+    }
+
+    function loadMapFile(file) {
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          mapImage = img;
+          mapWorldWidth = img.width;
+          mapWorldHeight = img.height;
+
+          zoom = Math.min(VIEW_W / mapWorldWidth, VIEW_H / mapWorldHeight);
+          zoom = clamp(zoom, 0.2, 2.5);
+
+          cameraX = 0;
+          cameraY = 0;
+          clampCamera();
+
+          draw();
+          updateMeasurePanel();
+          setStatus(`Loaded map: ${file.name} (${img.width}x${img.height})`, "success");
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function renderTokenList() {
+      const list = $("tokenList");
+
+      if (!pcs.length) {
+        list.innerHTML = `<div class="muted">No PCs loaded.</div>`;
+        return;
+      }
+
+      list.innerHTML = "";
+
+      pcs.forEach((pc, index) => {
+        const row = document.createElement("div");
+        row.className = "token-row";
+        if (pc.id === selectedTokenId) row.classList.add("selected");
+
+        const tempHp = Math.max(0, Number(pc?.combat?.temp_hp ?? 0));
+        const hpMax = Math.max(0, Number(pc?.combat?.hp_max ?? 0));
+        const hpCurrent = Math.max(0, Number(pc?.combat?.hp_current ?? 0));
+        const hpColor = hpMax > 0
+          ? (hpCurrent / hpMax >= 0.67 ? "#22c55e" : hpCurrent / hpMax >= 0.34 ? "#f59e0b" : "#ef4444")
+          : "#94a3b8";
+
+        row.innerHTML = `
+          <div class="token-preview" style="background:${tokenColors[index % tokenColors.length]}; box-shadow: 0 0 0 3px ${hpColor}${tempHp > 0 ? ', 0 0 0 6px rgba(56,189,248,0.35)' : ''}">
+            ${getInitials(pc.name)}
+          </div>
+          <div class="token-meta">
+            <div class="token-name">${safe(pc.name, "Unnamed PC")}</div>
+            <div class="token-sub">Lvl ${safe(pc.level, 0)} ${safe(pc.class, "")} • HP ${hpCurrent}/${hpMax}</div>
+          </div>
+        `;
+
+        row.addEventListener("click", () => {
+          selectedTokenId = pc.id;
+          renderTokenList();
+          renderInspector();
+          draw();
+          setStatus(`Selected ${pc.name || pc.id}.`, "info");
+        });
+
+        list.appendChild(row);
+      });
+    }
+
+    function renderInspector() {
+      const wrap = $("inspectorWrap");
+      const token = getSelectedToken();
+
+      if (!token || !token.pc) {
+        wrap.innerHTML = `<div class="empty">Click a token to inspect it.</div>`;
+        return;
+      }
+
+      const pc = token.pc;
+      const combat = pc.combat || {};
+      const hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
+      const hpMax = Math.max(0, Number(combat.hp_max ?? 0));
+      const tempHp = Math.max(0, Number(combat.temp_hp ?? 0));
+      const hpPct = hpMax > 0 ? Math.round((hpCurrent / hpMax) * 100) : 0;
+      const hpColor = getHpColor(token);
+
+      wrap.innerHTML = `
+        <div>
+          <div class="inspector-name">${safe(pc.name, "Unnamed PC")}</div>
+          <div class="inspector-sub">Level ${safe(pc.level, 0)} ${safe(pc.species, "")} ${safe(pc.class, "Adventurer")}${pc.subclass ? ` (${pc.subclass})` : ""}</div>
+        </div>
+
+        <div class="quick-grid">
+          <div class="quick-box">
+            <div class="quick-label">HP</div>
+            <div class="quick-value">${hpCurrent} / ${hpMax}</div>
+          </div>
+          <div class="quick-box">
+            <div class="quick-label">Temp HP</div>
+            <div class="quick-value">${tempHp}</div>
+          </div>
+          <div class="quick-box">
+            <div class="quick-label">AC</div>
+            <div class="quick-value">${safe(combat.ac, 10)}</div>
+          </div>
+          <div class="quick-box">
+            <div class="quick-label">Speed</div>
+            <div class="quick-value">${safe(combat.speed, 30)}</div>
+          </div>
+          <div class="quick-box">
+            <div class="quick-label">Passive Perception</div>
+            <div class="quick-value">${safe(combat.passive_perception, 10)}</div>
+          </div>
+          <div class="quick-box">
+            <div class="quick-label">Spell Slots</div>
+            <div class="quick-value" style="font-size:0.9rem;">${getSpellSlotsSummary(pc)}</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="quick-label" style="margin-bottom:6px;">HP Status (${hpPct}%)</div>
+          <div class="hp-bar-wrap">
+            <div class="hp-bar" style="width:${hpPct}%; background:${hpColor};"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="quick-label" style="margin-bottom:8px;">HP Quick Controls</div>
+          <div class="hp-controls">
+            <button class="btn-danger" id="damage1Btn" type="button">-1</button>
+            <button class="btn-danger" id="damage5Btn" type="button">-5</button>
+            <button class="btn-heal" id="heal1Btn" type="button">+1</button>
+            <button class="btn-heal" id="heal5Btn" type="button">+5</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="quick-label" style="margin-bottom:8px;">Temp HP</div>
+          <div class="temp-row">
+            <input id="tempHpInput" type="number" min="0" value="${tempHp}" />
+            <button class="btn-secondary" id="setTempHpBtn" type="button">Set</button>
+          </div>
+        </div>
+
+        <div class="small-note">
+          Grid position: <strong>(${token.gridX}, ${token.gridY})</strong><br />
+          Mode: <strong>${mode}</strong>
+        </div>
+      `;
+
+      $("damage1Btn").addEventListener("click", () => applyDamageToSelected(1));
+      $("damage5Btn").addEventListener("click", () => applyDamageToSelected(5));
+      $("heal1Btn").addEventListener("click", () => applyHealToSelected(1));
+      $("heal5Btn").addEventListener("click", () => applyHealToSelected(5));
+      $("setTempHpBtn").addEventListener("click", () => {
+        const val = Number($("tempHpInput").value || 0);
+        setTempHpOnSelected(val);
+      });
+    }
+
+    function updateMeasurePanel(extraText = null) {
+      $("pixelsPerSquareOut").textContent = fmt(pixelsPerSquare, 2);
+      $("feetPerSquareOut").textContent = String(feetPerSquare);
+      $("zoomOutText").textContent = `${fmt(zoom, 2)}x`;
+
+      if (extraText !== null) {
+        $("measureReadout").textContent = extraText;
+      }
+    }
+
+    async function loadPcs() {
+      try {
+        setStatus("Loading PCs from /characters/pcs ...", "warn");
+
+        const pcsSnap = await get(ref(db, "characters/pcs"));
+        if (!pcsSnap.exists()) {
+          pcs = [];
+          tokens = [];
+          selectedTokenId = null;
+          renderTokenList();
+          renderInspector();
+          draw();
+          setStatus("No PCs found under /characters/pcs", "warn");
+          return;
+        }
+
+        const pcsData = pcsSnap.val();
+        pcs = Object.values(pcsData).sort((a, b) => {
+          const nameA = String(a.name || "").toLowerCase();
+          const nameB = String(b.name || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+
+        const posSnap = await get(ref(db, POSITIONS_PATH));
+        const positions = posSnap.exists() ? posSnap.val() : {};
+
+        tokens = pcs.map((pc, index) => {
+          const saved = positions[pc.id];
+          const fallbackGridX = 1 + (index % 6);
+          const fallbackGridY = 1 + Math.floor(index / 6);
+
+          const gridX = Number(safe(saved?.x, fallbackGridX));
+          const gridY = Number(safe(saved?.y, fallbackGridY));
+          const world = gridToTokenWorld(gridX, gridY);
+
+          return {
+            id: pc.id,
+            pc,
+            name: safe(pc.name, "Unnamed"),
+            initials: getInitials(pc.name),
+            color: tokenColors[index % tokenColors.length],
+            radius: Math.max(12, Math.floor(pixelsPerSquare * 0.34)),
+            gridX,
+            gridY,
+            worldX: world.x,
+            worldY: world.y
+          };
+        });
+
+        if (!selectedTokenId && tokens.length) {
+          selectedTokenId = tokens[0].id;
+        } else if (selectedTokenId && !tokens.some(t => t.id === selectedTokenId)) {
+          selectedTokenId = tokens[0]?.id || null;
+        }
+
+        renderTokenList();
+        renderInspector();
+        draw();
+        setStatus(`Loaded ${pcs.length} PC token(s).`, "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`Load failed: ${err.message}`, "error");
+      }
+    }
+
+    function refreshTokenSizesAndPositionsForCalibrationChange() {
+      tokens.forEach(t => {
+        t.radius = Math.max(12, Math.floor(pixelsPerSquare * 0.34));
+        const world = gridToTokenWorld(t.gridX, t.gridY);
+        t.worldX = world.x;
+        t.worldY = world.y;
+      });
+      renderInspector();
+      draw();
+    }
+
+    function centerTokens() {
+      if (!tokens.length) {
+        setStatus("No tokens loaded yet.", "warn");
+        return;
+      }
+
+      const usableCols = 8;
+
+      tokens.forEach((t, index) => {
+        const gx = 1 + (index % usableCols);
+        const gy = 1 + Math.floor(index / usableCols);
+
+        t.gridX = gx;
+        t.gridY = gy;
+
+        const world = gridToTokenWorld(gx, gy);
+        t.worldX = world.x;
+        t.worldY = world.y;
+      });
+
+      draw();
+      renderInspector();
+      setStatus("Centered tokens locally. Drag selected token to save a position.", "info");
+    }
+
+    async function resetSavedPositions() {
+      try {
+        await remove(ref(db, POSITIONS_PATH));
+        setStatus("Cleared saved token positions. Reloading defaults...", "warn");
+        await loadPcs();
+      } catch (err) {
+        console.error(err);
+        setStatus(`Reset failed: ${err.message}`, "error");
+      }
+    }
+
+    async function applyDamageToSelected(amount) {
+      const token = getSelectedToken();
+      if (!token || !token.pc) {
+        setStatus("Select a token first.", "error");
+        return;
+      }
+
+      const combat = token.pc.combat || {};
+      let tempHp = Math.max(0, Number(combat.temp_hp ?? 0));
+      let hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
+
+      let remaining = Math.max(0, Number(amount) || 0);
+      if (remaining <= 0) return;
+
+      if (tempHp > 0) {
+        const absorbed = Math.min(tempHp, remaining);
+        tempHp -= absorbed;
+        remaining -= absorbed;
+      }
+
+      if (remaining > 0) {
+        hpCurrent = Math.max(0, hpCurrent - remaining);
+      }
+
+      await syncPcCombat(token.id, {
+        temp_hp: tempHp,
+        hp_current: hpCurrent
+      });
+    }
+
+    async function applyHealToSelected(amount) {
+      const token = getSelectedToken();
+      if (!token || !token.pc) {
+        setStatus("Select a token first.", "error");
+        return;
+      }
+
+      const combat = token.pc.combat || {};
+      const hpMax = Math.max(0, Number(combat.hp_max ?? 0));
+      let hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
+
+      const amt = Math.max(0, Number(amount) || 0);
+      if (amt <= 0) return;
+
+      hpCurrent = Math.min(hpMax, hpCurrent + amt);
+
+      await syncPcCombat(token.id, {
+        hp_current: hpCurrent
+      });
+    }
+
+    async function setTempHpOnSelected(amount) {
+      const token = getSelectedToken();
+      if (!token || !token.pc) {
+        setStatus("Select a token first.", "error");
+        return;
+      }
+
+      const amt = Math.max(0, Number(amount) || 0);
+
+      await syncPcCombat(token.id, {
+        temp_hp: amt
+      });
+    }
+
+    function setMode(newMode) {
+      mode = newMode;
+
+      isPanning = false;
+      draggingTokenId = null;
+      isMeasuring = false;
+      isCalibrating = false;
+      measureStartWorld = null;
+      measureEndWorld = null;
+      calibrateStartWorld = null;
+      calibrateEndWorld = null;
+
+      $("calibrateBtn").classList.toggle("btn-active", mode === "calibrate");
+      $("rulerBtn").classList.toggle("btn-active", mode === "ruler");
+
+      renderInspector();
+      draw();
+
+      if (mode === "normal") {
+        setStatus("Normal mode.", "info");
+        updateMeasurePanel("No active measurement.");
+      } else if (mode === "calibrate") {
+        setStatus("Calibrate mode: drag between grid intersections.", "warn");
+        updateMeasurePanel("Calibrate mode active. Drag a known grid distance.");
+      } else if (mode === "ruler") {
+        setStatus("Ruler mode: drag to measure.", "warn");
+        updateMeasurePanel("Ruler mode active. Drag to measure distance.");
+      }
+    }
+
+    function zoomAtScreenPoint(factor, screenX, screenY) {
+      const before = screenToWorld(screenX, screenY);
+
+      zoom = clamp(zoom * factor, 0.2, 4);
+
+      const afterVisibleWorldX = screenX / zoom;
+      const afterVisibleWorldY = screenY / zoom;
+
+      cameraX = before.x - afterVisibleWorldX;
+      cameraY = before.y - afterVisibleWorldY;
+
+      clampCamera();
+      draw();
+      updateMeasurePanel(mode === "ruler" && isMeasuring && measureStartWorld && measureEndWorld ? $("measureReadout").textContent : null);
+    }
+
+    function drawGrid() {
+      ctx.save();
+
+      const startGridX = Math.floor(cameraX / pixelsPerSquare) - 1;
+      const endGridX = Math.ceil((cameraX + VIEW_W / zoom) / pixelsPerSquare) + 1;
+      const startGridY = Math.floor(cameraY / pixelsPerSquare) - 1;
+      const endGridY = Math.ceil((cameraY + VIEW_H / zoom) / pixelsPerSquare) + 1;
+
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+
+      for (let gx = startGridX; gx <= endGridX; gx++) {
+        const wx = gx * pixelsPerSquare;
+        const sx = (wx - cameraX) * zoom;
+        ctx.beginPath();
+        ctx.moveTo(sx, 0);
+        ctx.lineTo(sx, VIEW_H);
+        ctx.stroke();
+      }
+
+      for (let gy = startGridY; gy <= endGridY; gy++) {
+        const wy = gy * pixelsPerSquare;
+        const sy = (wy - cameraY) * zoom;
+        ctx.beginPath();
+        ctx.moveTo(0, sy);
+        ctx.lineTo(VIEW_W, sy);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawMap() {
+      if (mapImage) {
+        const sx = -cameraX * zoom;
+        const sy = -cameraY * zoom;
+        const sw = mapWorldWidth * zoom;
+        const sh = mapWorldHeight * zoom;
+        ctx.drawImage(mapImage, sx, sy, sw, sh);
+      } else {
+        ctx.fillStyle = "#111827";
+        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+        ctx.fillStyle = "#9ca3af";
+        ctx.font = "20px Arial";
+        ctx.fillText("Load a PNG map to begin", 24, 40);
+      }
+    }
+
+    function drawTokens() {
+      tokens.forEach((t) => {
+        const screen = worldToScreen(t.worldX, t.worldY);
+        const r = t.radius * zoom;
+
+        // skip if far offscreen
+        if (screen.x < -100 || screen.x > VIEW_W + 100 || screen.y < -100 || screen.y > VIEW_H + 100) return;
+
+        if (hasTempHp(t)) {
+          ctx.beginPath();
+          ctx.arc(screen.x, screen.y, r + Math.max(4, 7 * zoom), 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(56,189,248,0.65)";
+          ctx.lineWidth = Math.max(2, 4 * zoom);
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.arc(screen.x, screen.y, r + Math.max(2, 3 * zoom), 0, Math.PI * 2);
+        ctx.strokeStyle = getHpColor(t);
+        ctx.lineWidth = Math.max(3, 5 * zoom);
+        ctx.stroke();
+
+        if (t.id === selectedTokenId) {
+          ctx.beginPath();
+          ctx.arc(screen.x, screen.y, r + Math.max(8, 11 * zoom), 0, Math.PI * 2);
+          ctx.strokeStyle = "rgba(96,165,250,0.95)";
+          ctx.lineWidth = Math.max(2, 3 * zoom);
+          ctx.stroke();
+        }
+
+        ctx.beginPath();
+        ctx.arc(screen.x + 3 * zoom, screen.y + 4 * zoom, r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(screen.x, screen.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = t.color;
+        ctx.fill();
+
+        ctx.lineWidth = Math.max(2, 2 * zoom);
+        ctx.strokeStyle = "rgba(255,255,255,0.25)";
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `bold ${Math.max(10, 18 * zoom)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(t.initials, screen.x, screen.y);
+
+        ctx.font = `${Math.max(9, 12 * zoom)}px Arial`;
+        ctx.textBaseline = "alphabetic";
+
+        const label = t.name.length > 11 ? t.name.slice(0, 11) + "…" : t.name;
+        const labelW = Math.max(60, 8 * label.length * zoom);
+        const labelH = Math.max(16, 18 * zoom);
+
+        ctx.fillStyle = "rgba(0,0,0,0.75)";
+        ctx.fillRect(screen.x - labelW / 2, screen.y + r + 6 * zoom, labelW, labelH);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(label, screen.x, screen.y + r + 6 * zoom + labelH - 4 * zoom);
+      });
+    }
+
+    function drawMeasureOverlay() {
+      if (mode === "ruler" && (isMeasuring || (measureStartWorld && measureEndWorld))) {
+        const a = measureStartWorld;
+        const b = measureEndWorld;
+        if (!a || !b) return;
+
+        const sa = worldToScreen(a.x, a.y);
+        const sb = worldToScreen(b.x, b.y);
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(56,189,248,0.95)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([10, 6]);
+        ctx.beginPath();
+        ctx.moveTo(sa.x, sa.y);
+        ctx.lineTo(sb.x, sb.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = "rgba(56,189,248,0.95)";
+        ctx.beginPath();
+        ctx.arc(sa.x, sa.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(sb.x, sb.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (mode === "calibrate" && (isCalibrating || (calibrateStartWorld && calibrateEndWorld))) {
+        const a = calibrateStartWorld;
+        const b = calibrateEndWorld;
+        if (!a || !b) return;
+
+        const sa = worldToScreen(a.x, a.y);
+        const sb = worldToScreen(b.x, b.y);
+
+        ctx.save();
+        ctx.strokeStyle = "rgba(245,158,11,0.95)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 6]);
+        ctx.beginPath();
+        ctx.moveTo(sa.x, sa.y);
+        ctx.lineTo(sb.x, sb.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = "rgba(245,158,11,0.95)";
+        ctx.beginPath();
+        ctx.arc(sa.x, sa.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(sb.x, sb.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, VIEW_W, VIEW_H);
+      drawMap();
+      drawGrid();
+      drawTokens();
+      drawMeasureOverlay();
+    }
+
+    // -------------------------
+    // Mouse interactions
+    // -------------------------
+    canvas.addEventListener("mousedown", (evt) => {
+      const mouse = getCanvasMousePos(evt);
+      const world = screenToWorld(mouse.x, mouse.y);
+
+      if (mode === "calibrate") {
+        isCalibrating = true;
+        calibrateStartWorld = snapWorldToGridIntersection(world);
+        calibrateEndWorld = calibrateStartWorld;
+        draw();
+        return;
+      }
+
+      if (mode === "ruler") {
+        isMeasuring = true;
+        measureStartWorld = world;
+        measureEndWorld = world;
+        draw();
+        return;
+      }
+
+      const token = getTokenAtScreen(mouse.x, mouse.y);
+
+      if (token) {
+        selectedTokenId = token.id;
+        renderTokenList();
+        renderInspector();
+
+        draggingTokenId = token.id;
+        dragTokenOffsetWorldX = world.x - token.worldX;
+        dragTokenOffsetWorldY = world.y - token.worldY;
+
+        canvas.style.cursor = "grabbing";
+
+        const idx = tokens.findIndex(t => t.id === token.id);
+        if (idx >= 0) {
+          const [picked] = tokens.splice(idx, 1);
+          tokens.push(picked);
+        }
+
+        draw();
+        return;
+      }
+
+      isPanning = true;
+      panStartMouseX = mouse.x;
+      panStartMouseY = mouse.y;
+      panStartCameraX = cameraX;
+      panStartCameraY = cameraY;
+      canvas.style.cursor = "grabbing";
+    });
+
+    canvas.addEventListener("mousemove", (evt) => {
+      const mouse = getCanvasMousePos(evt);
+      const world = screenToWorld(mouse.x, mouse.y);
+
+      if (mode === "calibrate" && isCalibrating) {
+        calibrateEndWorld = snapWorldToGridIntersection(world);
+
+        const px = distance(calibrateStartWorld, calibrateEndWorld);
+        updateMeasurePanel(`Calibrating: ${fmt(px, 1)} px selected. Release to set squares.`);
+        draw();
+        return;
+      }
+
+      if (mode === "ruler" && isMeasuring) {
+        measureEndWorld = world;
+
+        const px = distance(measureStartWorld, measureEndWorld);
+        const squares = pixelsPerSquare > 0 ? px / pixelsPerSquare : 0;
+        const feet = squares * feetPerSquare;
+
+        updateMeasurePanel(`Ruler: ${fmt(px, 1)} px • ${fmt(squares, 2)} squares • ${fmt(feet, 1)} ft`);
+        draw();
+        return;
+      }
+
+      if (draggingTokenId) {
+        const token = tokens.find(t => t.id === draggingTokenId);
+        if (!token) return;
+
+        token.worldX = world.x - dragTokenOffsetWorldX;
+        token.worldY = world.y - dragTokenOffsetWorldY;
+
+        draw();
+        return;
+      }
+
+      if (isPanning) {
+        const dx = (mouse.x - panStartMouseX) / zoom;
+        const dy = (mouse.y - panStartMouseY) / zoom;
+
+        cameraX = panStartCameraX - dx;
+        cameraY = panStartCameraY - dy;
+        clampCamera();
+
+        draw();
+        return;
+      }
+
+      const hovered = getTokenAtScreen(mouse.x, mouse.y);
+      canvas.style.cursor = hovered ? "pointer" : "grab";
+    });
+
+    async function finishInteraction() {
+      if (mode === "calibrate" && isCalibrating) {
+        isCalibrating = false;
+
+        if (calibrateStartWorld && calibrateEndWorld) {
+          const px = distance(calibrateStartWorld, calibrateEndWorld);
+
+          if (px < 5) {
+            setStatus("Calibration too short. Try dragging farther.", "warn");
+            updateMeasurePanel("Calibration cancelled: too short.");
+            calibrateStartWorld = null;
+            calibrateEndWorld = null;
+            draw();
+            return;
+          }
+
+          const squaresInput = prompt("How many squares did you measure?", "1");
+          if (squaresInput === null) {
+            setStatus("Calibration cancelled.", "warn");
+            updateMeasurePanel("Calibration cancelled.");
+            calibrateStartWorld = null;
+            calibrateEndWorld = null;
+            draw();
+            return;
+          }
+
+          const squares = Math.max(0.01, Number(squaresInput) || 0);
+          if (squares <= 0) {
+            setStatus("Invalid square count.", "error");
+            updateMeasurePanel("Calibration failed: invalid square count.");
+            calibrateStartWorld = null;
+            calibrateEndWorld = null;
+            draw();
+            return;
+          }
+
+          const feetInput = prompt("Feet per square? (default 5)", String(feetPerSquare));
+          if (feetInput !== null) {
+            const f = Math.max(1, Number(feetInput) || feetPerSquare);
+            feetPerSquare = f;
+          }
+
+          pixelsPerSquare = px / squares;
+
+          await saveMapSettings();
+          refreshTokenSizesAndPositionsForCalibrationChange();
+
+          updateMeasurePanel(`Calibrated: ${fmt(pixelsPerSquare, 2)} px/square • ${feetPerSquare} ft/square`);
+          setStatus(`Grid calibrated: ${fmt(pixelsPerSquare, 2)} px/square`, "success");
+        }
+
+        calibrateStartWorld = null;
+        calibrateEndWorld = null;
+        draw();
+        return;
+      }
+
+      if (mode === "ruler" && isMeasuring) {
+        isMeasuring = false;
+
+        if (measureStartWorld && measureEndWorld) {
+          const px = distance(measureStartWorld, measureEndWorld);
+          const squares = pixelsPerSquare > 0 ? px / pixelsPerSquare : 0;
+          const feet = squares * feetPerSquare;
+
+          updateMeasurePanel(`Measured: ${fmt(px, 1)} px • ${fmt(squares, 2)} squares • ${fmt(feet, 1)} ft`);
+          setStatus(`Measured ${fmt(feet, 1)} ft`, "success");
+        }
+
+        draw();
+        return;
+      }
+
+      if (draggingTokenId) {
+        const token = tokens.find(t => t.id === draggingTokenId);
+
+        if (token) {
+          const snapped = snapWorldToGridCenter({ x: token.worldX, y: token.worldY });
+          token.worldX = clamp(snapped.x, pixelsPerSquare / 2, Math.max(pixelsPerSquare / 2, mapWorldWidth - pixelsPerSquare / 2));
+          token.worldY = clamp(snapped.y, pixelsPerSquare / 2, Math.max(pixelsPerSquare / 2, mapWorldHeight - pixelsPerSquare / 2));
+
+          const g = tokenWorldToGrid(token);
+          token.gridX = g.gridX;
+          token.gridY = g.gridY;
+
+          draw();
+          renderInspector();
+
+          try {
+            await saveTokenPosition(token);
+            setStatus(`Saved ${token.name} at grid (${token.gridX}, ${token.gridY})`, "success");
+          } catch (err) {
+            console.error(err);
+            setStatus(`Position save failed: ${err.message}`, "error");
+          }
+        }
+
+        draggingTokenId = null;
+      }
+
+      if (isPanning) {
+        isPanning = false;
+        setStatus("Panned map view.", "info");
+      }
+
+      canvas.style.cursor = "grab";
+    }
+
+    canvas.addEventListener("mouseup", finishInteraction);
+    canvas.addEventListener("mouseleave", finishInteraction);
+
+    canvas.addEventListener("wheel", (evt) => {
+      evt.preventDefault();
+
+      const mouse = getCanvasMousePos(evt);
+      const factor = evt.deltaY < 0 ? 1.1 : 1 / 1.1;
+
+      zoomAtScreenPoint(factor, mouse.x, mouse.y);
+      setStatus(`Zoom: ${fmt(zoom, 2)}x`, "info");
+    }, { passive: false });
+
+    // -------------------------
+    // Buttons
+    // -------------------------
+    $("mapFileInput").addEventListener("change", (evt) => {
+      const file = evt.target.files?.[0];
+      if (file) loadMapFile(file);
+    });
+
+    $("loadPcsBtn").addEventListener("click", loadPcs);
+
+    $("zoomInBtn").addEventListener("click", () => {
+      zoomAtScreenPoint(1.15, VIEW_W / 2, VIEW_H / 2);
+      setStatus(`Zoom: ${fmt(zoom, 2)}x`, "info");
+    });
+
+    $("zoomOutBtn").addEventListener("click", () => {
+      zoomAtScreenPoint(1 / 1.15, VIEW_W / 2, VIEW_H / 2);
+      setStatus(`Zoom: ${fmt(zoom, 2)}x`, "info");
+    });
+
+    $("resetViewBtn").addEventListener("click", () => {
+      if (mapImage) {
+        zoom = Math.min(VIEW_W / mapWorldWidth, VIEW_H / mapWorldHeight);
+        zoom = clamp(zoom, 0.2, 2.5);
+      } else {
+        zoom = 1;
+      }
+      cameraX = 0;
+      cameraY = 0;
+      clampCamera();
+      draw();
+      updateMeasurePanel("View reset.");
+      setStatus("View reset.", "success");
+    });
+
+    $("calibrateBtn").addEventListener("click", () => {
+      setMode(mode === "calibrate" ? "normal" : "calibrate");
+    });
+
+    $("rulerBtn").addEventListener("click", () => {
+      setMode(mode === "ruler" ? "normal" : "ruler");
+    });
+
+    $("centerTokensBtn").addEventListener("click", centerTokens);
+    $("resetPositionsBtn").addEventListener("click", resetSavedPositions);
+
+    // -------------------------
+    // Init
+    // -------------------------
+    async function init() {
+      draw();
+      renderInspector();
+      updateMeasurePanel("No active measurement.");
+      setStatus("Ready. Load a map, then load PCs.", "info");
+      await loadMapSettings();
+    }
+
+    init();
+  </script>
+</body>
+</html>

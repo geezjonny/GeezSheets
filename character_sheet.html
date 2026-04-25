@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Character Sheet Viewer v3 Clean</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg2: #111827;
+      --panel: rgba(17, 24, 39, 0.92);
+      --panel-soft: rgba(255,255,255,0.03);
+      --line: #334155;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #60a5fa;
+      --accent2: #2563eb;
+      --green: #22c55e;
+      --green2: #15803d;
+      --red: #ef4444;
+      --purple: #a78bfa;
+      --input: #0f172a;
+      --shadow: 0 12px 40px rgba(0,0,0,0.35);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(37,99,235,0.12), transparent 35%),
+        radial-gradient(circle at top left, rgba(167,139,250,0.08), transparent 30%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    .app {
+      max-width: 1500px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: 2rem;
+      letter-spacing: 0.3px;
+    }
+
+    .hero p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .status {
+      min-width: 280px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      font-size: 0.95rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+      backdrop-filter: blur(6px);
+    }
+
+    .card h2 {
+      margin: 0 0 14px;
+      font-size: 1.1rem;
+      color: #dbeafe;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 10px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 160px 160px;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    select, input, textarea, button {
+      font: inherit;
+    }
+
+    select, input, textarea {
+      width: 100%;
+      background: var(--input);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    select:focus, input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(96,165,250,0.18);
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .btn-danger {
+      background: linear-gradient(180deg, #dc2626, #991b1b);
+      color: white;
+    }
+
+    .btn-heal {
+      background: linear-gradient(180deg, #22c55e, #15803d);
+      color: white;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .top-banner {
+      display: grid;
+      grid-template-columns: 1.35fr 0.65fr;
+      gap: 18px;
+      align-items: stretch;
+      margin-bottom: 18px;
+    }
+
+    .identity-panel {
+      padding: 20px;
+      border-radius: 22px;
+      background:
+        linear-gradient(180deg, rgba(30,41,59,0.85), rgba(15,23,42,0.9));
+      border: 1px solid rgba(96,165,250,0.22);
+      box-shadow: var(--shadow);
+    }
+
+    .identity-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .name {
+      font-size: 2rem;
+      font-weight: 900;
+      line-height: 1.1;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 800;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #dbeafe;
+    }
+
+    .identity-sub {
+      color: var(--muted);
+      font-size: 1rem;
+      margin-bottom: 14px;
+    }
+
+    .tag-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.06);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #d1fae5;
+    }
+
+    .quick-facts {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .fact {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .fact .k {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .fact .v {
+      font-size: 1.4rem;
+      font-weight: 900;
+    }
+
+    .hero-card {
+      border-radius: 22px;
+      padding: 20px;
+      border: 1px solid rgba(34,197,94,0.18);
+      background:
+        linear-gradient(180deg, rgba(20,83,45,0.14), rgba(17,24,39,0.88));
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .hero-card .big {
+      font-size: 2.1rem;
+      font-weight: 900;
+      color: #bbf7d0;
+    }
+
+    .hero-card .small {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .resource-row {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .resource {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .resource .label {
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .resource .value {
+      font-size: 1.2rem;
+      font-weight: 900;
+    }
+
+    .hp-quick-controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .temp-row {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .abilities {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+    }
+
+    .ability {
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 18px;
+      padding: 14px;
+      text-align: center;
+    }
+
+    .ability .abbr {
+      font-size: 0.8rem;
+      font-weight: 900;
+      color: #bfdbfe;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .ability .score {
+      font-size: 1.8rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .ability .mod {
+      margin-top: 8px;
+      font-size: 1rem;
+      font-weight: 800;
+      color: #c7d2fe;
+    }
+
+    .section-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .list-card {
+      background: var(--panel-soft);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .list-card h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      color: #e0e7ff;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mini-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .mini-row .left {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .mini-row .right {
+      font-weight: 800;
+    }
+
+    .attack-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .attack-card {
+      border-radius: 18px;
+      padding: 16px;
+      background:
+        linear-gradient(180deg, rgba(37,99,235,0.08), rgba(17,24,39,0.9));
+      border: 1px solid rgba(96,165,250,0.18);
+    }
+
+    .attack-title {
+      font-size: 1.05rem;
+      font-weight: 900;
+      color: #dbeafe;
+      margin-bottom: 10px;
+    }
+
+    .attack-helper {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .attack-pill {
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-weight: 800;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .attack-hit {
+      color: #bfdbfe;
+    }
+
+    .attack-dmg {
+      color: #bbf7d0;
+    }
+
+    .attack-raw {
+      color: var(--muted);
+      font-size: 0.88rem;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+
+    .text-block {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 14px;
+      white-space: pre-wrap;
+      line-height: 1.5;
+      color: #e2e8f0;
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .feature-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 14px;
+      padding: 12px 14px;
+      line-height: 1.55;
+      color: #e2e8f0;
+    }
+
+    .feature-title {
+      font-weight: 900;
+      color: #dbeafe;
+      margin-bottom: 4px;
+    }
+
+    .feature-desc {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* Abilities & Resources */
+    .ability-resource-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+
+    .resource-card-ability {
+      border-radius: 18px;
+      padding: 16px;
+      background:
+        linear-gradient(180deg, rgba(167,139,250,0.08), rgba(17,24,39,0.9));
+      border: 1px solid rgba(167,139,250,0.18);
+      display: grid;
+      gap: 12px;
+    }
+
+    .resource-ability-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .resource-ability-name {
+      font-size: 1rem;
+      font-weight: 900;
+      color: #ede9fe;
+    }
+
+    .resource-ability-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .resource-ability-count {
+      font-size: 1.5rem;
+      font-weight: 900;
+      color: #ddd6fe;
+    }
+
+    .resource-ability-controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .resource-rest-toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .maneuver-box {
+      margin-top: 10px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: grid;
+      gap: 8px;
+    }
+
+    .maneuver-title {
+      font-size: 0.9rem;
+      font-weight: 800;
+      color: #c4b5fd;
+    }
+
+    .maneuver-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .maneuver-btn {
+      background: rgba(255,255,255,0.05);
+      color: #e9d5ff;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-weight: 800;
+    }
+
+    .maneuver-btn:hover {
+      background: rgba(255,255,255,0.09);
+    }
+
+    .footer-note {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    @media (max-width: 1200px) {
+      .sheet-grid,
+      .top-banner,
+      .section-grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .abilities {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 1000px) {
+      .ability-resource-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .abilities {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .quick-facts {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .controls-grid,
+      .hp-quick-controls,
+      .temp-row,
+      .resource-ability-controls,
+      .maneuver-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .name {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="hero">
+      <div>
+        <h1>Character Sheet</h1>
+        <p>Player-friendly 2024 5e / 5.5e view from Firebase RTDB.</p>
+      </div>
+      <div class="status" id="statusBox">Ready. Refresh list, then load a PC.</div>
+    </div>
+
+    <div class="card">
+      <h2>Load Character</h2>
+      <div class="controls-grid">
+        <div class="field">
+          <label for="characterSelect">Saved PC</label>
+          <select id="characterSelect">
+            <option value="">-- Click Refresh List --</option>
+          </select>
+        </div>
+        <button class="btn-secondary" id="refreshBtn" type="button">Refresh List</button>
+        <button class="btn-primary" id="loadBtn" type="button">Load Character</button>
+      </div>
+    </div>
+
+    <div id="sheetWrap" class="hidden">
+      <div class="top-banner">
+        <div class="identity-panel">
+          <div class="identity-top">
+            <div class="name" id="sheetName">—</div>
+            <div class="pill" id="sheetTypePill">PC</div>
+          </div>
+
+          <div class="identity-sub" id="sheetIdentityLine">Level 1 Adventurer</div>
+
+          <div class="tag-wrap" id="identityTags"></div>
+
+          <div class="quick-facts">
+            <div class="fact">
+              <div class="k">AC</div>
+              <div class="v" id="factAC">10</div>
+            </div>
+            <div class="fact">
+              <div class="k">Initiative</div>
+              <div class="v" id="factInit">+0</div>
+            </div>
+            <div class="fact">
+              <div class="k">Speed</div>
+              <div class="v" id="factSpeed">30</div>
+            </div>
+            <div class="fact">
+              <div class="k">Passive Perception</div>
+              <div class="v" id="factPP">10</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-card">
+          <div>
+            <div class="small">Current HP</div>
+            <div class="big" id="heroHP">0 / 0</div>
+          </div>
+
+          <div class="resource-row">
+            <div class="resource">
+              <div class="label">Temp HP</div>
+              <div class="value" id="heroTempHP">0</div>
+            </div>
+            <div class="resource">
+              <div class="label">Proficiency</div>
+              <div class="value" id="heroPB">+2</div>
+            </div>
+            <div class="resource">
+              <div class="label">Spell Save DC</div>
+              <div class="value" id="heroSpellDC">—</div>
+            </div>
+            <div class="resource">
+              <div class="label">Spell Attack</div>
+              <div class="value" id="heroSpellAtk">—</div>
+            </div>
+          </div>
+
+          <div class="resource">
+            <div class="label">Conditions / Inspiration</div>
+            <div class="value" id="heroConditions" style="font-size:1rem;">None</div>
+          </div>
+
+          <div class="resource">
+            <div class="label">HP Quick Controls</div>
+            <div class="hp-quick-controls">
+              <button class="btn-danger" id="damage1Btn" type="button">-1</button>
+              <button class="btn-danger" id="damage5Btn" type="button">-5</button>
+              <button class="btn-heal" id="heal1Btn" type="button">+1</button>
+              <button class="btn-heal" id="heal5Btn" type="button">+5</button>
+            </div>
+
+            <div class="temp-row">
+              <input id="tempHpInput" type="number" min="0" value="0" placeholder="Temp HP" />
+              <button class="btn-secondary" id="setTempHpBtn" type="button">Set Temp HP</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Ability Scores</h2>
+        <div class="abilities">
+          <div class="ability"><div class="abbr">STR</div><div class="score" id="strScoreOut">10</div><div class="mod" id="strModOut">+0</div></div>
+          <div class="ability"><div class="abbr">DEX</div><div class="score" id="dexScoreOut">10</div><div class="mod" id="dexModOut">+0</div></div>
+          <div class="ability"><div class="abbr">CON</div><div class="score" id="conScoreOut">10</div><div class="mod" id="conModOut">+0</div></div>
+          <div class="ability"><div class="abbr">INT</div><div class="score" id="intScoreOut">10</div><div class="mod" id="intModOut">+0</div></div>
+          <div class="ability"><div class="abbr">WIS</div><div class="score" id="wisScoreOut">10</div><div class="mod" id="wisModOut">+0</div></div>
+          <div class="ability"><div class="abbr">CHA</div><div class="score" id="chaScoreOut">10</div><div class="mod" id="chaModOut">+0</div></div>
+        </div>
+      </div>
+
+      <div class="sheet-grid">
+        <div class="stack">
+          <div class="card">
+            <h2>Attacks & What To Roll</h2>
+            <div id="attacksWrap" class="attack-list"></div>
+          </div>
+
+          <div class="card">
+            <h2>Abilities & Resources</h2>
+
+            <div class="resource-rest-toolbar">
+              <button class="btn-secondary" id="shortRestBtn" type="button">Short Rest Reset</button>
+              <button class="btn-secondary" id="longRestBtn" type="button">Long Rest Reset</button>
+            </div>
+
+            <div id="abilitiesResourcesWrap" class="ability-resource-grid"></div>
+          </div>
+
+          <div class="card">
+            <h2>Features & Traits</h2>
+            <div id="featuresOut" class="feature-list"></div>
+          </div>
+
+          <div class="card">
+            <h2>Spellcasting</h2>
+            <div class="section-grid-2">
+              <div class="list-card">
+                <h3>Quick Spell Info</h3>
+                <div class="mini-list" id="spellQuickList"></div>
+              </div>
+              <div class="list-card">
+                <h3>Spell Slots</h3>
+                <div id="spellSlotsOut" class="text-block empty">No spell slots entered.</div>
+              </div>
+            </div>
+            <div style="height:14px;"></div>
+            <div class="list-card">
+              <h3>Spells / Prepared / Notes</h3>
+              <div id="spellsNotesOut" class="text-block empty">No spell notes entered.</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h2>Equipment</h2>
+            <div id="equipmentOut" class="text-block empty">No equipment entered.</div>
+          </div>
+
+          <div class="card">
+            <h2>Proficiencies & Languages</h2>
+            <div id="profsOut" class="text-block empty">No proficiencies entered.</div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card">
+            <h2>Saving Throws</h2>
+            <div class="mini-list" id="savesList"></div>
+          </div>
+
+          <div class="card">
+            <h2>Skills</h2>
+            <div class="mini-list" id="skillsList"></div>
+          </div>
+
+          <div class="card">
+            <h2>Backstory / Personality</h2>
+            <div id="backstoryOut" class="text-block empty">No backstory entered.</div>
+          </div>
+
+          <div class="card">
+            <h2>Appearance</h2>
+            <div id="appearanceOut" class="text-block empty">No appearance entered.</div>
+          </div>
+
+          <div class="card">
+            <h2>Extra Notes</h2>
+            <div id="notesOut" class="text-block empty">No notes entered.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      Reads from <strong>/characters/pcs</strong> in Firebase Realtime Database.
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+      authDomain: "sheets-e5838.firebaseapp.com",
+      databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
+      projectId: "sheets-e5838",
+      storageBucket: "sheets-e5838.firebasestorage.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const $ = (id) => document.getElementById(id);
+
+    let characterCache = [];
+    let currentLoadedId = null;
+    let currentLoadedBucket = null;
+    let currentLoadedCharacter = null;
+    let currentAbilitiesState = {};
+
+    function setStatus(message, type = "info") {
+      const box = $("statusBox");
+      box.textContent = message;
+
+      if (type === "success") {
+        box.style.borderColor = "#166534";
+        box.style.color = "#86efac";
+      } else if (type === "error") {
+        box.style.borderColor = "#7f1d1d";
+        box.style.color = "#fca5a5";
+      } else if (type === "warn") {
+        box.style.borderColor = "#92400e";
+        box.style.color = "#fcd34d";
+      } else {
+        box.style.borderColor = "#334155";
+        box.style.color = "#e5e7eb";
+      }
+    }
+
+    function fmtMod(n) {
+      const num = Number(n || 0);
+      return num >= 0 ? `+${num}` : `${num}`;
+    }
+
+    function textOrEmpty(text, fallback = "None") {
+      const t = String(text || "").trim();
+      return t || fallback;
+    }
+
+    function setBlock(id, text, fallback) {
+      const el = $(id);
+      const val = String(text || "").trim();
+      if (val) {
+        el.textContent = val;
+        el.classList.remove("empty");
+      } else {
+        el.textContent = fallback;
+        el.classList.add("empty");
+      }
+    }
+
+    function normalizeMultiline(text) {
+      return String(text || "")
+        .replace(/\\r\\n/g, "\n")
+        .replace(/\\n/g, "\n")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n");
+    }
+
+    function splitAttackEntries(rawText) {
+      const normalized = normalizeMultiline(rawText);
+
+      const initialLines = normalized
+        .split("\n")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const out = [];
+
+      initialLines.forEach(line => {
+        const parts = line.split(/\s*;\s*(?=[^|;]+?\s*\|\s*[+-]?\d+\s*to hit)/i);
+        parts.forEach(p => {
+          const trimmed = p.trim();
+          if (trimmed) out.push(trimmed);
+        });
+      });
+
+      return out;
+    }
+
+    function parseAttacks(rawText) {
+      const lines = splitAttackEntries(rawText);
+
+      return lines.map(line => {
+        const parts = line.split("|").map(p => p.trim());
+        const name = parts[0] || "Attack";
+        const hitPart = parts.find(p => /to hit/i.test(p)) || "";
+        const dmgPart = parts.find(p =>
+          !/to hit/i.test(p) && (/(\d+d\d+)|(^\d+\s*[+-]\s*\d+)|(^\d+\s+\w+)/i.test(p))
+        ) || "";
+
+        let hitBonus = null;
+        let damageDice = null;
+        let flatDamage = null;
+        let damageBonus = null;
+        let damageType = "";
+
+        const hitMatch = hitPart.match(/([+-]?\d+)\s*to hit/i);
+        if (hitMatch) hitBonus = parseInt(hitMatch[1], 10);
+
+        const diceMatch = dmgPart.match(/(\d+d\d+)\s*([+-]\s*\d+)?\s*(.*)$/i);
+        if (diceMatch) {
+          damageDice = diceMatch[1];
+          damageBonus = diceMatch[2] ? parseInt(diceMatch[2].replace(/\s+/g, ""), 10) : 0;
+          damageType = (diceMatch[3] || "").trim();
+        } else {
+          const flatMatch = dmgPart.match(/^(\d+)\s*([+-]\s*\d+)?\s*(.*)$/i);
+          if (flatMatch) {
+            flatDamage = parseInt(flatMatch[1], 10);
+            damageBonus = flatMatch[2] ? parseInt(flatMatch[2].replace(/\s+/g, ""), 10) : 0;
+            damageType = (flatMatch[3] || "").trim();
+          }
+        }
+
+        return {
+          raw: line,
+          name,
+          hitBonus,
+          damageDice,
+          flatDamage,
+          damageBonus,
+          damageType
+        };
+      });
+    }
+
+    function renderAttacks(rawText) {
+      const wrap = $("attacksWrap");
+      wrap.innerHTML = "";
+
+      const attacks = parseAttacks(rawText);
+
+      if (!attacks.length) {
+        const empty = document.createElement("div");
+        empty.className = "text-block empty";
+        empty.textContent = "No attacks entered.";
+        wrap.appendChild(empty);
+        return;
+      }
+
+      attacks.forEach(a => {
+        const card = document.createElement("div");
+        card.className = "attack-card";
+
+        const title = document.createElement("div");
+        title.className = "attack-title";
+        title.textContent = a.name;
+
+        const helper = document.createElement("div");
+        helper.className = "attack-helper";
+
+        if (a.hitBonus !== null) {
+          const hit = document.createElement("div");
+          hit.className = "attack-pill attack-hit";
+          hit.textContent = `Roll d20 ${a.hitBonus >= 0 ? "+" : "-"} ${Math.abs(a.hitBonus)} to hit`;
+          helper.appendChild(hit);
+        }
+
+        if (a.damageDice || a.flatDamage !== null) {
+          const dmg = document.createElement("div");
+          dmg.className = "attack-pill attack-dmg";
+
+          let dmgText = "On hit: ";
+          dmgText += a.damageDice ? a.damageDice : a.flatDamage;
+
+          if (a.damageBonus !== null && a.damageBonus !== 0) {
+            dmgText += ` ${a.damageBonus >= 0 ? "+" : "-"} ${Math.abs(a.damageBonus)}`;
+          }
+
+          if (a.damageType) {
+            dmgText += ` ${a.damageType}`;
+          }
+
+          dmgText += " damage";
+          dmg.textContent = dmgText;
+          helper.appendChild(dmg);
+        }
+
+        const raw = document.createElement("div");
+        raw.className = "attack-raw";
+        raw.textContent = `Sheet line: ${a.raw}`;
+
+        card.appendChild(title);
+        if (helper.children.length) card.appendChild(helper);
+        card.appendChild(raw);
+
+        wrap.appendChild(card);
+      });
+    }
+
+    function splitOutsideParens(text, delimiter = ";") {
+      const out = [];
+      let current = "";
+      let depth = 0;
+
+      for (const ch of String(text || "")) {
+        if (ch === "(") {
+          depth++;
+          current += ch;
+          continue;
+        }
+
+        if (ch === ")") {
+          depth = Math.max(0, depth - 1);
+          current += ch;
+          continue;
+        }
+
+        if (ch === delimiter && depth === 0) {
+          if (current.trim()) out.push(current.trim());
+          current = "";
+          continue;
+        }
+
+        current += ch;
+      }
+
+      if (current.trim()) out.push(current.trim());
+      return out;
+    }
+
+    function renderBulletText(containerId, rawText, emptyText = "Nothing entered.") {
+      const el = $(containerId);
+      el.innerHTML = "";
+
+      const normalized = normalizeMultiline(rawText);
+
+      const lines = normalized
+        .split("\n")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const chunks = [];
+
+      lines.forEach(line => {
+        const parts = splitOutsideParens(line, ";");
+        parts.forEach(p => {
+          const trimmed = p.trim();
+          if (trimmed) chunks.push(trimmed);
+        });
+      });
+
+      if (!chunks.length) {
+        const empty = document.createElement("div");
+        empty.className = "text-block empty";
+        empty.textContent = emptyText;
+        el.appendChild(empty);
+        return;
+      }
+
+      chunks.forEach(chunk => {
+        const row = document.createElement("div");
+        row.className = "feature-item";
+
+        const titleMatch = chunk.match(/^([^:()]{3,40})(?:\s*\((.*?)\))?(?::\s*(.*))?$/);
+        if (titleMatch) {
+          const title = document.createElement("div");
+          title.className = "feature-title";
+          title.textContent = titleMatch[1].trim();
+
+          const desc = document.createElement("div");
+          desc.className = "feature-desc";
+
+          const paren = titleMatch[2] ? `(${titleMatch[2]}) ` : "";
+          const body = titleMatch[3] ? titleMatch[3].trim() : "";
+          desc.textContent = `${paren}${body}`.trim() || chunk;
+
+          row.appendChild(title);
+          row.appendChild(desc);
+        } else {
+          row.textContent = chunk;
+        }
+
+        el.appendChild(row);
+      });
+    }
+
+    function addMiniRows(containerId, rows) {
+      const container = $(containerId);
+      container.innerHTML = "";
+
+      rows.forEach(([label, value]) => {
+        const row = document.createElement("div");
+        row.className = "mini-row";
+
+        const left = document.createElement("div");
+        left.className = "left";
+        left.textContent = label;
+
+        const right = document.createElement("div");
+        right.className = "right";
+        right.textContent = value;
+
+        row.appendChild(left);
+        row.appendChild(right);
+        container.appendChild(row);
+      });
+    }
+
+    function cloneAbilities(abilitiesObj) {
+      return JSON.parse(JSON.stringify(abilitiesObj || {}));
+    }
+
+    function getAbilityEntriesSorted(abilitiesObj) {
+      return Object.entries(abilitiesObj || {}).sort((a, b) => {
+        const aLabel = String(a[1]?.label || a[0] || "").toLowerCase();
+        const bLabel = String(b[1]?.label || b[0] || "").toLowerCase();
+        return aLabel.localeCompare(bLabel);
+      });
+    }
+
+    function normalizeRechargeLabel(recharge) {
+      const map = {
+        none: "No Recharge",
+        turn: "Per Turn",
+        encounter: "Per Encounter",
+        short_rest: "Short Rest",
+        long_rest: "Long Rest",
+        short_or_long_rest: "Short or Long Rest",
+        daily: "Daily"
+      };
+      return map[recharge] || recharge || "No Recharge";
+    }
+
+    function findAbilityKeyByLabel(abilitiesObj, targetLabel) {
+      const target = String(targetLabel || "").trim().toLowerCase();
+      for (const [key, value] of Object.entries(abilitiesObj || {})) {
+        const label = String(value?.label || "").trim().toLowerCase();
+        if (label === target) return key;
+      }
+      return null;
+    }
+
+    function canResetOnShortRest(recharge) {
+      return recharge === "short_rest" || recharge === "short_or_long_rest";
+    }
+
+    function canResetOnLongRest(recharge) {
+      return recharge === "long_rest" || recharge === "short_or_long_rest" || recharge === "daily";
+    }
+
+    function renderAbilitiesResources(abilitiesObj) {
+      const wrap = $("abilitiesResourcesWrap");
+      wrap.innerHTML = "";
+
+      const entries = getAbilityEntriesSorted(abilitiesObj);
+
+      if (!entries.length) {
+        const empty = document.createElement("div");
+        empty.className = "text-block empty";
+        empty.textContent = "No tracked abilities/resources on this character.";
+        wrap.appendChild(empty);
+        return;
+      }
+
+      const superiorityKey = findAbilityKeyByLabel(abilitiesObj, "Superiority Dice");
+
+      entries.forEach(([key, ability]) => {
+        const label = ability?.label || key;
+        const current = Math.max(0, Number(ability?.current ?? 0));
+        const max = Math.max(0, Number(ability?.max ?? 0));
+        const recharge = ability?.recharge || "none";
+        const kind = ability?.kind || "charge";
+        const die = String(ability?.die || "").trim();
+
+        const card = document.createElement("div");
+        card.className = "resource-card-ability";
+
+        const top = document.createElement("div");
+        top.className = "resource-ability-top";
+
+        const left = document.createElement("div");
+        left.innerHTML = `
+          <div class="resource-ability-name">${label}</div>
+          <div class="resource-ability-meta">${normalizeRechargeLabel(recharge)} • ${kind}${die ? ` • ${die}` : ""}</div>
+        `;
+
+        const right = document.createElement("div");
+        right.className = "resource-ability-count";
+        right.textContent = `${current} / ${max}`;
+
+        top.appendChild(left);
+        top.appendChild(right);
+
+        const controls = document.createElement("div");
+        controls.className = "resource-ability-controls";
+
+        const useBtn = document.createElement("button");
+        useBtn.className = "btn-primary";
+        useBtn.type = "button";
+        useBtn.textContent = "Use";
+        useBtn.addEventListener("click", () => adjustAbilityValue(key, -1));
+
+        const plusBtn = document.createElement("button");
+        plusBtn.className = "btn-heal";
+        plusBtn.type = "button";
+        plusBtn.textContent = "+1";
+        plusBtn.addEventListener("click", () => adjustAbilityValue(key, 1));
+
+        const minusBtn = document.createElement("button");
+        minusBtn.className = "btn-danger";
+        minusBtn.type = "button";
+        minusBtn.textContent = "-1";
+        minusBtn.addEventListener("click", () => adjustAbilityValue(key, -1));
+
+        const resetBtn = document.createElement("button");
+        resetBtn.className = "btn-secondary";
+        resetBtn.type = "button";
+        resetBtn.textContent = "Reset";
+        resetBtn.addEventListener("click", () => resetSingleAbility(key));
+
+        controls.appendChild(useBtn);
+        controls.appendChild(plusBtn);
+        controls.appendChild(minusBtn);
+        controls.appendChild(resetBtn);
+
+        card.appendChild(top);
+        card.appendChild(controls);
+
+        if (superiorityKey && key === superiorityKey) {
+          const maneuverBox = document.createElement("div");
+          maneuverBox.className = "maneuver-box";
+
+          const title = document.createElement("div");
+          title.className = "maneuver-title";
+          title.textContent = "Battle Master Quick Use (spends 1 superiority die)";
+
+          const grid = document.createElement("div");
+          grid.className = "maneuver-grid";
+
+          const maneuvers = [
+            {
+              label: "Precision Attack",
+              note: "After seeing the d20 roll, add 1d8 to the attack roll."
+            },
+            {
+              label: "Trip Attack",
+              note: "On hit: +1d8 damage. Large or smaller: STR save or prone."
+            },
+            {
+              label: "Riposte",
+              note: "When missed in melee, reaction attack. On hit: +1d8 damage."
+            }
+          ];
+
+          maneuvers.forEach(m => {
+            const btn = document.createElement("button");
+            btn.className = "maneuver-btn";
+            btn.type = "button";
+            btn.title = m.note;
+            btn.textContent = m.label;
+            btn.addEventListener("click", () => useBattleMasterManeuver(m.label));
+            grid.appendChild(btn);
+          });
+
+          maneuverBox.appendChild(title);
+          maneuverBox.appendChild(grid);
+          card.appendChild(maneuverBox);
+        }
+
+        wrap.appendChild(card);
+      });
+    }
+
+    async function syncCurrentCharacterAbilities(newAbilities) {
+      if (!currentLoadedId || !currentLoadedBucket || !currentLoadedCharacter) {
+        setStatus("Load a character first.", "error");
+        return;
+      }
+
+      try {
+        const updatedCharacter = {
+          ...currentLoadedCharacter,
+          abilities: cloneAbilities(newAbilities)
+        };
+
+        await set(ref(db, `characters/${currentLoadedBucket}/${currentLoadedId}`), updatedCharacter);
+
+        currentLoadedCharacter = updatedCharacter;
+        currentAbilitiesState = cloneAbilities(updatedCharacter.abilities || {});
+        renderCharacter(updatedCharacter, currentLoadedBucket);
+        setStatus(`Updated abilities/resources for ${updatedCharacter.name || currentLoadedId}.`, "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`Ability update failed: ${err.message}`, "error");
+      }
+    }
+
+    async function adjustAbilityValue(key, delta) {
+      if (!currentLoadedCharacter) {
+        setStatus("Load a character first.", "error");
+        return;
+      }
+
+      const abilities = cloneAbilities(currentAbilitiesState);
+      const ability = abilities[key];
+
+      if (!ability) {
+        setStatus("That ability no longer exists.", "error");
+        return;
+      }
+
+      const max = Math.max(0, Number(ability.max ?? 0));
+      const current = Math.max(0, Number(ability.current ?? 0));
+
+      let next = current + delta;
+      next = Math.max(0, next);
+      if (max > 0) next = Math.min(max, next);
+
+      ability.current = next;
+
+      await syncCurrentCharacterAbilities(abilities);
+    }
+
+    async function resetSingleAbility(key) {
+      if (!currentLoadedCharacter) {
+        setStatus("Load a character first.", "error");
+        return;
+      }
+
+      const abilities = cloneAbilities(currentAbilitiesState);
+      const ability = abilities[key];
+
+      if (!ability) {
+        setStatus("That ability no longer exists.", "error");
+        return;
+      }
+
+      ability.current = Math.max(0, Number(ability.max ?? 0));
+
+      await syncCurrentCharacterAbilities(abilities);
+    }
+
+    async function applyRestReset(restType) {
+      if (!currentLoadedCharacter) {
+        setStatus("Load a character first.", "error");
+        return;
+      }
+
+      const abilities = cloneAbilities(currentAbilitiesState);
+      let changed = 0;
+
+      Object.values(abilities).forEach(ability => {
+        const recharge = ability?.recharge || "none";
+        const max = Math.max(0, Number(ability?.max ?? 0));
+
+        const shouldReset =
+          restType === "short"
+            ? canResetOnShortRest(recharge)
+            : canResetOnLongRest(recharge);
+
+        if (shouldReset && Number(ability.current ?? 0) !== max) {
+          ability.current = max;
+          changed++;
+        }
+      });
+
+      if (!changed) {
+        setStatus(`No ${restType} rest resources needed resetting.`, "warn");
+        return;
+      }
+
+      await syncCurrentCharacterAbilities(abilities);
+    }
+
+    async function useBattleMasterManeuver(name) {
+      const key = findAbilityKeyByLabel(currentAbilitiesState, "Superiority Dice");
+
+      if (!key) {
+        setStatus("No Superiority Dice tracker found.", "error");
+        return;
+      }
+
+      const ability = currentAbilitiesState[key];
+      const current = Math.max(0, Number(ability?.current ?? 0));
+
+      if (current <= 0) {
+        setStatus(`No Superiority Dice left for ${name}.`, "warn");
+        return;
+      }
+
+      await adjustAbilityValue(key, -1);
+      setTimeout(() => {
+        setStatus(`${name} used. Spent 1 Superiority Die.`, "success");
+      }, 50);
+    }
+
+    async function loadCharacter() {
+      try {
+        const bucket = "pcs";
+        const selectedId = $("characterSelect").value;
+
+        if (!selectedId) {
+          setStatus("Choose a PC first.", "error");
+          return;
+        }
+
+        setStatus(`Loading /characters/${bucket}/${selectedId} ...`, "warn");
+
+        const snapshot = await get(ref(db, `characters/${bucket}/${selectedId}`));
+
+        if (!snapshot.exists()) {
+          throw new Error("Character not found.");
+        }
+
+        const charData = snapshot.val();
+
+        currentLoadedId = selectedId;
+        currentLoadedBucket = bucket;
+        currentLoadedCharacter = charData;
+
+        renderCharacter(charData, bucket);
+        setStatus(`Loaded ${charData.name || selectedId}.`, "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`Load failed: ${err.message}`, "error");
+      }
+    }
+
+    function renderCharacter(charData, bucket) {
+      const combat = charData.combat || {};
+      const stats = charData.stats || {};
+      const mods = charData.mods || {};
+      const saves = charData.saves || {};
+      const skills = charData.skills || {};
+      const spell = charData.spellcasting || {};
+      const text = charData.text_blocks || {};
+      const abilities = charData.abilities || {};
+
+      $("sheetWrap").classList.remove("hidden");
+
+      $("sheetName").textContent = charData.name || "Unnamed Character";
+      $("sheetTypePill").textContent = bucket === "npcs" ? "NPC" : "PC";
+
+      const level = charData.level ?? 1;
+      const species = charData.species || "Unknown Species";
+      const clazz = charData.class || "Adventurer";
+      const subclass = charData.subclass ? ` (${charData.subclass})` : "";
+      $("sheetIdentityLine").textContent = `Level ${level} ${species} ${clazz}${subclass}`;
+
+      const tags = [];
+      if (charData.player_name) tags.push(`Player: ${charData.player_name}`);
+      if (charData.background) tags.push(`Background: ${charData.background}`);
+      if (charData.alignment) tags.push(`Alignment: ${charData.alignment}`);
+      if (charData.size) tags.push(`Size: ${charData.size}`);
+      if (charData.creature_type) tags.push(`Type: ${charData.creature_type}`);
+
+      const tagWrap = $("identityTags");
+      tagWrap.innerHTML = "";
+      if (!tags.length) {
+        const t = document.createElement("div");
+        t.className = "tag";
+        t.textContent = "No extra identity details";
+        tagWrap.appendChild(t);
+      } else {
+        tags.forEach(txt => {
+          const t = document.createElement("div");
+          t.className = "tag";
+          t.textContent = txt;
+          tagWrap.appendChild(t);
+        });
+      }
+
+      $("factAC").textContent = combat.ac ?? 10;
+      $("factInit").textContent = fmtMod(combat.initiative_bonus ?? 0);
+      $("factSpeed").textContent = combat.speed ?? 30;
+      $("factPP").textContent = combat.passive_perception ?? 10;
+
+      $("heroHP").textContent = `${combat.hp_current ?? 0} / ${combat.hp_max ?? 0}`;
+      $("heroTempHP").textContent = combat.temp_hp ?? 0;
+      $("heroPB").textContent = fmtMod(combat.proficiency_bonus ?? 2);
+
+      const hasSpellAbility = String(spell.ability || "").trim();
+      $("heroSpellDC").textContent = hasSpellAbility ? (spell.spell_save_dc ?? "—") : "—";
+      $("heroSpellAtk").textContent = hasSpellAbility ? fmtMod(spell.spell_attack_bonus ?? 0) : "—";
+
+      const condParts = [];
+      if (combat.conditions) condParts.push(combat.conditions);
+      if (combat.heroic_inspiration) condParts.push("Heroic Inspiration");
+      $("heroConditions").textContent = condParts.length ? condParts.join(" • ") : "None";
+
+      $("tempHpInput").value = combat.temp_hp ?? 0;
+
+      $("strScoreOut").textContent = stats.str ?? 10;
+      $("dexScoreOut").textContent = stats.dex ?? 10;
+      $("conScoreOut").textContent = stats.con ?? 10;
+      $("intScoreOut").textContent = stats.int ?? 10;
+      $("wisScoreOut").textContent = stats.wis ?? 10;
+      $("chaScoreOut").textContent = stats.cha ?? 10;
+
+      $("strModOut").textContent = fmtMod(mods.str ?? 0);
+      $("dexModOut").textContent = fmtMod(mods.dex ?? 0);
+      $("conModOut").textContent = fmtMod(mods.con ?? 0);
+      $("intModOut").textContent = fmtMod(mods.int ?? 0);
+      $("wisModOut").textContent = fmtMod(mods.wis ?? 0);
+      $("chaModOut").textContent = fmtMod(mods.cha ?? 0);
+
+      renderAttacks(text.attacks || "");
+
+      currentAbilitiesState = cloneAbilities(abilities);
+      renderAbilitiesResources(abilities);
+
+      renderBulletText("featuresOut", text.features_traits, "No features entered.");
+
+      const spellRows = [
+        ["Spellcasting Ability", (spell.ability || "").toUpperCase() || "None"],
+        ["Spell Save DC", hasSpellAbility ? String(spell.spell_save_dc ?? "—") : "—"],
+        ["Spell Attack Bonus", hasSpellAbility ? fmtMod(spell.spell_attack_bonus ?? 0) : "—"],
+        ["Summary", textOrEmpty(spell.summary, "No summary")]
+      ];
+      addMiniRows("spellQuickList", spellRows);
+
+      setBlock("spellSlotsOut", spell.spell_slots, "No spell slots entered.");
+      setBlock("spellsNotesOut", spell.spells_notes, "No spell notes entered.");
+
+      addMiniRows("savesList", [
+        ["STR Save", fmtMod(saves.str ?? 0)],
+        ["DEX Save", fmtMod(saves.dex ?? 0)],
+        ["CON Save", fmtMod(saves.con ?? 0)],
+        ["INT Save", fmtMod(saves.int ?? 0)],
+        ["WIS Save", fmtMod(saves.wis ?? 0)],
+        ["CHA Save", fmtMod(saves.cha ?? 0)],
+      ]);
+
+      addMiniRows("skillsList", [
+        ["Athletics", fmtMod(skills.athletics ?? 0)],
+        ["Acrobatics", fmtMod(skills.acrobatics ?? 0)],
+        ["Sleight of Hand", fmtMod(skills.sleight_of_hand ?? 0)],
+        ["Stealth", fmtMod(skills.stealth ?? 0)],
+        ["Arcana", fmtMod(skills.arcana ?? 0)],
+        ["History", fmtMod(skills.history ?? 0)],
+        ["Investigation", fmtMod(skills.investigation ?? 0)],
+        ["Nature", fmtMod(skills.nature ?? 0)],
+        ["Religion", fmtMod(skills.religion ?? 0)],
+        ["Animal Handling", fmtMod(skills.animal_handling ?? 0)],
+        ["Insight", fmtMod(skills.insight ?? 0)],
+        ["Medicine", fmtMod(skills.medicine ?? 0)],
+        ["Perception", fmtMod(skills.perception ?? 0)],
+        ["Survival", fmtMod(skills.survival ?? 0)],
+        ["Deception", fmtMod(skills.deception ?? 0)],
+        ["Intimidation", fmtMod(skills.intimidation ?? 0)],
+        ["Performance", fmtMod(skills.performance ?? 0)],
+        ["Persuasion", fmtMod(skills.persuasion ?? 0)],
+      ]);
+
+      setBlock("equipmentOut", text.equipment, "No equipment entered.");
+      setBlock("profsOut", text.proficiencies_languages, "No proficiencies entered.");
+      setBlock("backstoryOut", text.backstory, "No backstory entered.");
+      setBlock("appearanceOut", text.appearance, "No appearance entered.");
+      setBlock("notesOut", text.notes, "No notes entered.");
+    }
+
+    async function refreshList() {
+      try {
+        const bucket = "pcs";
+        const select = $("characterSelect");
+
+        setStatus(`Loading /characters/${bucket} list...`, "warn");
+
+        const snapshot = await get(ref(db, `characters/${bucket}`));
+        characterCache = [];
+
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          characterCache = Object.values(data);
+          characterCache.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+        }
+
+        select.innerHTML = "";
+
+        if (!characterCache.length) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "-- No saved PCs found --";
+          select.appendChild(opt);
+          setStatus("No saved PCs found.", "warn");
+          return;
+        }
+
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = "-- Select a PC --";
+        select.appendChild(placeholder);
+
+        characterCache.forEach(char => {
+          const opt = document.createElement("option");
+          opt.value = char.id || "";
+          opt.textContent = `${char.name || "Unnamed"}${char.level ? ` (Lv ${char.level})` : ""}`;
+          select.appendChild(opt);
+        });
+
+        setStatus(`Loaded ${characterCache.length} PCs.`, "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`Refresh failed: ${err.message}`, "error");
+      }
+    }
+
+    async function syncCurrentCharacterCombat(newCombat) {
+      if (!currentLoadedId || !currentLoadedBucket || !currentLoadedCharacter) {
+        setStatus("Load a character first.", "error");
+        return;
+      }
+
+      try {
+        const updatedCharacter = {
+          ...currentLoadedCharacter,
+          combat: {
+            ...(currentLoadedCharacter.combat || {}),
+            ...newCombat
+          }
+        };
+
+        await set(ref(db, `characters/${currentLoadedBucket}/${currentLoadedId}`), updatedCharacter);
+
+        currentLoadedCharacter = updatedCharacter;
+        renderCharacter(updatedCharacter, currentLoadedBucket);
+        setStatus(`Updated HP for ${updatedCharacter.name || currentLoadedId}.`, "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`HP update failed: ${err.message}`, "error");
+      }
+    }
+
+    async function applyDamage(amount) {
+      if (!currentLoadedCharacter) {
+        setStatus("Load a character first.", "error");
+        return;
+      }
+
+      const amt = Math.max(0, Number(amount) || 0);
+      if (amt <= 0) {
+        setStatus("Damage must be above 0.", "warn");
+        return;
+      }
+
+      const combat = currentLoadedCharacter.combat || {};
+      let tempHp = Math.max(0, Number(combat.temp_hp ?? 0));
+      let hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
+
+      let remaining = amt;
+
+      if (tempHp > 0) {
+        const absorbed = Math.min(tempHp, remaining);
+        tempHp -= absorbed;
+        remaining -= absorbed;
+      }
+
+      if (remaining > 0) {
+        hpCurrent = Math.max(0, hpCurrent - remaining);
+      }
+
+      await syncCurrentCharacterCombat({
+        temp_hp: tempHp,
+        hp_current: hpCurrent
+      });
+    }
+
+    async function applyHeal(amount) {
+      if (!currentLoadedCharacter) {
+        setStatus("Load a character first.", "error");
+        return;
+      }
+
+      const amt = Math.max(0, Number(amount) || 0);
+      if (amt <= 0) {
+        setStatus("Healing must be above 0.", "warn");
+        return;
+      }
+
+      const combat = currentLoadedCharacter.combat || {};
+      const hpMax = Math.max(0, Number(combat.hp_max ?? 0));
+      let hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
+
+      hpCurrent = Math.min(hpMax, hpCurrent + amt);
+
+      await syncCurrentCharacterCombat({
+        hp_current: hpCurrent
+      });
+    }
+
+    async function setTempHpValue(amount) {
+      if (!currentLoadedCharacter) {
+        setStatus("Load a character first.", "error");
+        return;
+      }
+
+      const amt = Math.max(0, Number(amount) || 0);
+
+      await syncCurrentCharacterCombat({
+        temp_hp: amt
+      });
+    }
+
+    $("refreshBtn").addEventListener("click", refreshList);
+    $("loadBtn").addEventListener("click", loadCharacter);
+
+    $("shortRestBtn").addEventListener("click", () => applyRestReset("short"));
+    $("longRestBtn").addEventListener("click", () => applyRestReset("long"));
+
+    $("damage1Btn").addEventListener("click", () => applyDamage(1));
+    $("damage5Btn").addEventListener("click", () => applyDamage(5));
+    $("heal1Btn").addEventListener("click", () => applyHeal(1));
+    $("heal5Btn").addEventListener("click", () => applyHeal(5));
+
+    $("setTempHpBtn").addEventListener("click", () => setTempHpValue(Number($("tempHpInput").value || 0)));
+
+    setStatus("Ready. Refresh list, then load a PC.", "info");
+  </script>
+</body>
+</html>

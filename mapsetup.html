@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Map Setup</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg2: #111827;
+      --panel: #1f2937;
+      --panel2: #0b1220;
+      --line: #374151;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --accent2: #93c5fd;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #0b1020 0%, #111827 100%);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    .app {
+      max-width: 1500px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    .title-wrap p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .status {
+      min-width: 260px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 520px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+
+    .field {
+      grid-column: span 12;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field.col-6 { grid-column: span 6; }
+    .field.col-4 { grid-column: span 4; }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    input, textarea {
+      width: 100%;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      outline: none;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0b1220;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent2);
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .btn-danger {
+      background: #7f1d1d;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background: #991b1b;
+    }
+
+    .preview-wrap {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.03);
+      padding: 12px;
+      min-height: 260px;
+      display: grid;
+      place-items: center;
+    }
+
+    .preview-wrap img {
+      max-width: 100%;
+      max-height: 500px;
+      border-radius: 10px;
+      display: block;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .list {
+      display: grid;
+      gap: 12px;
+      max-height: 70vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .item-title {
+      font-weight: 800;
+      margin-bottom: 4px;
+      font-size: 1rem;
+    }
+
+    .item-sub {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .chip {
+      font-size: 0.78rem;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .meta {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .tiny {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .mono {
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    @media (max-width: 1200px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .field.col-6, .field.col-4 {
+        grid-column: span 12;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="title-wrap">
+        <h1>Map Setup</h1>
+        <p>Register map assets (image URLs + metadata) into RTDB for later use by your VTT.</p>
+      </div>
+      <div class="status" id="statusBox">Ready.</div>
+    </div>
+
+    <div class="layout">
+      <!-- LEFT: FORM -->
+      <div class="card">
+        <h2>Map Asset Entry</h2>
+
+        <div class="form-grid">
+          <div class="field col-6">
+            <label for="mapId">Map ID (unique key)</label>
+            <input id="mapId" type="text" placeholder="forest_road" />
+          </div>
+
+          <div class="field col-6">
+            <label for="mapName">Display Name</label>
+            <input id="mapName" type="text" placeholder="Forest Road" />
+          </div>
+
+          <div class="field col-6">
+            <label for="imageUrl">Image URL (PNG/JPG/WebP)</label>
+            <input id="imageUrl" type="text" placeholder="https://example.com/maps/forest-road.png" />
+          </div>
+
+          <div class="field col-3">
+            <label for="gridSize">Grid Size (px)</label>
+            <input id="gridSize" type="number" min="10" step="1" value="70" />
+          </div>
+
+          <div class="field col-3">
+            <label for="mapType">Map Type</label>
+            <input id="mapType" type="text" placeholder="battle / town / dungeon" />
+          </div>
+
+          <div class="field">
+            <label for="notes">Notes</label>
+            <textarea id="notes" placeholder="Ambush road encounter, daytime, 30x20-ish grid..."></textarea>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn-secondary" id="previewBtn">Preview URL</button>
+          <button class="btn-primary" id="saveBtn">Save Map Asset</button>
+          <button class="btn-secondary" id="newBtn">New Map</button>
+        </div>
+
+        <div class="tiny" style="margin-top:10px;">
+          Saves to: <span class="mono">/map_assets/{mapId}</span>
+        </div>
+      </div>
+
+      <!-- RIGHT: PREVIEW + LIST -->
+      <div>
+        <div class="card">
+          <h2>Preview</h2>
+          <div class="preview-wrap" id="previewWrap">
+            <div class="muted">Paste an image URL and click <strong>Preview URL</strong>.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Saved Map Assets</h2>
+          <div class="toolbar" style="margin-top:0; margin-bottom:12px;">
+            <button class="btn-primary" id="refreshBtn">Refresh Map Assets</button>
+            <button class="btn-danger" id="deleteBtn">Delete Current Map ID</button>
+          </div>
+          <div id="mapList" class="list">
+            <div class="muted">Click <strong>Refresh Map Assets</strong> to load /map_assets</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    // -------------------------
+    // Fixed Firebase config
+    // -------------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+      authDomain: "sheets-e5838.firebaseapp.com",
+      databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
+      projectId: "sheets-e5838",
+      storageBucket: "sheets-e5838.firebasestorage.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(message, type = "info") {
+      const box = $("statusBox");
+      box.textContent = message;
+
+      if (type === "success") {
+        box.style.borderColor = "#166534";
+        box.style.color = "#86efac";
+      } else if (type === "error") {
+        box.style.borderColor = "#7f1d1d";
+        box.style.color = "#fca5a5";
+      } else if (type === "warn") {
+        box.style.borderColor = "#92400e";
+        box.style.color = "#fcd34d";
+      } else {
+        box.style.borderColor = "#374151";
+        box.style.color = "#e5e7eb";
+      }
+    }
+
+    function safe(value, fallback = "") {
+      return value === undefined || value === null || value === "" ? fallback : value;
+    }
+
+    function slugify(text) {
+      return String(text || "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    }
+
+    function formatDate(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleString();
+    }
+
+    function buildPayload(existingMeta = null) {
+      const mapId = $("mapId").value.trim();
+      const mapName = $("mapName").value.trim();
+      const imageUrl = $("imageUrl").value.trim();
+      const gridSize = Number($("gridSize").value || 70);
+      const mapType = $("mapType").value.trim();
+      const notes = $("notes").value.trim();
+
+      const now = new Date().toISOString();
+
+      return {
+        id: mapId,
+        name: mapName,
+        image_url: imageUrl,
+        grid_size: gridSize,
+        map_type: mapType,
+        notes,
+        meta: {
+          created_at_iso: existingMeta?.created_at_iso || now,
+          updated_at_iso: now
+        }
+      };
+    }
+
+    function clearForm() {
+      $("mapId").value = "";
+      $("mapName").value = "";
+      $("imageUrl").value = "";
+      $("gridSize").value = "70";
+      $("mapType").value = "";
+      $("notes").value = "";
+
+      $("previewWrap").innerHTML = `<div class="muted">Paste an image URL and click <strong>Preview URL</strong>.</div>`;
+      setStatus("New map form ready.", "info");
+    }
+
+    function previewUrl() {
+      const url = $("imageUrl").value.trim();
+
+      if (!url) {
+        setStatus("Enter an image URL first.", "warn");
+        return;
+      }
+
+      const wrap = $("previewWrap");
+      wrap.innerHTML = "";
+
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Map Preview";
+
+      img.onload = () => {
+        setStatus("Preview loaded.", "success");
+      };
+
+      img.onerror = () => {
+        wrap.innerHTML = `<div class="muted">Could not load preview from that URL.</div>`;
+        setStatus("Preview failed. Check the URL or image host permissions.", "error");
+      };
+
+      wrap.appendChild(img);
+    }
+
+    async function saveMapAsset() {
+      try {
+        let mapId = $("mapId").value.trim();
+        const mapName = $("mapName").value.trim();
+        const imageUrl = $("imageUrl").value.trim();
+
+        if (!mapId && mapName) {
+          mapId = slugify(mapName);
+          $("mapId").value = mapId;
+        }
+
+        if (!mapId) {
+          setStatus("Map ID is required.", "warn");
+          return;
+        }
+
+        if (!mapName) {
+          setStatus("Display Name is required.", "warn");
+          return;
+        }
+
+        if (!imageUrl) {
+          setStatus("Image URL is required.", "warn");
+          return;
+        }
+
+        setStatus("Checking existing map asset...", "warn");
+
+        const existingSnap = await get(ref(db, `map_assets/${mapId}`));
+        const existing = existingSnap.exists() ? existingSnap.val() : null;
+
+        const payload = buildPayload(existing?.meta || null);
+
+        await set(ref(db, `map_assets/${mapId}`), payload);
+
+        setStatus(`Saved map asset: ${mapId}`, "success");
+        await refreshMapAssets();
+      } catch (err) {
+        console.error(err);
+        setStatus(`Save failed: ${err.message}`, "error");
+      }
+    }
+
+    async function deleteCurrentMap() {
+      try {
+        const mapId = $("mapId").value.trim();
+
+        if (!mapId) {
+          setStatus("Enter or select a Map ID first.", "warn");
+          return;
+        }
+
+        await remove(ref(db, `map_assets/${mapId}`));
+        setStatus(`Deleted map asset: ${mapId}`, "success");
+        clearForm();
+        await refreshMapAssets();
+      } catch (err) {
+        console.error(err);
+        setStatus(`Delete failed: ${err.message}`, "error");
+      }
+    }
+
+    async function refreshMapAssets() {
+      try {
+        setStatus("Loading /map_assets ...", "warn");
+
+        const snap = await get(ref(db, "map_assets"));
+        const container = $("mapList");
+
+        if (!snap.exists()) {
+          container.innerHTML = `<div class="muted">No map assets found.</div>`;
+          setStatus("No map assets found.", "warn");
+          return;
+        }
+
+        const data = snap.val();
+        const entries = Object.values(data).sort((a, b) => {
+          const nameA = String(a.name || "").toLowerCase();
+          const nameB = String(b.name || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+
+        container.innerHTML = "";
+
+        entries.forEach(map => {
+          const item = document.createElement("div");
+          item.className = "item";
+
+          item.innerHTML = `
+            <div class="item-title">${safe(map.name, "Unnamed Map")}</div>
+            <div class="item-sub mono">${safe(map.id, "missing_id")}</div>
+            <div class="chip-row">
+              <div class="chip">Grid ${safe(map.grid_size, 70)} px</div>
+              ${map.map_type ? `<div class="chip">${map.map_type}</div>` : ""}
+            </div>
+            <div class="meta">
+              <div><strong>Path:</strong> <span class="mono">/map_assets/${safe(map.id, "missing_id")}</span></div>
+              <div><strong>URL:</strong> ${safe(map.image_url, "—")}</div>
+              <div><strong>Created:</strong> ${formatDate(map?.meta?.created_at_iso)}</div>
+              <div><strong>Updated:</strong> ${formatDate(map?.meta?.updated_at_iso)}</div>
+              <div><strong>Notes:</strong> ${safe(map.notes, "—")}</div>
+            </div>
+          `;
+
+          item.addEventListener("click", () => {
+            $("mapId").value = safe(map.id, "");
+            $("mapName").value = safe(map.name, "");
+            $("imageUrl").value = safe(map.image_url, "");
+            $("gridSize").value = safe(map.grid_size, 70);
+            $("mapType").value = safe(map.map_type, "");
+            $("notes").value = safe(map.notes, "");
+
+            previewUrl();
+            setStatus(`Loaded map asset into form: ${safe(map.id, "")}`, "info");
+          });
+
+          container.appendChild(item);
+        });
+
+        setStatus(`Loaded ${entries.length} map asset(s).`, "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`Refresh failed: ${err.message}`, "error");
+      }
+    }
+
+    $("previewBtn").addEventListener("click", previewUrl);
+    $("saveBtn").addEventListener("click", saveMapAsset);
+    $("newBtn").addEventListener("click", clearForm);
+    $("refreshBtn").addEventListener("click", refreshMapAssets);
+    $("deleteBtn").addEventListener("click", deleteCurrentMap);
+
+    setStatus("Ready. Enter a map URL or click Refresh Map Assets.", "info");
+  </script>
+</body>
+</html>

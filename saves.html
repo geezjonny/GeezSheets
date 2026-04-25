@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Saves Dashboard</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg2: #111827;
+      --panel: #1f2937;
+      --panel2: #0b1220;
+      --line: #374151;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --accent2: #93c5fd;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #0b1020 0%, #111827 100%);
+      color: var(--text);
+      padding: 20px;
+    }
+
+    .app {
+      max-width: 1500px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    .title-wrap p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .status {
+      min-width: 260px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      margin: 0 0 12px;
+      font-size: 1.1rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0b1220;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent2);
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: #fff;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .summary-box {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .summary-label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .summary-value {
+      font-size: 1.35rem;
+      font-weight: 800;
+    }
+
+    .section-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .item-title {
+      font-weight: 800;
+      margin-bottom: 4px;
+      font-size: 1rem;
+    }
+
+    .item-sub {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-bottom: 8px;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      font-size: 0.78rem;
+      padding: 6px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .meta {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 8px 0;
+    }
+
+    .mono {
+      font-family: Consolas, Monaco, monospace;
+    }
+
+    .tiny {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .section-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="title-wrap">
+        <h1>Saves Dashboard</h1>
+        <p>Lightweight RTDB overview: what exists, where it lives, and basic metadata.</p>
+      </div>
+      <div class="status" id="statusBox">Ready.</div>
+    </div>
+
+    <div class="card">
+      <h2>Actions</h2>
+      <div class="toolbar">
+        <button class="btn-primary" id="refreshBtn">Refresh Saves</button>
+        <button class="btn-secondary" id="clearBtn">Clear View</button>
+      </div>
+      <div class="tiny" style="margin-top:10px;">
+        Fixed Firebase project: <span class="mono">sheets-e5838-default-rtdb</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Summary</h2>
+      <div class="summary-grid">
+        <div class="summary-box">
+          <div class="summary-label">PC Characters</div>
+          <div class="summary-value" id="pcCount">0</div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-label">NPC Characters</div>
+          <div class="summary-value" id="npcCount">0</div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-label">Map Saves</div>
+          <div class="summary-value" id="mapCount">0</div>
+        </div>
+        <div class="summary-box">
+          <div class="summary-label">Total PC Token Positions</div>
+          <div class="summary-value" id="tokenPosCount">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-grid">
+      <div class="card">
+        <h2>Characters</h2>
+        <h3 class="tiny">PCs</h3>
+        <div id="pcList" class="list">
+          <div class="empty">No data loaded yet.</div>
+        </div>
+
+        <h3 class="tiny" style="margin-top:16px;">NPCs</h3>
+        <div id="npcList" class="list">
+          <div class="empty">No data loaded yet.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Maps</h2>
+        <div id="mapList" class="list">
+          <div class="empty">No data loaded yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+    // -------------------------
+    // Fixed Firebase config
+    // -------------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+      authDomain: "sheets-e5838.firebaseapp.com",
+      databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
+      projectId: "sheets-e5838",
+      storageBucket: "sheets-e5838.firebasestorage.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(message, type = "info") {
+      const box = $("statusBox");
+      box.textContent = message;
+
+      if (type === "success") {
+        box.style.borderColor = "#166534";
+        box.style.color = "#86efac";
+      } else if (type === "error") {
+        box.style.borderColor = "#7f1d1d";
+        box.style.color = "#fca5a5";
+      } else if (type === "warn") {
+        box.style.borderColor = "#92400e";
+        box.style.color = "#fcd34d";
+      } else {
+        box.style.borderColor = "#374151";
+        box.style.color = "#e5e7eb";
+      }
+    }
+
+    function safe(value, fallback = "") {
+      return value === undefined || value === null || value === "" ? fallback : value;
+    }
+
+    function formatDate(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleString();
+    }
+
+    function clearView() {
+      $("pcCount").textContent = "0";
+      $("npcCount").textContent = "0";
+      $("mapCount").textContent = "0";
+      $("tokenPosCount").textContent = "0";
+
+      $("pcList").innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      $("npcList").innerHTML = `<div class="empty">No data loaded yet.</div>`;
+      $("mapList").innerHTML = `<div class="empty">No data loaded yet.</div>`;
+
+      setStatus("View cleared.", "info");
+    }
+
+    function renderCharacterList(containerId, charactersObj, typeLabel) {
+      const container = $(containerId);
+
+      if (!charactersObj || typeof charactersObj !== "object") {
+        container.innerHTML = `<div class="empty">No ${typeLabel} found.</div>`;
+        return 0;
+      }
+
+      const list = Object.values(charactersObj).sort((a, b) => {
+        const nameA = String(a.name || "").toLowerCase();
+        const nameB = String(b.name || "").toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+      if (!list.length) {
+        container.innerHTML = `<div class="empty">No ${typeLabel} found.</div>`;
+        return 0;
+      }
+
+      container.innerHTML = "";
+
+      list.forEach(char => {
+        const item = document.createElement("div");
+        item.className = "item";
+
+        const createdAt = char?.meta?.created_at_iso || "";
+        const rulesVersion = char?.meta?.rules_version || "—";
+
+        item.innerHTML = `
+          <div class="item-title">${safe(char.name, "Unnamed")}</div>
+          <div class="item-sub mono">id: ${safe(char.id, "missing_id")}</div>
+          <div class="chip-row">
+            <div class="chip">Lvl ${safe(char.level, 0)}</div>
+            <div class="chip">${safe(char.class, "No Class")}</div>
+            ${char.subclass ? `<div class="chip">${char.subclass}</div>` : ""}
+            <div class="chip">${typeLabel.toUpperCase()}</div>
+          </div>
+          <div class="meta">
+            <div><strong>Path:</strong> <span class="mono">/characters/${typeLabel}/${safe(char.id, "missing_id")}</span></div>
+            <div><strong>Created:</strong> ${formatDate(createdAt)}</div>
+            <div><strong>Rules:</strong> ${rulesVersion}</div>
+          </div>
+        `;
+
+        container.appendChild(item);
+      });
+
+      return list.length;
+    }
+
+    function renderMaps(mapObj) {
+      const container = $("mapList");
+
+      if (!mapObj || typeof mapObj !== "object") {
+        container.innerHTML = `<div class="empty">No map saves found.</div>`;
+        return { mapCount: 0, tokenCount: 0 };
+      }
+
+      const mapEntries = Object.entries(mapObj).sort(([a], [b]) => a.localeCompare(b));
+
+      if (!mapEntries.length) {
+        container.innerHTML = `<div class="empty">No map saves found.</div>`;
+        return { mapCount: 0, tokenCount: 0 };
+      }
+
+      container.innerHTML = "";
+
+      let totalTokenPositions = 0;
+
+      mapEntries.forEach(([mapId, mapData]) => {
+        const pcPositions = mapData?.pc_positions || {};
+        const tokenIds = Object.keys(pcPositions);
+        totalTokenPositions += tokenIds.length;
+
+        const maybeMetaKeys = Object.keys(mapData || {}).filter(k => k !== "pc_positions");
+
+        const item = document.createElement("div");
+        item.className = "item";
+
+        item.innerHTML = `
+          <div class="item-title">${mapId}</div>
+          <div class="item-sub mono">path: /maps/${mapId}</div>
+          <div class="chip-row">
+            <div class="chip">PC Tokens: ${tokenIds.length}</div>
+            <div class="chip">Extra Keys: ${maybeMetaKeys.length}</div>
+          </div>
+          <div class="meta">
+            <div><strong>PC Token IDs:</strong> ${tokenIds.length ? tokenIds.join(", ") : "none"}</div>
+            <div><strong>Extra Map Keys:</strong> ${maybeMetaKeys.length ? maybeMetaKeys.join(", ") : "none"}</div>
+          </div>
+        `;
+
+        container.appendChild(item);
+      });
+
+      return {
+        mapCount: mapEntries.length,
+        tokenCount: totalTokenPositions
+      };
+    }
+
+    async function refreshSaves() {
+      try {
+        setStatus("Loading saves from RTDB...", "warn");
+
+        const [charsSnap, mapsSnap] = await Promise.all([
+          get(ref(db, "characters")),
+          get(ref(db, "maps"))
+        ]);
+
+        const chars = charsSnap.exists() ? charsSnap.val() : {};
+        const maps = mapsSnap.exists() ? mapsSnap.val() : {};
+
+        const pcCount = renderCharacterList("pcList", chars.pcs, "pcs");
+        const npcCount = renderCharacterList("npcList", chars.npcs, "npcs");
+        const mapStats = renderMaps(maps);
+
+        $("pcCount").textContent = pcCount;
+        $("npcCount").textContent = npcCount;
+        $("mapCount").textContent = mapStats.mapCount;
+        $("tokenPosCount").textContent = mapStats.tokenCount;
+
+        setStatus(`Loaded saves: ${pcCount} PC(s), ${npcCount} NPC(s), ${mapStats.mapCount} map save(s).`, "success");
+      } catch (err) {
+        console.error(err);
+        setStatus(`Refresh failed: ${err.message}`, "error");
+      }
+    }
+
+    $("refreshBtn").addEventListener("click", refreshSaves);
+    $("clearBtn").addEventListener("click", clearView);
+
+    setStatus("Ready. Click Refresh Saves.", "info");
+  </script>
+</body>
+</html>
