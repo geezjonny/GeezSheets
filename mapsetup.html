@@ -1287,7 +1287,7 @@ body {
         : interiors;
 
       allRects.forEach((r, i) => {
-        const isPreview = rectPreview && i === allRects.length - 1 && rectPreview === r || (rectPreview && i === allRects.length - 1);
+        const isPreview = rectPreview !== null && i === allRects.length - 1 && r === rectPreview;
         const c1 = Math.min(r.c1, r.c2), c2 = Math.max(r.c1, r.c2);
         const r1 = Math.min(r.r1, r.r2), r2 = Math.max(r.r1, r.r2);
         const fx = startX + c1 * gridSize;
