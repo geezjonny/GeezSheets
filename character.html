@@ -1,1986 +1,2179 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Character Create (RTDB)</title>
+  <title>Character Editor</title>
   <style>
-    :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --panel-2: #1f2937;
-      --line: #374151;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #22c55e;
-      --accent-2: #16a34a;
-      --danger: #ef4444;
-      --warn: #f59e0b;
-      --input: #0b1220;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
 
-    * { box-sizing: border-box; }
+```
+:root {
+  --bg: #080d18;
+  --bg2: #0d1525;
+  --panel: #111827;
+  --panel2: #0b1220;
+  --line: #1e2d45;
+  --line2: #374151;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --muted2: #94a3b8;
+  --accent: #3b82f6;
+  --accent2: #60a5fa;
+  --accent3: #93c5fd;
+  --good: #10b981;
+  --good2: #34d399;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --pc-color: #3b82f6;
+  --npc-color: #a855f7;
+}
 
-    body {
-      margin: 0;
-      font-family: Arial, Helvetica, sans-serif;
-      background: linear-gradient(180deg, #0b1020 0%, #111827 100%);
-      color: var(--text);
-      padding: 20px;
-    }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .app {
-      max-width: 1400px;
-      margin: 0 auto;
-    }
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
 
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
+/* ── HEADER ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(8,13,24,0.97);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
-    .title-wrap h1 {
-      margin: 0;
-      font-size: 1.8rem;
-    }
+.header-left { display: flex; align-items: center; gap: 14px; }
 
-    .title-wrap p {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
+.header-left h1 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
 
-    .status {
-      padding: 10px 14px;
-      border-radius: 10px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--line);
-      min-width: 260px;
-      font-size: 0.95rem;
-    }
+.record-type-tabs {
+  display: flex;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  overflow: hidden;
+}
 
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 18px;
-      flex-wrap: wrap;
-    }
+.rt-tab {
+  padding: 7px 16px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--muted2);
+  font-family: 'Syne', sans-serif;
+  transition: all 0.15s;
+}
 
-    button {
-      border: none;
-      border-radius: 10px;
-      padding: 12px 16px;
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 0.95rem;
-    }
+.rt-tab.active-pc { background: rgba(59,130,246,0.15); color: var(--accent2); }
+.rt-tab.active-npc { background: rgba(168,85,247,0.15); color: #c084fc; }
+.rt-tab:hover:not(.active-pc):not(.active-npc) { background: rgba(255,255,255,0.05); color: var(--text); }
 
-    .btn-primary {
-      background: var(--accent);
-      color: #062b12;
-    }
+.status-pill {
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: rgba(255,255,255,0.03);
+  font-size: 0.78rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text);
+  transition: all 0.2s;
+  max-width: 380px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-    .btn-primary:hover {
-      background: var(--accent-2);
-      color: #fff;
-    }
+/* ── LAYOUT ── */
+.app {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  min-height: calc(100vh - 53px);
+}
 
-    .btn-secondary {
-      background: #334155;
-      color: #fff;
-    }
+/* ── SIDEBAR ── */
+.sidebar {
+  border-right: 1px solid var(--line);
+  background: var(--bg2);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 53px;
+  height: calc(100vh - 53px);
+  overflow-y: auto;
+}
 
-    .btn-secondary:hover {
-      background: #475569;
-    }
+.sidebar-section {
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
 
-    .btn-danger {
-      background: #7f1d1d;
-      color: #fff;
-    }
+.sidebar-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
 
-    .btn-danger:hover {
-      background: #991b1b;
-    }
+/* ── JSON IMPORT ── */
+.json-area {
+  width: 100%;
+  min-height: 140px;
+  background: var(--panel2);
+  color: var(--accent3);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', monospace;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s;
+}
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 16px;
-    }
+.json-area:focus { border-color: var(--accent); }
+.json-area::placeholder { color: var(--muted); }
 
-    .card {
-      grid-column: span 12;
-      background: rgba(17, 24, 39, 0.92);
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
-    }
+/* ── SAVED LIST ── */
+.saved-list { display: flex; flex-direction: column; gap: 6px; }
 
-    .card h2 {
-      margin: 0 0 12px;
-      font-size: 1.1rem;
-      border-bottom: 1px solid var(--line);
-      padding-bottom: 8px;
-    }
+.saved-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: rgba(255,255,255,0.02);
+}
 
-    .section-grid {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 12px;
-    }
+.saved-item:hover { border-color: var(--accent); background: rgba(59,130,246,0.06); }
+.saved-item.active { border-color: var(--accent); background: rgba(59,130,246,0.1); }
 
-    .field {
-      grid-column: span 12;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
+.saved-item-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 2px;
+}
 
-    .field.col-6 { grid-column: span 6; }
-    .field.col-4 { grid-column: span 4; }
-    .field.col-3 { grid-column: span 3; }
-    .field.col-2 { grid-column: span 2; }
+.saved-item-sub {
+  font-size: 0.72rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--muted);
+}
 
-    label {
-      font-size: 0.85rem;
-      color: var(--muted);
-      font-weight: 700;
-    }
+.saved-item.npc-item { border-left: 2px solid var(--npc-color); }
+.saved-item.pc-item  { border-left: 2px solid var(--pc-color); }
 
-    input, select, textarea {
-      width: 100%;
-      background: var(--input);
-      color: var(--text);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.95rem;
-      outline: none;
-    }
+/* ── MAIN FORM ── */
+.main {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
-    input:focus, select:focus, textarea:focus {
-      border-color: #60a5fa;
-      box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
-    }
+.section-card {
+  background: rgba(17,24,39,0.9);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+}
 
-    textarea {
-      min-height: 100px;
-      resize: vertical;
-    }
-	
-	.mode-tab.active {
-	  background: #1d4ed8;
-	  color: #fff;
-	}
-	
-    .small {
-      font-size: 0.8rem;
-      color: var(--muted);
-    }
+.section-card h2 {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
 
-    .ability-grid, .skill-grid {
-      display: grid;
-      gap: 12px;
-    }
+/* ── FORM FIELDS ── */
+.form-grid {
+  display: grid;
+  gap: 10px;
+}
 
-    .ability-grid {
-      grid-template-columns: repeat(6, 1fr);
-    }
+.fg-2 { grid-template-columns: 1fr 1fr; }
+.fg-3 { grid-template-columns: 1fr 1fr 1fr; }
+.fg-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.fg-6 { grid-template-columns: repeat(6, 1fr); }
 
-    .skill-grid {
-      grid-template-columns: repeat(3, 1fr);
-    }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
-    .mini-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 12px;
-    }
+.field label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted2);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
-    .mini-card h3 {
-      margin: 0 0 10px;
-      font-size: 0.95rem;
-    }
+.field input,
+.field select,
+.field textarea {
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--line2);
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-family: 'JetBrains Mono', monospace;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
 
-    .inline-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
 
-    .readonly {
-      background: #0a1627;
-      color: #93c5fd;
-    }
+.field textarea { resize: vertical; min-height: 80px; }
+.field select option { background: var(--panel); }
 
-    .footer-note {
-      margin-top: 16px;
-      color: var(--muted);
-      font-size: 0.85rem;
-    }
+.field input.computed {
+  color: var(--accent2);
+  background: rgba(59,130,246,0.06);
+  border-color: rgba(59,130,246,0.2);
+}
 
-    @media (max-width: 1100px) {
-      .ability-grid { grid-template-columns: repeat(3, 1fr); }
-      .skill-grid { grid-template-columns: repeat(2, 1fr); }
-    }
+/* ── ABILITY SCORES ── */
+.ability-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
 
-    @media (max-width: 700px) {
-      .ability-grid, .skill-grid { grid-template-columns: 1fr; }
-      .field.col-6, .field.col-4, .field.col-3, .field.col-2 { grid-column: span 12; }
-    }
-	
-	.abilities-editor {
-	  display: grid;
-	  gap: 12px;
-	}
+.ability-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+}
 
-	.ability-row {
-	  display: grid;
-	  grid-template-columns: 2fr 90px 90px 180px 140px 120px;
-	  gap: 10px;
-	  align-items: end;
-	  padding: 12px;
-	  border-radius: 14px;
-	  border: 1px solid var(--line);
-	  background: rgba(255,255,255,0.03);
-	}
+.ability-box label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--muted2);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+}
 
-	.ability-row .field {
-	  grid-column: auto;
-	}
+.ability-score {
+  width: 100%;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--line2);
+  border-radius: 6px;
+  padding: 6px 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  outline: none;
+}
 
-	.ability-row button {
-	  padding: 10px 12px;
-	}
+.ability-score:focus { border-color: var(--accent); }
 
-	.abilities-toolbar {
-	  display: flex;
-	  gap: 10px;
-	  margin-top: 12px;
-	  flex-wrap: wrap;
-	}
+.ability-mod {
+  margin-top: 5px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--accent2);
+}
 
-	@media (max-width: 1100px) {
-	  .ability-row {
-		grid-template-columns: repeat(2, 1fr);
-	  }
-	}
+/* ── SAVES ── */
+.saves-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.save-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+
+.save-box label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.save-box input {
+  width: 100%;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--line2);
+  border-radius: 5px;
+  padding: 5px 2px;
+  font-size: 0.9rem;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  outline: none;
+}
+
+.save-prof-row {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+.prof-toggle {
+  font-size: 0.6rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  transition: all 0.12s;
+}
+
+.prof-toggle.on { background: rgba(59,130,246,0.2); border-color: var(--accent); color: var(--accent2); }
+
+/* ── SKILLS ── */
+.skills-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+}
+
+.skill-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.02);
+}
+
+.skill-row label {
+  flex: 1;
+  font-size: 0.75rem;
+  color: var(--muted2);
+  cursor: pointer;
+}
+
+.skill-bonus {
+  width: 38px;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--line2);
+  border-radius: 5px;
+  padding: 3px 4px;
+  font-size: 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  outline: none;
+}
+
+.skill-flags {
+  display: flex;
+  gap: 3px;
+}
+
+.skill-flag {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--line2);
+  background: none;
+  cursor: pointer;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  font-family: 'Syne', sans-serif;
+}
+
+.skill-flag.prof-on { background: rgba(59,130,246,0.2); border-color: var(--accent); color: var(--accent2); }
+.skill-flag.exp-on  { background: rgba(16,185,129,0.2); border-color: var(--good); color: var(--good2); }
+
+/* ── SENSES ── */
+.senses-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+/* ── ATTACKS ── */
+.attacks-list { display: flex; flex-direction: column; gap: 8px; }
+
+.attack-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px 100px 80px 1fr auto;
+  gap: 6px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255,255,255,0.02);
+}
+
+/* ── ABILITIES ── */
+.abilities-list { display: flex; flex-direction: column; gap: 10px; }
+
+.ability-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+}
+
+.ability-card-header {
+  display: grid;
+  grid-template-columns: 1fr 60px 60px 150px 100px 60px auto;
+  gap: 6px;
+  align-items: end;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ability-card-action {
+  display: grid;
+  grid-template-columns: 140px 120px 1fr 120px 80px 1fr;
+  gap: 6px;
+  align-items: end;
+  padding: 10px;
+  background: rgba(0,0,0,0.15);
+}
+
+/* ── SPELLS ── */
+.spells-list { display: flex; flex-direction: column; gap: 8px; }
+
+.spell-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+  overflow: hidden;
+}
+
+.spell-card-header {
+  display: grid;
+  grid-template-columns: 1fr 60px 120px 80px 80px 90px auto;
+  gap: 6px;
+  align-items: end;
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.spell-card-detail {
+  display: grid;
+  grid-template-columns: 80px 80px 80px 1fr 1fr auto;
+  gap: 6px;
+  align-items: end;
+  padding: 10px;
+  background: rgba(0,0,0,0.15);
+}
+
+.spell-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: rgba(255,255,255,0.04);
+  color: var(--muted2);
+  white-space: nowrap;
+}
+
+.spell-badge.cantrip { border-color: rgba(16,185,129,0.4); color: var(--good2); background: rgba(16,185,129,0.08); }
+.spell-badge.prepared { border-color: rgba(59,130,246,0.4); color: var(--accent2); background: rgba(59,130,246,0.08); }
+.spell-badge.always { border-color: rgba(251,191,36,0.4); color: var(--warn); background: rgba(251,191,36,0.08); }
+.spell-badge.concentration { border-color: rgba(168,85,247,0.4); color: #c084fc; background: rgba(168,85,247,0.08); }
+
+/* ── INVENTORY ── */
+.inventory-list { display: flex; flex-direction: column; gap: 6px; }
+
+.inventory-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 70px 120px auto;
+  gap: 6px;
+  align-items: end;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+}
+
+/* ── SPELLCASTING ── */
+.spell-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 6px;
+}
+
+.slot-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.slot-box label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.slot-box input {
+  width: 100%;
+  background: var(--panel2);
+  color: var(--text);
+  border: 1px solid var(--line2);
+  border-radius: 4px;
+  padding: 4px 2px;
+  font-size: 0.85rem;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  outline: none;
+}
+
+.slot-box input.used { color: var(--warn); }
+
+/* ── CONDITIONS ── */
+.conditions-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.condition-chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: rgba(255,255,255,0.03);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s;
+  color: var(--muted2);
+  font-family: 'Syne', sans-serif;
+}
+
+.condition-chip.active {
+  background: rgba(239,68,68,0.15);
+  border-color: var(--bad);
+  color: #fca5a5;
+}
+
+/* ── BUTTONS ── */
+.btn {
+  border: none;
+  border-radius: 7px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.82rem;
+  font-family: 'Syne', sans-serif;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-primary   { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+.btn-secondary { background: rgba(255,255,255,0.07); color: var(--text); border: 1px solid var(--line2); }
+.btn-secondary:hover { background: rgba(255,255,255,0.12); }
+.btn-danger    { background: rgba(239,68,68,0.12); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+.btn-danger:hover { background: rgba(239,68,68,0.22); }
+.btn-good      { background: rgba(16,185,129,0.12); color: var(--good2); border: 1px solid rgba(16,185,129,0.3); }
+.btn-good:hover { background: rgba(16,185,129,0.22); }
+.btn-sm { padding: 6px 10px; font-size: 0.75rem; }
+.btn-full { width: 100%; }
+
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ── HINT ── */
+.hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 10px;
+  line-height: 1.5;
+}
+
+.hint strong { color: var(--accent3); }
+
+/* ── NPC ONLY FIELDS ── */
+.npc-only { display: none; }
+.pc-only  { display: block; }
+body.mode-npc .npc-only { display: block; }
+body.mode-npc .pc-only  { display: none; }
+body.mode-npc .form-grid.npc-only { display: grid; }
+body.mode-npc .section-card.npc-only { display: block; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 999px; }
+
+@media (max-width: 1100px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { position: static; height: auto; }
+  .ability-grid, .saves-grid { grid-template-columns: repeat(3, 1fr); }
+  .skills-grid { grid-template-columns: 1fr 1fr; }
+  .spell-slots-grid { grid-template-columns: repeat(5, 1fr); }
+  .attack-row { grid-template-columns: 1fr 1fr 1fr; }
+  .attack-row { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+@media (max-width: 700px) {
+  .fg-2, .fg-3, .fg-4, .fg-6 { grid-template-columns: 1fr; }
+  .ability-grid, .saves-grid { grid-template-columns: repeat(2, 1fr); }
+  .skills-grid { grid-template-columns: 1fr; }
+  .senses-grid { grid-template-columns: 1fr 1fr; }
+}
+```
+
   </style>
 </head>
-<body>
-  <div class="app">
-    <div class="header">
-      <div class="title-wrap">
-        <h1>Character Create (2024 5e / 5.5e)</h1>
-        <p>Character data entry only. Saves directly to Firebase Realtime Database.</p>
-      </div>
-      <div class="status" id="statusBox">Ready.</div>
+<body class="mode-pc">
+
+<!-- HEADER -->
+
+<div class="header">
+  <div class="header-left">
+    <h1>Character Editor</h1>
+    <div class="record-type-tabs">
+      <button class="rt-tab active-pc" id="tabPc">PC</button>
+      <button class="rt-tab" id="tabNpc">NPC</button>
     </div>
+  </div>
+  <div class="status-pill" id="statusBox">Ready.</div>
+</div>
 
-	<div class="card">
-	  <h2>Mode</h2>
+<div class="app">
 
-	  <div class="toolbar" style="margin-bottom: 14px;">
-		<button class="btn-secondary mode-tab active" id="tabCreateBtn" type="button">Create New</button>
-		<button class="btn-secondary mode-tab" id="tabEditBtn" type="button">Edit Existing</button>
-	  </div>
+  <!-- SIDEBAR -->
 
-	  <div id="createModePanel">
-		<div class="toolbar" style="margin-bottom: 0;">
-		  <button class="btn-primary" id="saveBtn" type="button">Save Character</button>
-		  <button class="btn-secondary" id="newBtn" type="button">New Character</button>
-		  <button class="btn-danger" id="clearBtn" type="button">Clear Form</button>
-          <button class="btn-secondary" id="loadTxtBtn" type="button">Load TXT</button>
-          <button class="btn-secondary" id="exportTxtBtn" type="button">Export TXT</button>
-		</div>
-	  </div>
+  <div class="sidebar">
 
-	  <div id="editModePanel" style="display:none;">
-		<div class="section-grid">
-		  <div class="field col-3">
-			<label for="editRecordType">Edit Bucket</label>
-			<select id="editRecordType">
-			  <option value="pc">PC</option>
-			  <option value="npc">NPC</option>
-			</select>
-		  </div>
+```
+<!-- JSON IMPORT -->
+<div class="sidebar-section">
+  <div class="sidebar-section-label">JSON Import / Export</div>
+  <textarea class="json-area" id="jsonArea" placeholder='Paste JSON here (single character or array), or leave empty and click Import to upload a file...'></textarea>
+  <div class="btn-row" style="margin-top:8px;">
+    <button class="btn btn-good btn-full" id="loadJsonBtn">Import / Load JSON</button>
+    <button class="btn btn-secondary btn-sm" id="copyJsonBtn" title="Copy current character as JSON">Copy</button>
+  </div>
+  <div class="hint" style="margin-top:8px;">
+    <strong>Textarea populated</strong> → loads/imports from text.<br>
+    <strong>Textarea empty</strong> → opens file picker.<br>
+    Single object or <strong>array</strong> of characters both supported. Arrays save all to RTDB automatically.
+  </div>
+  <input type="file" id="jsonFileInput" accept=".json,application/json" style="display:none;" multiple />
+</div>
 
-		  <div class="field col-5">
-			<label for="editCharacterSelect">Saved Character</label>
-			<select id="editCharacterSelect">
-			  <option value="">-- Click Refresh List --</option>
-			</select>
-		  </div>
+<!-- SAVED CHARACTERS -->
+<div class="sidebar-section">
+  <div class="sidebar-section-label">Saved Characters</div>
+  <div class="btn-row" style="margin-bottom:8px;">
+    <button class="btn btn-secondary btn-full" id="refreshListBtn">Refresh List</button>
+  </div>
+  <div class="saved-list" id="savedList">
+    <div style="font-size:0.75rem; color:var(--muted);">Click Refresh List to load.</div>
+  </div>
+</div>
 
-		  <div class="field col-2">
-			<label>&nbsp;</label>
-			<button class="btn-secondary" id="refreshEditListBtn" type="button">Refresh List</button>
-		  </div>
+<!-- ACTIONS -->
+<div class="sidebar-section">
+  <div class="sidebar-section-label">Actions</div>
+  <div class="btn-row" style="flex-direction:column; gap:8px;">
+    <button class="btn btn-primary btn-full" id="saveBtn">Save to RTDB</button>
+    <button class="btn btn-secondary btn-full" id="newBtn">New Character</button>
+    <button class="btn btn-danger btn-full" id="deleteBtn">Delete Current</button>
+  </div>
+  <div class="hint" style="margin-top:10px;">
+    Saves to <strong>/characters/pcs/{id}</strong> or <strong>/characters/npcs/{id}</strong>
+  </div>
+</div>
 
-		  <div class="field col-2">
-			<label>&nbsp;</label>
-			<button class="btn-secondary" id="loadEditBtn" type="button">Load Character</button>
-		  </div>
-		</div>
+<!-- TOKEN COLOR -->
+<div class="sidebar-section pc-only">
+  <div class="sidebar-section-label">Token Color</div>
+  <div class="field">
+    <input type="color" id="tokenColor" value="#3b82f6" style="height:38px; padding:2px 4px; cursor:pointer;" />
+  </div>
+</div>
+```
 
-		<div class="toolbar" style="margin-top: 12px; margin-bottom: 0;">
-		  <button class="btn-primary" id="saveEditBtn" type="button">Save Changes</button>
-		  <button class="btn-secondary" id="newFromEditBtn" type="button">Switch to Create New</button>
-      <button class="btn-secondary" id="loadTxtEditBtn" type="button">Load TXT</button>
-      <button class="btn-secondary" id="exportTxtEditBtn" type="button">Export TXT</button>
-		</div>
-
-		<div class="footer-note" style="margin-top: 10px;">
-		  Edit mode saves back to the original RTDB id, even if you rename the character.
-		</div>
-	  </div>
-	</div>
-<!-- IDENTITY -->
-    <div class="card">
-      <h2>1) Record Type & Identity</h2>
-      <div class="section-grid">
-        <div class="field col-3">
-          <label for="recordType">Record Type</label>
-          <select id="recordType">
-            <option value="pc">PC</option>
-            <option value="npc">NPC</option>
-          </select>
-        </div>
-
-        <div class="field col-3">
-          <label for="name">Character Name *</label>
-          <input id="name" type="text" placeholder="Thorin Ironbeard" />
-        </div>
-
-        <div class="field col-3">
-          <label for="playerName">Player Name</label>
-          <input id="playerName" type="text" placeholder="Optional for NPCs" />
-        </div>
-
-        <div class="field col-3">
-          <label for="level">Level</label>
-          <input id="level" type="number" min="0" value="1" />
-        </div>
-
-        <div class="field col-3">
-          <label for="species">Species</label>
-          <input id="species" type="text" placeholder="Human, Elf, Dwarf..." />
-        </div>
-
-        <div class="field col-3">
-          <label for="charClass">Class</label>
-          <input id="charClass" type="text" placeholder="Fighter, Wizard..." />
-        </div>
-
-        <div class="field col-3">
-          <label for="subclass">Subclass</label>
-          <input id="subclass" type="text" placeholder="Battle Master, Evoker..." />
-        </div>
-
-        <div class="field col-3">
-          <label for="background">Background</label>
-          <input id="background" type="text" placeholder="Soldier, Sage..." />
-        </div>
-
-        <div class="field col-3">
-          <label for="alignment">Alignment</label>
-          <input id="alignment" type="text" placeholder="Optional" />
-        </div>
-
-        <div class="field col-3">
-          <label for="xp">XP</label>
-          <input id="xp" type="number" min="0" value="0" />
-        </div>
-
-        <div class="field col-3">
-          <label for="size">Size</label>
-          <input id="size" type="text" placeholder="Medium, Small..." />
-        </div>
-
-        <div class="field col-3">
-          <label for="creatureType">Creature Type</label>
-          <input id="creatureType" type="text" placeholder="Humanoid, Fiend..." />
-        </div>
-      </div>
-    </div>
-
-    <!-- CORE COMBAT -->
-    <div class="card">
-      <h2>2) Core Combat / Sheet Info</h2>
-      <div class="section-grid">
-        <div class="field col-3">
-          <label for="hpCurrent">Current HP</label>
-          <input id="hpCurrent" type="number" value="0" />
-        </div>
-        <div class="field col-3">
-          <label for="hpMax">Max HP</label>
-          <input id="hpMax" type="number" value="0" />
-        </div>
-        <div class="field col-3">
-          <label for="tempHp">Temp HP</label>
-          <input id="tempHp" type="number" value="0" />
-        </div>
-        <div class="field col-3">
-          <label for="ac">Armor Class</label>
-          <input id="ac" type="number" value="10" />
-        </div>
-
-        <div class="field col-3">
-          <label for="speed">Speed</label>
-          <input id="speed" type="number" value="30" />
-        </div>
-        <div class="field col-3">
-          <label for="initiativeBonus">Initiative Bonus</label>
-          <input id="initiativeBonus" type="number" value="0" />
-        </div>
-        <div class="field col-3">
-          <label for="proficiencyBonus">Proficiency Bonus</label>
-          <input id="proficiencyBonus" type="number" value="2" />
-        </div>
-        <div class="field col-3">
-          <label for="hitDice">Hit Dice</label>
-          <input id="hitDice" type="text" placeholder="e.g. 5d10" />
-        </div>
-
-        <div class="field col-3">
-          <label for="deathSuccesses">Death Save Successes</label>
-          <input id="deathSuccesses" type="number" min="0" max="3" value="0" />
-        </div>
-        <div class="field col-3">
-          <label for="deathFailures">Death Save Failures</label>
-          <input id="deathFailures" type="number" min="0" max="3" value="0" />
-        </div>
-        <div class="field col-3">
-          <label for="heroicInspiration">Heroic Inspiration</label>
-          <select id="heroicInspiration">
-            <option value="false">No</option>
-            <option value="true">Yes</option>
-          </select>
-        </div>
-        <div class="field col-3">
-          <label for="conditions">Conditions</label>
-          <input id="conditions" type="text" placeholder="Poisoned, Prone..." />
-        </div>
-
-        <div class="field col-4">
-          <label for="passivePerception">Passive Perception</label>
-          <input id="passivePerception" type="number" class="readonly" value="10" />
-        </div>
-        <div class="field col-4">
-          <label for="passiveInsight">Passive Insight</label>
-          <input id="passiveInsight" type="number" class="readonly" value="10" />
-        </div>
-        <div class="field col-4">
-          <label for="passiveInvestigation">Passive Investigation</label>
-          <input id="passiveInvestigation" type="number" class="readonly" value="10" />
-        </div>
-      </div>
-    </div>
-
-    <!-- ABILITIES -->
-    <div class="card">
-      <h2>3) Ability Scores (mods auto-calc)</h2>
-      <div class="ability-grid">
-        <div class="mini-card">
-          <h3>STR</h3>
-          <div class="inline-2">
-            <div class="field">
-              <label for="strScore">Score</label>
-              <input id="strScore" type="number" value="10" />
-            </div>
-            <div class="field">
-              <label for="strMod">Mod</label>
-              <input id="strMod" type="number" class="readonly" value="0" />
-            </div>
-          </div>
-        </div>
-
-        <div class="mini-card">
-          <h3>DEX</h3>
-          <div class="inline-2">
-            <div class="field">
-              <label for="dexScore">Score</label>
-              <input id="dexScore" type="number" value="10" />
-            </div>
-            <div class="field">
-              <label for="dexMod">Mod</label>
-              <input id="dexMod" type="number" class="readonly" value="0" />
-            </div>
-          </div>
-        </div>
-
-        <div class="mini-card">
-          <h3>CON</h3>
-          <div class="inline-2">
-            <div class="field">
-              <label for="conScore">Score</label>
-              <input id="conScore" type="number" value="10" />
-            </div>
-            <div class="field">
-              <label for="conMod">Mod</label>
-              <input id="conMod" type="number" class="readonly" value="0" />
-            </div>
-          </div>
-        </div>
-
-        <div class="mini-card">
-          <h3>INT</h3>
-          <div class="inline-2">
-            <div class="field">
-              <label for="intScore">Score</label>
-              <input id="intScore" type="number" value="10" />
-            </div>
-            <div class="field">
-              <label for="intMod">Mod</label>
-              <input id="intMod" type="number" class="readonly" value="0" />
-            </div>
-          </div>
-        </div>
-
-        <div class="mini-card">
-          <h3>WIS</h3>
-          <div class="inline-2">
-            <div class="field">
-              <label for="wisScore">Score</label>
-              <input id="wisScore" type="number" value="10" />
-            </div>
-            <div class="field">
-              <label for="wisMod">Mod</label>
-              <input id="wisMod" type="number" class="readonly" value="0" />
-            </div>
-          </div>
-        </div>
-
-        <div class="mini-card">
-          <h3>CHA</h3>
-          <div class="inline-2">
-            <div class="field">
-              <label for="chaScore">Score</label>
-              <input id="chaScore" type="number" value="10" />
-            </div>
-            <div class="field">
-              <label for="chaMod">Mod</label>
-              <input id="chaMod" type="number" class="readonly" value="0" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SAVES -->
-    <div class="card">
-      <h2>4) Saving Throw Bonuses</h2>
-      <div class="section-grid">
-        <div class="field col-2"><label for="saveStr">STR Save</label><input id="saveStr" type="number" value="0" /></div>
-        <div class="field col-2"><label for="saveDex">DEX Save</label><input id="saveDex" type="number" value="0" /></div>
-        <div class="field col-2"><label for="saveCon">CON Save</label><input id="saveCon" type="number" value="0" /></div>
-        <div class="field col-2"><label for="saveInt">INT Save</label><input id="saveInt" type="number" value="0" /></div>
-        <div class="field col-2"><label for="saveWis">WIS Save</label><input id="saveWis" type="number" value="0" /></div>
-        <div class="field col-2"><label for="saveCha">CHA Save</label><input id="saveCha" type="number" value="0" /></div>
-      </div>
-      <div class="small">Enter the final sheet bonus values. This keeps PC and NPC data flexible.</div>
-    </div>
-
-    <!-- SKILLS -->
-    <div class="card">
-      <h2>5) Skill Bonuses (enter final sheet values)</h2>
-      <div class="skill-grid">
-        <div class="mini-card"><h3>Strength</h3>
-          <div class="field"><label for="skillAthletics">Athletics</label><input id="skillAthletics" type="number" value="0" /></div>
-        </div>
-
-        <div class="mini-card"><h3>Dexterity</h3>
-          <div class="field"><label for="skillAcrobatics">Acrobatics</label><input id="skillAcrobatics" type="number" value="0" /></div>
-          <div class="field"><label for="skillSleightOfHand">Sleight of Hand</label><input id="skillSleightOfHand" type="number" value="0" /></div>
-          <div class="field"><label for="skillStealth">Stealth</label><input id="skillStealth" type="number" value="0" /></div>
-        </div>
-
-        <div class="mini-card"><h3>Intelligence</h3>
-          <div class="field"><label for="skillArcana">Arcana</label><input id="skillArcana" type="number" value="0" /></div>
-          <div class="field"><label for="skillHistory">History</label><input id="skillHistory" type="number" value="0" /></div>
-          <div class="field"><label for="skillInvestigation">Investigation</label><input id="skillInvestigation" type="number" value="0" /></div>
-          <div class="field"><label for="skillNature">Nature</label><input id="skillNature" type="number" value="0" /></div>
-          <div class="field"><label for="skillReligion">Religion</label><input id="skillReligion" type="number" value="0" /></div>
-        </div>
-
-        <div class="mini-card"><h3>Wisdom</h3>
-          <div class="field"><label for="skillAnimalHandling">Animal Handling</label><input id="skillAnimalHandling" type="number" value="0" /></div>
-          <div class="field"><label for="skillInsight">Insight</label><input id="skillInsight" type="number" value="0" /></div>
-          <div class="field"><label for="skillMedicine">Medicine</label><input id="skillMedicine" type="number" value="0" /></div>
-          <div class="field"><label for="skillPerception">Perception</label><input id="skillPerception" type="number" value="0" /></div>
-          <div class="field"><label for="skillSurvival">Survival</label><input id="skillSurvival" type="number" value="0" /></div>
-        </div>
-
-        <div class="mini-card"><h3>Charisma</h3>
-          <div class="field"><label for="skillDeception">Deception</label><input id="skillDeception" type="number" value="0" /></div>
-          <div class="field"><label for="skillIntimidation">Intimidation</label><input id="skillIntimidation" type="number" value="0" /></div>
-          <div class="field"><label for="skillPerformance">Performance</label><input id="skillPerformance" type="number" value="0" /></div>
-          <div class="field"><label for="skillPersuasion">Persuasion</label><input id="skillPersuasion" type="number" value="0" /></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SPELLCASTING -->
-    <div class="card">
-      <h2>6) Spellcasting</h2>
-      <div class="section-grid">
-        <div class="field col-3">
-          <label for="spellcastingAbility">Spellcasting Ability</label>
-          <select id="spellcastingAbility">
-            <option value="">None</option>
-            <option value="str">STR</option>
-            <option value="dex">DEX</option>
-            <option value="con">CON</option>
-            <option value="int">INT</option>
-            <option value="wis">WIS</option>
-            <option value="cha">CHA</option>
-          </select>
-        </div>
-
-        <div class="field col-3">
-          <label for="spellSaveDc">Spell Save DC</label>
-          <input id="spellSaveDc" type="number" value="0" />
-        </div>
-
-        <div class="field col-3">
-          <label for="spellAttackBonus">Spell Attack Bonus</label>
-          <input id="spellAttackBonus" type="number" value="0" />
-        </div>
-
-        <div class="field col-3">
-          <label for="spellcastingNotes">Spellcasting Notes</label>
-          <input id="spellcastingNotes" type="text" placeholder="Prepared/known summary" />
-        </div>
-
-        <div class="field col-6">
-          <label for="spellSlots">Spell Slots (freeform)</label>
-          <textarea id="spellSlots" placeholder="Example:
-1st: 4
-2nd: 3
-3rd: 2"></textarea>
-        </div>
-
-        <div class="field col-6">
-          <label for="spellsNotes">Spells / Prepared / Known (freeform)</label>
-          <textarea id="spellsNotes" placeholder="Freeform spell notes"></textarea>
-        </div>
-      </div>
-      <div class="small">
-        2024 spell math still centers on the familiar formulas: Spell Save DC = 8 + ability mod + proficiency; Spell Attack Bonus = ability mod + proficiency. :contentReference[oaicite:1]{index=1}
-      </div>
-    </div>
-	
-<!-- ABILITIES & RESOURCES -->
-	<div class="card">
-	  <h2>7) Abilities & Resources (generic spell-like trackers)</h2>
-
-	  <div id="abilitiesEditor" class="abilities-editor"></div>
-
-	  <div class="abilities-toolbar">
-		<button class="btn-secondary" id="addAbilityBtn" type="button">+ Add Ability</button>
-		<button class="btn-secondary" id="addBattleMasterPresetBtn" type="button">+ Battle Master Preset</button>
-	  </div>
-
-	  <div class="small" style="margin-top: 10px;">
-		Use this for Action Surge, Second Wind, Superiority Dice, Rage, Channel Divinity, Wild Shape, Bardic Inspiration, item charges, etc.
-	  </div>
-	</div>
-
-    <!-- TEXT BLOCKS -->
-    <div class="card">
-      <h2>8) Attacks, Features, Proficiencies, Equipment, Notes</h2>
-      <div class="section-grid">
-        <div class="field col-6">
-          <label for="attacks">Weapon Attacks / Cantrips / Attack Notes</label>
-          <textarea id="attacks" placeholder="Example:
-Longsword | +7 to hit | 1d8+4 slashing
-Shortbow | +6 to hit | 1d6+3 piercing"></textarea>
-        </div>
-
-        <div class="field col-6">
-          <label for="featuresTraits">Features & Traits</label>
-          <textarea id="featuresTraits" placeholder="Class features, species traits, feats, notable traits..."></textarea>
-        </div>
-
-        <div class="field col-6">
-          <label for="proficienciesLanguages">Proficiencies & Languages</label>
-          <textarea id="proficienciesLanguages" placeholder="Armor, weapons, tools, languages..."></textarea>
-        </div>
-
-        <div class="field col-6">
-          <label for="equipment">Equipment</label>
-          <textarea id="equipment" placeholder="Armor, weapons, items, treasure..."></textarea>
-        </div>
-
-        <div class="field col-6">
-          <label for="appearance">Appearance</label>
-          <textarea id="appearance" placeholder="Height, build, distinguishing features..."></textarea>
-        </div>
-
-        <div class="field col-6">
-          <label for="backstory">Backstory / Personality</label>
-          <textarea id="backstory" placeholder="Backstory, bonds, flaws, ideals, goals..."></textarea>
-        </div>
-
-        <div class="field col-12">
-          <label for="notes">Additional Notes</label>
-          <textarea id="notes" placeholder="Anything else relevant"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <div class="footer-note">
-      Save path: <strong>/characters/pcs/{id}</strong> or <strong>/characters/npcs/{id}</strong> based on the dropdown.
-    </div>
-
-    <input id="txtFileInput" type="file" accept=".txt,text/plain" style="display:none;" />
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  <!-- MAIN FORM -->
 
-    // -------------------------
-    // Utility helpers
-    // -------------------------
-    const $ = (id) => document.getElementById(id);
+  <div class="main">
 
-    function setStatus(message, type = "info") {
-      const box = $("statusBox");
-      box.textContent = message;
+```
+<!-- 1. IDENTITY -->
+<div class="section-card">
+  <h2>Identity</h2>
+  <div class="form-grid fg-4" style="margin-bottom:10px;">
+    <div class="field">
+      <label>Character Name *</label>
+      <input id="fName" type="text" placeholder="Ashara Solkindle" />
+    </div>
+    <div class="field pc-only">
+      <label>Player Name</label>
+      <input id="fPlayerName" type="text" placeholder="Jon" />
+    </div>
+    <div class="field">
+      <label>Campaign</label>
+      <input id="fCampaign" type="text" placeholder="curse_of_strahd" />
+    </div>
+    <div class="field">
+      <label>Level</label>
+      <input id="fLevel" type="number" min="0" value="1" />
+    </div>
+    <div class="field npc-only" style="display:none;">
+      <label>CR</label>
+      <input id="fCr" type="text" placeholder="0.25 / 1 / 10" />
+    </div>
+  </div>
+  <div class="form-grid fg-4" style="margin-bottom:10px;">
+    <div class="field">
+      <label>Species</label>
+      <input id="fSpecies" type="text" placeholder="Fire Genasi" />
+    </div>
+    <div class="field">
+      <label>Class</label>
+      <input id="fClass" type="text" placeholder="Cleric" />
+    </div>
+    <div class="field">
+      <label>Subclass</label>
+      <input id="fSubclass" type="text" placeholder="Life Domain" />
+    </div>
+    <div class="field pc-only">
+      <label>Background</label>
+      <input id="fBackground" type="text" placeholder="Acolyte" />
+    </div>
+  </div>
+  <div class="form-grid fg-4">
+    <div class="field">
+      <label>Size</label>
+      <select id="fSize">
+        <option value="tiny">Tiny</option>
+        <option value="small">Small</option>
+        <option value="medium" selected>Medium</option>
+        <option value="large">Large</option>
+        <option value="huge">Huge</option>
+        <option value="gargantuan">Gargantuan</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Creature Type</label>
+      <input id="fCreatureType" type="text" placeholder="Humanoid" />
+    </div>
+    <div class="field pc-only">
+      <label>Alignment</label>
+      <input id="fAlignment" type="text" placeholder="Neutral Good" />
+    </div>
+    <div class="field pc-only">
+      <label>XP</label>
+      <input id="fXp" type="number" min="0" value="0" />
+    </div>
+    <div class="field pc-only">
+      <label>Origin Feat</label>
+      <input id="fOriginFeat" type="text" placeholder="Magic Initiate" />
+    </div>
+    <div class="field npc-only" style="display:none;">
+      <label>Is Unique (named villain)</label>
+      <select id="fIsUnique">
+        <option value="false">No (generic)</option>
+        <option value="true">Yes (unique)</option>
+      </select>
+    </div>
+  </div>
+</div>
 
-      if (type === "success") {
-        box.style.borderColor = "#166534";
-        box.style.color = "#86efac";
-      } else if (type === "error") {
-        box.style.borderColor = "#7f1d1d";
-        box.style.color = "#fca5a5";
-      } else if (type === "warn") {
-        box.style.borderColor = "#92400e";
-        box.style.color = "#fcd34d";
-      } else {
-        box.style.borderColor = "#374151";
-        box.style.color = "#e5e7eb";
-      }
-    }
+<!-- 2. COMBAT -->
+<div class="section-card">
+  <h2>Combat</h2>
+  <div class="form-grid fg-4" style="margin-bottom:10px;">
+    <div class="field">
+      <label>Current HP</label>
+      <input id="fHpCurrent" type="number" value="0" />
+    </div>
+    <div class="field">
+      <label>Max HP</label>
+      <input id="fHpMax" type="number" value="0" />
+    </div>
+    <div class="field">
+      <label>Temp HP</label>
+      <input id="fTempHp" type="number" value="0" />
+    </div>
+    <div class="field">
+      <label>Armor Class</label>
+      <input id="fAc" type="number" value="10" />
+    </div>
+    <div class="field">
+      <label>Speed (ft)</label>
+      <input id="fSpeed" type="number" value="30" />
+    </div>
+    <div class="field">
+      <label>Initiative Bonus</label>
+      <input id="fInitiative" type="number" value="0" />
+    </div>
+    <div class="field">
+      <label>Proficiency Bonus</label>
+      <input id="fProfBonus" type="number" value="2" />
+    </div>
+    <div class="field">
+      <label>Hit Dice</label>
+      <input id="fHitDice" type="text" placeholder="3d8" />
+    </div>
+  </div>
+  <div class="form-grid fg-4" style="margin-bottom:10px;">
+    <div class="field">
+      <label>Exhaustion (0–6)</label>
+      <input id="fExhaustion" type="number" min="0" max="6" value="0" />
+    </div>
+    <div class="field pc-only">
+      <label>Inspiration</label>
+      <select id="fInspiration">
+        <option value="false">No</option>
+        <option value="true">Yes</option>
+      </select>
+    </div>
+    <div class="field pc-only">
+      <label>Death Save Successes</label>
+      <input id="fDeathSuccesses" type="number" min="0" max="3" value="0" />
+    </div>
+    <div class="field pc-only">
+      <label>Death Save Failures</label>
+      <input id="fDeathFailures" type="number" min="0" max="3" value="0" />
+    </div>
+    <div class="field npc-only" style="display:none;">
+      <label>Legendary Resistances</label>
+      <input id="fLegResistances" type="number" min="0" value="0" />
+    </div>
+  </div>
 
-    function slugify(text) {
-      return String(text || "")
-        .trim()
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "_")
-        .replace(/_+/g, "_")
-        .replace(/^_+|_+$/g, "");
-    }
+  <!-- Concentration (PC only) -->
+  <div class="pc-only" style="margin-bottom:10px;">
+    <div class="form-grid fg-2">
+      <div class="field">
+        <label>Concentration Active</label>
+        <select id="fConcentrationActive">
+          <option value="false">No</option>
+          <option value="true">Yes</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Concentrating on</label>
+        <input id="fConcentrationSpell" type="text" placeholder="Bless" />
+      </div>
+    </div>
+  </div>
 
-    function num(id) {
-      const value = $(id).value;
-      const parsed = parseInt(value, 10);
-      return Number.isNaN(parsed) ? 0 : parsed;
-    }
+  <!-- Conditions -->
+  <div class="field">
+    <label>Conditions</label>
+    <div class="conditions-wrap" id="conditionsWrap"></div>
+  </div>
+</div>
 
-    function str(id) {
-      return $(id).value.trim();
-    }
+<!-- 3. ABILITY SCORES -->
+<div class="section-card">
+  <h2>Ability Scores</h2>
+  <div class="ability-grid" id="abilityGrid"></div>
+</div>
 
-    function boolFromSelect(id) {
-      return $(id).value === "true";
-    }
+<!-- 4. SAVING THROWS -->
+<div class="section-card">
+  <h2>Saving Throws</h2>
+  <div class="saves-grid" id="savesGrid"></div>
+</div>
 
-    function abilityMod(score) {
-      return Math.floor((score - 10) / 2);
-    }
+<!-- 5. SKILLS -->
+<div class="section-card">
+  <h2>Skills <span style="font-size:0.7rem; color:var(--muted); font-weight:400; text-transform:none; letter-spacing:0;">(P = Proficient, E = Expertise)</span></h2>
+  <div class="skills-grid" id="skillsGrid"></div>
+</div>
 
-const ABILITY_RECHARGE_OPTIONS = [
-  { value: "none", label: "No Recharge" },
-  { value: "turn", label: "Per Turn" },
-  { value: "encounter", label: "Per Encounter" },
-  { value: "short_rest", label: "Short Rest" },
-  { value: "long_rest", label: "Long Rest" },
-  { value: "short_or_long_rest", label: "Short or Long Rest" },
-  { value: "daily", label: "Daily" }
-];
+<!-- 6. SENSES -->
+<div class="section-card">
+  <h2>Senses</h2>
+  <div class="senses-grid">
+    <div class="field"><label>Passive Perception</label><input id="sPassivePerception" type="number" value="10" class="computed" /></div>
+    <div class="field"><label>Passive Insight</label><input id="sPassiveInsight" type="number" value="10" class="computed" /></div>
+    <div class="field"><label>Passive Investigation</label><input id="sPassiveInvestigation" type="number" value="10" class="computed" /></div>
+    <div class="field"><label>Darkvision (ft)</label><input id="sDarkvision" type="number" value="0" /></div>
+    <div class="field"><label>Tremorsense (ft)</label><input id="sTremorsense" type="number" value="0" /></div>
+    <div class="field"><label>Blindsight (ft)</label><input id="sBlindsight" type="number" value="0" /></div>
+    <div class="field"><label>Truesight (ft)</label><input id="sTruesight" type="number" value="0" /></div>
+  </div>
+</div>
 
-const ABILITY_KIND_OPTIONS = [
-  { value: "charge", label: "Charge" },
-  { value: "dice_pool", label: "Dice Pool" },
-  { value: "pool", label: "Pool" },
-  { value: "slot", label: "Slot" }
-];
+<!-- 7. SPELLCASTING -->
+<div class="section-card">
+  <h2>Spellcasting</h2>
+  <div class="form-grid fg-4" style="margin-bottom:12px;">
+    <div class="field">
+      <label>Spellcasting Ability</label>
+      <select id="spAbility">
+        <option value="">None</option>
+        <option value="str">STR</option>
+        <option value="dex">DEX</option>
+        <option value="con">CON</option>
+        <option value="int">INT</option>
+        <option value="wis">WIS</option>
+        <option value="cha">CHA</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Spell Save DC</label>
+      <input id="spSaveDc" type="number" value="0" />
+    </div>
+    <div class="field">
+      <label>Spell Attack Bonus</label>
+      <input id="spAttackBonus" type="number" value="0" />
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <input id="spNotes" type="text" placeholder="Life Domain, innate magic..." />
+    </div>
+  </div>
 
-let abilitiesState = [];
+  <div class="field" style="margin-bottom:12px;">
+    <label>Spell Slots (max per level)</label>
+    <div class="spell-slots-grid" id="slotMaxGrid"></div>
+  </div>
+  <div class="field" style="margin-bottom:16px;">
+    <label>Slots Used</label>
+    <div class="spell-slots-grid" id="slotUsedGrid"></div>
+  </div>
 
-function makeAbilityRowData(data = {}) {
-  return {
-    key: data.key || `ability_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-    label: data.label || "",
-    current: Number.isFinite(Number(data.current)) ? Number(data.current) : 0,
-    max: Number.isFinite(Number(data.max)) ? Number(data.max) : 0,
-    recharge: data.recharge || "none",
-    kind: data.kind || "charge",
-    die: data.die || ""
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <label style="font-size:0.72rem; font-weight:700; color:var(--muted2); letter-spacing:0.06em; text-transform:uppercase;">Known Magic</label>
+    <button class="btn btn-secondary btn-sm" id="addSpellBtn">+ Add Spell</button>
+  </div>
+  <div class="spells-list" id="spellsList"></div>
+</div>
+
+<!-- 8. ABILITIES & RESOURCES -->
+<div class="section-card">
+  <h2>Abilities & Resources</h2>
+  <div class="abilities-list" id="abilitiesList"></div>
+  <div class="btn-row" style="margin-top:10px;">
+    <button class="btn btn-secondary btn-sm" id="addAbilityBtn">+ Add Ability</button>
+  </div>
+</div>
+
+<!-- 9. ATTACKS -->
+<div class="section-card">
+  <h2>Attacks</h2>
+  <div class="attacks-list" id="attacksList"></div>
+  <div class="btn-row" style="margin-top:10px;">
+    <button class="btn btn-secondary btn-sm" id="addAttackBtn">+ Add Attack</button>
+  </div>
+</div>
+
+<!-- 10. WEAPON MASTERIES (PC only) -->
+<div class="section-card pc-only">
+  <h2>Weapon Masteries</h2>
+  <div class="field">
+    <label>Mastered Weapons (one per line)</label>
+    <textarea id="fWeaponMasteries" placeholder="Mace&#10;Longsword"></textarea>
+  </div>
+</div>
+
+<!-- 11. INVENTORY -->
+<div class="section-card">
+  <h2>Inventory</h2>
+  <div style="display:grid; grid-template-columns: 1fr 2fr 70px 120px auto; gap:6px; padding:0 10px 6px; margin-bottom:4px;">
+    <span style="font-size:0.65rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">Item</span>
+    <span style="font-size:0.65rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">Description</span>
+    <span style="font-size:0.65rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">Qty</span>
+    <span style="font-size:0.65rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;">Category</span>
+    <span></span>
+  </div>
+  <div class="inventory-list" id="inventoryList"></div>
+  <div class="btn-row" style="margin-top:10px;">
+    <button class="btn btn-secondary btn-sm" id="addInventoryBtn">+ Add Item</button>
+  </div>
+</div>
+
+<!-- 12. TEXT BLOCKS -->
+<div class="section-card">
+  <h2>Text Blocks</h2>
+  <div class="form-grid fg-2">
+    <div class="field">
+      <label>Features & Traits</label>
+      <textarea id="tbFeatures" style="min-height:120px;"></textarea>
+    </div>
+    <div class="field">
+      <label>Proficiencies & Languages</label>
+      <textarea id="tbProficiencies"></textarea>
+    </div>
+    <div class="field pc-only">
+      <label>Appearance</label>
+      <textarea id="tbAppearance"></textarea>
+    </div>
+    <div class="field pc-only">
+      <label>Backstory</label>
+      <textarea id="tbBackstory" style="min-height:120px;"></textarea>
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="tbNotes"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- NPC: Legendary / Lair -->
+<div class="section-card npc-only" style="display:none;">
+  <h2>Legendary & Lair</h2>
+  <div class="form-grid fg-2">
+    <div class="field">
+      <label>Legendary Actions</label>
+      <textarea id="npcLegendaryActions" style="min-height:100px;"></textarea>
+    </div>
+    <div class="field">
+      <label>Lair Actions</label>
+      <textarea id="npcLairActions" style="min-height:100px;"></textarea>
+    </div>
+    <div class="field">
+      <label>Reactions</label>
+      <textarea id="npcReactions"></textarea>
+    </div>
+  </div>
+</div>
+```
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  // ── Firebase ──
+  const firebaseConfig = {
+    apiKey: "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+    authDomain: "sheets-e5838.firebaseapp.com",
+    databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
+    projectId: "sheets-e5838",
+    storageBucket: "sheets-e5838.firebasestorage.app"
   };
-}
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
 
-function renderAbilitiesEditor() {
-  const wrap = $("abilitiesEditor");
-  if (!wrap) return;
+  // ── Constants ──
+  const ABILITY_KEYS = ["str","dex","con","int","wis","cha"];
+  const ABILITY_LABELS = { str:"STR", dex:"DEX", con:"CON", int:"INT", wis:"WIS", cha:"CHA" };
 
-  wrap.innerHTML = "";
+  const SKILLS = [
+    { key:"athletics",       label:"Athletics",       stat:"str" },
+    { key:"acrobatics",      label:"Acrobatics",      stat:"dex" },
+    { key:"sleight_of_hand", label:"Sleight of Hand", stat:"dex" },
+    { key:"stealth",         label:"Stealth",         stat:"dex" },
+    { key:"arcana",          label:"Arcana",          stat:"int" },
+    { key:"history",         label:"History",         stat:"int" },
+    { key:"investigation",   label:"Investigation",   stat:"int" },
+    { key:"nature",          label:"Nature",          stat:"int" },
+    { key:"religion",        label:"Religion",        stat:"int" },
+    { key:"animal_handling", label:"Animal Handling", stat:"wis" },
+    { key:"insight",         label:"Insight",         stat:"wis" },
+    { key:"medicine",        label:"Medicine",        stat:"wis" },
+    { key:"perception",      label:"Perception",      stat:"wis" },
+    { key:"survival",        label:"Survival",        stat:"wis" },
+    { key:"deception",       label:"Deception",       stat:"cha" },
+    { key:"intimidation",    label:"Intimidation",    stat:"cha" },
+    { key:"performance",     label:"Performance",     stat:"cha" },
+    { key:"persuasion",      label:"Persuasion",      stat:"cha" },
+  ];
 
-  if (!abilitiesState.length) {
-    const empty = document.createElement("div");
-    empty.className = "small";
-    empty.textContent = "No abilities/resources yet. Add one manually or use the Battle Master preset.";
-    wrap.appendChild(empty);
-    return;
+  const CONDITIONS = [
+    "blinded","charmed","deafened","exhaustion","frightened","grappled",
+    "incapacitated","invisible","paralyzed","petrified","poisoned",
+    "prone","restrained","stunned","unconscious"
+  ];
+
+  const RECHARGE_OPTIONS = [
+    { value:"none",               label:"No Recharge" },
+    { value:"turn",               label:"Per Turn" },
+    { value:"encounter",          label:"Per Encounter" },
+    { value:"short_rest",         label:"Short Rest" },
+    { value:"long_rest",          label:"Long Rest" },
+    { value:"short_or_long_rest", label:"Short or Long Rest" },
+    { value:"daily",              label:"Daily" },
+  ];
+
+  const KIND_OPTIONS = [
+    { value:"charge",    label:"Charge" },
+    { value:"dice_pool", label:"Dice Pool" },
+    { value:"pool",      label:"Pool" },
+    { value:"slot",      label:"Slot" },
+  ];
+
+  const ATTACK_TYPES = ["melee","ranged","spell"];
+
+  // ── State ──
+  const $ = id => document.getElementById(id);
+  let currentMode = "pc";
+  let currentEditId = null;
+  let abilitiesState = [];
+  let attacksState = [];
+  let spellsState = [];
+  let inventoryState = [];
+  let activeConditions = new Set();
+  let saveProficient = new Set();
+  let skillState = {};  // key -> { proficient, expertise }
+
+  // ── Status ──
+  function setStatus(msg, type="info") {
+    const box = $("statusBox");
+    box.textContent = msg;
+    const map = {
+      success: ["#166534","#86efac"],
+      error:   ["#7f1d1d","#fca5a5"],
+      warn:    ["#92400e","#fcd34d"],
+      info:    ["#1e2d45","#e2e8f0"],
+    };
+    const [b,c] = map[type] || map.info;
+    box.style.borderColor = b;
+    box.style.color = c;
   }
 
-  abilitiesState.forEach((rowData, index) => {
-    const row = document.createElement("div");
-    row.className = "ability-row";
-
-    row.innerHTML = `
-      <div class="field">
-        <label>Ability Name</label>
-        <input type="text" data-field="label" data-index="${index}" value="${escapeHtml(rowData.label)}" placeholder="Action Surge" />
-      </div>
-
-      <div class="field">
-        <label>Current</label>
-        <input type="number" data-field="current" data-index="${index}" value="${rowData.current}" />
-      </div>
-
-      <div class="field">
-        <label>Max</label>
-        <input type="number" data-field="max" data-index="${index}" value="${rowData.max}" />
-      </div>
-
-      <div class="field">
-        <label>Recharge</label>
-        <select data-field="recharge" data-index="${index}">
-          ${ABILITY_RECHARGE_OPTIONS.map(opt => `
-            <option value="${opt.value}" ${rowData.recharge === opt.value ? "selected" : ""}>${opt.label}</option>
-          `).join("")}
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Kind</label>
-        <select data-field="kind" data-index="${index}">
-          ${ABILITY_KIND_OPTIONS.map(opt => `
-            <option value="${opt.value}" ${rowData.kind === opt.value ? "selected" : ""}>${opt.label}</option>
-          `).join("")}
-        </select>
-      </div>
-
-      <div class="field">
-        <label>Die (optional)</label>
-        <input type="text" data-field="die" data-index="${index}" value="${escapeHtml(rowData.die)}" placeholder="d8" />
-      </div>
-    `;
-
-		const removeWrap = document.createElement("div");
-		removeWrap.className = "field";
-		removeWrap.innerHTML = `<label>&nbsp;</label><button class="btn-danger" type="button" data-remove-index="${index}">Remove</button>`;
-		row.appendChild(removeWrap);
-
-		wrap.appendChild(row);
-	  });
-
-	  wrap.querySelectorAll("input[data-field], select[data-field]").forEach(el => {
-		el.addEventListener("input", handleAbilityFieldChange);
-		el.addEventListener("change", handleAbilityFieldChange);
-	  });
-
-	  wrap.querySelectorAll("button[data-remove-index]").forEach(btn => {
-		btn.addEventListener("click", () => {
-		  const idx = Number(btn.dataset.removeIndex);
-		  abilitiesState.splice(idx, 1);
-		  renderAbilitiesEditor();
-		});
-	  });
-	}
-
-	function handleAbilityFieldChange(event) {
-	  const el = event.target;
-	  const index = Number(el.dataset.index);
-	  const field = el.dataset.field;
-
-	  if (!Number.isInteger(index) || !field || !abilitiesState[index]) return;
-
-	  if (field === "current" || field === "max") {
-		abilitiesState[index][field] = Number(el.value || 0);
-	  } else {
-		abilitiesState[index][field] = el.value;
-	  }
-	}
-
-	function addAbilityRow(data = {}) {
-	  abilitiesState.push(makeAbilityRowData(data));
-	  renderAbilitiesEditor();
-	}
-
-	function addBattleMasterPreset() {
-	  const existingLabels = new Set(abilitiesState.map(a => String(a.label || "").trim().toLowerCase()));
-
-	  const presets = [
-		{
-		  key: "action_surge",
-		  label: "Action Surge",
-		  current: 1,
-		  max: 1,
-		  recharge: "short_or_long_rest",
-		  kind: "charge",
-		  die: ""
-		},
-		{
-		  key: "second_wind",
-		  label: "Second Wind",
-		  current: 2,
-		  max: 2,
-		  recharge: "long_rest",
-		  kind: "charge",
-		  die: ""
-		},
-		{
-		  key: "superiority_dice",
-		  label: "Superiority Dice",
-		  current: 4,
-		  max: 4,
-		  recharge: "short_or_long_rest",
-		  kind: "dice_pool",
-		  die: "d8"
-		}
-	  ];
-
-	  let added = 0;
-
-	  presets.forEach(preset => {
-		if (!existingLabels.has(preset.label.toLowerCase())) {
-		  abilitiesState.push(makeAbilityRowData(preset));
-		  added++;
-		}
-	  });
-
-	  renderAbilitiesEditor();
-
-	  if (added) {
-		setStatus(`Added ${added} Battle Master abilities.`, "success");
-	  } else {
-		setStatus("Battle Master abilities already present.", "warn");
-	  }
-	}
-
-	function buildAbilitiesPayload() {
-	  const out = {};
-
-	  abilitiesState.forEach((row, idx) => {
-		const label = String(row.label || "").trim();
-		if (!label) return;
-
-		const key = slugify(row.key || label) || `ability_${idx + 1}`;
-
-		out[key] = {
-		  label,
-		  current: Number(row.current || 0),
-		  max: Number(row.max || 0),
-		  recharge: row.recharge || "none",
-		  kind: row.kind || "charge",
-		  die: String(row.die || "").trim()
-		};
-	  });
-
-	  return out;
-	}
-
-	function loadAbilitiesFromPayload(abilitiesObj) {
-	  abilitiesState = [];
-
-	  if (abilitiesObj && typeof abilitiesObj === "object") {
-		Object.entries(abilitiesObj).forEach(([key, value]) => {
-		  abilitiesState.push(makeAbilityRowData({
-			key,
-			label: value?.label || key,
-			current: value?.current ?? 0,
-			max: value?.max ?? 0,
-			recharge: value?.recharge || "none",
-			kind: value?.kind || "charge",
-			die: value?.die || ""
-		  }));
-		});
-	  }
-
-	  renderAbilitiesEditor();
-	}
-
-	function resetAbilitiesEditor() {
-	  abilitiesState = [];
-	  renderAbilitiesEditor();
-	}
-
-	function escapeHtml(value) {
-	  return String(value ?? "")
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;");
-	}
-
-    // -------------------------
-    // Auto-calc ability mods
-    // -------------------------
-    function updateAbilityMods() {
-      const pairs = [
-        ["strScore", "strMod"],
-        ["dexScore", "dexMod"],
-        ["conScore", "conMod"],
-        ["intScore", "intMod"],
-        ["wisScore", "wisMod"],
-        ["chaScore", "chaMod"],
-      ];
-
-      for (const [scoreId, modId] of pairs) {
-        const mod = abilityMod(num(scoreId));
-        $(modId).value = mod;
-      }
-    }
-
-    // -------------------------
-    // Auto-calc passive skills
-    // -------------------------
-    function updatePassiveValues() {
-      $("passivePerception").value = 10 + num("skillPerception");
-      $("passiveInsight").value = 10 + num("skillInsight");
-      $("passiveInvestigation").value = 10 + num("skillInvestigation");
-    }
-
-    // -------------------------
-    // Optional helper: auto-suggest spell fields
-    // (does not overwrite if user already changed from 0)
-    // -------------------------
-    function updateSpellSuggestions() {
-      const ability = str("spellcastingAbility");
-      const pb = num("proficiencyBonus");
-
-      if (!ability) return;
-
-      const modMap = {
-        str: num("strMod"),
-        dex: num("dexMod"),
-        con: num("conMod"),
-        int: num("intMod"),
-        wis: num("wisMod"),
-        cha: num("chaMod"),
-      };
-
-      const mod = modMap[ability] ?? 0;
-      const suggestedDc = 8 + mod + pb;
-      const suggestedAtk = mod + pb;
-
-      // Only auto-fill if currently 0
-      if (num("spellSaveDc") === 0) $("spellSaveDc").value = suggestedDc;
-      if (num("spellAttackBonus") === 0) $("spellAttackBonus").value = suggestedAtk;
-    }
-
-// -------------------------
-// Hardcoded Firebase config
-// -------------------------
-const firebaseConfig = {
-  apiKey: "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
-  authDomain: "sheets-e5838.firebaseapp.com",
-  databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
-  projectId: "sheets-e5838",
-  storageBucket: "sheets-e5838.firebasestorage.app"
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-const database = getDatabase(firebaseApp);
-
-let currentMode = "create"; // "create" | "edit"
-let currentEditId = null;
-let currentEditBucket = null; // "pcs" | "npcs"
-let currentEditLoaded = false;
-let editListCache = [];
-
-function ensureFirebase() {
-  return database;
-}
-    // -------------------------
-    // Build character payload
-    // -------------------------
-    function flattenAbilitiesForTxt(abilitiesObj) {
-	  const out = {};
-
-	  Object.entries(abilitiesObj || {}).forEach(([key, value]) => {
-		out[`${key}__label`] = value?.label ?? "";
-		out[`${key}__current`] = value?.current ?? 0;
-		out[`${key}__max`] = value?.max ?? 0;
-		out[`${key}__recharge`] = value?.recharge ?? "none";
-		out[`${key}__kind`] = value?.kind ?? "charge";
-		out[`${key}__die`] = value?.die ?? "";
-	  });
-
-	  return out;
-	}
-
-	function unflattenAbilitiesFromTxt(sectionObj) {
-	  const out = {};
-
-	  Object.entries(sectionObj || {}).forEach(([flatKey, value]) => {
-		const splitIndex = flatKey.indexOf("__");
-		if (splitIndex === -1) return;
-
-		const key = flatKey.slice(0, splitIndex);
-		const prop = flatKey.slice(splitIndex + 2);
-
-		if (!out[key]) {
-		  out[key] = {
-			label: "",
-			current: 0,
-			max: 0,
-			recharge: "none",
-			kind: "charge",
-			die: ""
-		  };
-		}
-
-		if (prop === "current" || prop === "max") {
-		  out[key][prop] = Number(value || 0);
-		} else {
-		  out[key][prop] = value;
-		}
-	  });
-
-	  return out;
-	}
-	
-	function buildCharacterPayload() {
-		const recordType = str("recordType"); // pc or npc
-		const name = str("name");
-
-		if (!name) {
-			throw new Error("Character Name is required.");
-		}
-
-		const generatedId = slugify(name);
-
-		const id = (currentMode === "edit" && currentEditLoaded && currentEditId)
-			? currentEditId
-			: generatedId;
-
-		const payload = {
-			id,
-			record_type: recordType,
-			name,
-			player_name: str("playerName"),
-			level: num("level"),
-			species: str("species"),
-			class: str("charClass"),
-			subclass: str("subclass"),
-			background: str("background"),
-			alignment: str("alignment"),
-			xp: num("xp"),
-			size: str("size"),
-			creature_type: str("creatureType"),
-
-			combat: {
-			  hp_current: num("hpCurrent"),
-			  hp_max: num("hpMax"),
-			  temp_hp: num("tempHp"),
-			  ac: num("ac"),
-			  speed: num("speed"),
-			  initiative_bonus: num("initiativeBonus"),
-			  proficiency_bonus: num("proficiencyBonus"),
-			  hit_dice: str("hitDice"),
-			  death_save_successes: num("deathSuccesses"),
-			  death_save_failures: num("deathFailures"),
-			  heroic_inspiration: boolFromSelect("heroicInspiration"),
-			  conditions: str("conditions"),
-			  passive_perception: num("passivePerception"),
-			  passive_insight: num("passiveInsight"),
-			  passive_investigation: num("passiveInvestigation"),
-			},
-
-			stats: {
-			  str: num("strScore"),
-			  dex: num("dexScore"),
-			  con: num("conScore"),
-			  int: num("intScore"),
-			  wis: num("wisScore"),
-			  cha: num("chaScore"),
-			},
-
-			mods: {
-			  str: num("strMod"),
-			  dex: num("dexMod"),
-			  con: num("conMod"),
-			  int: num("intMod"),
-			  wis: num("wisMod"),
-			  cha: num("chaMod"),
-    },
-
-			saves: {
-			  str: num("saveStr"),
-			  dex: num("saveDex"),
-			  con: num("saveCon"),
-			  int: num("saveInt"),
-			  wis: num("saveWis"),
-			  cha: num("saveCha"),
-			},
-
-			skills: {
-			  athletics: num("skillAthletics"),
-			  acrobatics: num("skillAcrobatics"),
-			  sleight_of_hand: num("skillSleightOfHand"),
-			  stealth: num("skillStealth"),
-			  arcana: num("skillArcana"),
-			  history: num("skillHistory"),
-			  investigation: num("skillInvestigation"),
-			  nature: num("skillNature"),
-			  religion: num("skillReligion"),
-			  animal_handling: num("skillAnimalHandling"),
-			  insight: num("skillInsight"),
-			  medicine: num("skillMedicine"),
-			  perception: num("skillPerception"),
-			  survival: num("skillSurvival"),
-			  deception: num("skillDeception"),
-			  intimidation: num("skillIntimidation"),
-			  performance: num("skillPerformance"),
-			  persuasion: num("skillPersuasion"),
-			},
-
-			spellcasting: {
-			  ability: str("spellcastingAbility"),
-			  spell_save_dc: num("spellSaveDc"),
-			  spell_attack_bonus: num("spellAttackBonus"),
-			  summary: str("spellcastingNotes"),
-			  spell_slots: str("spellSlots"),
-			  spells_notes: str("spellsNotes"),
-			},
-			
-			abilities: buildAbilitiesPayload(),
-			
-			text_blocks: {
-			  attacks: str("attacks"),
-			  features_traits: str("featuresTraits"),
-			  proficiencies_languages: str("proficienciesLanguages"),
-			  equipment: str("equipment"),
-			  appearance: str("appearance"),
-			  backstory: str("backstory"),
-			  notes: str("notes"),
-			},
-
-			meta: {
-			  rules_version: "2024-5e",
-			  created_at_iso: new Date().toISOString(),
-			  ui_source: "character.html",
-			  editor_mode: currentMode
-			}
-		};
-
-  return { payload, id, recordType };
-}
-
-    // -------------------------
-    // Save to RTDB
-    // -------------------------
-async function saveCharacter() {
-  try {
-    setStatus("Validating form...", "info");
-
-    updateAbilityMods();
-    updatePassiveValues();
-    updateSpellSuggestions();
-
-    const db = ensureFirebase();
-    const { payload, id, recordType } = buildCharacterPayload();
-
-    let bucket = recordType === "npc" ? "npcs" : "pcs";
-
-    // In edit mode, preserve original bucket if we loaded a record
-    if (currentMode === "edit" && currentEditLoaded && currentEditBucket) {
-      bucket = currentEditBucket;
-      payload.record_type = bucket === "npcs" ? "npc" : "pc";
-      $("recordType").value = payload.record_type;
-    }
-
-    const saveRef = ref(db, `characters/${bucket}/${id}`);
-
-    setStatus(`Saving to /characters/${bucket}/${id} ...`, "warn");
-    await set(saveRef, payload);
-
-    if (currentMode === "edit") {
-      currentEditId = id;
-      currentEditBucket = bucket;
-      currentEditLoaded = true;
-      setStatus(`Updated ${payload.name} at /characters/${bucket}/${id}`, "success");
-    } else {
-      setStatus(`Saved ${payload.name} to /characters/${bucket}/${id}`, "success");
-    }
-  } catch (err) {
-    console.error(err);
-    setStatus(`Save failed: ${err.message}`, "error");
+  // ── Helpers ──
+  function slugify(t) {
+    return String(t||"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
   }
-}
 
-function setMode(mode) {
-  currentMode = mode;
+  function abilityMod(score) { return Math.floor((score-10)/2); }
 
-  const isCreate = mode === "create";
+  function modStr(mod) { return mod >= 0 ? `+${mod}` : `${mod}`; }
 
-  $("createModePanel").style.display = isCreate ? "block" : "none";
-  $("editModePanel").style.display = isCreate ? "none" : "block";
+  function numVal(id, fallback=0) {
+    const v = parseInt($(id)?.value ?? "", 10);
+    return isNaN(v) ? fallback : v;
+  }
 
-  $("tabCreateBtn").classList.toggle("active", isCreate);
-  $("tabEditBtn").classList.toggle("active", !isCreate);
+  function strVal(id) { return $(id)?.value?.trim() ?? ""; }
 
-  setStatus(isCreate ? "Create mode ready." : "Edit mode ready. Refresh list, then load a character.", "info");
-}
+  function textLines(id) {
+    return strVal(id).split("\n").map(l=>l.trim()).filter(Boolean);
+  }
 
-async function refreshEditList() {
-  try {
-    const db = ensureFirebase();
-    const bucket = $("editRecordType").value === "npc" ? "npcs" : "pcs";
-    const select = $("editCharacterSelect");
+  // ── PC/NPC tab ──
+  function setMode(mode) {
+    currentMode = mode;
+    document.body.className = `mode-${mode}`;
+    $("tabPc").className = `rt-tab ${mode === "pc" ? "active-pc" : ""}`;
+    $("tabNpc").className = `rt-tab ${mode === "npc" ? "active-npc" : ""}`;
 
-    setStatus(`Loading /characters/${bucket} list...`, "warn");
+    // Show/hide npc-only cards
+    document.querySelectorAll(".section-card.npc-only").forEach(el => {
+      el.style.display = mode === "npc" ? "block" : "none";
+    });
+    document.querySelectorAll(".form-grid.npc-only").forEach(el => {
+      el.style.display = mode === "npc" ? "grid" : "none";
+    });
+    document.querySelectorAll(".field.npc-only").forEach(el => {
+      el.style.display = mode === "npc" ? "flex" : "none";
+    });
+  }
 
-    const snapshot = await get(ref(db, `characters/${bucket}`));
+  $("tabPc").addEventListener("click", () => setMode("pc"));
+  $("tabNpc").addEventListener("click", () => setMode("npc"));
 
-    editListCache = [];
+  // ── Build ability score grid ──
+  function buildAbilityGrid() {
+    const grid = $("abilityGrid");
+    grid.innerHTML = "";
+    ABILITY_KEYS.forEach(key => {
+      const box = document.createElement("div");
+      box.className = "ability-box";
+      box.innerHTML = `
+        <label>${ABILITY_LABELS[key]}</label>
+        <input class="ability-score" id="stat_${key}" type="number" value="10" min="1" max="30" />
+        <div class="ability-mod" id="mod_${key}">+0</div>
+      `;
+      grid.appendChild(box);
+    });
+    ABILITY_KEYS.forEach(key => {
+      $((`stat_${key}`)).addEventListener("input", () => {
+        updateMods();
+        updatePassives();
+        updateSpellSuggestions();
+      });
+    });
+  }
 
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      editListCache = Object.values(data);
-      editListCache.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
-    }
+  function updateMods() {
+    ABILITY_KEYS.forEach(key => {
+      const score = numVal(`stat_${key}`, 10);
+      const mod = abilityMod(score);
+      $(`mod_${key}`).textContent = modStr(mod);
+    });
+  }
 
-    select.innerHTML = "";
+  // ── Build saves grid ──
+  function buildSavesGrid() {
+    const grid = $("savesGrid");
+    grid.innerHTML = "";
+    ABILITY_KEYS.forEach(key => {
+      const box = document.createElement("div");
+      box.className = "save-box";
+      box.innerHTML = `
+        <label>${ABILITY_LABELS[key]}</label>
+        <input id="save_${key}" type="number" value="0" />
+        <div class="save-prof-row">
+          <button class="prof-toggle" data-key="${key}" title="Proficient">PROF</button>
+        </div>
+      `;
+      grid.appendChild(box);
+    });
+    document.querySelectorAll(".prof-toggle").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const k = btn.dataset.key;
+        if (saveProficient.has(k)) { saveProficient.delete(k); btn.classList.remove("on"); }
+        else { saveProficient.add(k); btn.classList.add("on"); }
+      });
+    });
+  }
 
-    if (!editListCache.length) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "-- No saved characters found --";
-      select.appendChild(opt);
-      setStatus(`No saved ${bucket} found.`, "warn");
-      return;
-    }
+  function setSaveProficient(keys) {
+    saveProficient = new Set(keys || []);
+    document.querySelectorAll(".prof-toggle").forEach(btn => {
+      btn.classList.toggle("on", saveProficient.has(btn.dataset.key));
+    });
+  }
 
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "-- Select a character --";
-    select.appendChild(placeholder);
-
-    editListCache.forEach(char => {
-      const opt = document.createElement("option");
-      opt.value = char.id || "";
-      opt.textContent = `${char.name || "Unnamed"}${char.level ? ` (Lv ${char.level})` : ""}`;
-      select.appendChild(opt);
+  // ── Build skills grid ──
+  function buildSkillsGrid() {
+    const grid = $("skillsGrid");
+    grid.innerHTML = "";
+    skillState = {};
+    SKILLS.forEach(sk => {
+      skillState[sk.key] = { proficient: false, expertise: false };
+      const row = document.createElement("div");
+      row.className = "skill-row";
+      row.innerHTML = `
+        <label title="${sk.stat.toUpperCase()}">${sk.label} <span style="color:var(--muted);font-size:0.65rem;">(${sk.stat.toUpperCase()})</span></label>
+        <input class="skill-bonus" id="skill_${sk.key}" type="number" value="0" />
+        <div class="skill-flags">
+          <button class="skill-flag" data-sk="${sk.key}" data-flag="proficient" title="Proficient">P</button>
+          <button class="skill-flag" data-sk="${sk.key}" data-flag="expertise" title="Expertise">E</button>
+        </div>
+      `;
+      grid.appendChild(row);
     });
 
-    setStatus(`Loaded ${editListCache.length} ${bucket} into edit list.`, "success");
-  } catch (err) {
-    console.error(err);
-    setStatus(`Refresh list failed: ${err.message}`, "error");
-  }
-}
-
-function loadCharacterIntoForm(charData, bucket) {
-  const combat = charData.combat || {};
-  const stats = charData.stats || {};
-  const mods = charData.mods || {};
-  const saves = charData.saves || {};
-  const skills = charData.skills || {};
-  const spell = charData.spellcasting || {};
-  const text = charData.text_blocks || {};
-  const abilities = charData.abilities || {};
-
-  $("recordType").value = bucket === "npcs" ? "npc" : "pc";
-  $("name").value = charData.name || "";
-  $("playerName").value = charData.player_name || "";
-  $("level").value = charData.level ?? 1;
-  $("species").value = charData.species || "";
-  $("charClass").value = charData.class || "";
-  $("subclass").value = charData.subclass || "";
-  $("background").value = charData.background || "";
-  $("alignment").value = charData.alignment || "";
-  $("xp").value = charData.xp ?? 0;
-  $("size").value = charData.size || "";
-  $("creatureType").value = charData.creature_type || "";
-
-  $("hpCurrent").value = combat.hp_current ?? 0;
-  $("hpMax").value = combat.hp_max ?? 0;
-  $("tempHp").value = combat.temp_hp ?? 0;
-  $("ac").value = combat.ac ?? 10;
-  $("speed").value = combat.speed ?? 30;
-  $("initiativeBonus").value = combat.initiative_bonus ?? 0;
-  $("proficiencyBonus").value = combat.proficiency_bonus ?? 2;
-  $("hitDice").value = combat.hit_dice || "";
-  $("deathSuccesses").value = combat.death_save_successes ?? 0;
-  $("deathFailures").value = combat.death_save_failures ?? 0;
-  $("heroicInspiration").value = String(!!combat.heroic_inspiration);
-  $("conditions").value = combat.conditions || "";
-  $("passivePerception").value = combat.passive_perception ?? 10;
-  $("passiveInsight").value = combat.passive_insight ?? 10;
-  $("passiveInvestigation").value = combat.passive_investigation ?? 10;
-
-  $("strScore").value = stats.str ?? 10;
-  $("dexScore").value = stats.dex ?? 10;
-  $("conScore").value = stats.con ?? 10;
-  $("intScore").value = stats.int ?? 10;
-  $("wisScore").value = stats.wis ?? 10;
-  $("chaScore").value = stats.cha ?? 10;
-
-  $("strMod").value = mods.str ?? abilityMod(Number(stats.str ?? 10));
-  $("dexMod").value = mods.dex ?? abilityMod(Number(stats.dex ?? 10));
-  $("conMod").value = mods.con ?? abilityMod(Number(stats.con ?? 10));
-  $("intMod").value = mods.int ?? abilityMod(Number(stats.int ?? 10));
-  $("wisMod").value = mods.wis ?? abilityMod(Number(stats.wis ?? 10));
-  $("chaMod").value = mods.cha ?? abilityMod(Number(stats.cha ?? 10));
-
-  $("saveStr").value = saves.str ?? 0;
-  $("saveDex").value = saves.dex ?? 0;
-  $("saveCon").value = saves.con ?? 0;
-  $("saveInt").value = saves.int ?? 0;
-  $("saveWis").value = saves.wis ?? 0;
-  $("saveCha").value = saves.cha ?? 0;
-
-  $("skillAthletics").value = skills.athletics ?? 0;
-  $("skillAcrobatics").value = skills.acrobatics ?? 0;
-  $("skillSleightOfHand").value = skills.sleight_of_hand ?? 0;
-  $("skillStealth").value = skills.stealth ?? 0;
-  $("skillArcana").value = skills.arcana ?? 0;
-  $("skillHistory").value = skills.history ?? 0;
-  $("skillInvestigation").value = skills.investigation ?? 0;
-  $("skillNature").value = skills.nature ?? 0;
-  $("skillReligion").value = skills.religion ?? 0;
-  $("skillAnimalHandling").value = skills.animal_handling ?? 0;
-  $("skillInsight").value = skills.insight ?? 0;
-  $("skillMedicine").value = skills.medicine ?? 0;
-  $("skillPerception").value = skills.perception ?? 0;
-  $("skillSurvival").value = skills.survival ?? 0;
-  $("skillDeception").value = skills.deception ?? 0;
-  $("skillIntimidation").value = skills.intimidation ?? 0;
-  $("skillPerformance").value = skills.performance ?? 0;
-  $("skillPersuasion").value = skills.persuasion ?? 0;
-
-  $("spellcastingAbility").value = spell.ability || "";
-  $("spellSaveDc").value = spell.spell_save_dc ?? 0;
-  $("spellAttackBonus").value = spell.spell_attack_bonus ?? 0;
-  $("spellcastingNotes").value = spell.summary || "";
-  $("spellSlots").value = spell.spell_slots || "";
-  $("spellsNotes").value = spell.spells_notes || "";
-
-  $("attacks").value = text.attacks || "";
-  $("featuresTraits").value = text.features_traits || "";
-  $("proficienciesLanguages").value = text.proficiencies_languages || "";
-  $("equipment").value = text.equipment || "";
-  $("appearance").value = text.appearance || "";
-  $("backstory").value = text.backstory || "";
-  $("notes").value = text.notes || "";
-
-  loadAbilitiesFromPayload(abilities);
-  updateAbilityMods();
-  updatePassiveValues();
-  updateSpellSuggestions();
-}
-
-async function loadSelectedCharacterForEdit() {
-  try {
-    const selectedId = $("editCharacterSelect").value;
-    const bucket = $("editRecordType").value === "npc" ? "npcs" : "pcs";
-
-    if (!selectedId) {
-      throw new Error("Choose a saved character first.");
-    }
-
-    const db = ensureFirebase();
-
-    setStatus(`Loading /characters/${bucket}/${selectedId} ...`, "warn");
-
-    const snapshot = await get(ref(db, `characters/${bucket}/${selectedId}`));
-
-    if (!snapshot.exists()) {
-      throw new Error("Selected character no longer exists.");
-    }
-
-    const charData = snapshot.val();
-
-    loadCharacterIntoForm(charData, bucket);
-
-    currentEditId = selectedId;
-    currentEditBucket = bucket;
-    currentEditLoaded = true;
-
-    setStatus(`Loaded ${charData.name || selectedId} for editing.`, "success");
-  } catch (err) {
-    console.error(err);
-    setStatus(`Load failed: ${err.message}`, "error");
-  }
-}
-
-    // -------------------------
-    // Clear / new
-    // -------------------------
-    function resetForm() {
-      const defaults = {
-        recordType: "pc",
-        name: "",
-        playerName: "",
-        level: 1,
-        species: "",
-        charClass: "",
-        subclass: "",
-        background: "",
-        alignment: "",
-        xp: 0,
-        size: "",
-        creatureType: "",
-
-        hpCurrent: 0,
-        hpMax: 0,
-        tempHp: 0,
-        ac: 10,
-        speed: 30,
-        initiativeBonus: 0,
-        proficiencyBonus: 2,
-        hitDice: "",
-        deathSuccesses: 0,
-        deathFailures: 0,
-        heroicInspiration: "false",
-        conditions: "",
-        passivePerception: 10,
-        passiveInsight: 10,
-        passiveInvestigation: 10,
-
-        strScore: 10, dexScore: 10, conScore: 10, intScore: 10, wisScore: 10, chaScore: 10,
-        strMod: 0, dexMod: 0, conMod: 0, intMod: 0, wisMod: 0, chaMod: 0,
-
-        saveStr: 0, saveDex: 0, saveCon: 0, saveInt: 0, saveWis: 0, saveCha: 0,
-
-        skillAthletics: 0,
-        skillAcrobatics: 0, skillSleightOfHand: 0, skillStealth: 0,
-        skillArcana: 0, skillHistory: 0, skillInvestigation: 0, skillNature: 0, skillReligion: 0,
-        skillAnimalHandling: 0, skillInsight: 0, skillMedicine: 0, skillPerception: 0, skillSurvival: 0,
-        skillDeception: 0, skillIntimidation: 0, skillPerformance: 0, skillPersuasion: 0,
-
-        spellcastingAbility: "",
-        spellSaveDc: 0,
-        spellAttackBonus: 0,
-        spellcastingNotes: "",
-        spellSlots: "",
-        spellsNotes: "",
-
-        attacks: "",
-        featuresTraits: "",
-        proficienciesLanguages: "",
-        equipment: "",
-        appearance: "",
-        backstory: "",
-        notes: ""
-      };
-
-      Object.entries(defaults).forEach(([id, value]) => {
-        if ($(id)) $(id).value = value;
-      });
-
-      updateAbilityMods();
-      updatePassiveValues();
-	  resetAbilitiesEditor();
-	  updateSpellSuggestions();
-
-      currentEditId = null;
-      currentEditBucket = null;
-      currentEditLoaded = false;
-
-      setStatus("New character form ready.", "info");
-    }
-
-    function clearCharacterOnly() {
-      const ids = [
-        "recordType","name","playerName","level","species","charClass","subclass","background","alignment","xp","size","creatureType",
-        "hpCurrent","hpMax","tempHp","ac","speed","initiativeBonus","proficiencyBonus","hitDice","deathSuccesses","deathFailures","heroicInspiration","conditions","passivePerception","passiveInsight","passiveInvestigation",
-        "strScore","dexScore","conScore","intScore","wisScore","chaScore","strMod","dexMod","conMod","intMod","wisMod","chaMod",
-        "saveStr","saveDex","saveCon","saveInt","saveWis","saveCha",
-        "skillAthletics","skillAcrobatics","skillSleightOfHand","skillStealth","skillArcana","skillHistory","skillInvestigation","skillNature","skillReligion",
-        "skillAnimalHandling","skillInsight","skillMedicine","skillPerception","skillSurvival",
-        "skillDeception","skillIntimidation","skillPerformance","skillPersuasion",
-        "spellcastingAbility","spellSaveDc","spellAttackBonus","spellcastingNotes","spellSlots","spellsNotes",
-        "attacks","featuresTraits","proficienciesLanguages","equipment","appearance","backstory","notes"
-      ];
-
-      ids.forEach(id => {
-        if (!$(id)) return;
-        if ($(id).tagName === "SELECT") {
-          if (id === "recordType") $(id).value = "pc";
-          else if (id === "heroicInspiration") $(id).value = "false";
-          else $(id).value = "";
-        } else if ($(id).type === "number") {
-          $(id).value = 0;
-        } else {
-          $(id).value = "";
-        }
-      });
-
-      $("level").value = 1;
-      $("ac").value = 10;
-      $("speed").value = 30;
-      $("proficiencyBonus").value = 2;
-
-      $("strScore").value = 10;
-      $("dexScore").value = 10;
-      $("conScore").value = 10;
-      $("intScore").value = 10;
-      $("wisScore").value = 10;
-      $("chaScore").value = 10;
-
-      updateAbilityMods();
-      updatePassiveValues();
-	  resetAbilitiesEditor();
-	  updateSpellSuggestions();
-
-      currentEditId = null;
-      currentEditBucket = null;
-      currentEditLoaded = false;
-
-      setStatus("Character fields cleared.", "info");
-    }
-
-
-    function buildCharacterTxt() {
-      updateAbilityMods();
-      updatePassiveValues();
-      updateSpellSuggestions();
-
-      const { payload } = buildCharacterPayload();
-
-      const lines = [];
-
-      function addSection(title, obj) {
-        lines.push(`[${title}]`);
-        Object.entries(obj).forEach(([key, value]) => {
-          let out = value;
-          if (typeof out === "string") {
-            out = out.replace(/\r\n/g, "\n").replace(/\n/g, "\\n");
-          }
-          lines.push(`${key}=${out ?? ""}`);
-        });
-        lines.push("");
-      }
-
-      addSection("character", {
-        id: payload.id,
-        record_type: payload.record_type,
-        name: payload.name,
-        player_name: payload.player_name,
-        level: payload.level,
-        species: payload.species,
-        class: payload.class,
-        subclass: payload.subclass,
-        background: payload.background,
-        alignment: payload.alignment,
-        xp: payload.xp,
-        size: payload.size,
-        creature_type: payload.creature_type
-      });
-
-      addSection("combat", payload.combat);
-      addSection("stats", payload.stats);
-      addSection("mods", payload.mods);
-      addSection("saves", payload.saves);
-      addSection("skills", payload.skills);
-      addSection("spellcasting", payload.spellcasting);
-	  addSection("abilities", flattenAbilitiesForTxt(payload.abilities));
-      addSection("text_blocks", payload.text_blocks);
-
-      return lines.join("\n").trim() + "\n";
-    }
-
-    function exportCurrentCharacterTxt() {
-      try {
-        const txt = buildCharacterTxt();
-        const fileNameBase = slugify(str("name")) || "character";
-        const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${fileNameBase}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setStatus(`Exported ${fileNameBase}.txt`, "success");
-      } catch (err) {
-        console.error(err);
-        setStatus(`Export TXT failed: ${err.message}`, "error");
-      }
-    }
-
-    function parseCharacterTxt(text) {
-	  const sections = {};
-	  let currentSection = null;
-
-	  const normalized = String(text || "")
-		.replace(/\r\n/g, "\n")
-		.replace(/\r/g, "\n");
-
-		const lines = normalized.split("\n");
-
-		for (const rawLine of lines) {
-			const line = rawLine.trim();
-			if (!line) continue;
-
-		const sectionMatch = line.match(/^\[([^\]]+)\]$/);
-		if (sectionMatch) {
-		  currentSection = sectionMatch[1].trim().toLowerCase();
-		  if (!sections[currentSection]) sections[currentSection] = {};
-		  continue;
-		}
-
-		if (!currentSection) continue;
-
-		const eqIndex = line.indexOf("=");
-		if (eqIndex === -1) continue;
-
-		const key = line.slice(0, eqIndex).trim();
-		const value = line.slice(eqIndex + 1).trim().replace(/\\n/g, "\n");
-
-		sections[currentSection][key] = value;
-	  }
-
-	  return sections;
-	}
-
-    function setIfExists(id, value) {
-      const el = $(id);
-      if (!el || value === undefined || value === null) return;
-      el.value = value;
-    }
-
-    function applyParsedCharacterToForm(sections) {
-      const c = sections.character || {};
-      const combat = sections.combat || {};
-      const stats = sections.stats || {};
-      const mods = sections.mods || {};
-      const saves = sections.saves || {};
-      const skills = sections.skills || {};
-      const spell = sections.spellcasting || {};
-      const textBlocks = sections.text_blocks || {};
-	  const abilities = unflattenAbilitiesFromTxt(sections.abilities || {});
-
-      setIfExists("recordType", c.record_type || "pc");
-      setIfExists("name", c.name || "");
-      setIfExists("playerName", c.player_name || "");
-      setIfExists("level", c.level ?? 1);
-      setIfExists("species", c.species || "");
-      setIfExists("charClass", c.class || "");
-      setIfExists("subclass", c.subclass || "");
-      setIfExists("background", c.background || "");
-      setIfExists("alignment", c.alignment || "");
-      setIfExists("xp", c.xp ?? 0);
-      setIfExists("size", c.size || "");
-      setIfExists("creatureType", c.creature_type || "");
-
-      setIfExists("hpCurrent", combat.hp_current ?? 0);
-      setIfExists("hpMax", combat.hp_max ?? 0);
-      setIfExists("tempHp", combat.temp_hp ?? 0);
-      setIfExists("ac", combat.ac ?? 10);
-      setIfExists("speed", combat.speed ?? 30);
-      setIfExists("initiativeBonus", combat.initiative_bonus ?? 0);
-      setIfExists("proficiencyBonus", combat.proficiency_bonus ?? 2);
-      setIfExists("hitDice", combat.hit_dice || "");
-      setIfExists("deathSuccesses", combat.death_save_successes ?? 0);
-      setIfExists("deathFailures", combat.death_save_failures ?? 0);
-      setIfExists("heroicInspiration", String(combat.heroic_inspiration ?? "false"));
-      setIfExists("conditions", combat.conditions || "");
-      setIfExists("passivePerception", combat.passive_perception ?? 10);
-      setIfExists("passiveInsight", combat.passive_insight ?? 10);
-      setIfExists("passiveInvestigation", combat.passive_investigation ?? 10);
-
-      setIfExists("strScore", stats.str ?? 10);
-      setIfExists("dexScore", stats.dex ?? 10);
-      setIfExists("conScore", stats.con ?? 10);
-      setIfExists("intScore", stats.int ?? 10);
-      setIfExists("wisScore", stats.wis ?? 10);
-      setIfExists("chaScore", stats.cha ?? 10);
-
-      if (mods.str !== undefined) setIfExists("strMod", mods.str);
-      if (mods.dex !== undefined) setIfExists("dexMod", mods.dex);
-      if (mods.con !== undefined) setIfExists("conMod", mods.con);
-      if (mods.int !== undefined) setIfExists("intMod", mods.int);
-      if (mods.wis !== undefined) setIfExists("wisMod", mods.wis);
-      if (mods.cha !== undefined) setIfExists("chaMod", mods.cha);
-
-      setIfExists("saveStr", saves.str ?? 0);
-      setIfExists("saveDex", saves.dex ?? 0);
-      setIfExists("saveCon", saves.con ?? 0);
-      setIfExists("saveInt", saves.int ?? 0);
-      setIfExists("saveWis", saves.wis ?? 0);
-      setIfExists("saveCha", saves.cha ?? 0);
-
-      setIfExists("skillAthletics", skills.athletics ?? 0);
-      setIfExists("skillAcrobatics", skills.acrobatics ?? 0);
-      setIfExists("skillSleightOfHand", skills.sleight_of_hand ?? 0);
-      setIfExists("skillStealth", skills.stealth ?? 0);
-      setIfExists("skillArcana", skills.arcana ?? 0);
-      setIfExists("skillHistory", skills.history ?? 0);
-      setIfExists("skillInvestigation", skills.investigation ?? 0);
-      setIfExists("skillNature", skills.nature ?? 0);
-      setIfExists("skillReligion", skills.religion ?? 0);
-      setIfExists("skillAnimalHandling", skills.animal_handling ?? 0);
-      setIfExists("skillInsight", skills.insight ?? 0);
-      setIfExists("skillMedicine", skills.medicine ?? 0);
-      setIfExists("skillPerception", skills.perception ?? 0);
-      setIfExists("skillSurvival", skills.survival ?? 0);
-      setIfExists("skillDeception", skills.deception ?? 0);
-      setIfExists("skillIntimidation", skills.intimidation ?? 0);
-      setIfExists("skillPerformance", skills.performance ?? 0);
-      setIfExists("skillPersuasion", skills.persuasion ?? 0);
-
-      setIfExists("spellcastingAbility", spell.ability || "");
-      setIfExists("spellSaveDc", spell.spell_save_dc ?? 0);
-      setIfExists("spellAttackBonus", spell.spell_attack_bonus ?? 0);
-      setIfExists("spellcastingNotes", spell.summary || "");
-      setIfExists("spellSlots", spell.spell_slots || "");
-      setIfExists("spellsNotes", spell.spells_notes || "");
-
-      setIfExists("attacks", textBlocks.attacks || "");
-      setIfExists("featuresTraits", textBlocks.features_traits || "");
-      setIfExists("proficienciesLanguages", textBlocks.proficiencies_languages || "");
-      setIfExists("equipment", textBlocks.equipment || "");
-      setIfExists("appearance", textBlocks.appearance || "");
-      setIfExists("backstory", textBlocks.backstory || "");
-      setIfExists("notes", textBlocks.notes || "");
-
-      loadAbilitiesFromPayload(abilities);
-	  updateAbilityMods();
-      updatePassiveValues();
-      updateSpellSuggestions();
-    }
-
-    function handleTxtFileChosen(event) {
-      const file = event.target.files && event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const parsed = parseCharacterTxt(reader.result);
-          applyParsedCharacterToForm(parsed);
-
-          const name = (parsed.character && parsed.character.name) ? parsed.character.name : "character";
-          const modeLabel = currentMode === "edit" ? "Edit mode" : "Create mode";
-          setStatus(`Loaded TXT for ${name}. ${modeLabel} form updated.`, "success");
-        } catch (err) {
-          console.error(err);
-          setStatus(`Load TXT failed: ${err.message}`, "error");
-        } finally {
-          event.target.value = "";
-        }
-      };
-
-      reader.onerror = () => {
-        setStatus("Load TXT failed: could not read file.", "error");
-        event.target.value = "";
-      };
-
-      reader.readAsText(file);
-    }
-
-    function triggerLoadTxt() {
-      $("txtFileInput").click();
-    }
-
-    // -------------------------
-    // Wire up listeners
-    // -------------------------
-    const abilityScoreIds = ["strScore","dexScore","conScore","intScore","wisScore","chaScore"];
-    abilityScoreIds.forEach(id => {
-      $(id).addEventListener("input", () => {
-        updateAbilityMods();
-        updateSpellSuggestions();
+    document.querySelectorAll(".skill-flag").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const key = btn.dataset.sk;
+        const flag = btn.dataset.flag;
+        skillState[key][flag] = !skillState[key][flag];
+        btn.classList.toggle(flag === "proficient" ? "prof-on" : "exp-on", skillState[key][flag]);
       });
     });
 
     ["skillPerception","skillInsight","skillInvestigation"].forEach(id => {
-      $(id).addEventListener("input", updatePassiveValues);
+      const el = document.getElementById(id.replace("skill","skill_").replace(/([A-Z])/g, c => `_${c.toLowerCase()}`));
     });
 
-    $("spellcastingAbility").addEventListener("change", updateSpellSuggestions);
-    $("proficiencyBonus").addEventListener("input", updateSpellSuggestions);
+    document.querySelectorAll(".skill-bonus").forEach(el => {
+      el.addEventListener("input", updatePassives);
+    });
+  }
 
-    // Mode tabs
-    $("tabCreateBtn").addEventListener("click", () => setMode("create"));
-    $("tabEditBtn").addEventListener("click", () => setMode("edit"));
+  function updatePassives() {
+    $("sPassivePerception").value = 10 + numVal("skill_perception");
+    $("sPassiveInsight").value = 10 + numVal("skill_insight");
+    $("sPassiveInvestigation").value = 10 + numVal("skill_investigation");
+  }
 
-    // Create mode buttons
-    $("saveBtn").addEventListener("click", async () => {
-      currentMode = "create";
-      currentEditId = null;
-      currentEditBucket = null;
-      currentEditLoaded = false;
-      await saveCharacter();
+  // ── Build conditions ──
+  function buildConditions() {
+    const wrap = $("conditionsWrap");
+    wrap.innerHTML = "";
+    CONDITIONS.forEach(c => {
+      const chip = document.createElement("button");
+      chip.className = "condition-chip";
+      chip.textContent = c;
+      chip.dataset.condition = c;
+      chip.addEventListener("click", () => {
+        if (activeConditions.has(c)) { activeConditions.delete(c); chip.classList.remove("active"); }
+        else { activeConditions.add(c); chip.classList.add("active"); }
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  function setConditions(arr) {
+    activeConditions = new Set(arr || []);
+    document.querySelectorAll(".condition-chip").forEach(chip => {
+      chip.classList.toggle("active", activeConditions.has(chip.dataset.condition));
+    });
+  }
+
+  // ── Spell slots ──
+  function buildSlotGrids() {
+    ["slotMaxGrid","slotUsedGrid"].forEach((gridId, isUsed) => {
+      const grid = $(gridId);
+      grid.innerHTML = "";
+      for (let lvl = 1; lvl <= 9; lvl++) {
+        const box = document.createElement("div");
+        box.className = "slot-box";
+        const inputId = isUsed ? `slotUsed_${lvl}` : `slotMax_${lvl}`;
+        box.innerHTML = `<label>${lvl}${["st","nd","rd","th","th","th","th","th","th"][lvl-1]}</label><input id="${inputId}" type="number" min="0" value="0" class="${isUsed ? "used" : ""}" />`;
+        grid.appendChild(box);
+      }
+    });
+  }
+
+  // ── Abilities editor ──
+  function renderAbilities() {
+    const list = $("abilitiesList");
+    list.innerHTML = "";
+    if (!abilitiesState.length) {
+      list.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">No abilities added yet.</div>`;
+      return;
+    }
+
+    const ACTIVATION_TYPES = [
+      { value:"none",        label:"No Roll" },
+      { value:"attack_roll", label:"Attack Roll" },
+      { value:"save",        label:"Target Saves" },
+      { value:"contest",     label:"Contest" },
+    ];
+    const SAVE_STATS = ["str","dex","con","int","wis","cha"];
+    const DAMAGE_TYPES = ["acid","bludgeoning","cold","fire","force","lightning","necrotic","piercing","poison","psychic","radiant","slashing","thunder","healing","temp_hp"];
+
+    abilitiesState.forEach((ab, i) => {
+      const card = document.createElement("div");
+      card.className = "ability-card";
+
+      card.innerHTML = `
+        <div class="ability-card-header">
+          <div class="field"><label>Name</label><input type="text" value="${escHtml(ab.label)}" data-ai="${i}" data-af="label" placeholder="Channel Divinity" /></div>
+          <div class="field"><label>Cur</label><input type="number" value="${ab.current}" data-ai="${i}" data-af="current" /></div>
+          <div class="field"><label>Max</label><input type="number" value="${ab.max}" data-ai="${i}" data-af="max" /></div>
+          <div class="field"><label>Recharge</label><select data-ai="${i}" data-af="recharge">${RECHARGE_OPTIONS.map(o=>`<option value="${o.value}" ${ab.recharge===o.value?"selected":""}>${o.label}</option>`).join("")}</select></div>
+          <div class="field"><label>Kind</label><select data-ai="${i}" data-af="kind">${KIND_OPTIONS.map(o=>`<option value="${o.value}" ${ab.kind===o.value?"selected":""}>${o.label}</option>`).join("")}</select></div>
+          <div class="field"><label>Die</label><input type="text" value="${escHtml(ab.die||"")}" data-ai="${i}" data-af="die" placeholder="d8" /></div>
+          <div class="field"><label>&nbsp;</label><button class="btn btn-danger btn-sm" data-remove="${i}">✕</button></div>
+        </div>
+        <div class="ability-card-action">
+          <div class="field"><label>Activation</label><select data-ai="${i}" data-af="activation">${ACTIVATION_TYPES.map(o=>`<option value="${o.value}" ${(ab.activation||"none")===o.value?"selected":""}>${o.label}</option>`).join("")}</select></div>
+          <div class="field"><label>Roll / Bonus</label><input type="text" value="${escHtml(ab.roll_bonus||"")}" data-ai="${i}" data-af="roll_bonus" placeholder="+5 or 2d6" /></div>
+          <div class="field"><label>Effect / Damage</label><input type="text" value="${escHtml(ab.effect_dice||"")}" data-ai="${i}" data-af="effect_dice" placeholder="2d6+3" /></div>
+          <div class="field"><label>Save Stat + DC</label><select data-ai="${i}" data-af="save_stat"><option value="">—</option>${SAVE_STATS.map(s=>`<option value="${s}" ${ab.save_stat===s?"selected":""}>${s.toUpperCase()}</option>`).join("")}</select></div>
+          <div class="field"><label>Save DC</label><input type="number" value="${ab.save_dc||0}" data-ai="${i}" data-af="save_dc" /></div>
+          <div class="field"><label>Effect Description</label><input type="text" value="${escHtml(ab.effect_desc||"")}" data-ai="${i}" data-af="effect_desc" placeholder="Target is stunned; half dmg on save" /></div>
+        </div>
+      `;
+
+      list.appendChild(card);
     });
 
-    $("newBtn").addEventListener("click", () => {
-      currentMode = "create";
+    list.querySelectorAll("[data-ai]").forEach(el => {
+      const update = e => {
+        const i = +e.target.dataset.ai, f = e.target.dataset.af;
+        abilitiesState[i][f] = (f==="current"||f==="max"||f==="save_dc") ? +e.target.value : e.target.value;
+      };
+      el.addEventListener("input", update);
+      el.addEventListener("change", update);
+    });
+    list.querySelectorAll("[data-remove]").forEach(btn => {
+      btn.addEventListener("click", () => { abilitiesState.splice(+btn.dataset.remove, 1); renderAbilities(); });
+    });
+  }
+
+  $("addAbilityBtn").addEventListener("click", () => {
+    abilitiesState.push({ key:`ability_${Date.now()}`, label:"", current:1, max:1, recharge:"long_rest", kind:"charge", die:"", activation:"none", roll_bonus:"", effect_dice:"", save_stat:"", save_dc:0, effect_desc:"" });
+    renderAbilities();
+  });
+
+  // ── Spells renderer ──
+  const PREPARED_TYPES = [
+    { value:"cantrip",  label:"Cantrip" },
+    { value:"prepared", label:"Prepared" },
+    { value:"always",   label:"Always Prepared" },
+    { value:"known",    label:"Known" },
+    { value:"ritual",   label:"Ritual" },
+  ];
+  const CAST_TIMES = ["1 action","1 bonus action","1 reaction","1 minute","10 minutes","1 hour","special"];
+  const DURATIONS  = ["instantaneous","1 round","1 minute","10 minutes","1 hour","8 hours","24 hours","until dispelled","special"];
+
+  function renderSpells() {
+    const list = $("spellsList");
+    list.innerHTML = "";
+    if (!spellsState.length) {
+      list.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">No spells added yet.</div>`;
+      return;
+    }
+    spellsState.forEach((sp, i) => {
+      const isCantrip = sp.level === 0;
+      const card = document.createElement("div");
+      card.className = "spell-card";
+
+      const badges = [];
+      if (isCantrip) badges.push(`<span class="spell-badge cantrip">Cantrip</span>`);
+      if (sp.concentration) badges.push(`<span class="spell-badge concentration">Conc.</span>`);
+      if (sp.prepared_type === "always") badges.push(`<span class="spell-badge always">Always</span>`);
+      else if (sp.prepared_type === "prepared") badges.push(`<span class="spell-badge prepared">Prepared</span>`);
+
+      card.innerHTML = `
+        <div class="spell-card-header">
+          <div class="field"><label>Name</label><input type="text" value="${escHtml(sp.name)}" data-si="${i}" data-sf="name" placeholder="Bless" /></div>
+          <div class="field"><label>Level</label><input type="number" min="0" max="9" value="${sp.level??0}" data-si="${i}" data-sf="level" /></div>
+          <div class="field"><label>Status</label><select data-si="${i}" data-sf="prepared_type">${PREPARED_TYPES.map(o=>`<option value="${o.value}" ${sp.prepared_type===o.value?"selected":""}>${o.label}</option>`).join("")}</select></div>
+          <div class="field"><label>To Hit</label><input type="text" value="${escHtml(sp.to_hit||"")}" data-si="${i}" data-sf="to_hit" placeholder="+5" /></div>
+          <div class="field"><label>Dmg / Effect</label><input type="text" value="${escHtml(sp.damage||"")}" data-si="${i}" data-sf="damage" placeholder="1d8+3" /></div>
+          <div class="field"><label>Dmg Type</label><input type="text" value="${escHtml(sp.damage_type||"")}" data-si="${i}" data-sf="damage_type" placeholder="radiant" /></div>
+          <div class="field"><label>&nbsp;</label><button class="btn btn-danger btn-sm" data-removespell="${i}">✕</button></div>
+        </div>
+        <div class="spell-card-detail">
+          <div class="field"><label>Save Stat</label><select data-si="${i}" data-sf="save_stat"><option value="">—</option>${["str","dex","con","int","wis","cha"].map(s=>`<option value="${s}" ${sp.save_stat===s?"selected":""}>${s.toUpperCase()}</option>`).join("")}</select></div>
+          <div class="field"><label>Cast Time</label><select data-si="${i}" data-sf="cast_time">${CAST_TIMES.map(t=>`<option value="${t}" ${sp.cast_time===t?"selected":""}>${t}</option>`).join("")}</select></div>
+          <div class="field"><label>Duration</label><select data-si="${i}" data-sf="duration">${DURATIONS.map(d=>`<option value="${d}" ${sp.duration===d?"selected":""}>${d}</option>`).join("")}</select></div>
+          <div class="field"><label>Upcast Effect</label><input type="text" value="${escHtml(sp.upcast||"")}" data-si="${i}" data-sf="upcast" placeholder="Each slot level above 1st adds 1d6" /></div>
+          <div class="field" style="display:flex;flex-direction:row;align-items:center;gap:6px;padding-top:14px;">
+            <input type="checkbox" id="spConc_${i}" ${sp.concentration?"checked":""} data-si="${i}" data-sf="concentration" style="width:auto;" />
+            <label for="spConc_${i}" style="font-size:0.72rem;color:var(--muted2);text-transform:none;letter-spacing:0;">Concentration</label>
+          </div>
+          <div class="field"><label>Notes</label><input type="text" value="${escHtml(sp.notes||"")}" data-si="${i}" data-sf="notes" placeholder="Components, range, etc." /></div>
+        </div>
+        <div style="padding:6px 10px; display:flex; gap:6px; flex-wrap:wrap;">${badges.join("")}</div>
+      `;
+      list.appendChild(card);
+    });
+
+    list.querySelectorAll("[data-si]").forEach(el => {
+      const update = e => {
+        const i = +e.target.dataset.si, f = e.target.dataset.sf;
+        if (f === "concentration") spellsState[i][f] = e.target.checked;
+        else if (f === "level") {
+          spellsState[i][f] = +e.target.value;
+          if (+e.target.value === 0) spellsState[i].prepared_type = "cantrip";
+          else if (spellsState[i].prepared_type === "cantrip") spellsState[i].prepared_type = "prepared";
+        }
+        else spellsState[i][f] = e.target.value;
+        if (f === "level" || f === "concentration" || f === "prepared_type") renderSpells();
+      };
+      el.addEventListener("input", update);
+      el.addEventListener("change", update);
+    });
+    list.querySelectorAll("[data-removespell]").forEach(btn => {
+      btn.addEventListener("click", () => { spellsState.splice(+btn.dataset.removespell, 1); renderSpells(); });
+    });
+  }
+
+  function newSpell(level=1) {
+    return {
+      name:"", level,
+      prepared_type: level === 0 ? "cantrip" : "prepared",
+      to_hit:"", damage:"", damage_type:"", save_stat:"",
+      cast_time:"1 action", duration:"instantaneous",
+      concentration:false, upcast:"", notes:""
+    };
+  }
+
+  $("addSpellBtn").addEventListener("click", () => { spellsState.push(newSpell(1)); renderSpells(); });
+
+  // ── Inventory renderer ──
+  const ITEM_CATEGORIES = ["weapon","armor","consumable","gear","treasure","tool","magic","other"];
+
+  function renderInventory() {
+    const list = $("inventoryList");
+    list.innerHTML = "";
+    if (!inventoryState.length) {
+      list.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">No items yet.</div>`;
+      return;
+    }
+    inventoryState.forEach((item, i) => {
+      const row = document.createElement("div");
+      row.className = "inventory-row";
+      row.innerHTML = `
+        <div class="field"><input type="text" value="${escHtml(item.name)}" data-ii="${i}" data-if="name" placeholder="Healing Potion" /></div>
+        <div class="field"><input type="text" value="${escHtml(item.desc||"")}" data-ii="${i}" data-if="desc" placeholder="Restores 2d4+2 HP" /></div>
+        <div class="field"><input type="number" min="0" value="${item.qty??1}" data-ii="${i}" data-if="qty" /></div>
+        <div class="field"><select data-ii="${i}" data-if="category">${ITEM_CATEGORIES.map(c=>`<option value="${c}" ${item.category===c?"selected":""}>${c}</option>`).join("")}</select></div>
+        <div class="field"><button class="btn btn-danger btn-sm" data-removeitem="${i}">✕</button></div>
+      `;
+      list.appendChild(row);
+    });
+    list.querySelectorAll("[data-ii]").forEach(el => {
+      const update = e => {
+        const i = +e.target.dataset.ii, f = e.target.dataset.if;
+        inventoryState[i][f] = f === "qty" ? +e.target.value : e.target.value;
+      };
+      el.addEventListener("input", update);
+      el.addEventListener("change", update);
+    });
+    list.querySelectorAll("[data-removeitem]").forEach(btn => {
+      btn.addEventListener("click", () => { inventoryState.splice(+btn.dataset.removeitem, 1); renderInventory(); });
+    });
+  }
+
+  $("addInventoryBtn").addEventListener("click", () => {
+    inventoryState.push({ name:"", desc:"", qty:1, category:"gear" });
+    renderInventory();
+  });
+
+  // ── Attacks editor ──
+  function renderAttacks() {
+    const list = $("attacksList");
+    list.innerHTML = "";
+    if (!attacksState.length) {
+      list.innerHTML = `<div style="font-size:0.78rem;color:var(--muted);">No attacks added yet.</div>`;
+      return;
+    }
+    attacksState.forEach((atk, i) => {
+      const row = document.createElement("div");
+      row.className = "attack-row";
+      row.innerHTML = `
+        <div class="field"><label>Name</label><input type="text" value="${escHtml(atk.name)}" data-atki="${i}" data-atkf="name" placeholder="Mace" /></div>
+        <div class="field"><label>Type</label><select data-atki="${i}" data-atkf="type">${ATTACK_TYPES.map(t=>`<option value="${t}" ${atk.type===t?"selected":""}>${t}</option>`).join("")}</select></div>
+        <div class="field"><label>To Hit</label><input type="text" value="${escHtml(atk.to_hit)}" data-atki="${i}" data-atkf="to_hit" placeholder="+4" /></div>
+        <div class="field"><label>Damage</label><input type="text" value="${escHtml(atk.damage)}" data-atki="${i}" data-atkf="damage" placeholder="1d6+2" /></div>
+        <div class="field"><label>Dmg Type</label><input type="text" value="${escHtml(atk.damage_type)}" data-atki="${i}" data-atkf="damage_type" placeholder="slashing" /></div>
+        <div class="field"><label>Notes</label><input type="text" value="${escHtml(atk.notes||"")}" data-atki="${i}" data-atkf="notes" placeholder="Bonus action" /></div>
+        <div class="field"><label>&nbsp;</label><button class="btn btn-danger btn-sm" data-removeatk="${i}">✕</button></div>
+      `;
+      list.appendChild(row);
+    });
+    list.querySelectorAll("[data-atki]").forEach(el => {
+      el.addEventListener("input", e => { attacksState[+e.target.dataset.atki][e.target.dataset.atkf] = e.target.value; });
+      el.addEventListener("change", e => { attacksState[+e.target.dataset.atki][e.target.dataset.atkf] = e.target.value; });
+    });
+    list.querySelectorAll("[data-removeatk]").forEach(btn => {
+      btn.addEventListener("click", () => { attacksState.splice(+btn.dataset.removeatk, 1); renderAttacks(); });
+    });
+  }
+
+  $("addAttackBtn").addEventListener("click", () => {
+    attacksState.push({ name:"", type:"melee", to_hit:"", damage:"", damage_type:"", notes:"" });
+    renderAttacks();
+  });
+
+  // ── Spell suggestions ──
+  function updateSpellSuggestions() {
+    const ability = strVal("spAbility");
+    if (!ability) return;
+    const pb = numVal("fProfBonus", 2);
+    const mod = abilityMod(numVal(`stat_${ability}`, 10));
+    if (numVal("spSaveDc") === 0) $("spSaveDc").value = 8 + mod + pb;
+    if (numVal("spAttackBonus") === 0) $("spAttackBonus").value = mod + pb;
+  }
+
+  $("spAbility").addEventListener("change", updateSpellSuggestions);
+  $("fProfBonus").addEventListener("input", updateSpellSuggestions);
+
+  // ── Build payload ──
+  function buildPayload() {
+    const name = strVal("fName");
+    if (!name) throw new Error("Character Name is required.");
+
+    const id = currentEditId || slugify(name);
+    const recordType = currentMode;
+    const bucket = recordType === "npc" ? "npcs" : "pcs";
+
+    const stats = {};
+    ABILITY_KEYS.forEach(k => { stats[k] = numVal(`stat_${k}`, 10); });
+
+    const saves = { proficient: [...saveProficient] };
+    ABILITY_KEYS.forEach(k => { saves[k] = numVal(`save_${k}`, 0); });
+
+    const skills = {};
+    SKILLS.forEach(sk => {
+      skills[sk.key] = {
+        bonus: numVal(`skill_${sk.key}`, 0),
+        proficient: skillState[sk.key]?.proficient || false,
+        expertise: skillState[sk.key]?.expertise || false,
+      };
+    });
+
+    const slots = {}, slotsUsed = {};
+    for (let lvl=1; lvl<=9; lvl++) {
+      slots[String(lvl)] = numVal(`slotMax_${lvl}`, 0);
+      slotsUsed[String(lvl)] = numVal(`slotUsed_${lvl}`, 0);
+    }
+
+    const abilitiesObj = {};
+    abilitiesState.forEach(ab => {
+      const key = slugify(ab.key || ab.label) || `ability_${Date.now()}`;
+      abilitiesObj[key] = {
+        label: ab.label, current: ab.current, max: ab.max,
+        recharge: ab.recharge, kind: ab.kind, die: ab.die||"",
+        activation: ab.activation||"none", roll_bonus: ab.roll_bonus||"",
+        effect_dice: ab.effect_dice||"", save_stat: ab.save_stat||"",
+        save_dc: ab.save_dc||0, effect_desc: ab.effect_desc||"",
+      };
+    });
+
+    const spAbility = strVal("spAbility");
+    const hasSpells = spAbility !== "";
+
+    const combat = {
+      hp_current: numVal("fHpCurrent"),
+      hp_max: numVal("fHpMax"),
+      temp_hp: numVal("fTempHp"),
+      ac: numVal("fAc", 10),
+      speed: numVal("fSpeed", 30),
+      initiative_bonus: numVal("fInitiative"),
+      proficiency_bonus: numVal("fProfBonus", 2),
+      hit_dice: strVal("fHitDice"),
+      exhaustion: numVal("fExhaustion"),
+      conditions: [...activeConditions],
+    };
+
+    if (recordType === "pc") {
+      combat.inspiration = $("fInspiration").value === "true";
+      combat.death_save_successes = numVal("fDeathSuccesses");
+      combat.death_save_failures = numVal("fDeathFailures");
+      combat.concentration = {
+        active: $("fConcentrationActive").value === "true",
+        spell: strVal("fConcentrationSpell"),
+      };
+    } else {
+      combat.legendary_resistances = numVal("fLegResistances");
+    }
+
+    const payload = {
+      id,
+      record_type: recordType,
+      name,
+      campaign: strVal("fCampaign"),
+      level: numVal("fLevel", 1),
+      species: strVal("fSpecies"),
+      class: strVal("fClass"),
+      subclass: strVal("fSubclass"),
+      alignment: strVal("fAlignment"),
+      size: strVal("fSize"),
+      creature_type: strVal("fCreatureType"),
+      combat,
+      stats,
+      saves,
+      skills,
+      senses: {
+        passive_perception: numVal("sPassivePerception", 10),
+        passive_insight: numVal("sPassiveInsight", 10),
+        passive_investigation: numVal("sPassiveInvestigation", 10),
+        darkvision: numVal("sDarkvision"),
+        tremorsense: numVal("sTremorsense"),
+        blindsight: numVal("sBlindsight"),
+        truesight: numVal("sTruesight"),
+      },
+      spellcasting: hasSpells ? {
+        ability: spAbility,
+        spell_save_dc: numVal("spSaveDc"),
+        spell_attack_bonus: numVal("spAttackBonus"),
+        slots,
+        slots_used: slotsUsed,
+        notes: strVal("spNotes"),
+        spells: spellsState.map(s => ({...s})),
+      } : null,
+      abilities: abilitiesObj,
+      attacks: attacksState.map(a => ({...a})),
+      inventory: inventoryState.map(item => ({...item})),
+      text_blocks: {
+        features_traits: strVal("tbFeatures"),
+        proficiencies_languages: strVal("tbProficiencies"),
+        notes: strVal("tbNotes"),
+      },
+    };
+
+    if (recordType === "pc") {
+      payload.player_name = strVal("fPlayerName");
+      payload.background = strVal("fBackground");
+      payload.origin_feat = strVal("fOriginFeat");
+      payload.xp = numVal("fXp");
+      payload.weapon_masteries = textLines("fWeaponMasteries");
+      payload.text_blocks.appearance = strVal("tbAppearance");
+      payload.text_blocks.backstory = strVal("tbBackstory");
+    } else {
+      payload.cr = strVal("fCr");
+      payload.is_unique = $("fIsUnique").value === "true";
+      payload.legendary_actions = strVal("npcLegendaryActions") || null;
+      payload.lair_actions = strVal("npcLairActions") || null;
+      payload.reactions = strVal("npcReactions") || null;
+    }
+
+    // vtt_profile — fast read for VTT/party
+    payload.vtt_profile = {
+      name,
+      campaign: strVal("fCampaign"),
+      ac: combat.ac,
+      hp_current: combat.hp_current,
+      hp_max: combat.hp_max,
+      temp_hp: combat.temp_hp,
+      speed: combat.speed,
+      darkvision: numVal("sDarkvision"),
+      exhaustion: combat.exhaustion,
+      conditions: [...activeConditions],
+      token_color: recordType === "pc" ? $("tokenColor").value : "#a855f7",
+    };
+
+    if (recordType === "pc") {
+      payload.vtt_profile.player_name = strVal("fPlayerName");
+      payload.vtt_profile.inspiration = combat.inspiration;
+      payload.vtt_profile.concentration = combat.concentration;
+    } else {
+      payload.vtt_profile.cr = strVal("fCr");
+      payload.vtt_profile.is_unique = payload.is_unique;
+    }
+
+    payload.meta = {
+      rules_version: "2024",
+      record_type: recordType,
+      created_at_iso: new Date().toISOString(),
+      updated_at_iso: new Date().toISOString(),
+    };
+
+    return { payload, id, bucket };
+  }
+
+  // ── Fill form from payload ──
+  function fillForm(data) {
+    const rt = data.record_type || "pc";
+    setMode(rt);
+
+    const set = (id, val) => { const el = $(id); if (el && val !== undefined && val !== null) el.value = val; };
+
+    set("fName", data.name);
+    set("fCampaign", data.campaign || "");
+    set("fLevel", data.level ?? 1);
+    set("fSpecies", data.species);
+    set("fClass", data.class);
+    set("fSubclass", data.subclass);
+    set("fAlignment", data.alignment);
+    set("fSize", data.size || "medium");
+    set("fCreatureType", data.creature_type);
+
+    if (rt === "pc") {
+      set("fPlayerName", data.player_name);
+      set("fBackground", data.background);
+      set("fOriginFeat", data.origin_feat);
+      set("fXp", data.xp ?? 0);
+      set("fWeaponMasteries", (data.weapon_masteries || []).join("\n"));
+      if (data.vtt_profile?.token_color) $("tokenColor").value = data.vtt_profile.token_color;
+    } else {
+      set("fCr", data.cr);
+      if ($("fIsUnique")) $("fIsUnique").value = String(!!data.is_unique);
+    }
+
+    const c = data.combat || {};
+    set("fHpCurrent", c.hp_current ?? 0);
+    set("fHpMax", c.hp_max ?? 0);
+    set("fTempHp", c.temp_hp ?? 0);
+    set("fAc", c.ac ?? 10);
+    set("fSpeed", c.speed ?? 30);
+    set("fInitiative", c.initiative_bonus ?? 0);
+    set("fProfBonus", c.proficiency_bonus ?? 2);
+    set("fHitDice", c.hit_dice);
+    set("fExhaustion", c.exhaustion ?? 0);
+    if (rt === "pc") {
+      set("fInspiration", String(!!c.inspiration));
+      set("fDeathSuccesses", c.death_save_successes ?? 0);
+      set("fDeathFailures", c.death_save_failures ?? 0);
+      set("fConcentrationActive", String(!!(c.concentration?.active)));
+      set("fConcentrationSpell", c.concentration?.spell || "");
+    } else {
+      set("fLegResistances", c.legendary_resistances ?? 0);
+    }
+
+    setConditions(c.conditions || []);
+
+    const st = data.stats || {};
+    ABILITY_KEYS.forEach(k => { set(`stat_${k}`, st[k] ?? 10); });
+    updateMods();
+
+    const sv = data.saves || {};
+    ABILITY_KEYS.forEach(k => { set(`save_${k}`, sv[k] ?? 0); });
+    setSaveProficient(sv.proficient || []);
+
+    const sk = data.skills || {};
+    SKILLS.forEach(s => {
+      const d = sk[s.key] || {};
+      set(`skill_${s.key}`, d.bonus ?? 0);
+      skillState[s.key] = { proficient: !!d.proficient, expertise: !!d.expertise };
+      const profBtn = document.querySelector(`[data-sk="${s.key}"][data-flag="proficient"]`);
+      const expBtn  = document.querySelector(`[data-sk="${s.key}"][data-flag="expertise"]`);
+      if (profBtn) profBtn.classList.toggle("prof-on", !!d.proficient);
+      if (expBtn)  expBtn.classList.toggle("exp-on",  !!d.expertise);
+    });
+
+    updatePassives();
+
+    const senses = data.senses || {};
+    set("sPassivePerception",   senses.passive_perception   ?? 10);
+    set("sPassiveInsight",      senses.passive_insight      ?? 10);
+    set("sPassiveInvestigation",senses.passive_investigation?? 10);
+    set("sDarkvision",   senses.darkvision   ?? 0);
+    set("sTremorsense",  senses.tremorsense  ?? 0);
+    set("sBlindsight",   senses.blindsight   ?? 0);
+    set("sTruesight",    senses.truesight    ?? 0);
+
+    const sp = data.spellcasting;
+    set("spAbility", sp?.ability || "");
+    set("spSaveDc", sp?.spell_save_dc ?? 0);
+    set("spAttackBonus", sp?.spell_attack_bonus ?? 0);
+    set("spNotes", sp?.notes || "");
+    for (let lvl=1; lvl<=9; lvl++) {
+      set(`slotMax_${lvl}`,  sp?.slots?.[String(lvl)]      ?? 0);
+      set(`slotUsed_${lvl}`, sp?.slots_used?.[String(lvl)] ?? 0);
+    }
+
+    // Load spell cards — support both old string arrays and new spell objects
+    spellsState = [];
+    if (sp?.spells && Array.isArray(sp.spells)) {
+      spellsState = sp.spells.map(s => ({...s}));
+    } else {
+      // Legacy fallback: convert old string arrays to spell objects
+      (sp?.cantrips || []).forEach(name => spellsState.push({ ...newSpell(0), name, prepared_type:"cantrip" }));
+      (sp?.always_prepared || []).forEach(name => spellsState.push({ ...newSpell(1), name, prepared_type:"always" }));
+      (sp?.prepared || []).forEach(name => {
+        if (!spellsState.find(s => s.name === name)) spellsState.push({ ...newSpell(1), name, prepared_type:"prepared" });
+      });
+    }
+    renderSpells();
+
+    abilitiesState = Object.entries(data.abilities || {}).map(([key, v]) => ({
+      key, label:v.label||key, current:v.current??1, max:v.max??1,
+      recharge:v.recharge||"long_rest", kind:v.kind||"charge", die:v.die||"",
+      activation:v.activation||"none", roll_bonus:v.roll_bonus||"",
+      effect_dice:v.effect_dice||"", save_stat:v.save_stat||"",
+      save_dc:v.save_dc||0, effect_desc:v.effect_desc||"",
+    }));
+    renderAbilities();
+
+    attacksState = (data.attacks || []).map(a => ({...a}));
+    renderAttacks();
+
+    inventoryState = (data.inventory || []).map(item => ({...item}));
+    renderInventory();
+
+    const tb = data.text_blocks || {};
+    set("tbFeatures", tb.features_traits);
+    set("tbProficiencies", tb.proficiencies_languages);
+    set("tbNotes", tb.notes);
+    if (rt === "pc") {
+      set("tbAppearance", tb.appearance);
+      set("tbBackstory", tb.backstory);
+    } else {
+      set("npcLegendaryActions", data.legendary_actions || "");
+      set("npcLairActions", data.lair_actions || "");
+      set("npcReactions", data.reactions || "");
+    }
+
+    currentEditId = data.id || null;
+  }
+
+  // ── JSON import / export ──
+  async function importFromParsed(parsed) {
+    // Handle both single object and array
+    const items = Array.isArray(parsed) ? parsed : [parsed];
+
+    if (items.length === 1) {
+      // Single character — fill form, don't auto-save
+      fillForm(items[0]);
+      setStatus(`Loaded: ${items[0].name || "unnamed"}`, "success");
+      return;
+    }
+
+    // Mass import — save all to RTDB
+    setStatus(`Importing ${items.length} characters...`, "warn");
+    let saved = 0, failed = 0;
+
+    for (const char of items) {
+      try {
+        if (!char.name) throw new Error("Missing name");
+        const bucket = char.record_type === "npc" ? "npcs" : "pcs";
+        const id = char.id || slugify(char.name);
+        char.id = id;
+
+        // Preserve created_at if exists
+        const existingSnap = await get(ref(db, `characters/${bucket}/${id}`));
+        if (existingSnap.exists()) {
+          char.meta = char.meta || {};
+          char.meta.created_at_iso = existingSnap.val()?.meta?.created_at_iso || new Date().toISOString();
+          char.meta.updated_at_iso = new Date().toISOString();
+        } else {
+          char.meta = char.meta || {};
+          char.meta.created_at_iso = char.meta.created_at_iso || new Date().toISOString();
+          char.meta.updated_at_iso = new Date().toISOString();
+        }
+
+        await set(ref(db, `characters/${bucket}/${id}`), char);
+        saved++;
+        setStatus(`Saving... ${saved}/${items.length}`, "warn");
+      } catch(e) {
+        failed++;
+        console.error(`Failed to save ${char.name || "unnamed"}:`, e);
+      }
+    }
+
+    await refreshList();
+
+    if (failed === 0) {
+      setStatus(`Imported ${saved} character(s) successfully.`, "success");
+    } else {
+      setStatus(`Imported ${saved} OK, ${failed} failed — check console.`, "warn");
+    }
+  }
+
+  $("loadJsonBtn").addEventListener("click", () => {
+    const raw = $("jsonArea").value.trim();
+
+    if (raw) {
+      // Textarea has content — parse and import directly
+      try {
+        const parsed = JSON.parse(raw);
+        importFromParsed(parsed);
+      } catch(e) {
+        setStatus(`JSON parse error: ${e.message}`, "error");
+      }
+    } else {
+      // Textarea empty — open file picker
+      $("jsonFileInput").click();
+    }
+  });
+
+  $("jsonFileInput").addEventListener("change", async e => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    if (files.length === 1) {
+      // Single file
+      const text = await files[0].text();
+      try {
+        const parsed = JSON.parse(text);
+        $("jsonArea").value = JSON.stringify(parsed, null, 2);
+        await importFromParsed(parsed);
+      } catch(err) {
+        setStatus(`JSON parse error in ${files[0].name}: ${err.message}`, "error");
+      }
+    } else {
+      // Multiple files — import all
+      setStatus(`Reading ${files.length} files...`, "warn");
+      const all = [];
+      for (const file of files) {
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          if (Array.isArray(parsed)) all.push(...parsed);
+          else all.push(parsed);
+        } catch(err) {
+          console.error(`Failed to parse ${file.name}:`, err);
+        }
+      }
+      await importFromParsed(all);
+    }
+
+    // Reset file input so same file can be re-selected
+    e.target.value = "";
+  });
+
+  $("copyJsonBtn").addEventListener("click", () => {
+    try {
+      const { payload } = buildPayload();
+      const json = JSON.stringify(payload, null, 2);
+      navigator.clipboard.writeText(json);
+      $("jsonArea").value = json;
+      setStatus("Copied JSON to clipboard.", "success");
+    } catch(e) {
+      setStatus(`Export error: ${e.message}`, "error");
+    }
+  });
+
+  // ── Save to RTDB ──
+  $("saveBtn").addEventListener("click", async () => {
+    try {
+      setStatus("Saving...", "warn");
+      const { payload, id, bucket } = buildPayload();
+
+      // Preserve created_at if editing existing
+      const existingSnap = await get(ref(db, `characters/${bucket}/${id}`));
+      if (existingSnap.exists()) {
+        payload.meta.created_at_iso = existingSnap.val()?.meta?.created_at_iso || payload.meta.created_at_iso;
+      }
+
+      await set(ref(db, `characters/${bucket}/${id}`), payload);
+      currentEditId = id;
+      setStatus(`Saved: ${payload.name} → /characters/${bucket}/${id}`, "success");
+      await refreshList();
+    } catch(e) {
+      setStatus(`Save failed: ${e.message}`, "error");
+    }
+  });
+
+  // ── Delete ──
+  $("deleteBtn").addEventListener("click", async () => {
+    if (!currentEditId) { setStatus("No character loaded to delete.", "warn"); return; }
+    const bucket = currentMode === "npc" ? "npcs" : "pcs";
+    if (!confirm(`Delete "${strVal("fName")}"? This cannot be undone.`)) return;
+    try {
+      await remove(ref(db, `characters/${bucket}/${currentEditId}`));
+      setStatus(`Deleted: ${currentEditId}`, "success");
       resetForm();
-      setMode("create");
+      await refreshList();
+    } catch(e) {
+      setStatus(`Delete failed: ${e.message}`, "error");
+    }
+  });
+
+  // ── New ──
+  $("newBtn").addEventListener("click", () => { resetForm(); setStatus("New character ready.", "info"); });
+
+  function resetForm() {
+    currentEditId = null;
+    abilitiesState = [];
+    attacksState = [];
+    spellsState = [];
+    inventoryState = [];
+    activeConditions = new Set();
+    saveProficient = new Set();
+    skillState = {};
+    buildSkillsGrid();
+    buildAbilityGrid();
+    buildSavesGrid();
+    setConditions([]);
+    renderAbilities();
+    renderAttacks();
+    renderSpells();
+    renderInventory();
+    updateMods();
+    updatePassives();
+    // Reset all inputs
+    document.querySelectorAll(".main input, .main select, .main textarea").forEach(el => {
+      if (el.type === "number") el.value = el.id === "fAc" ? 10 : el.id === "fSpeed" ? 30 : el.id === "fProfBonus" ? 2 : el.id === "fLevel" ? 1 : 0;
+      else if (el.tagName === "SELECT") el.selectedIndex = 0;
+      else el.value = "";
     });
+    $("tokenColor").value = "#3b82f6";
+  }
 
-    $("clearBtn").addEventListener("click", clearCharacterOnly);
+  // ── Refresh saved list ──
+  async function refreshList() {
+    try {
+      setStatus("Loading characters...", "warn");
+      const [pcsSnap, npcsSnap] = await Promise.all([
+        get(ref(db, "characters/pcs")),
+        get(ref(db, "characters/npcs")),
+      ]);
 
-    $("loadTxtBtn").addEventListener("click", triggerLoadTxt);
-    $("loadTxtEditBtn").addEventListener("click", triggerLoadTxt);
-    $("txtFileInput").addEventListener("change", handleTxtFileChosen);
+      const container = $("savedList");
+      container.innerHTML = "";
 
-    $("exportTxtBtn").addEventListener("click", exportCurrentCharacterTxt);
-    $("exportTxtEditBtn").addEventListener("click", exportCurrentCharacterTxt);
+      const pcs  = pcsSnap.exists()  ? Object.values(pcsSnap.val())  : [];
+      const npcs = npcsSnap.exists() ? Object.values(npcsSnap.val()) : [];
+      const all  = [
+        ...pcs.map(c => ({...c, _bucket:"pcs"})),
+        ...npcs.map(c => ({...c, _bucket:"npcs"})),
+      ].sort((a,b) => String(a.name||"").localeCompare(String(b.name||"")));
 
-
-	$("addAbilityBtn").addEventListener("click", () => addAbilityRow());
-	$("addBattleMasterPresetBtn").addEventListener("click", addBattleMasterPreset);
-    
-	// Edit mode buttons
-    $("refreshEditListBtn").addEventListener("click", refreshEditList);
-    $("loadEditBtn").addEventListener("click", async () => {
-      currentMode = "edit";
-      await loadSelectedCharacterForEdit();
-    });
-
-    $("saveEditBtn").addEventListener("click", async () => {
-      if (!currentEditLoaded || !currentEditId || !currentEditBucket) {
-        setStatus("Load a saved character in Edit Existing first.", "error");
+      if (!all.length) {
+        container.innerHTML = `<div style="font-size:0.75rem;color:var(--muted);">No characters saved yet.</div>`;
+        setStatus("No characters found.", "warn");
         return;
       }
 
-      currentMode = "edit";
-      await saveCharacter();
-    });
+      all.forEach(char => {
+        const item = document.createElement("div");
+        const isPC = char._bucket === "pcs";
+        item.className = `saved-item ${isPC ? "pc-item" : "npc-item"} ${char.id === currentEditId ? "active" : ""}`;
+        item.innerHTML = `
+          <div class="saved-item-name">${char.name || "Unnamed"}</div>
+          <div class="saved-item-sub">${isPC ? "PC" : "NPC"} · Lv${char.level ?? "?"} ${char.class || ""}${char.subclass ? ` (${char.subclass})` : ""}${char.campaign ? ` · ${char.campaign}` : ""}</div>
+        `;
+        item.addEventListener("click", () => {
+          fillForm(char);
+          setStatus(`Loaded: ${char.name}`, "success");
+          document.querySelectorAll(".saved-item").forEach(el => el.classList.remove("active"));
+          item.classList.add("active");
+        });
+        container.appendChild(item);
+      });
 
-    $("newFromEditBtn").addEventListener("click", () => {
-      currentMode = "create";
-      resetForm();
-      setMode("create");
-    });
+      setStatus(`${pcs.length} PC(s), ${npcs.length} NPC(s) loaded.`, "success");
+    } catch(e) {
+      setStatus(`Refresh failed: ${e.message}`, "error");
+    }
+  }
 
-    // Refresh edit list when bucket changes
-    $("editRecordType").addEventListener("change", refreshEditList);
+  $("refreshListBtn").addEventListener("click", refreshList);
 
-    // Initial state
-    updateAbilityMods();
-    updatePassiveValues();
-    setMode("create");
-	resetAbilitiesEditor();
-    setStatus("Ready. Create New or Edit Existing.", "info");
-  </script>
+  // ── Escape HTML ──
+  function escHtml(v) {
+    return String(v??"")
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;");
+  }
+
+  // ── Init ──
+  buildAbilityGrid();
+  buildSavesGrid();
+  buildSkillsGrid();
+  buildConditions();
+  buildSlotGrids();
+  renderAbilities();
+  renderAttacks();
+  renderSpells();
+  renderInventory();
+  setMode("pc");
+  setStatus("Ready. Paste JSON or load from RTDB.", "info");
+  refreshList();
+</script>
+
 </body>
 </html>
