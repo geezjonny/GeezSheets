@@ -1,1591 +1,2015 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Maps v3 - Zoom + Ruler + Calibrate</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --bg2: #111827;
-      --panel: rgba(17, 24, 39, 0.92);
-      --line: #374151;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #60a5fa;
-      --accent2: #2563eb;
-      --good: #22c55e;
-      --warn: #f59e0b;
-      --bad: #ef4444;
-      --blue: #38bdf8;
-      --shadow: 0 10px 28px rgba(0,0,0,0.28);
-    }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GeezVTT</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
 
-    * { box-sizing: border-box; }
+:root {
+–bg:#06090f; –bg2:#0a0f1a; –panel:#0d1420; –panel2:#111827;
+–line:#1a2535; –line2:#243044; –text:#dde4f0;
+–muted:#4a5a72; –muted2:#7a8fa8;
+–accent:#4f8ef7; –accent2:#7ab3ff; –accent3:#b8d4ff;
+–good:#10b981; –good2:#34d399; –warn:#f59e0b;
+–bad:#ef4444; –bad2:#fca5a5;
+–magic:#8b5cf6; –magic2:#c084fc;
+–gold:#d4a843; –gold2:#f0c060;
+–panel-w:260px; –right-w:280px; –topbar-h:48px;
+}
 
-    body {
-      margin: 0;
-      font-family: Inter, Arial, Helvetica, sans-serif;
-      background:
-        radial-gradient(circle at top right, rgba(37,99,235,0.12), transparent 35%),
-        radial-gradient(circle at top left, rgba(56,189,248,0.06), transparent 30%),
-        linear-gradient(180deg, #0b1020 0%, #111827 100%);
-      color: var(--text);
-      padding: 18px;
-    }
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:‘Syne’,sans-serif;background:var(–bg);color:var(–text);user-select:none;}
 
-    .app {
-      max-width: 1800px;
-      margin: 0 auto;
-    }
+/* ── LOGIN ── */
+#loginScreen{
+position:fixed;inset:0;z-index:1000;
+background:var(–bg);
+display:flex;align-items:center;justify-content:center;
+background-image:
+radial-gradient(ellipse at 20% 50%,rgba(79,142,247,.06) 0%,transparent 60%),
+radial-gradient(ellipse at 80% 20%,rgba(139,92,246,.05) 0%,transparent 50%);
+}
+.login-card{
+background:var(–panel);border:1px solid var(–line2);border-radius:20px;
+padding:40px;width:420px;
+box-shadow:0 40px 80px rgba(0,0,0,.6),0 0 0 1px rgba(79,142,247,.08);
+}
+.login-title{font-family:‘Cinzel’,serif;font-size:2rem;font-weight:700;text-align:center;color:var(–accent2);letter-spacing:.04em;margin-bottom:6px;}
+.login-sub{text-align:center;font-size:.78rem;color:var(–muted2);margin-bottom:28px;font-family:‘JetBrains Mono’,monospace;}
+.login-step{display:none;flex-direction:column;gap:12px;}
+.login-step.active{display:flex;}
+.f-label{font-size:.7rem;font-weight:700;color:var(–muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;}
+.f-input{
+width:100%;background:var(–bg2);border:1px solid var(–line2);border-radius:10px;
+padding:11px 14px;font-size:.92rem;font-family:‘Syne’,sans-serif;color:var(–text);outline:none;
+transition:border-color .15s,box-shadow .15s;
+}
+.f-input:focus{border-color:var(–accent);box-shadow:0 0 0 3px rgba(79,142,247,.12);}
+.f-input option{background:var(–panel);}
+.char-list{display:flex;flex-direction:column;gap:7px;max-height:280px;overflow-y:auto;}
+.char-item{
+border:1px solid var(–line2);border-radius:10px;padding:11px 14px;
+cursor:pointer;transition:all .15s;background:rgba(255,255,255,.02);
+}
+.char-item:hover{border-color:var(–accent);background:rgba(79,142,247,.07);}
+.char-item.selected{border-color:var(–accent);background:rgba(79,142,247,.12);}
+.char-item-name{font-weight:700;font-size:.92rem;margin-bottom:2px;}
+.char-item-sub{font-size:.7rem;color:var(–muted2);font-family:‘JetBrains Mono’,monospace;}
+.login-btn{
+background:var(–accent);color:#fff;border:none;border-radius:10px;
+padding:12px;font-size:.88rem;font-weight:700;font-family:‘Syne’,sans-serif;
+cursor:pointer;transition:all .15s;width:100%;
+}
+.login-btn:hover{background:var(–accent2);transform:translateY(-1px);}
+.login-btn.ghost{background:rgba(255,255,255,.05);color:var(–muted2);font-size:.8rem;}
+.login-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.login-err{font-size:.75rem;color:var(–bad2);text-align:center;font-family:‘JetBrains Mono’,monospace;min-height:16px;}
+.login-row{display:flex;gap:8px;}
+.login-row .login-btn{flex:1;}
+.login-back{flex:0 0 auto!important;width:auto!important;padding:12px 16px!important;background:rgba(255,255,255,.06)!important;color:var(–text)!important;}
 
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      gap: 14px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
-    }
+/* Mic step */
+.mic-icon{font-size:2.5rem;text-align:center;}
+.mic-desc{text-align:center;font-size:.8rem;color:var(–muted2);font-family:‘JetBrains Mono’,monospace;line-height:1.6;}
+.mic-meter{height:4px;background:var(–line2);border-radius:999px;overflow:hidden;display:none;}
+.mic-bar{height:100%;width:0%;background:var(–good);border-radius:999px;transition:width .05s;}
+.mic-status{text-align:center;font-size:.75rem;font-family:‘JetBrains Mono’,monospace;color:var(–muted2);min-height:18px;}
 
-    .title-wrap h1 {
-      margin: 0;
-      font-size: 1.9rem;
-      letter-spacing: 0.2px;
-    }
+/* ── APP ── */
+#vttApp{display:none;height:100vh;flex-direction:column;}
+#vttApp.visible{display:flex;}
 
-    .title-wrap p {
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
+/* ── TOPBAR ── */
+.topbar{
+height:var(–topbar-h);background:rgba(6,9,15,.97);border-bottom:1px solid var(–line);
+display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0;z-index:50;
+backdrop-filter:blur(8px);
+}
+.topbar-title{font-family:‘Cinzel’,serif;font-size:.95rem;font-weight:700;color:var(–accent2);letter-spacing:.06em;white-space:nowrap;}
+.tb-sep{width:1px;height:20px;background:var(–line2);flex-shrink:0;}
+.tb-sel{
+background:var(–panel2);border:1px solid var(–line2);border-radius:7px;
+color:var(–text);padding:5px 10px;font-size:.75rem;font-family:‘JetBrains Mono’,monospace;
+outline:none;cursor:pointer;max-width:180px;
+}
+.tb-sel option{background:var(–panel);}
+.tb-btn{
+border:1px solid var(–line2);background:rgba(255,255,255,.04);color:var(–muted2);
+border-radius:6px;padding:5px 10px;font-size:.73rem;font-weight:700;cursor:pointer;
+font-family:‘Syne’,sans-serif;transition:all .12s;white-space:nowrap;
+}
+.tb-btn:hover{color:var(–text);border-color:var(–accent);background:rgba(79,142,247,.08);}
+.spacer{flex:1;}
+.session-info{font-size:.7rem;font-family:‘JetBrains Mono’,monospace;color:var(–muted);white-space:nowrap;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(–good);box-shadow:0 0 5px var(–good);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.gm-only{display:none!important;}
+body.is-gm .gm-only{display:flex!important;}
+body.is-gm .gm-b{display:block!important;}
+.gm-b{display:none!important;}
 
-    .status {
-      min-width: 320px;
-      padding: 11px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.04);
-      font-size: 0.95rem;
-      box-shadow: var(--shadow);
-    }
+/* ── MAIN ── */
+.main-area{display:flex;flex:1;min-height:0;overflow:hidden;}
 
-    .card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 18px;
-      padding: 16px;
-      box-shadow: var(--shadow);
-      margin-bottom: 16px;
-      backdrop-filter: blur(6px);
-    }
+/* ── LEFT PANEL ── */
+.side-panel{
+width:var(–panel-w);flex-shrink:0;background:var(–panel);
+border-right:1px solid var(–line);display:flex;flex-direction:column;overflow:hidden;
+}
+.panel-hdr{
+padding:9px 12px;border-bottom:1px solid var(–line);
+font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(–muted2);
+display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.panel-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:5px;}
 
-    .card h2 {
-      margin: 0 0 12px;
-      font-size: 1.05rem;
-      color: #dbeafe;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      padding-bottom: 8px;
-    }
+/* PC card */
+.pc-card{border:1px solid var(–line2);border-radius:10px;padding:9px;background:rgba(255,255,255,.02);}
+.pc-card.active-turn{border-color:var(–gold);box-shadow:0 0 0 1px rgba(212,168,67,.15);}
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.card-dot{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.2);}
+.card-name{font-weight:700;font-size:.85rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-sub{font-size:.65rem;color:var(–muted2);font-family:‘JetBrains Mono’,monospace;}
+.hp-wrap{background:rgba(0,0,0,.4);border-radius:999px;height:5px;overflow:hidden;margin-bottom:5px;}
+.hp-fill{height:100%;border-radius:999px;transition:width .3s;}
+.chip-row{display:flex;gap:4px;flex-wrap:wrap;}
+.chip{font-size:.6rem;font-family:‘JetBrains Mono’,monospace;padding:2px 6px;border-radius:999px;border:1px solid var(–line2);background:rgba(255,255,255,.03);color:var(–muted2);white-space:nowrap;}
+.chip.warn{border-color:rgba(245,158,11,.4);color:var(–warn);}
+.chip.good{border-color:rgba(16,185,129,.4);color:var(–good2);}
+.chip.magic{border-color:rgba(139,92,246,.4);color:var(–magic2);}
+.cond-row{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px;}
+.cond{font-size:.58rem;padding:1px 5px;border-radius:999px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(–bad2);font-weight:700;}
+.npc-card{border:1px solid rgba(139,92,246,.2);border-radius:9px;padding:8px 10px;background:rgba(139,92,246,.04);}
+.npc-card.active-turn{border-color:var(–gold);}
 
-    .toolbar {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
+/* ── MAP AREA ── */
+.map-area{flex:1;position:relative;overflow:hidden;background:#020408;}
+.map-wrap{position:absolute;inset:0;overflow:auto;}
+.map-wrap::-webkit-scrollbar{display:none;}
+.map-wrap{scrollbar-width:none;}
 
-    button, input[type="file"], input {
-      border-radius: 10px;
-      font-size: 0.95rem;
-      font: inherit;
-    }
+/* The container that holds canvases + token layer, scaled by zoom */
+.map-stage{
+position:relative;
+display:inline-block;
+transform-origin:top left;
+}
 
-    button {
-      border: none;
-      padding: 11px 14px;
-      cursor: pointer;
-      font-weight: 800;
-      transition: 0.15s ease;
-    }
+.map-stage canvas{position:absolute;top:0;left:0;pointer-events:none;}
+#mapCanvas{position:relative;z-index:1;}
+#interiorCanvas{z-index:2;}
+#fogCanvas{z-index:3;}
+#gridCanvas{z-index:4;}
 
-    button:hover { transform: translateY(-1px); }
+/* Token layer sits on top of canvases */
+#tokenLayer{
+position:absolute;top:0;left:0;
+z-index:4;
+width:100%;height:100%;
+pointer-events:none; /* tokens themselves handle pointer events */
+}
 
-    .btn-primary {
-      background: linear-gradient(180deg, var(--accent), var(--accent2));
-      color: white;
-    }
+/* ── TOKEN DOM ELEMENT ── */
+.token{
+position:absolute;
+border-radius:50%;
+cursor:pointer;
+pointer-events:all;
+transform:translate(-50%,-50%); /* center on grid cell center */
+transition:box-shadow .15s, border-color .15s;
+display:flex;align-items:center;justify-content:center;
+flex-direction:column;
+user-select:none;
+}
 
-    .btn-secondary {
-      background: #334155;
-      color: #fff;
-    }
+.token-body{
+position:absolute;inset:0;border-radius:50%;
+display:flex;align-items:center;justify-content:center;
+font-family:‘Syne’,sans-serif;font-weight:800;color:#fff;
+border:2px solid rgba(255,255,255,.35);
+transition:border-color .15s,box-shadow .15s;
+}
 
-    .btn-secondary:hover { background: #475569; }
+.token-label{
+position:absolute;
+bottom:-18px;
+left:50%;transform:translateX(-50%);
+font-size:.55rem;font-weight:700;font-family:‘Syne’,sans-serif;
+color:rgba(255,255,255,.85);
+white-space:nowrap;
+text-shadow:0 1px 3px rgba(0,0,0,.9);
+pointer-events:none;
+}
 
-    .btn-danger {
-      background: linear-gradient(180deg, #b91c1c, #7f1d1d);
-      color: #fff;
-    }
+.token-hp{
+position:absolute;
+bottom:-10px;
+left:50%;transform:translateX(-50%);
+width:85%;height:3px;
+background:rgba(0,0,0,.5);
+border-radius:999px;overflow:hidden;
+pointer-events:none;
+}
 
-    .btn-heal {
-      background: linear-gradient(180deg, #22c55e, #15803d);
-      color: #fff;
-    }
+.token-hp-fill{height:100%;border-radius:999px;transition:width .3s;}
 
-    .btn-active {
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.18), 0 0 0 2px rgba(96,165,250,0.18);
-      filter: brightness(1.05);
-    }
+/* Token states */
+.token.selected .token-body{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.3);}
 
-    .layout {
-      display: grid;
-      grid-template-columns: 320px minmax(0, 1fr) 360px;
-      gap: 16px;
-      align-items: start;
-    }
+.token.active-turn .token-body{
+border-color:var(–gold);
+box-shadow:0 0 0 3px rgba(212,168,67,.25);
+}
 
-    .token-list {
-      display: grid;
-      gap: 10px;
-      max-height: 75vh;
-      overflow: auto;
-      padding-right: 4px;
-    }
+/* Animated gold ring for active turn */
+.token.active-turn::before{
+content:’’;
+position:absolute;inset:-5px;
+border-radius:50%;
+border:2px dashed var(–gold);
+opacity:.7;
+animation:spinRing 4s linear infinite;
+}
 
-    .token-row {
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 14px;
-      padding: 10px;
-      background: rgba(255,255,255,0.03);
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      transition: 0.15s ease;
-    }
+@keyframes spinRing{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 
-    .token-row:hover {
-      border-color: rgba(96,165,250,0.35);
-      background: rgba(96,165,250,0.05);
-    }
+/* Speaking */
+.token.speaking .token-body{
+border-color:#fff;
+box-shadow:0 0 0 3px rgba(255,255,255,.2),0 0 20px rgba(255,255,255,.4);
+}
 
-    .token-row.selected {
-      border-color: rgba(96,165,250,0.6);
-      background: rgba(96,165,250,0.08);
-      box-shadow: inset 0 0 0 1px rgba(96,165,250,0.15);
-    }
+@keyframes tokenShake{
+0%,100%{transform:translate(-50%,-50%) rotate(0deg);}
+15%{transform:translate(calc(-50% - 3px),calc(-50% - 2px)) rotate(-1.5deg);}
+30%{transform:translate(calc(-50% + 3px),calc(-50% + 1px)) rotate(1deg);}
+45%{transform:translate(calc(-50% - 2px),calc(-50% + 2px)) rotate(-.8deg);}
+60%{transform:translate(calc(-50% + 2px),calc(-50% - 1px)) rotate(1.2deg);}
+75%{transform:translate(calc(-50% - 1px),calc(-50% + 1px)) rotate(-.5deg);}
+}
 
-    .token-preview {
-      width: 38px;
-      height: 38px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-weight: 900;
-      color: #fff;
-      border: 2px solid rgba(255,255,255,0.16);
-      flex: 0 0 auto;
-    }
+.token.shaking{animation:tokenShake .35s ease-in-out;}
 
-    .token-meta { min-width: 0; }
-    .token-name { font-weight: 800; font-size: 0.95rem; }
-    .token-sub { font-size: 0.8rem; color: var(--muted); }
+/* Dead token */
+.token.dead .token-body{opacity:.4;filter:grayscale(1);}
 
-    .map-wrap {
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: #0b1220;
-      padding: 8px;
-    }
+/* ── MAP PLACEHOLDER ── */
+.map-ph{
+position:absolute;inset:0;display:flex;flex-direction:column;
+align-items:center;justify-content:center;gap:14px;color:var(–muted);pointer-events:none;
+}
+.map-ph svg{opacity:.12;}
+.map-ph p{font-size:.88rem;font-family:‘JetBrains Mono’,monospace;}
 
-    canvas {
-      display: block;
-      background: #000;
-      border-radius: 12px;
-      cursor: grab;
-      width: 100%;
-      height: auto;
-      max-height: 78vh;
-      user-select: none;
-    }
+/* ── ZOOM CONTROLS ── */
+.zoom-bar{
+position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+display:flex;gap:4px;z-index:20;
+background:rgba(6,9,15,.88);border:1px solid var(–line2);border-radius:10px;
+padding:5px;backdrop-filter:blur(8px);
+}
+.zoom-btn{
+width:26px;height:26px;border-radius:6px;border:1px solid var(–line2);
+background:rgba(255,255,255,.05);color:var(–text);font-size:.95rem;cursor:pointer;
+display:flex;align-items:center;justify-content:center;transition:all .12s;
+}
+.zoom-btn:hover{background:rgba(79,142,247,.15);border-color:var(–accent);}
+.zoom-lbl{
+height:26px;padding:0 8px;display:flex;align-items:center;
+font-size:.7rem;font-family:‘JetBrains Mono’,monospace;color:var(–accent2);
+}
 
-    .legend {
-      margin-top: 10px;
-      color: var(--muted);
-      font-size: 0.85rem;
-      line-height: 1.5;
-    }
+/* ── TOKEN CONTEXT MENU ── */
+.ctx-menu{
+position:fixed;background:var(–panel2);border:1px solid var(–line2);
+border-radius:10px;padding:6px;z-index:500;display:none;
+box-shadow:0 16px 40px rgba(0,0,0,.55);min-width:176px;
+}
+.ctx-menu.open{display:block;}
+.ctx-title{font-size:.68rem;color:var(–muted2);padding:4px 10px 3px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+.ctx-sep{height:1px;background:var(–line);margin:4px 0;}
+.ctx-item{
+padding:7px 11px;border-radius:6px;font-size:.78rem;cursor:pointer;
+transition:background .1s;display:flex;align-items:center;gap:8px;
+}
+.ctx-item:hover{background:rgba(255,255,255,.06);}
+.ctx-item.danger{color:var(–bad2);}
+.ctx-item.danger:hover{background:rgba(239,68,68,.1);}
+.ctx-hp{display:flex;align-items:center;gap:5px;padding:5px 8px;}
+.ctx-hp input{
+width:50px;background:var(–bg2);border:1px solid var(–line2);border-radius:5px;
+color:var(–text);padding:4px 5px;font-size:.8rem;font-family:‘JetBrains Mono’,monospace;
+outline:none;text-align:center;
+}
+.ctx-hp span{font-size:.72rem;color:var(–muted2);}
+.ctx-hp button{
+background:var(–accent);border:none;border-radius:5px;color:#fff;
+padding:4px 8px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:‘Syne’,sans-serif;
+}
 
-    .muted { color: var(--muted); }
-    .empty { color: var(--muted); font-style: italic; }
+/* ── NPC PLACE PANEL ── */
+.npc-panel{
+position:absolute;top:56px;left:50%;transform:translateX(-50%);
+background:var(–panel2);border:1px solid var(–line2);border-radius:12px;
+padding:12px;z-index:30;display:none;
+box-shadow:0 16px 40px rgba(0,0,0,.5);min-width:270px;max-width:320px;
+}
+.npc-panel.open{display:block;}
+.npc-list{display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto;margin-top:8px;}
+.npc-item{
+display:flex;align-items:center;gap:8px;padding:7px 10px;
+border:1px solid var(–line);border-radius:8px;cursor:pointer;font-size:.8rem;transition:all .12s;
+}
+.npc-item:hover{border-color:var(–magic);background:rgba(139,92,246,.07);}
 
-    .inspector-grid {
-      display: grid;
-      gap: 14px;
-    }
+/* ── RIGHT PANEL ── */
+.right-panel{
+width:var(–right-w);flex-shrink:0;background:var(–panel);
+border-left:1px solid var(–line);display:flex;flex-direction:column;overflow:hidden;
+}
 
-    .inspector-name {
-      font-size: 1.35rem;
-      font-weight: 900;
-      line-height: 1.1;
-      color: #dbeafe;
-    }
+/* Initiative */
+.init-list{display:flex;flex-direction:column;gap:4px;padding:7px;}
+.init-item{
+display:flex;align-items:center;gap:7px;padding:7px 9px;
+border-radius:8px;border:1px solid var(–line);background:rgba(255,255,255,.02);transition:all .15s;
+}
+.init-item.active-turn{border-color:var(–gold);background:rgba(212,168,67,.05);}
+.init-roll{
+font-family:‘JetBrains Mono’,monospace;font-size:.85rem;font-weight:700;color:var(–accent2);
+min-width:22px;text-align:center;
+background:none;border:none;outline:none;width:32px;cursor:text;
+}
+.init-roll:focus{background:var(–bg2);border:1px solid var(–accent);border-radius:4px;padding:1px 3px;}
+.init-name{flex:1;font-size:.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.init-hp{font-size:.68rem;font-family:‘JetBrains Mono’,monospace;color:var(–muted2);}
+.init-add{
+display:flex;gap:5px;padding:6px 7px;border-top:1px solid var(–line);flex-shrink:0;
+}
+.init-add input{
+flex:1;background:var(–bg2);border:1px solid var(–line2);border-radius:6px;
+color:var(–text);padding:5px 8px;font-size:.75rem;font-family:‘JetBrains Mono’,monospace;outline:none;
+}
+.init-add input:focus{border-color:var(–accent);}
+.init-controls{display:flex;gap:6px;padding:7px;border-top:1px solid var(–line);flex-shrink:0;}
 
-    .inspector-sub {
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
+/* Conditions in ctx menu */
+.ctx-conds{display:flex;flex-wrap:wrap;gap:4px;padding:5px 8px;}
+.ctx-cond{
+font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:999px;
+border:1px solid var(–line2);color:var(–muted2);cursor:pointer;transition:all .12s;
+font-family:‘Syne’,sans-serif;
+}
+.ctx-cond.on{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:var(–bad2);}
+.ctx-cond:hover:not(.on){border-color:var(–muted2);color:var(–text);}
 
-    .quick-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
+/* Quick NPC form */
+.quick-npc{display:flex;flex-direction:column;gap:5px;padding:8px;}
+.quick-npc input{
+background:var(–bg2);border:1px solid var(–line2);border-radius:7px;
+color:var(–text);padding:7px 9px;font-size:.78rem;font-family:‘JetBrains Mono’,monospace;outline:none;
+width:100%;
+}
+.quick-npc input:focus{border-color:var(–accent);}
+.quick-npc-row{display:flex;gap:5px;}
+.quick-npc-row input{flex:1;}
 
-    .quick-box {
-      border-radius: 14px;
-      padding: 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
+/* Dice */
+.dice-wrap{flex:1;display:flex;flex-direction:column;min-height:0;border-top:1px solid var(–line);}
+.dice-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:7px;flex-shrink:0;}
+.die-btn{
+border:1px solid var(–line2);background:rgba(255,255,255,.03);color:var(–accent2);
+border-radius:8px;padding:7px 3px;font-size:.75rem;font-weight:700;font-family:‘Cinzel’,serif;
+cursor:pointer;text-align:center;transition:all .12s;
+}
+.die-btn:hover{background:rgba(79,142,247,.12);border-color:var(–accent);transform:translateY(-1px);}
+.dice-custom{display:flex;gap:5px;padding:0 7px 7px;flex-shrink:0;}
+.dice-custom input{
+flex:1;background:var(–bg2);border:1px solid var(–line2);border-radius:7px;
+color:var(–text);padding:6px 9px;font-size:.8rem;font-family:‘JetBrains Mono’,monospace;outline:none;
+}
+.dice-custom input:focus{border-color:var(–accent);}
+.dice-custom button{
+background:var(–accent);border:none;border-radius:7px;color:#fff;
+padding:6px 11px;font-size:.77rem;font-weight:700;cursor:pointer;font-family:‘Syne’,sans-serif;
+}
+.roll-log{flex:1;overflow-y:auto;padding:5px 7px;display:flex;flex-direction:column;gap:4px;}
+.roll-entry{padding:6px 8px;border-radius:7px;border:1px solid var(–line);background:rgba(255,255,255,.02);animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-3px);}to{opacity:1;transform:translateY(0);}}
+.roll-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;}
+.roll-who{font-size:.65rem;color:var(–muted2);font-family:‘JetBrains Mono’,monospace;}
+.roll-total{font-size:1.05rem;font-weight:800;font-family:‘Cinzel’,serif;color:var(–accent2);}
+.roll-total.nat20{color:var(–good2);}
+.roll-total.nat1{color:var(–bad2);}
+.roll-expr{font-size:.65rem;color:var(–muted);font-family:‘JetBrains Mono’,monospace;}
 
-    .quick-label {
-      color: var(--muted);
-      font-size: 0.75rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
+/* Scene panel */
+.scene-panel{
+position:absolute;top:56px;right:var(–right-w);
+background:var(–panel2);border:1px solid var(–line2);border-radius:12px;
+padding:12px;z-index:30;display:none;
+box-shadow:0 16px 40px rgba(0,0,0,.5);min-width:260px;
+}
+.scene-panel.open{display:block;}
+.scene-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;margin:8px 0;}
+.scene-item{
+padding:8px 11px;border:1px solid var(–line);border-radius:8px;cursor:pointer;
+font-size:.82rem;transition:all .12s;display:flex;align-items:center;justify-content:space-between;
+}
+.scene-item:hover{border-color:var(–accent);background:rgba(79,142,247,.06);}
+.scene-item.active{border-color:var(–gold);background:rgba(212,168,67,.06);}
 
-    .quick-value {
-      font-size: 1.05rem;
-      font-weight: 900;
-      line-height: 1.3;
-    }
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(–line2);border-radius:999px;}
 
-    .hp-bar-wrap {
-      border-radius: 999px;
-      height: 12px;
-      background: rgba(255,255,255,0.08);
-      overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.06);
-    }
+/* Util */
+.btn{border:none;border-radius:7px;padding:7px 12px;cursor:pointer;font-weight:700;font-size:.77rem;font-family:‘Syne’,sans-serif;transition:all .12s;}
+.btn-p{background:var(–accent);color:#fff;}
+.btn-p:hover{background:var(–accent2);}
+.btn-s{background:rgba(255,255,255,.06);color:var(–text);border:1px solid var(–line2);}
+.btn-s:hover{background:rgba(255,255,255,.1);}
+.btn-sm{padding:5px 9px;font-size:.7rem;}
+.btn-full{width:100%;}
+</style>
 
-    .hp-bar {
-      height: 100%;
-      width: 0%;
-      transition: width 0.15s ease;
-    }
-
-    .hp-controls {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
-
-    .temp-row {
-      display: grid;
-      grid-template-columns: 1fr 120px;
-      gap: 8px;
-    }
-
-    input {
-      width: 100%;
-      background: #0f172a;
-      color: var(--text);
-      border: 1px solid var(--line);
-      padding: 10px 12px;
-      outline: none;
-    }
-
-    input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(96,165,250,0.18);
-    }
-
-    .small-note {
-      font-size: 0.82rem;
-      color: var(--muted);
-      line-height: 1.45;
-    }
-
-    .measure-box {
-      border-radius: 14px;
-      padding: 12px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .measure-box strong {
-      color: #dbeafe;
-    }
-
-    @media (max-width: 1350px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 720px) {
-      .quick-grid,
-      .hp-controls,
-      .temp-row {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
 </head>
 <body>
-  <div class="app">
-    <div class="header">
-      <div class="title-wrap">
-        <h1>Maps</h1>
-        <p>True pan + zoom + token inspector + grid calibration + ruler.</p>
-      </div>
-      <div class="status" id="statusBox">Ready.</div>
-    </div>
 
-    <div class="card">
-      <h2>Controls</h2>
-      <div class="toolbar">
-        <input id="mapFileInput" type="file" accept=".png,image/png,image/*" />
-        <button class="btn-primary" id="loadPcsBtn" type="button">Load PCs</button>
-        <button class="btn-secondary" id="zoomOutBtn" type="button">Zoom -</button>
-        <button class="btn-secondary" id="zoomInBtn" type="button">Zoom +</button>
-        <button class="btn-secondary" id="resetViewBtn" type="button">Reset View</button>
-        <button class="btn-secondary" id="calibrateBtn" type="button">Calibrate Grid</button>
-        <button class="btn-secondary" id="rulerBtn" type="button">Ruler</button>
-        <button class="btn-secondary" id="centerTokensBtn" type="button">Center Tokens</button>
-        <button class="btn-danger" id="resetPositionsBtn" type="button">Reset Saved Positions</button>
-      </div>
-      <div class="legend">
-        <strong>Modes:</strong> Normal = select token / drag selected token / drag empty space to pan. <br />
-        <strong>Calibrate:</strong> click-drag between grid intersections, then enter how many squares. <br />
-        <strong>Ruler:</strong> click-drag to measure. <br />
-        Saves map settings to <strong>/maps/default/settings</strong> and token positions to <strong>/maps/default/pc_positions/{pcId}</strong>.
-      </div>
-    </div>
+<!-- LOGIN -->
 
-    <div class="layout">
-      <!-- LEFT -->
-      <div class="card">
-        <h2>PC Tokens</h2>
-        <div id="tokenList" class="token-list">
-          <div class="muted">Click <strong>Load PCs</strong> to fetch /characters/pcs</div>
-        </div>
-      </div>
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-title">GeezVTT</div>
+    <div class="login-sub">2024 · Virtual Tabletop</div>
 
-      <!-- CENTER -->
-      <div class="card">
-        <h2>Battle Map</h2>
-        <div class="map-wrap">
-          <canvas id="mapCanvas" width="1400" height="900"></canvas>
-        </div>
-        <div class="legend">
-          Mouse wheel = zoom. Drag empty map = pan. Drag selected token = move. <br />
-          HP ring: green = healthy, yellow = mid, red = low. Blue outer glow = Temp HP.
-        </div>
-      </div>
+```
+<!-- Step 1: Name + Campaign -->
+<div class="login-step active" id="s1">
+  <div>
+    <div class="f-label">Your Name</div>
+    <input class="f-input" id="lName" type="text" placeholder="Jon" autocomplete="off"/>
+  </div>
+  <div>
+    <div class="f-label">Campaign</div>
+    <select class="f-input" id="lCampaign"><option value="">Loading...</option></select>
+  </div>
+  <div class="login-err" id="e1"></div>
+  <button class="login-btn" id="toS2">Continue →</button>
+</div>
 
-      <!-- RIGHT -->
-      <div class="card">
-        <h2>Inspector</h2>
-        <div id="inspectorWrap" class="inspector-grid">
-          <div class="empty">Click a token to inspect it.</div>
-        </div>
+<!-- Step 2: Character select -->
+<div class="login-step" id="s2">
+  <div class="f-label">Select Your Character</div>
+  <div class="char-list" id="charList"></div>
+  <div class="login-err" id="e2"></div>
+  <div class="login-row">
+    <button class="login-btn login-back" id="backS1">←</button>
+    <button class="login-btn" id="toS3">Continue →</button>
+  </div>
+</div>
 
-        <div style="height:14px;"></div>
+<!-- Step 3: Mic -->
+<div class="login-step" id="s3">
+  <div class="mic-icon">🎙</div>
+  <div class="mic-desc">Your token shakes when you speak.<br>Other players see it in real time.</div>
+  <div class="mic-status" id="micStatus"></div>
+  <div class="mic-meter" id="micMeter"><div class="mic-bar" id="micBar"></div></div>
+  <button class="login-btn" id="enableMic">Allow Mic Access</button>
+  <button class="login-btn ghost" id="skipMic">Skip — enter without mic</button>
+</div>
+```
 
-        <h2>Map Measurement</h2>
-        <div id="measureInfo" class="measure-box">
-          <div><strong>Pixels / Square:</strong> <span id="pixelsPerSquareOut">70.00</span></div>
-          <div><strong>Feet / Square:</strong> <span id="feetPerSquareOut">5</span></div>
-          <div><strong>Zoom:</strong> <span id="zoomOutText">1.00x</span></div>
-          <div id="measureReadout" class="small-note" style="margin-top:8px;">No active measurement.</div>
-        </div>
-      </div>
+  </div>
+</div>
+
+<!-- APP -->
+
+<div id="vttApp">
+
+  <!-- TOPBAR -->
+
+  <div class="topbar">
+    <div class="topbar-title">GeezVTT</div>
+    <div class="tb-sep"></div>
+
+```
+<!-- GM controls -->
+<select class="tb-sel gm-only" id="campSelect"><option value="">— Campaign —</option></select>
+<select class="tb-sel gm-only" id="mapSelect"><option value="">— Map Asset —</option></select>
+<button class="tb-btn gm-only" id="loadSceneBtn">Load Scene</button>
+<div class="tb-sep gm-only"></div>
+<button class="tb-btn gm-only" id="scenesBtn">Scenes</button>
+<button class="tb-btn gm-only" id="placeNpcBtn">+ NPC</button>
+<button class="tb-btn gm-only" id="clearToksBtn">Clear Tokens</button>
+<div class="tb-sep gm-only"></div>
+<button class="tb-btn gm-only" id="rollInitBtn">⚔ Initiative</button>
+<button class="tb-btn gm-only" id="clearInitBtn">Clear Init</button>
+
+<div class="spacer"></div>
+<div class="status-dot"></div>
+<div class="session-info" id="sessInfo">—</div>
+<div class="tb-sep"></div>
+<div class="session-info" id="userLabel">—</div>
+```
+
+  </div>
+
+  <!-- MAIN -->
+
+  <div class="main-area">
+
+```
+<!-- LEFT: Party panel -->
+<div class="side-panel">
+  <div class="panel-hdr">
+    <span>Party</span>
+    <span id="partyCount" style="color:var(--muted);">0</span>
+  </div>
+  <div class="panel-body" id="partyPanel"></div>
+</div>
+
+<!-- MAP -->
+<div class="map-area" id="mapArea">
+  <div class="map-wrap" id="mapWrap">
+    <div class="map-stage" id="mapStage">
+      <canvas id="mapCanvas"></canvas>
+      <canvas id="interiorCanvas"></canvas>
+      <canvas id="fogCanvas"></canvas>
+      <canvas id="gridCanvas"></canvas>
+      <div id="tokenLayer"></div>
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, get, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+  <!-- Placeholder -->
+  <div class="map-ph" id="mapPh">
+    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+    <p id="phTxt">Waiting for GM to load a map...</p>
+  </div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
-      authDomain: "sheets-e5838.firebaseapp.com",
-      databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
-      projectId: "sheets-e5838",
-      storageBucket: "sheets-e5838.firebasestorage.app"
+  <!-- Zoom -->
+  <div class="zoom-bar">
+    <button class="zoom-btn" id="zoomOut">−</button>
+    <div class="zoom-lbl" id="zoomLbl">100%</div>
+    <button class="zoom-btn" id="zoomIn">+</button>
+    <button class="zoom-btn" id="zoomFit" title="Fit">⊡</button>
+  </div>
+
+  <!-- NPC place panel -->
+  <div class="npc-panel gm-b" id="npcPanel">
+    <div style="font-size:.7rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;">Place NPC Token</div>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace;">Click NPC → click grid cell</div>
+    <div class="npc-list" id="npcList"></div>
+    <button class="btn btn-s btn-full btn-sm" id="cancelNpc" style="margin-top:8px;">Cancel</button>
+  </div>
+
+  <!-- Scene manager panel -->
+  <div class="scene-panel gm-b" id="scenePanel">
+    <div style="font-size:.7rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;">Scenes</div>
+    <div class="scene-list" id="sceneList"></div>
+    <div style="display:flex;gap:6px;margin-top:4px;">
+      <input id="newSceneName" placeholder="New scene name..." style="flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:7px;color:var(--text);padding:6px 9px;font-size:.78rem;font-family:'JetBrains Mono',monospace;outline:none;"/>
+      <button class="btn btn-p btn-sm" id="createSceneBtn">+</button>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT: Initiative + Dice -->
+<div class="right-panel">
+  <div class="panel-hdr">
+    <span>Initiative</span>
+    <span id="roundLbl" style="color:var(--muted);font-family:'JetBrains Mono',monospace;">—</span>
+  </div>
+  <div class="panel-body" id="initList" style="max-height:200px;flex:0 0 auto;"></div>
+  <!-- Manual add entry (GM only) -->
+  <div class="init-add gm-only">
+    <input id="initAddName" placeholder="Name..." />
+    <input id="initAddRoll" placeholder="Roll" type="number" style="width:54px;flex:none;" />
+    <button class="btn btn-p btn-sm" id="initAddBtn">+</button>
+  </div>
+  <div class="init-controls gm-only">
+    <button class="btn btn-s btn-sm" id="prevTurn" style="flex:1;">◀ Prev</button>
+    <button class="btn btn-p btn-sm" id="nextTurn" style="flex:1;">Next ▶</button>
+  </div>
+
+  <div class="dice-wrap">
+    <div class="panel-hdr" style="flex-shrink:0;">
+      <span>Dice</span>
+      <span id="rollerName" style="color:var(--muted);font-size:.65rem;"></span>
+    </div>
+    <div class="dice-grid">
+      <button class="die-btn" data-d="4">d4</button>
+      <button class="die-btn" data-d="6">d6</button>
+      <button class="die-btn" data-d="8">d8</button>
+      <button class="die-btn" data-d="10">d10</button>
+      <button class="die-btn" data-d="12">d12</button>
+      <button class="die-btn" data-d="20">d20</button>
+      <button class="die-btn" data-d="100">d%</button>
+      <button class="die-btn" data-d="2">coin</button>
+    </div>
+    <div class="dice-custom">
+      <input id="custExpr" placeholder="2d6+3"/>
+      <button id="custRoll">Roll</button>
+    </div>
+    <div class="roll-log" id="rollLog"></div>
+  </div>
+</div>
+```
+
+  </div>
+</div>
+
+<!-- TOKEN CONTEXT MENU -->
+
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-title" id="ctxTitle">Token</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-hp">
+    <span>HP</span>
+    <input type="number" id="ctxHpCur" placeholder="cur"/>
+    <span>/</span>
+    <input type="number" id="ctxHpMax" placeholder="max"/>
+    <button id="ctxHpSave">✓</button>
+  </div>
+  <div class="ctx-sep"></div>
+  <div style="font-size:.65rem;color:var(--muted2);padding:3px 10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;">Conditions</div>
+  <div class="ctx-conds" id="ctxConds"></div>
+  <div class="ctx-sep gm-b"></div>
+  <div class="ctx-item gm-b" id="ctxToggleHp">👁 Toggle HP Visible</div>
+  <div class="ctx-item danger gm-b" id="ctxRemove">✕ Remove Token</div>
+</div>
+
+<!-- QUICK NPC (GM) -->
+
+<div class="ctx-menu gm-b" id="quickNpcMenu" style="min-width:220px;">
+  <div class="ctx-title">Quick NPC Token</div>
+  <div class="ctx-sep"></div>
+  <div class="quick-npc">
+    <input id="qnName" placeholder="Name (e.g. Goblin #3)" />
+    <div class="quick-npc-row">
+      <input id="qnHp" type="number" placeholder="HP" />
+      <input id="qnColor" type="color" value="#ef4444" style="width:36px;height:32px;padding:2px;border:1px solid var(--line2);border-radius:6px;cursor:pointer;background:none;" />
+    </div>
+    <button class="btn btn-p btn-full btn-sm" id="qnPlace">Place on Map (click cell)</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get, set, remove, push, onValue, off, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const FB = {
+  apiKey:"AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+  authDomain:"sheets-e5838.firebaseapp.com",
+  databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",
+  projectId:"sheets-e5838",
+  storageBucket:"sheets-e5838.firebasestorage.app"
+};
+const app = initializeApp(FB);
+const db  = getDatabase(app);
+const $   = id => document.getElementById(id);
+
+// ── Constants ──
+const isGM = new URLSearchParams(location.search).has("gm");
+
+// ── State ──
+let S = {
+  playerName:"", campaign:"", characterId:"", character:null,
+  mapAsset:null, sceneId:null,
+};
+let zoom = 1;
+let mapImg = null;
+let tokens = {};          // live from RTDB { tokenId: tokenData }
+let tokenEls = {};        // DOM elements { tokenId: div }
+let initiative = { order:[], current:0, round:1 };
+let speakingState = {};
+let selectedTid = null;
+let placingNpc = null;
+let allNpcs = {};
+let isPanning = false, panStart = {};
+let dragging = null;      // { tid, startCol, startRow, startX, startY }
+let activeCampaign = "";
+let activeScene = "";
+let allScenes = {};
+
+// Canvas refs
+const mapC   = $("mapCanvas");
+const intC   = $("interiorCanvas");
+const fogC   = $("fogCanvas");
+const gridC  = $("gridCanvas");
+const tokLay = $("tokenLayer");
+const mCtx   = mapC.getContext("2d");
+const iCtx   = intC.getContext("2d");
+const fCtx   = fogC.getContext("2d");
+const gCtx   = gridC.getContext("2d");
+const stage  = $("mapStage");
+const wrap   = $("mapWrap");
+
+let interiorImg = null; // loaded interior image
+
+// ── BOOT ──
+if (isGM) {
+  document.body.classList.add("is-gm");
+  document.querySelectorAll(".gm-only").forEach(el=>el.style.display="flex");
+  document.querySelectorAll(".gm-b").forEach(el=>el.style.display="block");
+  S.playerName = "GM";
+  $("userLabel").textContent = "GM";
+  $("rollerName").textContent = "GM";
+  $("loginScreen").style.display = "none";
+  $("vttApp").classList.add("visible");
+  $("phTxt").textContent = "Select campaign and map above, then Load Scene.";
+  bootGM();
+} else {
+  bootLogin();
+}
+
+// ══════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════
+async function bootLogin() {
+  // Load campaigns from active campaign or character data
+  try {
+    // Check if GM has set an active campaign
+    const acSnap = await get(ref(db,"sessions/active_campaign"));
+    const activeCamp = acSnap.exists() ? acSnap.val() : null;
+
+    const snap = await get(ref(db,"characters/pcs"));
+    const camps = new Set();
+    if (snap.exists()) Object.values(snap.val()).forEach(pc=>{if(pc.campaign) camps.add(pc.campaign);});
+
+    const sel = $("lCampaign");
+    sel.innerHTML = '<option value="">— Select Campaign —</option>';
+    [...camps].sort().forEach(c=>{
+      const o = document.createElement("option");
+      o.value = o.textContent = c;
+      if (c === activeCamp) o.selected = true;
+      sel.appendChild(o);
+    });
+    if (activeCamp) sel.value = activeCamp;
+  } catch(e) { console.error(e); }
+
+  $("toS2").onclick = async () => {
+    const name = $("lName").value.trim();
+    const camp = $("lCampaign").value;
+    if (!name) { $("e1").textContent = "Enter your name."; return; }
+    if (!camp)  { $("e1").textContent = "Select a campaign."; return; }
+    $("e1").textContent = "";
+    S.playerName = name; S.campaign = camp;
+    await loadCharList(camp);
+    showStep("s2");
+  };
+
+  $("backS1").onclick  = () => showStep("s1");
+  $("toS3").onclick    = () => {
+    if (!S.characterId) { $("e2").textContent = "Select your character."; return; }
+    $("e2").textContent = "";
+    showStep("s3");
+  };
+  $("enableMic").onclick = async () => {
+    $("micStatus").textContent = "Requesting mic...";
+    $("enableMic").disabled = true;
+    const ok = await initMic();
+    if (ok) {
+      $("micStatus").textContent = "✓ Mic active";
+      $("micMeter").style.display = "block";
+      setTimeout(enterSession, 700);
+    } else {
+      $("micStatus").textContent = "Access denied.";
+      $("enableMic").disabled = false;
+      $("enableMic").textContent = "Retry";
+    }
+  };
+  $("skipMic").onclick = enterSession;
+  $("lName").onkeydown = e => { if(e.key==="Enter") $("toS2").click(); };
+}
+
+function showStep(id) {
+  document.querySelectorAll(".login-step").forEach(el=>el.classList.remove("active"));
+  $(id).classList.add("active");
+}
+
+async function loadCharList(camp) {
+  const list = $("charList");
+  list.innerHTML = "<div style='color:var(--muted);font-size:.8rem;'>Loading...</div>";
+  const snap = await get(ref(db,"characters/pcs"));
+  if (!snap.exists()) { list.innerHTML = "<div style='color:var(--muted2);'>No characters found.</div>"; return; }
+  const pcs = Object.values(snap.val()).filter(pc=>pc.campaign===camp)
+                .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  if (!pcs.length) { list.innerHTML = "<div style='color:var(--muted2);'>No characters in this campaign.</div>"; return; }
+  list.innerHTML = "";
+  pcs.forEach(pc=>{
+    const el = document.createElement("div");
+    el.className = "char-item";
+    el.innerHTML = `<div class="char-item-name">${pc.name}</div><div class="char-item-sub">Lv${pc.level} ${pc.class}${pc.subclass?` · ${pc.subclass}`:""}</div>`;
+    el.onclick = () => {
+      document.querySelectorAll(".char-item").forEach(i=>i.classList.remove("selected"));
+      el.classList.add("selected");
+      S.characterId = pc.id; S.character = pc;
     };
+    list.appendChild(el);
+  });
+}
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+async function enterSession() {
+  $("loginScreen").style.display = "none";
+  $("vttApp").classList.add("visible");
+  $("userLabel").textContent = `${S.playerName} · ${S.character?.name||""}`;
+  $("rollerName").textContent = S.playerName;
 
-    const $ = (id) => document.getElementById(id);
+  // Subscribe to GM-set active campaign/scene
+  onValue(ref(db,"sessions/active_campaign"), snap=>{
+    if (snap.exists() && snap.val() !== activeCampaign) {
+      activeCampaign = snap.val();
+      subscribeSession(activeCampaign);
+    }
+  });
+  onValue(ref(db,`sessions/${S.campaign}/active_scene`), snap=>{
+    if (snap.exists()) {
+      const sid = snap.val();
+      if (sid !== activeScene) {
+        activeScene = sid;
+        loadSceneData(S.campaign, sid);
+      }
+    }
+  });
 
-    const MAP_PATH = "maps/default";
-    const POSITIONS_PATH = `${MAP_PATH}/pc_positions`;
-    const SETTINGS_PATH = `${MAP_PATH}/settings`;
+  $("sessInfo").textContent = S.campaign;
+  subscribeSpeaking();
+  subscribeDice(S.campaign);
+}
 
-    const canvas = $("mapCanvas");
-    const ctx = canvas.getContext("2d");
+// ══════════════════════════════════════
+// GM BOOT
+// ══════════════════════════════════════
+async function bootGM() {
+  // Load campaigns
+  try {
+    const snap = await get(ref(db,"characters/pcs"));
+    const camps = new Set();
+    if (snap.exists()) Object.values(snap.val()).forEach(pc=>{if(pc.campaign) camps.add(pc.campaign);});
+    const sel = $("campSelect");
+    sel.innerHTML = '<option value="">— Campaign —</option>';
+    [...camps].sort().forEach(c=>{
+      const o = document.createElement("option"); o.value = o.textContent = c; sel.appendChild(o);
+    });
+    sel.onchange = () => { if(sel.value) loadGMCampaign(sel.value); };
+  } catch(e) {}
 
-    // Viewport canvas size (fixed display surface)
-    const VIEW_W = 1400;
-    const VIEW_H = 900;
-    canvas.width = VIEW_W;
-    canvas.height = VIEW_H;
+  // Load all NPCs
+  try { const s=await get(ref(db,"characters/npcs")); if(s.exists()) allNpcs=s.val(); } catch(e){}
 
-    // World / map
-    let mapImage = null;
-    let mapWorldWidth = VIEW_W;
-    let mapWorldHeight = VIEW_H;
+  // Load map assets
+  try {
+    const snap = await get(ref(db,"map_assets"));
+    if (snap.exists()) {
+      const sel = $("mapSelect");
+      sel.innerHTML = '<option value="">— Map Asset —</option>';
+      Object.values(snap.val()).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).forEach(m=>{
+        const o = document.createElement("option");
+        o.value = m.id;
+        o.textContent = `${m.name} (${m.cols||"?"}×${m.rows||"?"})`;
+        sel.appendChild(o);
+      });
+    }
+  } catch(e){}
 
-    // Grid calibration
-    let pixelsPerSquare = 70;
-    let feetPerSquare = 5;
+  $("loadSceneBtn").onclick = loadScene;
+  $("clearToksBtn").onclick = clearTokens;
+  $("rollInitBtn").onclick  = rollInit;
+  $("clearInitBtn").onclick = clearInit;
+  $("nextTurn").onclick     = nextTurn;
+  $("prevTurn").onclick     = prevTurn;
 
-    // Camera
-    let cameraX = 0;
-    let cameraY = 0;
-    let zoom = 1;
+  // Manual initiative add
+  $("initAddBtn").onclick = async () => {
+    const name = $("initAddName").value.trim();
+    const roll = parseInt($("initAddRoll").value, 10);
+    if (!name) return;
+    const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+    if (!camp||!sid) return;
+    const newEntry = { token_id: null, character_id: null, name, color:"#64748b", roll: isNaN(roll)?0:roll };
+    const order = [...initiative.order, newEntry].sort((a,b)=>b.roll-a.roll);
+    await update(ref(db,`sessions/${camp}/scenes/${sid}/initiative`),{order});
+    $("initAddName").value=""; $("initAddRoll").value="";
+  };
+  $("initAddName").onkeydown = e=>{ if(e.key==="Enter") $("initAddBtn").click(); };
 
-    // Data
-    let pcs = [];
-    let tokens = [];
-    let selectedTokenId = null;
+  $("placeNpcBtn").onclick  = () => { renderNpcList(); $("npcPanel").classList.toggle("open"); };
+  $("cancelNpc").onclick    = () => { $("npcPanel").classList.remove("open"); placingNpc=null; };
 
-    // Modes
-    let mode = "normal"; // normal | calibrate | ruler
+  // Quick NPC — ad-hoc token without a saved character
+  const quickNpcBtn = document.createElement("button");
+  quickNpcBtn.className = "tb-btn gm-only";
+  quickNpcBtn.textContent = "Quick Token";
+  quickNpcBtn.style.display = "flex";
+  $("clearToksBtn").after(quickNpcBtn);
 
-    // Interaction state
-    let draggingTokenId = null;
-    let dragTokenOffsetWorldX = 0;
-    let dragTokenOffsetWorldY = 0;
+  quickNpcBtn.onclick = () => {
+    const menu = $("quickNpcMenu");
+    const rect = quickNpcBtn.getBoundingClientRect();
+    menu.style.left = rect.left+"px";
+    menu.style.top  = (rect.bottom+4)+"px";
+    menu.classList.toggle("open");
+  };
 
-    let isPanning = false;
-    let panStartMouseX = 0;
-    let panStartMouseY = 0;
-    let panStartCameraX = 0;
-    let panStartCameraY = 0;
+  $("qnPlace").onclick = () => {
+    const name  = $("qnName").value.trim() || "Token";
+    const hp    = parseInt(document.getElementById("qnHp").value,10)||10;
+    const color = document.getElementById("qnColor").value||"#ef4444";
+    placingNpc = { id: null, name, vtt_profile:{ token_color:color, hp_current:hp, hp_max:hp }, cr:"?", is_quick:true };
+    $("quickNpcMenu").classList.remove("open");
+    stage.style.cursor = "crosshair";
+  };
 
-    let isMeasuring = false;
-    let measureStartWorld = null;
-    let measureEndWorld = null;
+  document.addEventListener("click", e=>{
+    if (!$("quickNpcMenu").contains(e.target) && e.target !== quickNpcBtn)
+      $("quickNpcMenu").classList.remove("open");
+  });
 
-    let isCalibrating = false;
-    let calibrateStartWorld = null;
-    let calibrateEndWorld = null;
+  $("scenesBtn").onclick    = () => { renderSceneList(); $("scenePanel").classList.toggle("open"); };
+  $("createSceneBtn").onclick = createScene;
 
-    const tokenColors = [
-      "#ef4444", "#3b82f6", "#22c55e", "#a855f7",
-      "#f59e0b", "#06b6d4", "#ec4899", "#84cc16"
-    ];
+  subscribeSpeaking();
+}
 
-    function setStatus(message, type = "info") {
-      const box = $("statusBox");
-      box.textContent = message;
+async function loadGMCampaign(camp) {
+  S.campaign = camp;
+  activeCampaign = camp;
+  $("sessInfo").textContent = camp;
+  // Tell players which campaign is active
+  await set(ref(db,"sessions/active_campaign"), camp);
+  subscribeSession(camp);
+  subscribeDice(camp);
+  await renderSceneList();
+}
 
-      if (type === "success") {
-        box.style.borderColor = "#166534";
-        box.style.color = "#86efac";
-      } else if (type === "error") {
-        box.style.borderColor = "#7f1d1d";
-        box.style.color = "#fca5a5";
-      } else if (type === "warn") {
-        box.style.borderColor = "#92400e";
-        box.style.color = "#fcd34d";
+async function loadScene() {
+  const camp = $("campSelect").value;
+  const mapId = $("mapSelect").value;
+  if (!camp || !mapId) return;
+
+  if (S.campaign !== camp) await loadGMCampaign(camp);
+
+  // Find or create scene for this map
+  const scenesSnap = await get(ref(db,`sessions/${camp}/scenes`));
+  let sceneId = null;
+
+  if (scenesSnap.exists()) {
+    // Find existing scene with this map
+    const existing = Object.entries(scenesSnap.val()).find(([,s])=>s.map_asset_id===mapId);
+    if (existing) sceneId = existing[0];
+  }
+
+  if (!sceneId) {
+    // Create new scene
+    const mapSnap = await get(ref(db,`map_assets/${mapId}`));
+    const mapName = mapSnap.exists() ? mapSnap.val().name : mapId;
+    const r = push(ref(db,`sessions/${camp}/scenes`));
+    sceneId = r.key;
+    await set(r, { name: mapName, map_asset_id: mapId, created_at: Date.now() });
+  }
+
+  // Set as active scene
+  await set(ref(db,`sessions/${camp}/active_scene`), sceneId);
+  activeScene = sceneId;
+  S.sceneId = sceneId;
+  await loadSceneData(camp, sceneId);
+  $("scenePanel").classList.remove("open");
+}
+
+async function createScene() {
+  const name = $("newSceneName").value.trim();
+  const mapId = $("mapSelect").value;
+  const camp = $("campSelect").value || S.campaign;
+  if (!name || !camp) return;
+  const r = push(ref(db,`sessions/${camp}/scenes`));
+  await set(r, { name, map_asset_id: mapId||null, created_at: Date.now() });
+  $("newSceneName").value = "";
+  await renderSceneList();
+}
+
+async function renderSceneList() {
+  const camp = $("campSelect").value || S.campaign;
+  if (!camp) return;
+  const panel = $("sceneList"); panel.innerHTML = "";
+  const snap = await get(ref(db,`sessions/${camp}/scenes`));
+  if (!snap.exists()) { panel.innerHTML = "<div style='color:var(--muted);font-size:.75rem;'>No scenes yet.</div>"; return; }
+  allScenes = snap.val();
+  Object.entries(allScenes).sort((a,b)=>b[1].created_at-a[1].created_at).forEach(([sid,sc])=>{
+    const el = document.createElement("div");
+    el.className = "scene-item" + (sid===activeScene?" active":"");
+    el.innerHTML = `<span>${sc.name||"Unnamed"}</span><span style="font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;">${sc.map_asset_id||"no map"}</span>`;
+    el.onclick = async () => {
+      // Load a different map asset into this scene if map select has one
+      const mapId = $("mapSelect").value;
+      if (mapId && mapId !== sc.map_asset_id) {
+        await update(ref(db,`sessions/${S.campaign}/scenes/${sid}`),{map_asset_id:mapId});
+      }
+      await set(ref(db,`sessions/${S.campaign}/active_scene`), sid);
+      activeScene = sid; S.sceneId = sid;
+      await loadSceneData(S.campaign, sid);
+      $("scenePanel").classList.remove("open");
+    };
+    panel.appendChild(el);
+  });
+}
+
+// ══════════════════════════════════════
+// SESSION / SCENE
+// ══════════════════════════════════════
+// Track active listeners so we can detach before resubscribing
+const _listeners = {
+  activeScene: null,
+  tokens: null,
+  initiative: null,
+  dice: null,
+  speaking: null,
+};
+
+function detachListener(key) {
+  if (_listeners[key]) {
+    off(_listeners[key].ref, "value", _listeners[key].fn);
+    _listeners[key] = null;
+  }
+}
+
+function trackOnValue(key, dbRef, fn) {
+  detachListener(key);
+  onValue(dbRef, fn);
+  _listeners[key] = { ref: dbRef, fn };
+}
+
+function subscribeSession(camp) {
+  detachListener("activeScene");
+  const sceneRef = ref(db,`sessions/${camp}/active_scene`);
+  const sceneFn = snap => {
+    if (!snap.exists()) return;
+    const sid = snap.val();
+    if (sid !== activeScene) { activeScene=sid; S.sceneId=sid; loadSceneData(camp,sid); }
+  };
+  onValue(sceneRef, sceneFn);
+  _listeners.activeScene = { ref: sceneRef, fn: sceneFn };
+}
+
+async function loadSceneData(camp, sid) {
+  const sceneSnap = await get(ref(db,`sessions/${camp}/scenes/${sid}`));
+  if (!sceneSnap.exists()) return;
+  const scene = sceneSnap.val();
+
+  if (scene.map_asset_id) await loadMap(scene.map_asset_id);
+
+  // Detach old scene subscriptions before adding new ones
+  detachListener("tokens");
+  detachListener("initiative");
+
+  const tokRef = ref(db,`sessions/${camp}/scenes/${sid}/tokens`);
+  const tokFn  = snap => {
+    tokens = snap.exists() ? snap.val() : {};
+    reconcileTokenEls();
+    renderParty();
+    renderInit();
+  };
+  onValue(tokRef, tokFn);
+  _listeners.tokens = { ref: tokRef, fn: tokFn };
+
+  const initRef = ref(db,`sessions/${camp}/scenes/${sid}/initiative`);
+  const initFn  = snap => {
+    if (snap.exists()) { const d=snap.val(); initiative={order:d.order||[],current:d.current_index||0,round:d.round||1}; }
+    else initiative={order:[],current:0,round:1};
+    renderInit();
+    updateTurnRings();
+  };
+  onValue(initRef, initFn);
+  _listeners.initiative = { ref: initRef, fn: initFn };
+
+  $("sessInfo").textContent = `${camp} · ${scene.name||sid}`;
+
+  if (!isGM && S.characterId) {
+    setTimeout(()=>autoPlacePc(camp,sid), 500);
+  }
+}
+
+function subscribeDice(camp) {
+  detachListener("dice");
+  const diceRef = ref(db,`sessions/${camp}/dice_log`);
+  const diceFn  = snap => { if (snap.exists()) renderLog(snap.val()); };
+  onValue(diceRef, diceFn);
+  _listeners.dice = { ref: diceRef, fn: diceFn };
+}
+
+// ══════════════════════════════════════
+// MAP RENDERING (canvas layers)
+// ══════════════════════════════════════
+async function loadMap(mapId) {
+  const snap = await get(ref(db,`map_assets/${mapId}`));
+  if (!snap.exists()) return;
+  S.mapAsset = snap.val();
+  $("mapPh").style.display = "none";
+
+  // Load exterior (with roof) image
+  mapImg = new Image();
+  mapImg.crossOrigin = "anonymous";
+  mapImg.onload = async () => {
+    const w = S.mapAsset.image_w||mapImg.naturalWidth;
+    const h = S.mapAsset.image_h||mapImg.naturalHeight;
+    [mapC,intC,fogC,gridC].forEach(c=>{c.width=w;c.height=h;});
+    stage.style.width  = w+"px";
+    stage.style.height = h+"px";
+    tokLay.style.width  = w+"px";
+    tokLay.style.height = h+"px";
+
+    drawMap();
+    drawGrid();
+    applyZoom();
+    fitScreen();
+
+    // Load interior image if present
+    if (S.mapAsset.interior_url) {
+      interiorImg = new Image();
+      interiorImg.crossOrigin = "anonymous";
+      interiorImg.onload = () => { drawFog(); };
+      interiorImg.onerror = () => { interiorImg = null; drawFog(); };
+      interiorImg.src = S.mapAsset.interior_url;
+    } else {
+      interiorImg = null;
+      drawFog();
+    }
+  };
+  mapImg.src = S.mapAsset.image_url;
+}
+
+function drawMap() {
+  if (!mapImg||!S.mapAsset) return;
+  mCtx.clearRect(0,0,mapC.width,mapC.height);
+  mCtx.drawImage(mapImg,0,0,S.mapAsset.image_w,S.mapAsset.image_h);
+}
+
+function drawInterior() {
+  if (!S.mapAsset) return;
+  const { grid_size:gs, grid_offset_x:ox, grid_offset_y:oy,
+          interiors, image_w:w, image_h:h } = S.mapAsset;
+
+  iCtx.clearRect(0,0,w,h);
+
+  // No interior image or no rectangles — nothing to reveal
+  if (!interiorImg || !interiors?.length) return;
+
+  const sx = ((ox%gs)+gs)%gs, sy = ((oy%gs)+gs)%gs;
+
+  // Find which rectangles contain MY token (or any token for GM)
+  const myTok = isGM
+    ? null  // GM sees all interiors
+    : Object.values(tokens).find(t=>t.character_id===S.characterId);
+
+  const myCol = myTok?.x ?? null;
+  const myRow = myTok?.y ?? null;
+
+  interiors.forEach(r => {
+    const c1=Math.min(r.c1,r.c2), c2=Math.max(r.c1,r.c2);
+    const r1=Math.min(r.r1,r.r2), r2=Math.max(r.r1,r.r2);
+
+    // Check if my token is inside this rectangle
+    const inside = isGM
+      || (myCol !== null && myCol >= c1 && myCol <= c2 && myRow >= r1 && myRow <= r2);
+
+    if (!inside) return;
+
+    // Draw the interior image fragment for this rectangle
+    const px = sx + c1*gs;
+    const py = sy + r1*gs;
+    const pw = (c2-c1+1)*gs;
+    const ph = (r2-r1+1)*gs;
+
+    iCtx.drawImage(
+      interiorImg,
+      px, py, pw, ph,   // source rect from interior image
+      px, py, pw, ph    // destination rect on canvas
+    );
+  });
+}
+
+// ── Visibility ──
+const FOG_STRENGTH = { "": 0, "dark": 1, "magic": 2 };
+const TOKEN_VISION  = { "none": 0, "darkvision": 1 };
+
+function computeVisibility() {
+  const vis = new Map();
+  if (!S.mapAsset) return vis;
+
+  const { grid_size:gs, grid_offset_x:ox, grid_offset_y:oy,
+          fog, image_w:w, image_h:h } = S.mapAsset;
+  if (!gs) return vis;
+
+  const totalCols = Math.floor(w/gs);
+  const totalRows = Math.floor(h/gs);
+
+  // GM sees all
+  if (isGM) {
+    for (let c=0; c<totalCols; c++)
+      for (let r=0; r<totalRows; r++)
+        vis.set(`${c},${r}`, "clear");
+    return vis;
+  }
+
+  // My token's vision level
+  const dvFeet = S.character?.senses?.darkvision || S.character?.vtt_profile?.darkvision || 0;
+  const myVisionKey = dvFeet > 0 ? "darkvision" : "none";
+  const myVision = TOKEN_VISION[myVisionKey];
+
+  // Find my token's cell for darkvision range
+  const myTok = Object.values(tokens).find(t => t.character_id === S.characterId);
+  const myCol = myTok?.x ?? -999;
+  const myRow = myTok?.y ?? -999;
+  const dvCells = dvFeet / (S.mapAsset.scale_ft || 5);
+
+  for (let c=0; c<totalCols; c++) {
+    for (let r=0; r<totalRows; r++) {
+      const key = `${c},${r}`;
+      const fogVal = fog?.[key] || "";
+      const strength = FOG_STRENGTH[fogVal] ?? 0;
+
+      if (strength === 0) {
+        vis.set(key, "clear");
+      } else if (strength <= myVision) {
+        // Darkvision pierces normal darkness — but only within range
+        const dist = Math.sqrt((c - myCol) ** 2 + (r - myRow) ** 2);
+        vis.set(key, dist <= dvCells ? "dim" : "hidden");
       } else {
-        box.style.borderColor = "#374151";
-        box.style.color = "#e5e7eb";
+        vis.set(key, "hidden");
       }
     }
+  }
 
-    function safe(value, fallback = "") {
-      return value === undefined || value === null || value === "" ? fallback : value;
+  return vis;
+}
+
+function drawFog() {
+  if (!S.mapAsset) return;
+  const { grid_size:gs, grid_offset_x:ox, grid_offset_y:oy, image_w:w, image_h:h } = S.mapAsset;
+  if (!gs) return;
+  fCtx.clearRect(0,0,w,h);
+
+  const vis = computeVisibility();
+  if (!vis.size) return;
+
+  // Draw interior reveals first (under fog)
+  drawInterior();
+
+  const sx = ((ox%gs)+gs)%gs, sy = ((oy%gs)+gs)%gs;
+
+  vis.forEach((state, key) => {
+    if (state === "clear") return; // don't draw fog on visible cells
+    const [c,r] = key.split(",").map(Number);
+    const fx = sx + c*gs, fy = sy + r*gs;
+    if (state === "hidden") {
+      fCtx.fillStyle = "rgba(0,0,0,0.88)";
+    } else if (state === "dim") {
+      // Darkvision — desaturated dim view, not full darkness
+      fCtx.fillStyle = "rgba(0,0,20,0.55)";
+    }
+    fCtx.fillRect(fx, fy, gs, gs);
+  });
+
+  // Store for token visibility
+  S._visCache = vis;
+  updateTokenVisibility(vis);
+}
+
+function updateTokenVisibility(vis) {
+  if (!vis) vis = S._visCache;
+  if (!vis) return;
+
+  Object.entries(tokenEls).forEach(([tid, el]) => {
+    const tok = tokens[tid];
+    if (!tok) return;
+
+    // Own token always visible
+    if (tok.character_id === S.characterId || isGM) {
+      el.style.opacity = "1";
+      el.style.pointerEvents = "all";
+      return;
     }
 
-    function clamp(value, min, max) {
-      return Math.max(min, Math.min(max, value));
+    // Friendly PCs always visible (party can always see each other)
+    if (!tok.is_npc) {
+      el.style.opacity = "1";
+      el.style.pointerEvents = "all";
+      return;
     }
 
-    function fmt(n, decimals = 2) {
-      return Number(n || 0).toFixed(decimals);
+    // NPCs — visible only if their cell is visible
+    const key = `${tok.x},${tok.y}`;
+    const state = vis.get(key);
+    if (state === "hidden") {
+      el.style.opacity = "0";
+      el.style.pointerEvents = "none";
+    } else if (state === "dim") {
+      // Visible via darkvision but desaturated/dim
+      el.style.opacity = "0.55";
+      el.style.filter = "grayscale(0.7)";
+      el.style.pointerEvents = "all";
+    } else {
+      el.style.opacity = "1";
+      el.style.filter = "";
+      el.style.pointerEvents = "all";
     }
+  });
+}
 
-    function getInitials(name) {
-      const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
-      if (!parts.length) return "?";
-      if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
+function drawGrid() {
+  if (!S.mapAsset) return;
+  const {grid_size:gs,grid_offset_x:ox,grid_offset_y:oy,image_w:w,image_h:h} = S.mapAsset;
+  if (!gs) return;
+  gCtx.clearRect(0,0,w,h);
+  gCtx.strokeStyle="rgba(79,142,247,.28)"; gCtx.lineWidth=1;
+  const sx=((ox%gs)+gs)%gs, sy=((oy%gs)+gs)%gs;
+  for(let x=sx;x<=w;x+=gs){gCtx.beginPath();gCtx.moveTo(x,0);gCtx.lineTo(x,h);gCtx.stroke();}
+  for(let y=sy;y<=h;y+=gs){gCtx.beginPath();gCtx.moveTo(0,y);gCtx.lineTo(w,y);gCtx.stroke();}
+}
 
-    function getCanvasMousePos(evt) {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
-      const scaleY = canvas.height / rect.height;
-      return {
-        x: (evt.clientX - rect.left) * scaleX,
-        y: (evt.clientY - rect.top) * scaleY
-      };
-    }
+// ══════════════════════════════════════
+// DOM TOKENS
+// ══════════════════════════════════════
+function cellToPixel(col, row) {
+  const {grid_size:gs,grid_offset_x:ox,grid_offset_y:oy} = S.mapAsset;
+  const sx=((ox%gs)+gs)%gs, sy=((oy%gs)+gs)%gs;
+  return { x: sx + col*gs + gs/2, y: sy + row*gs + gs/2 };
+}
 
-    function screenToWorld(screenX, screenY) {
-      return {
-        x: cameraX + (screenX / zoom),
-        y: cameraY + (screenY / zoom)
-      };
-    }
+function pixelToCell(px, py) {
+  const {grid_size:gs,grid_offset_x:ox,grid_offset_y:oy} = S.mapAsset;
+  const sx=((ox%gs)+gs)%gs, sy=((oy%gs)+gs)%gs;
+  return { col:Math.floor((px-sx)/gs), row:Math.floor((py-sy)/gs) };
+}
 
-    function worldToScreen(worldX, worldY) {
-      return {
-        x: (worldX - cameraX) * zoom,
-        y: (worldY - cameraY) * zoom
-      };
-    }
+function createTokenEl(tid, tok) {
+  const {grid_size:gs} = S.mapAsset;
+  const sz = Math.round(gs * 0.84);
+  const fs = Math.round(gs * 0.28);
 
-    function clampCamera() {
-      const visibleWorldW = VIEW_W / zoom;
-      const visibleWorldH = VIEW_H / zoom;
+  const el = document.createElement("div");
+  el.className = "token";
+  el.id = "tok_"+tid;
+  el.style.width  = sz+"px";
+  el.style.height = sz+"px";
 
-      const maxX = Math.max(0, mapWorldWidth - visibleWorldW);
-      const maxY = Math.max(0, mapWorldHeight - visibleWorldH);
+  const body = document.createElement("div");
+  body.className = "token-body";
+  body.style.background = tok.color||"#60a5fa";
+  body.style.fontSize = fs+"px";
+  body.textContent = (tok.label||"?").substring(0,2).toUpperCase();
 
-      cameraX = clamp(cameraX, 0, maxX);
-      cameraY = clamp(cameraY, 0, maxY);
-    }
+  const label = document.createElement("div");
+  label.className = "token-label";
+  label.textContent = tok.label||"?";
 
-    function getPcById(id) {
-      return pcs.find(pc => pc.id === id) || null;
-    }
+  const hpWrap = document.createElement("div");
+  hpWrap.className = "token-hp";
+  const hpFill = document.createElement("div");
+  hpFill.className = "token-hp-fill";
+  hpWrap.appendChild(hpFill);
 
-    function getSelectedToken() {
-      return tokens.find(t => t.id === selectedTokenId) || null;
-    }
+  el.appendChild(body);
+  el.appendChild(label);
+  el.appendChild(hpWrap);
 
-    function getTokenAtScreen(screenX, screenY) {
-      for (let i = tokens.length - 1; i >= 0; i--) {
-        const t = tokens[i];
-        const screen = worldToScreen(t.worldX, t.worldY);
-        const dx = screenX - screen.x;
-        const dy = screenY - screen.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist <= t.radius * zoom) return t;
-      }
-      return null;
-    }
+  positionToken(el, tok);
+  updateTokenHP(el, tok);
 
-    function getHpColor(token) {
-      const combat = token.pc?.combat || {};
-      const hpMax = Math.max(0, Number(combat.hp_max ?? 0));
-      const hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
+  // Events
+  el.addEventListener("mousedown", e=>onTokenMouseDown(e,tid));
+  el.addEventListener("contextmenu", e=>{e.preventDefault();showCtxMenu(e,tid);});
 
-      if (hpMax <= 0) return "#94a3b8";
+  return el;
+}
 
-      const pct = hpCurrent / hpMax;
-      if (pct >= 0.67) return "#22c55e";
-      if (pct >= 0.34) return "#f59e0b";
-      return "#ef4444";
-    }
+function positionToken(el, tok) {
+  const {x,y} = cellToPixel(tok.x, tok.y);
+  el.style.left = x+"px";
+  el.style.top  = y+"px";
+}
 
-    function hasTempHp(token) {
-      return Math.max(0, Number(token.pc?.combat?.temp_hp ?? 0)) > 0;
-    }
+function updateTokenHP(el, tok) {
+  const hpFill = el.querySelector(".token-hp-fill");
+  const hpWrap = el.querySelector(".token-hp");
+  if (!hpFill) return;
 
-    function getSpellSlotsSummary(pc) {
-      const raw = String(pc?.spellcasting?.spell_slots || "").trim();
-      if (!raw) return "None";
+  const showHp = !tok.is_npc || tok.hp_visible || isGM;
+  hpWrap.style.display = showHp && tok.hp_max>0 ? "block" : "none";
 
-      const cleaned = raw
-        .replace(/\\n/g, " / ")
-        .replace(/\r\n/g, " / ")
-        .replace(/\n/g, " / ")
-        .replace(/\s{2,}/g, " ")
-        .trim();
+  if (showHp && tok.hp_max>0) {
+    const pct = Math.max(0,Math.min(1,tok.hp_current/tok.hp_max));
+    const hc  = pct>.5?"#10b981":pct>.25?"#f59e0b":"#ef4444";
+    hpFill.style.width = (pct*100)+"%";
+    hpFill.style.background = hc;
+  }
+}
 
-      return cleaned.length > 80 ? cleaned.slice(0, 80) + "…" : cleaned;
-    }
-
-    function distance(a, b) {
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    function snapWorldToGridIntersection(worldPoint) {
-      return {
-        x: Math.round(worldPoint.x / pixelsPerSquare) * pixelsPerSquare,
-        y: Math.round(worldPoint.y / pixelsPerSquare) * pixelsPerSquare
-      };
-    }
-
-    function snapWorldToGridCenter(worldPoint) {
-      return {
-        x: Math.round((worldPoint.x - pixelsPerSquare / 2) / pixelsPerSquare) * pixelsPerSquare + pixelsPerSquare / 2,
-        y: Math.round((worldPoint.y - pixelsPerSquare / 2) / pixelsPerSquare) * pixelsPerSquare + pixelsPerSquare / 2
-      };
-    }
-
-    function tokenWorldToGrid(token) {
-      return {
-        gridX: Math.round((token.worldX - pixelsPerSquare / 2) / pixelsPerSquare),
-        gridY: Math.round((token.worldY - pixelsPerSquare / 2) / pixelsPerSquare)
-      };
-    }
-
-    function gridToTokenWorld(gridX, gridY) {
-      return {
-        x: gridX * pixelsPerSquare + pixelsPerSquare / 2,
-        y: gridY * pixelsPerSquare + pixelsPerSquare / 2
-      };
-    }
-
-    async function saveMapSettings() {
-      try {
-        await set(ref(db, SETTINGS_PATH), {
-          pixels_per_square: pixelsPerSquare,
-          feet_per_square: feetPerSquare,
-          updated_at_iso: new Date().toISOString()
-        });
-      } catch (err) {
-        console.error(err);
-        setStatus(`Map settings save failed: ${err.message}`, "error");
-      }
-    }
-
-    function saveTokenPosition(token) {
-      const g = tokenWorldToGrid(token);
-
-      token.gridX = g.gridX;
-      token.gridY = g.gridY;
-
-      return set(ref(db, `${POSITIONS_PATH}/${token.id}`), {
-        x: token.gridX,
-        y: token.gridY,
-        updated_at_iso: new Date().toISOString()
-      });
-    }
-
-    async function syncPcCombat(pcId, newCombat) {
-      const pc = getPcById(pcId);
-      if (!pc) {
-        setStatus("PC not found.", "error");
-        return;
-      }
-
-      try {
-        const updatedPc = {
-          ...pc,
-          combat: {
-            ...(pc.combat || {}),
-            ...newCombat
-          }
-        };
-
-        await set(ref(db, `characters/pcs/${pcId}`), updatedPc);
-
-        const pcIndex = pcs.findIndex(p => p.id === pcId);
-        if (pcIndex >= 0) pcs[pcIndex] = updatedPc;
-
-        const token = tokens.find(t => t.id === pcId);
-        if (token) token.pc = updatedPc;
-
-        renderTokenList();
-        renderInspector();
-        draw();
-        setStatus(`Updated ${updatedPc.name || pcId}.`, "success");
-      } catch (err) {
-        console.error(err);
-        setStatus(`Combat update failed: ${err.message}`, "error");
+function reconcileTokenEls() {
+  // Add new tokens
+  Object.entries(tokens).forEach(([tid,tok])=>{
+    if (!tokenEls[tid]) {
+      if (!S.mapAsset) return;
+      const el = createTokenEl(tid,tok);
+      tokLay.appendChild(el);
+      tokenEls[tid] = el;
+    } else {
+      const el = tokenEls[tid];
+      positionToken(el,tok);
+      updateTokenHP(el,tok);
+      // Update condition indicator dot
+      let condDot = el.querySelector(".token-cond");
+      const hasConds = tok.conditions?.length>0;
+      if (hasConds && !condDot) {
+        condDot = document.createElement("div");
+        condDot.className = "token-cond";
+        condDot.style.cssText="position:absolute;top:-4px;right:-4px;width:8px;height:8px;border-radius:50%;background:var(--bad);border:1px solid var(--bg);";
+        el.appendChild(condDot);
+      } else if (!hasConds && condDot) {
+        condDot.remove();
       }
     }
+  });
 
-    async function loadMapSettings() {
-      try {
-        const snap = await get(ref(db, SETTINGS_PATH));
-        if (!snap.exists()) {
-          updateMeasurePanel();
-          return;
-        }
-
-        const data = snap.val();
-        if (Number(data.pixels_per_square) > 0) {
-          pixelsPerSquare = Number(data.pixels_per_square);
-        }
-        if (Number(data.feet_per_square) > 0) {
-          feetPerSquare = Number(data.feet_per_square);
-        }
-
-        updateMeasurePanel();
-        setStatus("Loaded saved map settings.", "success");
-      } catch (err) {
-        console.error(err);
-        setStatus(`Map settings load failed: ${err.message}`, "error");
-      }
+  // Remove deleted tokens
+  Object.keys(tokenEls).forEach(tid=>{
+    if (!tokens[tid]) {
+      tokenEls[tid].remove();
+      delete tokenEls[tid];
     }
+  });
 
-    function loadMapFile(file) {
-      if (!file) return;
+  updateTurnRings();
+  updateSpeakingState();
+  updateTokenVisibility(S._visCache);
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          mapImage = img;
-          mapWorldWidth = img.width;
-          mapWorldHeight = img.height;
+  // Redraw fog+interior when tokens change (position affects darkvision + interior reveals)
+  if (!isGM && S.mapAsset) drawFog();
+  else if (isGM && S.mapAsset) drawInterior(); // GM always sees all interiors
+}
 
-          zoom = Math.min(VIEW_W / mapWorldWidth, VIEW_H / mapWorldHeight);
-          zoom = clamp(zoom, 0.2, 2.5);
+function updateTurnRings() {
+  const curTok = initiative.order[initiative.current];
+  Object.entries(tokenEls).forEach(([tid,el])=>{
+    el.classList.toggle("active-turn", curTok?.token_id===tid);
+  });
+}
 
-          cameraX = 0;
-          cameraY = 0;
-          clampCamera();
+function updateSpeakingState() {
+  Object.entries(tokenEls).forEach(([tid,el])=>{
+    const tok = tokens[tid];
+    const talking = tok && speakingState[tok.character_id]===true;
+    el.classList.toggle("speaking", talking);
+  });
+}
 
-          draw();
-          updateMeasurePanel();
-          setStatus(`Loaded map: ${file.name} (${img.width}x${img.height})`, "success");
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
+// ══════════════════════════════════════
+// TOKEN INTERACTION
+// ══════════════════════════════════════
+function onTokenMouseDown(e, tid) {
+  if (e.button !== 0) return;
+  e.stopPropagation();
+  hideCtxMenu();
+
+  // Select
+  if (selectedTid && tokenEls[selectedTid]) tokenEls[selectedTid].classList.remove("selected");
+  selectedTid = tid;
+  if (tokenEls[tid]) tokenEls[tid].classList.add("selected");
+
+  // Check drag permission
+  const tok = tokens[tid];
+  const mine = !isGM && tok.character_id===S.characterId;
+  if (!isGM && !mine) return;
+
+  const {col,row} = pixelToCell(
+    (e.clientX - stage.getBoundingClientRect().left),
+    (e.clientY - stage.getBoundingClientRect().top)
+  );
+
+  dragging = { tid, startCol:col, startRow:row, startX:e.clientX, startY:e.clientY };
+  if (tokenEls[tid]) tokenEls[tid].style.zIndex = "10";
+}
+
+window.addEventListener("mousemove", e=>{
+  if (!dragging || !S.mapAsset) return;
+  const rect = stage.getBoundingClientRect();
+  const px = (e.clientX - rect.left);
+  const py = (e.clientY - rect.top);
+  const {col,row} = pixelToCell(px,py);
+  const {x,y} = cellToPixel(col,row);
+  const el = tokenEls[dragging.tid];
+  if (el) { el.style.left=x+"px"; el.style.top=y+"px"; }
+});
+
+window.addEventListener("mouseup", async e=>{
+  if (!dragging) return;
+  const { tid } = dragging;
+  const el = tokenEls[tid];
+  if (el) el.style.zIndex="";
+
+  const rect = stage.getBoundingClientRect();
+  const px = (e.clientX - rect.left);
+  const py = (e.clientY - rect.top);
+  const {col,row} = pixelToCell(px,py);
+
+  const tok = tokens[tid];
+  if (col===dragging.startCol && row===dragging.startRow) { dragging=null; return; }
+
+  // Movement check for players
+  if (!isGM) {
+    const curTok = initiative.order[initiative.current];
+    if (curTok?.token_id !== tid) {
+      positionToken(el, tok); dragging=null; return;
     }
+    const spd   = S.character?.vtt_profile?.speed||30;
+    const scale = S.mapAsset.scale_ft||5;
+    const dist  = (Math.abs(col-tok.x)+Math.abs(row-tok.y))*scale;
+    if (dist>spd) { positionToken(el,tok); dragging=null; return; }
+  }
 
-    function renderTokenList() {
-      const list = $("tokenList");
+  const camp = activeCampaign||S.campaign;
+  const sid  = activeScene||S.sceneId;
+  await update(ref(db,`sessions/${camp}/scenes/${sid}/tokens/${tid}`),{x:col,y:row});
+  dragging = null;
+});
 
-      if (!pcs.length) {
-        list.innerHTML = `<div class="muted">No PCs loaded.</div>`;
-        return;
+// Click on map to place NPC
+stage.addEventListener("mousedown", async e=>{
+  if (e.button!==0 || !placingNpc || !S.mapAsset) return;
+  const rect = stage.getBoundingClientRect();
+  const {col,row} = pixelToCell(e.clientX-rect.left, e.clientY-rect.top);
+  await placeNpc(placingNpc,col,row);
+  placingNpc=null;
+  stage.style.cursor="";
+  $("npcPanel").classList.remove("open");
+});
+
+// Click empty map to deselect
+stage.addEventListener("mousedown", e=>{
+  if (e.target===stage || e.target.tagName==="CANVAS") {
+    if (selectedTid && tokenEls[selectedTid]) tokenEls[selectedTid].classList.remove("selected");
+    selectedTid=null;
+    hideCtxMenu();
+  }
+});
+
+// ── Context Menu ──
+const CONDITIONS = ["blinded","charmed","deafened","exhaustion","frightened","grappled","incapacitated","invisible","paralyzed","petrified","poisoned","prone","restrained","stunned","unconscious"];
+
+function showCtxMenu(e, tid) {
+  const tok = tokens[tid];
+  const mine = !isGM && tok.character_id === S.characterId;
+  const canEdit = isGM || mine;
+
+  $("ctxTitle").textContent = tok.label||"Token";
+  $("ctxHpCur").value = tok.hp_current??"";
+  $("ctxHpMax").value = tok.hp_max??"";
+  $("ctxHpCur").disabled = !canEdit;
+  $("ctxHpMax").disabled = !canEdit;
+  $("ctxHpSave").style.display = canEdit ? "" : "none";
+
+  // Build condition chips
+  const condWrap = $("ctxConds");
+  condWrap.innerHTML = "";
+  const activeConds = new Set(tok.conditions||[]);
+  CONDITIONS.forEach(c=>{
+    const chip = document.createElement("button");
+    chip.className = "ctx-cond"+(activeConds.has(c)?" on":"");
+    chip.textContent = c;
+    chip.onclick = async () => {
+      if (activeConds.has(c)) activeConds.delete(c);
+      else activeConds.add(c);
+      const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+      await update(ref(db,`sessions/${camp}/scenes/${sid}/tokens/${tid}`),{conditions:[...activeConds]});
+      chip.classList.toggle("on", activeConds.has(c));
+    };
+    condWrap.appendChild(chip);
+  });
+
+  const m = $("ctxMenu");
+  m.style.left = Math.min(e.clientX, innerWidth-220)+"px";
+  m.style.top  = Math.min(e.clientY, innerHeight-320)+"px";
+  m.classList.add("open");
+  selectedTid = tid;
+}
+function hideCtxMenu(){$("ctxMenu").classList.remove("open");}
+
+$("ctxHpSave").onclick = async()=>{
+  if (!selectedTid) return;
+  const cur=parseInt($("ctxHpCur").value,10), max=parseInt($("ctxHpMax").value,10);
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  await update(ref(db,`sessions/${camp}/scenes/${sid}/tokens/${selectedTid}`),{
+    hp_current:isNaN(cur)?0:cur, hp_max:isNaN(max)?0:max
+  });
+  hideCtxMenu();
+};
+
+$("ctxToggleHp").onclick = async()=>{
+  if (!selectedTid||!isGM) return;
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  await update(ref(db,`sessions/${camp}/scenes/${sid}/tokens/${selectedTid}`),{hp_visible:!tokens[selectedTid].hp_visible});
+  hideCtxMenu();
+};
+
+$("ctxRemove").onclick = async()=>{
+  if (!selectedTid||!isGM) return;
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  await remove(ref(db,`sessions/${camp}/scenes/${sid}/tokens/${selectedTid}`));
+  selectedTid=null; hideCtxMenu();
+};
+
+document.addEventListener("click",e=>{if(!$("ctxMenu").contains(e.target)) hideCtxMenu();});
+
+// ══════════════════════════════════════
+// NPC PLACEMENT
+// ══════════════════════════════════════
+function renderNpcList() {
+  const list=$("npcList"); list.innerHTML="";
+  const npcs=Object.values(allNpcs).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  if(!npcs.length){list.innerHTML="<div style='color:var(--muted);font-size:.78rem;'>No NPCs saved.</div>";return;}
+  npcs.forEach(npc=>{
+    const el=document.createElement("div"); el.className="npc-item";
+    el.innerHTML=`<div style="width:16px;height:16px;border-radius:50%;background:${npc.vtt_profile?.token_color||"#8b5cf6"};flex-shrink:0;"></div><div><div style="font-weight:700;">${npc.name}</div><div style="font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;">CR ${npc.cr||"?"}</div></div>`;
+    el.onclick=()=>{placingNpc=npc;$("npcPanel").classList.remove("open");stage.style.cursor="crosshair";};
+    list.appendChild(el);
+  });
+}
+
+async function placeNpc(npc,col,row) {
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  const r=push(ref(db,`sessions/${camp}/scenes/${sid}/tokens`));
+  await set(r,{
+    character_id: npc.is_quick ? null : npc.id,
+    label: npc.name,
+    color: npc.vtt_profile?.token_color||"#8b5cf6",
+    x:col, y:row,
+    hp_current: npc.vtt_profile?.hp_current||10,
+    hp_max:     npc.vtt_profile?.hp_max||10,
+    is_npc:true, hp_visible:false,
+    conditions: [],
+  });
+}
+
+async function autoPlacePc(camp,sid) {
+  // Check RTDB directly — don't rely on local tokens state
+  const snap = await get(ref(db,`sessions/${camp}/scenes/${sid}/tokens`));
+  const existing = snap.exists()
+    ? Object.values(snap.val()).find(t=>t.character_id===S.characterId)
+    : null;
+  if (existing) return; // already placed
+
+  // Find an empty cell — scan from 1,1 outward
+  const occupied = snap.exists()
+    ? new Set(Object.values(snap.val()).map(t=>`${t.x},${t.y}`))
+    : new Set();
+
+  let col=1,row=1;
+  while(occupied.has(`${col},${row}`)) { col++; if(col>10){col=1;row++;} }
+
+  const r=push(ref(db,`sessions/${camp}/scenes/${sid}/tokens`));
+  await set(r,{
+    character_id:S.characterId, label:S.character.name,
+    color:S.character.vtt_profile?.token_color||"#3b82f6",
+    x:col, y:row,
+    hp_current:S.character.vtt_profile?.hp_current||0,
+    hp_max:S.character.vtt_profile?.hp_max||0,
+    is_npc:false, hp_visible:true
+  });
+}
+
+async function clearTokens() {
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  if(!camp||!sid||!confirm("Remove all tokens from this scene?")) return;
+  await remove(ref(db,`sessions/${camp}/scenes/${sid}/tokens`));
+}
+
+// ══════════════════════════════════════
+// PARTY PANEL
+// ══════════════════════════════════════
+function renderParty() {
+  const panel=$("partyPanel"); panel.innerHTML="";
+  const all=Object.entries(tokens);
+  $("partyCount").textContent=all.length;
+  if(!all.length){panel.innerHTML="<div style='font-size:.75rem;color:var(--muted);padding:6px;'>No tokens on map.</div>";return;}
+
+  const pcs  = all.filter(([,t])=>!t.is_npc).sort((a,b)=>(a[1].label||"").localeCompare(b[1].label||""));
+  const npcs = all.filter(([,t])=>t.is_npc);
+
+  pcs.forEach(([tid,tok])=>{
+    const isCur=initiative.order[initiative.current]?.token_id===tid;
+    const pct=tok.hp_max>0?Math.max(0,Math.min(1,tok.hp_current/tok.hp_max)):0;
+    const hc=pct>.5?"#10b981":pct>.25?"#f59e0b":"#ef4444";
+    const card=document.createElement("div"); card.className="pc-card"+(isCur?" active-turn":"");
+    card.innerHTML=`
+      <div class="card-top">
+        <div class="card-dot" style="background:${tok.color||"#60a5fa"}">${(tok.label||"?")[0]}</div>
+        <div><div class="card-name">${tok.label||"?"}</div><div class="card-sub">${tok.hp_current??0} / ${tok.hp_max??0} HP</div></div>
+        ${(()=>{
+          if (!S._visCache) return "";
+          const state = S._visCache.get(`${tok.x},${tok.y}`);
+          if (state === "hidden") return `<span style="font-size:.65rem;color:var(--muted);" title="In fog">🌑</span>`;
+          if (state === "dim")    return `<span style="font-size:.65rem;color:var(--muted2);" title="Darkvision">👁</span>`;
+          return "";
+        })()}
+      </div>
+      <div class="hp-wrap"><div class="hp-fill" style="width:${pct*100}%;background:${hc};"></div></div>
+      <div class="chip-row" id="chips_${tid}"></div>
+    `;
+    panel.appendChild(card);
+    // Load extra stats async
+    get(ref(db,`characters/pcs/${tok.character_id}`)).then(snap=>{
+      if(!snap.exists()) return;
+      const vp=snap.val().vtt_profile||{}; const el=$(`chips_${tid}`); if(!el) return;
+      const chips=[];
+      chips.push(`<span class="chip">AC ${vp.ac??"?"}</span>`);
+      chips.push(`<span class="chip">Spd ${vp.speed??30}ft</span>`);
+      if(vp.exhaustion>0) chips.push(`<span class="chip warn">Exh ${vp.exhaustion}</span>`);
+      if(vp.inspiration) chips.push(`<span class="chip good">Insp</span>`);
+      if(vp.concentration?.active) chips.push(`<span class="chip magic">⚡${vp.concentration.spell||"?"}</span>`);
+      if(vp.darkvision>0) chips.push(`<span class="chip">DV ${vp.darkvision}ft</span>`);
+      el.innerHTML=chips.join("");
+      if(vp.conditions?.length){
+        const cd=document.createElement("div"); cd.className="cond-row";
+        cd.innerHTML=vp.conditions.map(c=>`<span class="cond">${c}</span>`).join(""); card.appendChild(cd);
       }
+    });
+  });
 
-      list.innerHTML = "";
-
-      pcs.forEach((pc, index) => {
-        const row = document.createElement("div");
-        row.className = "token-row";
-        if (pc.id === selectedTokenId) row.classList.add("selected");
-
-        const tempHp = Math.max(0, Number(pc?.combat?.temp_hp ?? 0));
-        const hpMax = Math.max(0, Number(pc?.combat?.hp_max ?? 0));
-        const hpCurrent = Math.max(0, Number(pc?.combat?.hp_current ?? 0));
-        const hpColor = hpMax > 0
-          ? (hpCurrent / hpMax >= 0.67 ? "#22c55e" : hpCurrent / hpMax >= 0.34 ? "#f59e0b" : "#ef4444")
-          : "#94a3b8";
-
-        row.innerHTML = `
-          <div class="token-preview" style="background:${tokenColors[index % tokenColors.length]}; box-shadow: 0 0 0 3px ${hpColor}${tempHp > 0 ? ', 0 0 0 6px rgba(56,189,248,0.35)' : ''}">
-            ${getInitials(pc.name)}
-          </div>
-          <div class="token-meta">
-            <div class="token-name">${safe(pc.name, "Unnamed PC")}</div>
-            <div class="token-sub">Lvl ${safe(pc.level, 0)} ${safe(pc.class, "")} • HP ${hpCurrent}/${hpMax}</div>
-          </div>
-        `;
-
-        row.addEventListener("click", () => {
-          selectedTokenId = pc.id;
-          renderTokenList();
-          renderInspector();
-          draw();
-          setStatus(`Selected ${pc.name || pc.id}.`, "info");
-        });
-
-        list.appendChild(row);
-      });
-    }
-
-    function renderInspector() {
-      const wrap = $("inspectorWrap");
-      const token = getSelectedToken();
-
-      if (!token || !token.pc) {
-        wrap.innerHTML = `<div class="empty">Click a token to inspect it.</div>`;
-        return;
-      }
-
-      const pc = token.pc;
-      const combat = pc.combat || {};
-      const hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
-      const hpMax = Math.max(0, Number(combat.hp_max ?? 0));
-      const tempHp = Math.max(0, Number(combat.temp_hp ?? 0));
-      const hpPct = hpMax > 0 ? Math.round((hpCurrent / hpMax) * 100) : 0;
-      const hpColor = getHpColor(token);
-
-      wrap.innerHTML = `
-        <div>
-          <div class="inspector-name">${safe(pc.name, "Unnamed PC")}</div>
-          <div class="inspector-sub">Level ${safe(pc.level, 0)} ${safe(pc.species, "")} ${safe(pc.class, "Adventurer")}${pc.subclass ? ` (${pc.subclass})` : ""}</div>
+  npcs.forEach(([tid,tok])=>{
+    const showHp=isGM||tok.hp_visible;
+    const isCur=initiative.order[initiative.current]?.token_id===tid;
+    const pct=tok.hp_max>0?Math.max(0,Math.min(1,tok.hp_current/tok.hp_max)):0;
+    const hc=pct>.5?"#10b981":pct>.25?"#f59e0b":"#ef4444";
+    const card=document.createElement("div"); card.className="npc-card"+(isCur?" active-turn":"");
+    if(showHp){
+      card.innerHTML=`
+        <div class="card-top">
+          <div class="card-dot" style="background:${tok.color||"#8b5cf6"}">${(tok.label||"?")[0]}</div>
+          <div><div class="card-name">${tok.label||"NPC"}</div><div class="card-sub">${tok.hp_current}/${tok.hp_max} HP${isGM?(tok.hp_visible?" 👁":" 🙈"):""}</div></div>
         </div>
-
-        <div class="quick-grid">
-          <div class="quick-box">
-            <div class="quick-label">HP</div>
-            <div class="quick-value">${hpCurrent} / ${hpMax}</div>
-          </div>
-          <div class="quick-box">
-            <div class="quick-label">Temp HP</div>
-            <div class="quick-value">${tempHp}</div>
-          </div>
-          <div class="quick-box">
-            <div class="quick-label">AC</div>
-            <div class="quick-value">${safe(combat.ac, 10)}</div>
-          </div>
-          <div class="quick-box">
-            <div class="quick-label">Speed</div>
-            <div class="quick-value">${safe(combat.speed, 30)}</div>
-          </div>
-          <div class="quick-box">
-            <div class="quick-label">Passive Perception</div>
-            <div class="quick-value">${safe(combat.passive_perception, 10)}</div>
-          </div>
-          <div class="quick-box">
-            <div class="quick-label">Spell Slots</div>
-            <div class="quick-value" style="font-size:0.9rem;">${getSpellSlotsSummary(pc)}</div>
-          </div>
-        </div>
-
-        <div>
-          <div class="quick-label" style="margin-bottom:6px;">HP Status (${hpPct}%)</div>
-          <div class="hp-bar-wrap">
-            <div class="hp-bar" style="width:${hpPct}%; background:${hpColor};"></div>
-          </div>
-        </div>
-
-        <div>
-          <div class="quick-label" style="margin-bottom:8px;">HP Quick Controls</div>
-          <div class="hp-controls">
-            <button class="btn-danger" id="damage1Btn" type="button">-1</button>
-            <button class="btn-danger" id="damage5Btn" type="button">-5</button>
-            <button class="btn-heal" id="heal1Btn" type="button">+1</button>
-            <button class="btn-heal" id="heal5Btn" type="button">+5</button>
-          </div>
-        </div>
-
-        <div>
-          <div class="quick-label" style="margin-bottom:8px;">Temp HP</div>
-          <div class="temp-row">
-            <input id="tempHpInput" type="number" min="0" value="${tempHp}" />
-            <button class="btn-secondary" id="setTempHpBtn" type="button">Set</button>
-          </div>
-        </div>
-
-        <div class="small-note">
-          Grid position: <strong>(${token.gridX}, ${token.gridY})</strong><br />
-          Mode: <strong>${mode}</strong>
-        </div>
+        <div class="hp-wrap"><div class="hp-fill" style="width:${pct*100}%;background:${hc};"></div></div>
       `;
+    } else {
+      card.innerHTML=`<div class="card-top"><div class="card-dot" style="background:${tok.color||"#8b5cf6"}">${(tok.label||"?")[0]}</div><div class="card-name">${tok.label||"NPC"}</div></div>`;
+    }
+    panel.appendChild(card);
+  });
+}
 
-      $("damage1Btn").addEventListener("click", () => applyDamageToSelected(1));
-      $("damage5Btn").addEventListener("click", () => applyDamageToSelected(5));
-      $("heal1Btn").addEventListener("click", () => applyHealToSelected(1));
-      $("heal5Btn").addEventListener("click", () => applyHealToSelected(5));
-      $("setTempHpBtn").addEventListener("click", () => {
-        const val = Number($("tempHpInput").value || 0);
-        setTempHpOnSelected(val);
+// ══════════════════════════════════════
+// INITIATIVE
+// ══════════════════════════════════════
+function renderInit() {
+  const list=$("initList"); list.innerHTML="";
+  $("roundLbl").textContent=initiative.order.length?`Round ${initiative.round}`:"—";
+  if(!initiative.order.length){list.innerHTML="<div style='font-size:.72rem;color:var(--muted);padding:7px;'>No initiative. Roll or add manually.</div>";return;}
+
+  initiative.order.forEach((e,i)=>{
+    const tok=Object.values(tokens).find(t=>t.character_id===e.character_id);
+    const isCur=i===initiative.current;
+    const item=document.createElement("div"); item.className="init-item"+(isCur?" active-turn":"");
+
+    // Editable roll (GM only)
+    const rollEl = isGM
+      ? `<input class="init-roll" type="number" value="${e.roll}" data-idx="${i}" title="Edit roll" />`
+      : `<div class="init-roll">${e.roll}</div>`;
+
+    // Remove button (GM only, small ×)
+    const removeEl = isGM
+      ? `<button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:0 2px;line-height:1;" data-removeinit="${i}" title="Remove">✕</button>`
+      : "";
+
+    item.innerHTML=`
+      <div style="width:7px;height:7px;border-radius:50%;background:${tok?.color||e.color||"#60a5fa"};flex-shrink:0;"></div>
+      ${rollEl}
+      <div class="init-name">${e.name}</div>
+      ${(isGM||tok?.hp_visible)?`<div class="init-hp">${tok?.hp_current??""}</div>`:""}
+      ${removeEl}
+    `;
+    list.appendChild(item);
+  });
+
+  // Wire editable rolls
+  if (isGM) {
+    list.querySelectorAll(".init-roll[data-idx]").forEach(input=>{
+      input.addEventListener("change", async()=>{
+        const i=+input.dataset.idx;
+        const newRoll=parseInt(input.value,10);
+        if(isNaN(newRoll)) return;
+        const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+        const order=[...initiative.order];
+        order[i]={...order[i],roll:newRoll};
+        order.sort((a,b)=>b.roll-a.roll);
+        await update(ref(db,`sessions/${camp}/scenes/${sid}/initiative`),{order});
       });
-    }
-
-    function updateMeasurePanel(extraText = null) {
-      $("pixelsPerSquareOut").textContent = fmt(pixelsPerSquare, 2);
-      $("feetPerSquareOut").textContent = String(feetPerSquare);
-      $("zoomOutText").textContent = `${fmt(zoom, 2)}x`;
-
-      if (extraText !== null) {
-        $("measureReadout").textContent = extraText;
-      }
-    }
-
-    async function loadPcs() {
-      try {
-        setStatus("Loading PCs from /characters/pcs ...", "warn");
-
-        const pcsSnap = await get(ref(db, "characters/pcs"));
-        if (!pcsSnap.exists()) {
-          pcs = [];
-          tokens = [];
-          selectedTokenId = null;
-          renderTokenList();
-          renderInspector();
-          draw();
-          setStatus("No PCs found under /characters/pcs", "warn");
-          return;
-        }
-
-        const pcsData = pcsSnap.val();
-        pcs = Object.values(pcsData).sort((a, b) => {
-          const nameA = String(a.name || "").toLowerCase();
-          const nameB = String(b.name || "").toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
-
-        const posSnap = await get(ref(db, POSITIONS_PATH));
-        const positions = posSnap.exists() ? posSnap.val() : {};
-
-        tokens = pcs.map((pc, index) => {
-          const saved = positions[pc.id];
-          const fallbackGridX = 1 + (index % 6);
-          const fallbackGridY = 1 + Math.floor(index / 6);
-
-          const gridX = Number(safe(saved?.x, fallbackGridX));
-          const gridY = Number(safe(saved?.y, fallbackGridY));
-          const world = gridToTokenWorld(gridX, gridY);
-
-          return {
-            id: pc.id,
-            pc,
-            name: safe(pc.name, "Unnamed"),
-            initials: getInitials(pc.name),
-            color: tokenColors[index % tokenColors.length],
-            radius: Math.max(12, Math.floor(pixelsPerSquare * 0.34)),
-            gridX,
-            gridY,
-            worldX: world.x,
-            worldY: world.y
-          };
-        });
-
-        if (!selectedTokenId && tokens.length) {
-          selectedTokenId = tokens[0].id;
-        } else if (selectedTokenId && !tokens.some(t => t.id === selectedTokenId)) {
-          selectedTokenId = tokens[0]?.id || null;
-        }
-
-        renderTokenList();
-        renderInspector();
-        draw();
-        setStatus(`Loaded ${pcs.length} PC token(s).`, "success");
-      } catch (err) {
-        console.error(err);
-        setStatus(`Load failed: ${err.message}`, "error");
-      }
-    }
-
-    function refreshTokenSizesAndPositionsForCalibrationChange() {
-      tokens.forEach(t => {
-        t.radius = Math.max(12, Math.floor(pixelsPerSquare * 0.34));
-        const world = gridToTokenWorld(t.gridX, t.gridY);
-        t.worldX = world.x;
-        t.worldY = world.y;
+    });
+    list.querySelectorAll("[data-removeinit]").forEach(btn=>{
+      btn.addEventListener("click", async()=>{
+        const i=+btn.dataset.removeinit;
+        const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+        const order=[...initiative.order];
+        order.splice(i,1);
+        const curIdx=initiative.current>=order.length?Math.max(0,order.length-1):initiative.current;
+        await update(ref(db,`sessions/${camp}/scenes/${sid}/initiative`),{order,current_index:curIdx});
       });
-      renderInspector();
-      draw();
-    }
+    });
+  }
+}
 
-    function centerTokens() {
-      if (!tokens.length) {
-        setStatus("No tokens loaded yet.", "warn");
-        return;
+async function rollInit() {
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  if(!camp||!sid) return;
+  const all=Object.entries(tokens);
+  if(!all.length) return;
+  const order=all.map(([tid,tok])=>({
+    token_id:tid, character_id:tok.character_id,
+    name:tok.label, color:tok.color,
+    roll:Math.floor(Math.random()*20)+1
+  })).sort((a,b)=>b.roll-a.roll);
+  await set(ref(db,`sessions/${camp}/scenes/${sid}/initiative`),{order,current_index:0,round:1});
+}
+
+async function clearInit() {
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  if(camp&&sid) await remove(ref(db,`sessions/${camp}/scenes/${sid}/initiative`));
+}
+
+async function nextTurn() {
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  if(!initiative.order.length||!camp||!sid) return;
+  let n=initiative.current+1, r=initiative.round;
+  if(n>=initiative.order.length){n=0;r++;}
+  await update(ref(db,`sessions/${camp}/scenes/${sid}/initiative`),{current_index:n,round:r});
+}
+
+async function prevTurn() {
+  const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
+  if(!initiative.order.length||!camp||!sid) return;
+  let n=initiative.current-1, r=initiative.round;
+  if(n<0){n=initiative.order.length-1;r=Math.max(1,r-1);}
+  await update(ref(db,`sessions/${camp}/scenes/${sid}/initiative`),{current_index:n,round:r});
+}
+
+// ══════════════════════════════════════
+// ZOOM / PAN
+// ══════════════════════════════════════
+function setZoom(z) {
+  zoom=Math.max(.1,Math.min(4,z));
+  $("zoomLbl").textContent=Math.round(zoom*100)+"%";
+  applyZoom();
+}
+
+function applyZoom() {
+  stage.style.transform=`scale(${zoom})`;
+  stage.style.transformOrigin="top left";
+  if(S.mapAsset){
+    const w=S.mapAsset.image_w*zoom, h=S.mapAsset.image_h*zoom;
+    // Set scroll container size so scrolling works correctly
+    wrap.style.minWidth = w+"px";
+    wrap.style.minHeight = h+"px";
+    // Use a spacer approach
+    stage.parentElement && (stage.parentElement.style.width=w+"px") && (stage.parentElement.style.height=h+"px");
+  }
+}
+
+function fitScreen() {
+  if(!S.mapAsset) return;
+  setZoom(Math.min((wrap.clientWidth-40)/S.mapAsset.image_w,(wrap.clientHeight-40)/S.mapAsset.image_h,1));
+  wrap.scrollTop=0; wrap.scrollLeft=0;
+}
+
+$("zoomIn").onclick  = ()=>setZoom(zoom*1.25);
+$("zoomOut").onclick = ()=>setZoom(zoom*.8);
+$("zoomFit").onclick = fitScreen;
+wrap.addEventListener("wheel",e=>{e.preventDefault();setZoom(zoom*(e.deltaY>0?.9:1.1));},{passive:false});
+wrap.addEventListener("mousedown",e=>{
+  if(e.button===1){
+    e.preventDefault(); isPanning=true;
+    panStart={x:e.clientX,y:e.clientY,sl:wrap.scrollLeft,st:wrap.scrollTop};
+    wrap.style.cursor="grabbing";
+  }
+});
+window.addEventListener("mousemove",e=>{
+  if(!isPanning) return;
+  wrap.scrollLeft=panStart.sl-(e.clientX-panStart.x);
+  wrap.scrollTop=panStart.st-(e.clientY-panStart.y);
+});
+window.addEventListener("mouseup",e=>{if(e.button===1){isPanning=false;wrap.style.cursor="";}});
+
+// ══════════════════════════════════════
+// MIC DETECTION
+// ══════════════════════════════════════
+let micInterval=null, isSpeaking=false, speakTimer=null;
+const THRESHOLD=18, DEBOUNCE=180;
+
+async function initMic() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    const ctx    = new (window.AudioContext||window.webkitAudioContext)();
+    const an     = ctx.createAnalyser();
+    an.fftSize=512; an.smoothingTimeConstant=0.4;
+    ctx.createMediaStreamSource(stream).connect(an);
+    const data = new Uint8Array(an.frequencyBinCount);
+
+    micInterval = setInterval(async()=>{
+      an.getByteFrequencyData(data);
+      const avg=data.reduce((s,v)=>s+v,0)/data.length;
+      const bar=$("micBar"); if(bar) bar.style.width=Math.min(100,avg*4)+"%";
+      if(avg>THRESHOLD){
+        if(!isSpeaking){isSpeaking=true;await setSpeaking(true);}
+        clearTimeout(speakTimer);
+        speakTimer=setTimeout(async()=>{isSpeaking=false;await setSpeaking(false);},DEBOUNCE);
       }
+    },40);
 
-      const usableCols = 8;
+    window.addEventListener("beforeunload",()=>{
+      if(S.characterId) remove(ref(db,`speaking/${S.characterId}`));
+      clearInterval(micInterval); ctx.close();
+    });
+    return true;
+  } catch(e) { return false; }
+}
 
-      tokens.forEach((t, index) => {
-        const gx = 1 + (index % usableCols);
-        const gy = 1 + Math.floor(index / usableCols);
+async function setSpeaking(val) {
+  if(!S.characterId) return;
+  if(val) await set(ref(db,`speaking/${S.characterId}`),true);
+  else    await remove(ref(db,`speaking/${S.characterId}`));
+}
 
-        t.gridX = gx;
-        t.gridY = gy;
-
-        const world = gridToTokenWorld(gx, gy);
-        t.worldX = world.x;
-        t.worldY = world.y;
-      });
-
-      draw();
-      renderInspector();
-      setStatus("Centered tokens locally. Drag selected token to save a position.", "info");
-    }
-
-    async function resetSavedPositions() {
-      try {
-        await remove(ref(db, POSITIONS_PATH));
-        setStatus("Cleared saved token positions. Reloading defaults...", "warn");
-        await loadPcs();
-      } catch (err) {
-        console.error(err);
-        setStatus(`Reset failed: ${err.message}`, "error");
-      }
-    }
-
-    async function applyDamageToSelected(amount) {
-      const token = getSelectedToken();
-      if (!token || !token.pc) {
-        setStatus("Select a token first.", "error");
-        return;
-      }
-
-      const combat = token.pc.combat || {};
-      let tempHp = Math.max(0, Number(combat.temp_hp ?? 0));
-      let hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
-
-      let remaining = Math.max(0, Number(amount) || 0);
-      if (remaining <= 0) return;
-
-      if (tempHp > 0) {
-        const absorbed = Math.min(tempHp, remaining);
-        tempHp -= absorbed;
-        remaining -= absorbed;
-      }
-
-      if (remaining > 0) {
-        hpCurrent = Math.max(0, hpCurrent - remaining);
-      }
-
-      await syncPcCombat(token.id, {
-        temp_hp: tempHp,
-        hp_current: hpCurrent
-      });
-    }
-
-    async function applyHealToSelected(amount) {
-      const token = getSelectedToken();
-      if (!token || !token.pc) {
-        setStatus("Select a token first.", "error");
-        return;
-      }
-
-      const combat = token.pc.combat || {};
-      const hpMax = Math.max(0, Number(combat.hp_max ?? 0));
-      let hpCurrent = Math.max(0, Number(combat.hp_current ?? 0));
-
-      const amt = Math.max(0, Number(amount) || 0);
-      if (amt <= 0) return;
-
-      hpCurrent = Math.min(hpMax, hpCurrent + amt);
-
-      await syncPcCombat(token.id, {
-        hp_current: hpCurrent
-      });
-    }
-
-    async function setTempHpOnSelected(amount) {
-      const token = getSelectedToken();
-      if (!token || !token.pc) {
-        setStatus("Select a token first.", "error");
-        return;
-      }
-
-      const amt = Math.max(0, Number(amount) || 0);
-
-      await syncPcCombat(token.id, {
-        temp_hp: amt
-      });
-    }
-
-    function setMode(newMode) {
-      mode = newMode;
-
-      isPanning = false;
-      draggingTokenId = null;
-      isMeasuring = false;
-      isCalibrating = false;
-      measureStartWorld = null;
-      measureEndWorld = null;
-      calibrateStartWorld = null;
-      calibrateEndWorld = null;
-
-      $("calibrateBtn").classList.toggle("btn-active", mode === "calibrate");
-      $("rulerBtn").classList.toggle("btn-active", mode === "ruler");
-
-      renderInspector();
-      draw();
-
-      if (mode === "normal") {
-        setStatus("Normal mode.", "info");
-        updateMeasurePanel("No active measurement.");
-      } else if (mode === "calibrate") {
-        setStatus("Calibrate mode: drag between grid intersections.", "warn");
-        updateMeasurePanel("Calibrate mode active. Drag a known grid distance.");
-      } else if (mode === "ruler") {
-        setStatus("Ruler mode: drag to measure.", "warn");
-        updateMeasurePanel("Ruler mode active. Drag to measure distance.");
-      }
-    }
-
-    function zoomAtScreenPoint(factor, screenX, screenY) {
-      const before = screenToWorld(screenX, screenY);
-
-      zoom = clamp(zoom * factor, 0.2, 4);
-
-      const afterVisibleWorldX = screenX / zoom;
-      const afterVisibleWorldY = screenY / zoom;
-
-      cameraX = before.x - afterVisibleWorldX;
-      cameraY = before.y - afterVisibleWorldY;
-
-      clampCamera();
-      draw();
-      updateMeasurePanel(mode === "ruler" && isMeasuring && measureStartWorld && measureEndWorld ? $("measureReadout").textContent : null);
-    }
-
-    function drawGrid() {
-      ctx.save();
-
-      const startGridX = Math.floor(cameraX / pixelsPerSquare) - 1;
-      const endGridX = Math.ceil((cameraX + VIEW_W / zoom) / pixelsPerSquare) + 1;
-      const startGridY = Math.floor(cameraY / pixelsPerSquare) - 1;
-      const endGridY = Math.ceil((cameraY + VIEW_H / zoom) / pixelsPerSquare) + 1;
-
-      ctx.strokeStyle = "rgba(255,255,255,0.08)";
-      ctx.lineWidth = 1;
-
-      for (let gx = startGridX; gx <= endGridX; gx++) {
-        const wx = gx * pixelsPerSquare;
-        const sx = (wx - cameraX) * zoom;
-        ctx.beginPath();
-        ctx.moveTo(sx, 0);
-        ctx.lineTo(sx, VIEW_H);
-        ctx.stroke();
-      }
-
-      for (let gy = startGridY; gy <= endGridY; gy++) {
-        const wy = gy * pixelsPerSquare;
-        const sy = (wy - cameraY) * zoom;
-        ctx.beginPath();
-        ctx.moveTo(0, sy);
-        ctx.lineTo(VIEW_W, sy);
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
-
-    function drawMap() {
-      if (mapImage) {
-        const sx = -cameraX * zoom;
-        const sy = -cameraY * zoom;
-        const sw = mapWorldWidth * zoom;
-        const sh = mapWorldHeight * zoom;
-        ctx.drawImage(mapImage, sx, sy, sw, sh);
-      } else {
-        ctx.fillStyle = "#111827";
-        ctx.fillRect(0, 0, VIEW_W, VIEW_H);
-
-        ctx.fillStyle = "#9ca3af";
-        ctx.font = "20px Arial";
-        ctx.fillText("Load a PNG map to begin", 24, 40);
-      }
-    }
-
-    function drawTokens() {
-      tokens.forEach((t) => {
-        const screen = worldToScreen(t.worldX, t.worldY);
-        const r = t.radius * zoom;
-
-        // skip if far offscreen
-        if (screen.x < -100 || screen.x > VIEW_W + 100 || screen.y < -100 || screen.y > VIEW_H + 100) return;
-
-        if (hasTempHp(t)) {
-          ctx.beginPath();
-          ctx.arc(screen.x, screen.y, r + Math.max(4, 7 * zoom), 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(56,189,248,0.65)";
-          ctx.lineWidth = Math.max(2, 4 * zoom);
-          ctx.stroke();
+// ══════════════════════════════════════
+// SPEAKING SUBSCRIPTION
+// ══════════════════════════════════════
+function subscribeSpeaking() {
+  let prev={};
+  onValue(ref(db,"speaking"),snap=>{
+    const next=snap.exists()?snap.val():{};
+    // Trigger shake for newly speaking tokens
+    Object.keys(next).forEach(charId=>{
+      if(!prev[charId]) {
+        // Find token el for this character
+        const tid=Object.entries(tokens).find(([,t])=>t.character_id===charId)?.[0];
+        if(tid&&tokenEls[tid]){
+          const el=tokenEls[tid];
+          el.classList.remove("shaking");
+          void el.offsetWidth; // force reflow to restart animation
+          el.classList.add("shaking");
+          el.addEventListener("animationend",()=>el.classList.remove("shaking"),{once:true});
         }
-
-        ctx.beginPath();
-        ctx.arc(screen.x, screen.y, r + Math.max(2, 3 * zoom), 0, Math.PI * 2);
-        ctx.strokeStyle = getHpColor(t);
-        ctx.lineWidth = Math.max(3, 5 * zoom);
-        ctx.stroke();
-
-        if (t.id === selectedTokenId) {
-          ctx.beginPath();
-          ctx.arc(screen.x, screen.y, r + Math.max(8, 11 * zoom), 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(96,165,250,0.95)";
-          ctx.lineWidth = Math.max(2, 3 * zoom);
-          ctx.stroke();
-        }
-
-        ctx.beginPath();
-        ctx.arc(screen.x + 3 * zoom, screen.y + 4 * zoom, r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(0,0,0,0.35)";
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(screen.x, screen.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = t.color;
-        ctx.fill();
-
-        ctx.lineWidth = Math.max(2, 2 * zoom);
-        ctx.strokeStyle = "rgba(255,255,255,0.25)";
-        ctx.stroke();
-
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `bold ${Math.max(10, 18 * zoom)}px Arial`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(t.initials, screen.x, screen.y);
-
-        ctx.font = `${Math.max(9, 12 * zoom)}px Arial`;
-        ctx.textBaseline = "alphabetic";
-
-        const label = t.name.length > 11 ? t.name.slice(0, 11) + "…" : t.name;
-        const labelW = Math.max(60, 8 * label.length * zoom);
-        const labelH = Math.max(16, 18 * zoom);
-
-        ctx.fillStyle = "rgba(0,0,0,0.75)";
-        ctx.fillRect(screen.x - labelW / 2, screen.y + r + 6 * zoom, labelW, labelH);
-
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(label, screen.x, screen.y + r + 6 * zoom + labelH - 4 * zoom);
-      });
-    }
-
-    function drawMeasureOverlay() {
-      if (mode === "ruler" && (isMeasuring || (measureStartWorld && measureEndWorld))) {
-        const a = measureStartWorld;
-        const b = measureEndWorld;
-        if (!a || !b) return;
-
-        const sa = worldToScreen(a.x, a.y);
-        const sb = worldToScreen(b.x, b.y);
-
-        ctx.save();
-        ctx.strokeStyle = "rgba(56,189,248,0.95)";
-        ctx.lineWidth = 3;
-        ctx.setLineDash([10, 6]);
-        ctx.beginPath();
-        ctx.moveTo(sa.x, sa.y);
-        ctx.lineTo(sb.x, sb.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.fillStyle = "rgba(56,189,248,0.95)";
-        ctx.beginPath();
-        ctx.arc(sa.x, sa.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(sb.x, sb.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
       }
-
-      if (mode === "calibrate" && (isCalibrating || (calibrateStartWorld && calibrateEndWorld))) {
-        const a = calibrateStartWorld;
-        const b = calibrateEndWorld;
-        if (!a || !b) return;
-
-        const sa = worldToScreen(a.x, a.y);
-        const sb = worldToScreen(b.x, b.y);
-
-        ctx.save();
-        ctx.strokeStyle = "rgba(245,158,11,0.95)";
-        ctx.lineWidth = 3;
-        ctx.setLineDash([8, 6]);
-        ctx.beginPath();
-        ctx.moveTo(sa.x, sa.y);
-        ctx.lineTo(sb.x, sb.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.fillStyle = "rgba(245,158,11,0.95)";
-        ctx.beginPath();
-        ctx.arc(sa.x, sa.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(sb.x, sb.y, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, VIEW_W, VIEW_H);
-      drawMap();
-      drawGrid();
-      drawTokens();
-      drawMeasureOverlay();
-    }
-
-    // -------------------------
-    // Mouse interactions
-    // -------------------------
-    canvas.addEventListener("mousedown", (evt) => {
-      const mouse = getCanvasMousePos(evt);
-      const world = screenToWorld(mouse.x, mouse.y);
-
-      if (mode === "calibrate") {
-        isCalibrating = true;
-        calibrateStartWorld = snapWorldToGridIntersection(world);
-        calibrateEndWorld = calibrateStartWorld;
-        draw();
-        return;
-      }
-
-      if (mode === "ruler") {
-        isMeasuring = true;
-        measureStartWorld = world;
-        measureEndWorld = world;
-        draw();
-        return;
-      }
-
-      const token = getTokenAtScreen(mouse.x, mouse.y);
-
-      if (token) {
-        selectedTokenId = token.id;
-        renderTokenList();
-        renderInspector();
-
-        draggingTokenId = token.id;
-        dragTokenOffsetWorldX = world.x - token.worldX;
-        dragTokenOffsetWorldY = world.y - token.worldY;
-
-        canvas.style.cursor = "grabbing";
-
-        const idx = tokens.findIndex(t => t.id === token.id);
-        if (idx >= 0) {
-          const [picked] = tokens.splice(idx, 1);
-          tokens.push(picked);
-        }
-
-        draw();
-        return;
-      }
-
-      isPanning = true;
-      panStartMouseX = mouse.x;
-      panStartMouseY = mouse.y;
-      panStartCameraX = cameraX;
-      panStartCameraY = cameraY;
-      canvas.style.cursor = "grabbing";
     });
+    prev={...next};
+    speakingState=next;
+    updateSpeakingState();
+  });
+}
 
-    canvas.addEventListener("mousemove", (evt) => {
-      const mouse = getCanvasMousePos(evt);
-      const world = screenToWorld(mouse.x, mouse.y);
+// ══════════════════════════════════════
+// DICE
+// ══════════════════════════════════════
+function rollDie(s){return Math.floor(Math.random()*s)+1;}
+function parseRoll(expr){
+  expr=expr.trim().replace("d%","d100").toLowerCase();
+  const m=expr.match(/^(\d+)?d(\d+)([+-]\d+)?$/);
+  if(!m){const n=parseInt(expr,10);return isNaN(n)?null:{results:[n],total:n,expr};}
+  const cnt=parseInt(m[1]||"1",10),sides=parseInt(m[2],10),mod=parseInt(m[3]||"0",10);
+  const results=Array.from({length:cnt},()=>rollDie(sides));
+  return{results,total:results.reduce((s,v)=>s+v,0)+mod,expr};
+}
+async function logRoll(expr,res){
+  const camp=activeCampaign||S.campaign; if(!camp) return;
+  await push(ref(db,`sessions/${camp}/dice_log`),{roller:S.playerName||"?",expression:expr,results:res.results,total:res.total,timestamp:Date.now()});
+}
+document.querySelectorAll(".die-btn").forEach(btn=>{
+  btn.onclick=async()=>{
+    const d=btn.dataset.d; const expr=d==="100"?"d%":`d${d}`;
+    const res=parseRoll(`d${d}`); if(res) await logRoll(expr,res);
+  };
+});
+$("custRoll").onclick=async()=>{
+  const expr=$("custExpr").value.trim(); if(!expr) return;
+  const res=parseRoll(expr); if(!res) return;
+  await logRoll(expr,res); $("custExpr").value="";
+};
+$("custExpr").onkeydown=e=>{if(e.key==="Enter")$("custRoll").click();};
 
-      if (mode === "calibrate" && isCalibrating) {
-        calibrateEndWorld = snapWorldToGridIntersection(world);
+function renderLog(logObj){
+  const log=$("rollLog");
+  Object.values(logObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,40).forEach((e,i)=>{
+    const id="rle_"+e.timestamp;
+    if($( id)) return; // already rendered
+    const div=document.createElement("div"); div.className="roll-entry"; div.id=id;
+    const n20=e.expression?.includes("d20")&&e.total===20;
+    const n1=e.expression?.includes("d20")&&e.total===1;
+    div.innerHTML=`<div class="roll-top"><span class="roll-who">${e.roller}</span><span class="roll-total ${n20?"nat20":n1?"nat1":""}">${e.total}</span></div><div class="roll-expr">${e.expression} → [${(e.results||[e.total]).join(", ")}]</div>`;
+    log.insertBefore(div,log.firstChild);
+  });
+}
+</script>
 
-        const px = distance(calibrateStartWorld, calibrateEndWorld);
-        updateMeasurePanel(`Calibrating: ${fmt(px, 1)} px selected. Release to set squares.`);
-        draw();
-        return;
-      }
-
-      if (mode === "ruler" && isMeasuring) {
-        measureEndWorld = world;
-
-        const px = distance(measureStartWorld, measureEndWorld);
-        const squares = pixelsPerSquare > 0 ? px / pixelsPerSquare : 0;
-        const feet = squares * feetPerSquare;
-
-        updateMeasurePanel(`Ruler: ${fmt(px, 1)} px • ${fmt(squares, 2)} squares • ${fmt(feet, 1)} ft`);
-        draw();
-        return;
-      }
-
-      if (draggingTokenId) {
-        const token = tokens.find(t => t.id === draggingTokenId);
-        if (!token) return;
-
-        token.worldX = world.x - dragTokenOffsetWorldX;
-        token.worldY = world.y - dragTokenOffsetWorldY;
-
-        draw();
-        return;
-      }
-
-      if (isPanning) {
-        const dx = (mouse.x - panStartMouseX) / zoom;
-        const dy = (mouse.y - panStartMouseY) / zoom;
-
-        cameraX = panStartCameraX - dx;
-        cameraY = panStartCameraY - dy;
-        clampCamera();
-
-        draw();
-        return;
-      }
-
-      const hovered = getTokenAtScreen(mouse.x, mouse.y);
-      canvas.style.cursor = hovered ? "pointer" : "grab";
-    });
-
-    async function finishInteraction() {
-      if (mode === "calibrate" && isCalibrating) {
-        isCalibrating = false;
-
-        if (calibrateStartWorld && calibrateEndWorld) {
-          const px = distance(calibrateStartWorld, calibrateEndWorld);
-
-          if (px < 5) {
-            setStatus("Calibration too short. Try dragging farther.", "warn");
-            updateMeasurePanel("Calibration cancelled: too short.");
-            calibrateStartWorld = null;
-            calibrateEndWorld = null;
-            draw();
-            return;
-          }
-
-          const squaresInput = prompt("How many squares did you measure?", "1");
-          if (squaresInput === null) {
-            setStatus("Calibration cancelled.", "warn");
-            updateMeasurePanel("Calibration cancelled.");
-            calibrateStartWorld = null;
-            calibrateEndWorld = null;
-            draw();
-            return;
-          }
-
-          const squares = Math.max(0.01, Number(squaresInput) || 0);
-          if (squares <= 0) {
-            setStatus("Invalid square count.", "error");
-            updateMeasurePanel("Calibration failed: invalid square count.");
-            calibrateStartWorld = null;
-            calibrateEndWorld = null;
-            draw();
-            return;
-          }
-
-          const feetInput = prompt("Feet per square? (default 5)", String(feetPerSquare));
-          if (feetInput !== null) {
-            const f = Math.max(1, Number(feetInput) || feetPerSquare);
-            feetPerSquare = f;
-          }
-
-          pixelsPerSquare = px / squares;
-
-          await saveMapSettings();
-          refreshTokenSizesAndPositionsForCalibrationChange();
-
-          updateMeasurePanel(`Calibrated: ${fmt(pixelsPerSquare, 2)} px/square • ${feetPerSquare} ft/square`);
-          setStatus(`Grid calibrated: ${fmt(pixelsPerSquare, 2)} px/square`, "success");
-        }
-
-        calibrateStartWorld = null;
-        calibrateEndWorld = null;
-        draw();
-        return;
-      }
-
-      if (mode === "ruler" && isMeasuring) {
-        isMeasuring = false;
-
-        if (measureStartWorld && measureEndWorld) {
-          const px = distance(measureStartWorld, measureEndWorld);
-          const squares = pixelsPerSquare > 0 ? px / pixelsPerSquare : 0;
-          const feet = squares * feetPerSquare;
-
-          updateMeasurePanel(`Measured: ${fmt(px, 1)} px • ${fmt(squares, 2)} squares • ${fmt(feet, 1)} ft`);
-          setStatus(`Measured ${fmt(feet, 1)} ft`, "success");
-        }
-
-        draw();
-        return;
-      }
-
-      if (draggingTokenId) {
-        const token = tokens.find(t => t.id === draggingTokenId);
-
-        if (token) {
-          const snapped = snapWorldToGridCenter({ x: token.worldX, y: token.worldY });
-          token.worldX = clamp(snapped.x, pixelsPerSquare / 2, Math.max(pixelsPerSquare / 2, mapWorldWidth - pixelsPerSquare / 2));
-          token.worldY = clamp(snapped.y, pixelsPerSquare / 2, Math.max(pixelsPerSquare / 2, mapWorldHeight - pixelsPerSquare / 2));
-
-          const g = tokenWorldToGrid(token);
-          token.gridX = g.gridX;
-          token.gridY = g.gridY;
-
-          draw();
-          renderInspector();
-
-          try {
-            await saveTokenPosition(token);
-            setStatus(`Saved ${token.name} at grid (${token.gridX}, ${token.gridY})`, "success");
-          } catch (err) {
-            console.error(err);
-            setStatus(`Position save failed: ${err.message}`, "error");
-          }
-        }
-
-        draggingTokenId = null;
-      }
-
-      if (isPanning) {
-        isPanning = false;
-        setStatus("Panned map view.", "info");
-      }
-
-      canvas.style.cursor = "grab";
-    }
-
-    canvas.addEventListener("mouseup", finishInteraction);
-    canvas.addEventListener("mouseleave", finishInteraction);
-
-    canvas.addEventListener("wheel", (evt) => {
-      evt.preventDefault();
-
-      const mouse = getCanvasMousePos(evt);
-      const factor = evt.deltaY < 0 ? 1.1 : 1 / 1.1;
-
-      zoomAtScreenPoint(factor, mouse.x, mouse.y);
-      setStatus(`Zoom: ${fmt(zoom, 2)}x`, "info");
-    }, { passive: false });
-
-    // -------------------------
-    // Buttons
-    // -------------------------
-    $("mapFileInput").addEventListener("change", (evt) => {
-      const file = evt.target.files?.[0];
-      if (file) loadMapFile(file);
-    });
-
-    $("loadPcsBtn").addEventListener("click", loadPcs);
-
-    $("zoomInBtn").addEventListener("click", () => {
-      zoomAtScreenPoint(1.15, VIEW_W / 2, VIEW_H / 2);
-      setStatus(`Zoom: ${fmt(zoom, 2)}x`, "info");
-    });
-
-    $("zoomOutBtn").addEventListener("click", () => {
-      zoomAtScreenPoint(1 / 1.15, VIEW_W / 2, VIEW_H / 2);
-      setStatus(`Zoom: ${fmt(zoom, 2)}x`, "info");
-    });
-
-    $("resetViewBtn").addEventListener("click", () => {
-      if (mapImage) {
-        zoom = Math.min(VIEW_W / mapWorldWidth, VIEW_H / mapWorldHeight);
-        zoom = clamp(zoom, 0.2, 2.5);
-      } else {
-        zoom = 1;
-      }
-      cameraX = 0;
-      cameraY = 0;
-      clampCamera();
-      draw();
-      updateMeasurePanel("View reset.");
-      setStatus("View reset.", "success");
-    });
-
-    $("calibrateBtn").addEventListener("click", () => {
-      setMode(mode === "calibrate" ? "normal" : "calibrate");
-    });
-
-    $("rulerBtn").addEventListener("click", () => {
-      setMode(mode === "ruler" ? "normal" : "ruler");
-    });
-
-    $("centerTokensBtn").addEventListener("click", centerTokens);
-    $("resetPositionsBtn").addEventListener("click", resetSavedPositions);
-
-    // -------------------------
-    // Init
-    // -------------------------
-    async function init() {
-      draw();
-      renderInspector();
-      updateMeasurePanel("No active measurement.");
-      setStatus("Ready. Load a map, then load PCs.", "info");
-      await loadMapSettings();
-    }
-
-    init();
-  </script>
 </body>
 </html>
