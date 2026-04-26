@@ -1945,27 +1945,29 @@ async function setSpeaking(val) {
 // SPEAKING SUBSCRIPTION
 // ══════════════════════════════════════
 function subscribeSpeaking() {
-  let prev={};
-  onValue(ref(db,"speaking"),snap=>{
-    const next=snap.exists()?snap.val():{};
-    // Trigger shake for newly speaking tokens
-    Object.keys(next).forEach(charId=>{
-      if(!prev[charId]) {
-        // Find token el for this character
-        const tid=Object.entries(tokens).find(([,t])=>t.character_id===charId)?.[0];
-        if(tid&&tokenEls[tid]){
-          const el=tokenEls[tid];
+  if (_listeners.speaking) return; // already subscribed
+  const speakRef = ref(db,"speaking");
+  let prev = {};
+  const speakFn = snap => {
+    const next = snap.exists() ? snap.val() : {};
+    Object.keys(next).forEach(charId => {
+      if (!prev[charId]) {
+        const tid = Object.entries(tokens).find(([,t])=>t.character_id===charId)?.[0];
+        if (tid && tokenEls[tid]) {
+          const el = tokenEls[tid];
           el.classList.remove("shaking");
-          void el.offsetWidth; // force reflow to restart animation
+          void el.offsetWidth;
           el.classList.add("shaking");
-          el.addEventListener("animationend",()=>el.classList.remove("shaking"),{once:true});
+          el.addEventListener("animationend", ()=>el.classList.remove("shaking"), {once:true});
         }
       }
     });
-    prev={...next};
-    speakingState=next;
+    prev = {...next};
+    speakingState = next;
     updateSpeakingState();
-  });
+  };
+  onValue(speakRef, speakFn);
+  _listeners.speaking = { ref: speakRef, fn: speakFn };
 }
 
 // ══════════════════════════════════════
