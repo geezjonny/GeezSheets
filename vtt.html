@@ -108,8 +108,15 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);user-s
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
 .gm-only{display:none!important;}
 body.is-gm .gm-only{display:flex!important;}
-body.is-gm .gm-b{display:block!important;}
 .gm-b{display:none!important;}
+body.is-gm .gm-b{display:block!important;}
+/* Panels that are gm-b but need open/close toggle */
+body.is-gm .npc-panel,
+body.is-gm .scene-panel,
+body.is-gm #quickNpcMenu { display:none!important; }
+body.is-gm .npc-panel.open,
+body.is-gm .scene-panel.open,
+body.is-gm #quickNpcMenu.open { display:block!important; }
 
 /* ── MAIN ── */
 .main-area{display:flex;flex:1;min-height:0;overflow:hidden;}
@@ -803,26 +810,23 @@ async function enterSession() {
   $("vttApp").classList.add("visible");
   $("userLabel").textContent = `${S.playerName} · ${S.character?.name||""}`;
   $("rollerName").textContent = S.playerName;
-
-  // Subscribe to GM-set active campaign/scene
-  onValue(ref(db,"sessions/active_campaign"), snap=>{
-    if (snap.exists() && snap.val() !== activeCampaign) {
-      activeCampaign = snap.val();
-      subscribeSession(activeCampaign);
-    }
-  });
-  onValue(ref(db,`sessions/${S.campaign}/active_scene`), snap=>{
-    if (snap.exists()) {
-      const sid = snap.val();
-      if (sid !== activeScene) {
-        activeScene = sid;
-        loadSceneData(S.campaign, sid);
-      }
-    }
-  });
-
   $("sessInfo").textContent = S.campaign;
+
   subscribeSpeaking();
+
+  // Primary: watch for GM-set active campaign
+  onValue(ref(db,"sessions/active_campaign"), async snap=>{
+    const camp = snap.exists() ? snap.val() : S.campaign;
+    if (camp !== activeCampaign) {
+      activeCampaign = camp;
+      subscribeSession(camp);
+      subscribeDice(camp);
+    }
+  });
+
+  // Also subscribe to our own campaign's active scene immediately
+  // (handles case where GM already loaded before player joined)
+  subscribeSession(S.campaign);
   subscribeDice(S.campaign);
 }
 
