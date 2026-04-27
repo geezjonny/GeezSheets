@@ -736,11 +736,15 @@
       </div>
     </div>
 
-    <!-- TOKEN COLOR -->
+    <!-- TOKEN COLOR + IMAGE -->
     <div class="sidebar-section pc-only">
       <div class="sidebar-section-label">Token Color</div>
       <div class="field">
         <input type="color" id="tokenColor" value="#3b82f6" style="height:38px; padding:2px 4px; cursor:pointer;" />
+      </div>
+      <div class="sidebar-section-label" style="margin-top:8px;">Token Image URL</div>
+      <div class="field">
+        <input type="text" id="tokenImageUrl" placeholder="https://..." style="font-size:.75rem;"/>
       </div>
     </div>
 
@@ -1757,6 +1761,7 @@
       exhaustion: combat.exhaustion,
       conditions: [...activeConditions],
       token_color: recordType === "pc" ? $("tokenColor").value : "#a855f7",
+      token_image_url: strVal("tokenImageUrl") || null,
     };
 
     if (recordType === "pc") {
@@ -1803,6 +1808,7 @@
       set("fXp", data.xp ?? 0);
       set("fWeaponMasteries", (data.weapon_masteries || []).join("\n"));
       if (data.vtt_profile?.token_color) $("tokenColor").value = data.vtt_profile.token_color;
+      if (data.vtt_profile?.token_image_url) $("tokenImageUrl").value = data.vtt_profile.token_image_url;
     } else {
       set("fCr", data.cr);
       if ($("fIsUnique")) $("fIsUnique").value = String(!!data.is_unique);
@@ -2098,6 +2104,7 @@
       else el.value = "";
     });
     $("tokenColor").value = "#3b82f6";
+    $("tokenImageUrl").value = "";
   }
 
   // ── Refresh saved list ──

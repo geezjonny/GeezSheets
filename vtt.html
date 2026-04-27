@@ -691,9 +691,6 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
     <button id="ctxHpSave">✓</button>
   </div>
   <div class="ctx-sep"></div>
-  <div style="font-size:.65rem;color:var(--muted2);padding:3px 10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;">Token Image</div>
-  <div class="ctx-url"><input type="text" id="ctxImgUrl" placeholder="https://..."/><button id="ctxImgSave">✓</button></div>
-  <div class="ctx-sep"></div>
   <div style="font-size:.65rem;color:var(--muted2);padding:3px 10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;">Conditions</div>
   <div class="ctx-conds" id="ctxConds"></div>
   <div class="ctx-sep gm-b"></div>
@@ -1790,6 +1787,7 @@ async function placeNpc(npc,col,row) {
     character_id: npc.is_quick ? null : npc.id,
     label: npc.name,
     color: npc.vtt_profile?.token_color||"#8b5cf6",
+    image_url: npc.vtt_profile?.token_image_url||null,
     x:col, y:row,
     hp_current: npc.vtt_profile?.hp_current||10,
     hp_max:     npc.vtt_profile?.hp_max||10,
@@ -1820,10 +1818,11 @@ async function autoPlacePc(camp,sid) {
   await set(r,{
     character_id:S.characterId, label:S.character.name,
     color:S.character.vtt_profile?.token_color||"#3b82f6",
+    image_url:S.character.vtt_profile?.token_image_url||null,
     x:col, y:row,
     hp_current:S.character.vtt_profile?.hp_current||0,
     hp_max:S.character.vtt_profile?.hp_max||0,
-    is_npc:false, hp_visible:true
+    is_npc:false, hp_visible:true, conditions:[]
   });
 }
 
