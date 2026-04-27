@@ -436,6 +436,29 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
 .scene-item.active{border-color:var(--gold);background:rgba(212,168,67,.06);}
 
 /* Scrollbar */
+/* ── PARTY POPUP ── */
+.party-popup{
+  position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(4px);
+}
+.party-popup.open{display:flex;}
+.party-popup-inner{
+  background:var(--panel);border:1px solid var(--line2);border-radius:16px;
+  width:90vw;max-width:900px;height:85vh;display:flex;flex-direction:column;
+  box-shadow:0 40px 80px rgba(0,0,0,.6);overflow:hidden;
+}
+.party-popup-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--line);flex-shrink:0;
+}
+.party-popup-title{font-family:'Cinzel',serif;font-size:.9rem;color:var(--accent2);}
+.party-popup-close{
+  background:none;border:1px solid var(--line2);border-radius:6px;color:var(--muted2);
+  cursor:pointer;padding:4px 10px;font-size:.8rem;font-family:'Syne',sans-serif;font-weight:700;
+}
+.party-popup-close:hover{color:var(--text);border-color:var(--accent);}
+.party-popup-frame{flex:1;min-height:0;border:none;background:var(--bg);}
+
 ::-webkit-scrollbar{width:4px;height:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:999px;}
@@ -619,6 +642,17 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
         <div class="roll-log" id="rollLog"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- PARTY POPUP -->
+<div class="party-popup" id="partyPopup">
+  <div class="party-popup-inner">
+    <div class="party-popup-header">
+      <div class="party-popup-title" id="popupTitle">Character Sheet</div>
+      <button class="party-popup-close" id="popupClose">✕ Close</button>
+    </div>
+    <iframe class="party-popup-frame" id="popupFrame" src="about:blank"></iframe>
   </div>
 </div>
 
@@ -1187,18 +1221,28 @@ function drawInterior() {
 const FOG_STRENGTH = { "": 0, "dark": 1, "magic": 2 };
 const TOKEN_VISION  = { "none": 0, "darkvision": 1 };
 
+function cellInRect(col, row, r) {
+  const c1=Math.min(r.c1,r.c2), c2=Math.max(r.c1,r.c2);
+  const r1=Math.min(r.r1,r.r2), r2=Math.max(r.r1,r.r2);
+  return col>=c1 && col<=c2 && row>=r1 && row<=r2;
+}
+
+function getMyRect(myCol, myRow, interiors) {
+  // Which interior rectangle is my token currently in (if any)
+  if (!interiors?.length) return null;
+  return interiors.find(r => cellInRect(myCol, myRow, r)) || null;
+}
+
 function computeVisibility() {
   const vis = new Map();
   if (!S.mapAsset) return vis;
 
-  const { grid_size:gs, grid_offset_x:ox, grid_offset_y:oy,
-          fog, image_w:w, image_h:h } = S.mapAsset;
+  const { grid_size:gs, fog, image_w:w, image_h:h } = S.mapAsset;
   if (!gs) return vis;
 
   const totalCols = Math.floor(w/gs);
   const totalRows = Math.floor(h/gs);
 
-  // GM sees all
   if (isGM) {
     for (let c=0; c<totalCols; c++)
       for (let r=0; r<totalRows; r++)
@@ -1206,28 +1250,23 @@ function computeVisibility() {
     return vis;
   }
 
-  // My token's vision level
+  const myTok  = Object.values(tokens).find(t => t.character_id === S.characterId);
+  const myCol  = myTok?.x ?? -999;
+  const myRow  = myTok?.y ?? -999;
   const dvFeet = S.character?.senses?.darkvision || S.character?.vtt_profile?.darkvision || 0;
-  const myVisionKey = dvFeet > 0 ? "darkvision" : "none";
-  const myVision = TOKEN_VISION[myVisionKey];
-
-  // Find my token's cell for darkvision range
-  const myTok = Object.values(tokens).find(t => t.character_id === S.characterId);
-  const myCol = myTok?.x ?? -999;
-  const myRow = myTok?.y ?? -999;
+  const myVis  = TOKEN_VISION[dvFeet > 0 ? "darkvision" : "none"];
   const dvCells = dvFeet / (S.mapAsset.scale_ft || 5);
 
   for (let c=0; c<totalCols; c++) {
     for (let r=0; r<totalRows; r++) {
-      const key = `${c},${r}`;
-      const fogVal = fog?.[key] || "";
+      const key      = `${c},${r}`;
+      const fogVal   = fog?.[key] || "";
       const strength = FOG_STRENGTH[fogVal] ?? 0;
 
       if (strength === 0) {
         vis.set(key, "clear");
-      } else if (strength <= myVision) {
-        // Darkvision pierces normal darkness — but only within range
-        const dist = Math.sqrt((c - myCol) ** 2 + (r - myRow) ** 2);
+      } else if (strength <= myVis) {
+        const dist = Math.sqrt((c-myCol)**2 + (r-myRow)**2);
         vis.set(key, dist <= dvCells ? "dim" : "hidden");
       } else {
         vis.set(key, "hidden");
@@ -1242,37 +1281,52 @@ function drawFog() {
   if (!S.mapAsset) return;
   const { grid_size:gs, grid_offset_x:ox, grid_offset_y:oy, image_w:w, image_h:h } = S.mapAsset;
   if (!gs) return;
+
   fCtx.clearRect(0,0,w,h);
 
-  const vis = computeVisibility();
-  if (!vis.size) return;
-
-  // Draw interior reveals first (under fog)
+  // Always draw interior reveals first
   drawInterior();
+
+  const vis = computeVisibility();
+  S._visCache = vis;
+
+  if (!vis.size) { updateTokenVisibility(vis); return; }
 
   const sx = ((ox%gs)+gs)%gs, sy = ((oy%gs)+gs)%gs;
 
+  // For interior rectangle checks
+  const interiors = S.mapAsset.interiors || [];
+  const myTok  = !isGM ? Object.values(tokens).find(t=>t.character_id===S.characterId) : null;
+  const myRect = myTok ? getMyRect(myTok.x, myTok.y, interiors) : null;
+
   vis.forEach((state, key) => {
-    if (state === "clear") return; // don't draw fog on visible cells
+    if (state === "clear") return;
+
     const [c,r] = key.split(",").map(Number);
-    const fx = sx + c*gs, fy = sy + r*gs;
-    if (state === "hidden") {
-      fCtx.fillStyle = "rgba(0,0,0,0.88)";
-    } else if (state === "dim") {
-      // Darkvision — desaturated dim view, not full darkness
-      fCtx.fillStyle = "rgba(0,0,20,0.55)";
+
+    // If this fog cell is inside an interior rectangle
+    // and the player is outside (or in a different rectangle),
+    // skip drawing it — the roof image covers it already
+    if (!isGM && interiors.length) {
+      const cellRect = getMyRect(c, r, interiors);
+      if (cellRect && cellRect !== myRect) return; // roof covers it
     }
+
+    const fx = sx + c*gs, fy = sy + r*gs;
+    fCtx.fillStyle = state === "dim" ? "rgba(0,0,20,0.55)" : "rgba(0,0,0,0.88)";
     fCtx.fillRect(fx, fy, gs, gs);
   });
 
-  // Store for token visibility
-  S._visCache = vis;
   updateTokenVisibility(vis);
 }
 
 function updateTokenVisibility(vis) {
   if (!vis) vis = S._visCache;
   if (!vis) return;
+
+  const interiors = S.mapAsset?.interiors || [];
+  const myTok = Object.values(tokens).find(t => t.character_id === S.characterId);
+  const myRect = myTok ? getMyRect(myTok.x, myTok.y, interiors) : null;
 
   Object.entries(tokenEls).forEach(([tid, el]) => {
     const tok = tokens[tid];
@@ -1281,31 +1335,39 @@ function updateTokenVisibility(vis) {
     // Own token always visible
     if (tok.character_id === S.characterId || isGM) {
       el.style.opacity = "1";
+      el.style.filter  = "";
       el.style.pointerEvents = "all";
       return;
     }
 
-    // Friendly PCs always visible (party can always see each other)
-    if (!tok.is_npc) {
-      el.style.opacity = "1";
-      el.style.pointerEvents = "all";
-      return;
+    // ── Interior rectangle check ──
+    // Is this token inside a rectangle?
+    const tokRect = interiors.length ? getMyRect(tok.x, tok.y, interiors) : null;
+    if (tokRect) {
+      // Token is in a building — can I see it?
+      if (myRect !== tokRect) {
+        // I'm outside or in a different building — hidden, full stop
+        el.style.opacity = "0";
+        el.style.pointerEvents = "none";
+        return;
+      }
+      // I'm in the same building — fall through to fog rules
     }
 
-    // NPCs — visible only if their cell is visible
-    const key = `${tok.x},${tok.y}`;
+    // ── Fog / visibility check ──
+    const key   = `${tok.x},${tok.y}`;
     const state = vis.get(key);
+
     if (state === "hidden") {
       el.style.opacity = "0";
       el.style.pointerEvents = "none";
     } else if (state === "dim") {
-      // Visible via darkvision but desaturated/dim
       el.style.opacity = "0.55";
-      el.style.filter = "grayscale(0.7)";
+      el.style.filter  = "grayscale(0.7)";
       el.style.pointerEvents = "all";
     } else {
       el.style.opacity = "1";
-      el.style.filter = "";
+      el.style.filter  = "";
       el.style.pointerEvents = "all";
     }
   });
@@ -1438,9 +1500,9 @@ function reconcileTokenEls() {
   updateSpeakingState();
   updateTokenVisibility(S._visCache);
 
-  // Redraw fog+interior when tokens change (position affects darkvision + interior reveals)
-  if (!isGM && S.mapAsset) drawFog();
-  else if (isGM && S.mapAsset) drawInterior(); // GM always sees all interiors
+  // Always redraw interior + fog when tokens change
+  // Interior reveal depends on MY token position
+  if (S.mapAsset) drawFog();
 }
 
 function updateTurnRings() {
@@ -1585,13 +1647,15 @@ stage.addEventListener("dblclick", async e => {
 
 // Subscribe to pings
 function subscribePings(camp) {
+  let lastSeen = Date.now(); // only show pings newer than when we subscribed
   const pingRef = ref(db,`sessions/${camp}/pings`);
   onValue(pingRef, snap => {
     if (!snap.exists()) return;
-    const pings = snap.val();
     const now = Date.now();
-    Object.values(pings).forEach(p => {
-      if (now - p.t > 3000) return; // ignore old pings
+    Object.values(snap.val()).forEach(p => {
+      // Only show pings that are new (after we joined) and not stale (< 3s old)
+      if (p.t <= lastSeen) return;
+      if (now - p.t > 3000) return;
       const ping = document.createElement("div");
       ping.style.cssText = `
         position:absolute;
@@ -1607,6 +1671,7 @@ function subscribePings(camp) {
       tokLay.appendChild(ping);
       ping.addEventListener("animationend", () => ping.remove());
     });
+    lastSeen = now;
   });
 }
 
@@ -1702,7 +1767,9 @@ async function placeNpc(npc,col,row) {
     x:col, y:row,
     hp_current: npc.vtt_profile?.hp_current||10,
     hp_max:     npc.vtt_profile?.hp_max||10,
-    is_npc:true, hp_visible:false,
+    is_npc:true,
+    hp_visible: npc.vtt_profile?.is_friendly || false,
+    is_friendly: npc.vtt_profile?.is_friendly || false,
     conditions: [],
   });
 }
@@ -1746,34 +1813,61 @@ async function clearTokens() {
 function renderParty() {
   const panel=$("partyPanel"); panel.innerHTML="";
   const all=Object.entries(tokens);
-  $("partyCount").textContent=all.length;
-  if(!all.length){panel.innerHTML="<div style='font-size:.75rem;color:var(--muted);padding:6px;'>No tokens on map.</div>";return;}
 
-  const pcs  = all.filter(([,t])=>!t.is_npc).sort((a,b)=>(a[1].label||"").localeCompare(b[1].label||""));
-  const npcs = all.filter(([,t])=>t.is_npc);
+  // PCs — all PCs always show in party panel
+  const pcs = all.filter(([,t])=>!t.is_npc)
+                 .sort((a,b)=>(a[1].label||"").localeCompare(b[1].label||""));
+
+  // NPCs — GM sees all saved NPCs, players only see friendly ones
+  // Quick tokens (no character_id) never show in party panel
+  const friendlyNpcs = all.filter(([,t])=>
+    t.is_npc &&
+    t.character_id &&
+    (isGM ? true : t.is_friendly)
+  );
+
+  const count = pcs.length + friendlyNpcs.length;
+  $("partyCount").textContent = count;
+
+  if (!count) {
+    panel.innerHTML="<div style='font-size:.75rem;color:var(--muted);padding:6px;'>No tokens on map.</div>";
+    return;
+  }
 
   pcs.forEach(([tid,tok])=>{
     const isCur=initiative.order[initiative.current]?.token_id===tid;
     const pct=tok.hp_max>0?Math.max(0,Math.min(1,tok.hp_current/tok.hp_max)):0;
     const hc=pct>.5?"#10b981":pct>.25?"#f59e0b":"#ef4444";
-    const card=document.createElement("div"); card.className="pc-card"+(isCur?" active-turn":"");
+    const isMe = tok.character_id===S.characterId;
+
+    // Fog indicator
+    const fogState = S._visCache?.get(`${tok.x},${tok.y}`);
+    const fogIcon = fogState==="hidden"
+      ? `<span title="In fog" style="font-size:.65rem;color:var(--muted);">🌑</span>`
+      : fogState==="dim"
+      ? `<span title="Darkvision" style="font-size:.65rem;color:var(--muted2);">👁</span>`
+      : "";
+
+    const card=document.createElement("div");
+    card.className="pc-card"+(isCur?" active-turn":"")+(isMe?" selected":"");
+    card.style.cursor="pointer";
     card.innerHTML=`
       <div class="card-top">
         <div class="card-dot" style="background:${tok.color||"#60a5fa"}">${(tok.label||"?")[0]}</div>
-        <div><div class="card-name">${tok.label||"?"}</div><div class="card-sub">${tok.hp_current??0} / ${tok.hp_max??0} HP</div></div>
-        ${(()=>{
-          if (!S._visCache) return "";
-          const state = S._visCache.get(`${tok.x},${tok.y}`);
-          if (state === "hidden") return `<span style="font-size:.65rem;color:var(--muted);" title="In fog">🌑</span>`;
-          if (state === "dim")    return `<span style="font-size:.65rem;color:var(--muted2);" title="Darkvision">👁</span>`;
-          return "";
-        })()}
+        <div style="flex:1;"><div class="card-name">${tok.label||"?"}${isMe?' <span style="font-size:.6rem;color:var(--accent3);">YOU</span>':""}</div><div class="card-sub">${tok.hp_current??0} / ${tok.hp_max??0} HP</div></div>
+        ${fogIcon}
       </div>
       <div class="hp-wrap"><div class="hp-fill" style="width:${pct*100}%;background:${hc};"></div></div>
       <div class="chip-row" id="chips_${tid}"></div>
     `;
+
+    // Click to open full sheet popup
+    card.onclick = () => {
+      if (tok.character_id) openPartyPopup(tok.character_id, tok.label);
+    };
+
     panel.appendChild(card);
-    // Load extra stats async
+
     get(ref(db,`characters/pcs/${tok.character_id}`)).then(snap=>{
       if(!snap.exists()) return;
       const vp=snap.val().vtt_profile||{}; const el=$(`chips_${tid}`); if(!el) return;
@@ -1792,26 +1886,53 @@ function renderParty() {
     });
   });
 
-  npcs.forEach(([tid,tok])=>{
+  friendlyNpcs.forEach(([tid,tok])=>{
     const showHp=isGM||tok.hp_visible;
     const isCur=initiative.order[initiative.current]?.token_id===tid;
     const pct=tok.hp_max>0?Math.max(0,Math.min(1,tok.hp_current/tok.hp_max)):0;
     const hc=pct>.5?"#10b981":pct>.25?"#f59e0b":"#ef4444";
-    const card=document.createElement("div"); card.className="npc-card"+(isCur?" active-turn":"");
-    if(showHp){
-      card.innerHTML=`
-        <div class="card-top">
-          <div class="card-dot" style="background:${tok.color||"#8b5cf6"}">${(tok.label||"?")[0]}</div>
-          <div><div class="card-name">${tok.label||"NPC"}</div><div class="card-sub">${tok.hp_current}/${tok.hp_max} HP${isGM?(tok.hp_visible?" 👁":" 🙈"):""}</div></div>
+    const card=document.createElement("div");
+    card.className="npc-card"+(isCur?" active-turn":"");
+    card.style.cursor="pointer";
+    card.innerHTML=`
+      <div class="card-top">
+        <div class="card-dot" style="background:${tok.color||"#8b5cf6"}">${(tok.label||"?")[0]}</div>
+        <div><div class="card-name">${tok.label||"NPC"} <span style="font-size:.6rem;color:${tok.is_friendly?"var(--good2)":"var(--bad2)"};">${tok.is_friendly?"ally":"hostile"}</span></div>
+        ${showHp?`<div class="card-sub">${tok.hp_current}/${tok.hp_max} HP${isGM?(tok.hp_visible?" 👁":" 🙈"):""}</div>`:""}
         </div>
-        <div class="hp-wrap"><div class="hp-fill" style="width:${pct*100}%;background:${hc};"></div></div>
-      `;
-    } else {
-      card.innerHTML=`<div class="card-top"><div class="card-dot" style="background:${tok.color||"#8b5cf6"}">${(tok.label||"?")[0]}</div><div class="card-name">${tok.label||"NPC"}</div></div>`;
-    }
+      </div>
+      ${showHp?`<div class="hp-wrap"><div class="hp-fill" style="width:${pct*100}%;background:${hc};"></div></div>`:""}
+    `;
+    card.onclick = () => {
+      if (tok.character_id) openPartyPopup(tok.character_id, tok.label, true);
+    };
     panel.appendChild(card);
   });
 }
+
+// ── Party popup ──
+function openPartyPopup(charId, name, isNpc=false) {
+  const camp = activeCampaign||S.campaign;
+  const bucket = isNpc ? "npcs" : "pcs";
+  // party.html accepts ?id=xxx&campaign=yyy
+  const url = `party.html?campaign=${encodeURIComponent(camp)}&id=${encodeURIComponent(charId)}`;
+  $("popupTitle").textContent = name||"Character Sheet";
+  $("popupFrame").src = url;
+  $("partyPopup").classList.add("open");
+}
+
+$("popupClose").onclick = () => {
+  $("partyPopup").classList.remove("open");
+  $("popupFrame").src = "about:blank";
+};
+
+// Close on backdrop click
+$("partyPopup").addEventListener("click", e => {
+  if (e.target === $("partyPopup")) {
+    $("partyPopup").classList.remove("open");
+    $("popupFrame").src = "about:blank";
+  }
+});
 
 // ══════════════════════════════════════
 // INITIATIVE

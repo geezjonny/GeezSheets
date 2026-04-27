@@ -827,6 +827,13 @@
             <option value="true">Yes (unique)</option>
           </select>
         </div>
+        <div class="field npc-only" style="display:none;">
+          <label>Friendly to Party</label>
+          <select id="fIsFriendly">
+            <option value="false">No (hostile / neutral)</option>
+            <option value="true">Yes (ally / companion)</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -1731,6 +1738,7 @@
     } else {
       payload.cr = strVal("fCr");
       payload.is_unique = $("fIsUnique").value === "true";
+      payload.is_friendly = $("fIsFriendly").value === "true";
       payload.legendary_actions = strVal("npcLegendaryActions") || null;
       payload.lair_actions = strVal("npcLairActions") || null;
       payload.reactions = strVal("npcReactions") || null;
@@ -1758,6 +1766,7 @@
     } else {
       payload.vtt_profile.cr = strVal("fCr");
       payload.vtt_profile.is_unique = payload.is_unique;
+      payload.vtt_profile.is_friendly = payload.is_friendly;
     }
 
     payload.meta = {
@@ -1797,6 +1806,7 @@
     } else {
       set("fCr", data.cr);
       if ($("fIsUnique")) $("fIsUnique").value = String(!!data.is_unique);
+      if ($("fIsFriendly")) $("fIsFriendly").value = String(!!data.is_friendly);
     }
 
     const c = data.combat || {};

@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Party — GeezVTT</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+:root {
+  --bg:#06090f; --bg2:#0a0f1a; --panel:#0d1420; --panel2:#111827;
+  --line:#1a2535; --line2:#243044; --text:#dde4f0;
+  --muted:#4a5a72; --muted2:#7a8fa8;
+  --accent:#4f8ef7; --accent2:#7ab3ff; --accent3:#b8d4ff;
+  --good:#10b981; --good2:#34d399; --warn:#f59e0b;
+  --bad:#ef4444; --bad2:#fca5a5;
+  --magic:#8b5cf6; --magic2:#c084fc;
+  --gold:#d4a843; --gold2:#f0c060;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+.header{
+  height:52px;background:var(--bg2);border-bottom:1px solid var(--line2);
+  display:flex;align-items:center;gap:10px;padding:0 16px;flex-shrink:0;
+}
+.header-title{font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;color:var(--accent2);letter-spacing:.06em;}
+.spacer{flex:1;}
+.camp-label{font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--good);box-shadow:0 0 5px var(--good);}
+
+/* ── TAB BAR ── */
+.tabbar{
+  background:var(--bg2);border-bottom:1px solid var(--line);
+  display:flex;gap:0;overflow-x:auto;flex-shrink:0;
+}
+.tabbar::-webkit-scrollbar{height:3px;}
+.tabbar::-webkit-scrollbar-thumb{background:var(--line2);}
+
+.char-tab{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 18px;font-size:.78rem;font-weight:700;
+  color:var(--muted2);cursor:pointer;border-bottom:2px solid transparent;
+  border-right:1px solid var(--line);transition:all .15s;white-space:nowrap;flex-shrink:0;
+}
+.char-tab:hover{color:var(--text);background:rgba(255,255,255,.02);}
+.char-tab.active{color:var(--accent2);border-bottom-color:var(--accent);background:rgba(79,142,247,.05);}
+.char-tab .tab-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+
+/* ── MAIN ── */
+.main{flex:1;overflow-y:auto;padding:24px;display:none;}
+.main.active{display:block;}
+
+/* ── SECTIONS ── */
+.sheet{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:20px;}
+
+.section{
+  background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:18px;
+}
+.section-title{
+  font-family:'Cinzel',serif;font-size:.8rem;font-weight:700;letter-spacing:.1em;
+  color:var(--muted2);text-transform:uppercase;margin-bottom:14px;
+  padding-bottom:8px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;
+}
+
+/* Identity */
+.char-name{font-family:'Cinzel',serif;font-size:1.8rem;font-weight:700;color:var(--text);margin-bottom:4px;}
+.char-sub{font-size:.88rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-bottom:12px;}
+
+/* Stat boxes */
+.stat-grid{display:grid;gap:8px;}
+.g2{grid-template-columns:repeat(2,1fr);}
+.g3{grid-template-columns:repeat(3,1fr);}
+.g4{grid-template-columns:repeat(4,1fr);}
+.g6{grid-template-columns:repeat(6,1fr);}
+
+.stat-box{
+  background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:10px;
+  padding:10px 12px;text-align:center;
+}
+.stat-box-label{font-size:.65rem;font-weight:700;color:var(--muted2);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
+.stat-box-val{font-size:1.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.stat-box-sub{font-size:.68rem;color:var(--muted2);margin-top:2px;font-family:'JetBrains Mono',monospace;}
+.stat-box.accent .stat-box-val{color:var(--accent2);}
+.stat-box.good .stat-box-val{color:var(--good2);}
+.stat-box.warn .stat-box-val{color:var(--warn);}
+.stat-box.bad .stat-box-val{color:var(--bad2);}
+
+/* HP bar */
+.hp-bar-wrap{background:rgba(0,0,0,.4);border-radius:999px;height:8px;overflow:hidden;margin-top:6px;}
+.hp-bar-fill{height:100%;border-radius:999px;transition:width .3s;}
+
+/* Ability scores */
+.ability-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.ability-box{
+  background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:10px;
+  padding:12px 8px;text-align:center;
+}
+.ability-label{font-size:.65rem;font-weight:700;color:var(--muted2);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
+.ability-score{font-size:1.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;}
+.ability-mod{font-size:.9rem;font-weight:700;color:var(--accent2);margin-top:3px;font-family:'JetBrains Mono',monospace;}
+
+/* Skills / saves */
+.list-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+.list-item{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:6px 10px;border-radius:7px;border:1px solid var(--line);
+  background:rgba(255,255,255,.02);font-size:.78rem;
+}
+.list-item-label{color:var(--muted2);}
+.list-item-val{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);}
+.list-item.prof .list-item-label{color:var(--accent3);}
+.list-item.expert .list-item-label{color:var(--good2);}
+
+/* Conditions */
+.cond-row{display:flex;gap:5px;flex-wrap:wrap;}
+.cond-chip{
+  font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:999px;
+  background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--bad2);
+}
+
+/* Spells */
+.spell-list{display:flex;flex-direction:column;gap:6px;}
+.spell-card{
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+  background:rgba(255,255,255,.02);
+}
+.spell-card-top{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.spell-name{font-weight:700;font-size:.88rem;}
+.spell-badges{display:flex;gap:5px;flex-wrap:wrap;}
+.spell-badge{
+  font-size:.62rem;font-weight:700;padding:2px 7px;border-radius:999px;
+  border:1px solid var(--line2);color:var(--muted2);
+}
+.spell-badge.cantrip{border-color:rgba(16,185,129,.4);color:var(--good2);}
+.spell-badge.prepared{border-color:rgba(79,142,247,.4);color:var(--accent2);}
+.spell-badge.always{border-color:rgba(245,158,11,.4);color:var(--warn);}
+.spell-badge.conc{border-color:rgba(139,92,246,.4);color:var(--magic2);}
+.spell-detail{font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;line-height:1.5;}
+
+/* Slot pips */
+.slot-row{display:flex;gap:12px;flex-wrap:wrap;}
+.slot-level{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.slot-label{font-size:.62rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
+.slot-pips{display:flex;gap:3px;}
+.slot-pip{width:10px;height:10px;border-radius:50%;border:1px solid var(--accent);background:rgba(79,142,247,.25);}
+.slot-pip.used{background:rgba(255,255,255,.08);border-color:var(--line2);}
+
+/* Abilities */
+.ability-card{
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+  background:rgba(255,255,255,.02);
+}
+.ability-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.ability-card-name{font-weight:700;font-size:.88rem;}
+.ability-card-charges{font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--accent2);}
+.ability-card-desc{font-size:.75rem;color:var(--muted2);line-height:1.5;}
+.abilities-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+
+/* Attacks */
+.attack-row{
+  display:grid;grid-template-columns:1fr 80px 80px 100px;gap:8px;align-items:center;
+  padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.02);
+  font-size:.8rem;
+}
+.attack-name{font-weight:700;}
+.attack-stat{font-family:'JetBrains Mono',monospace;color:var(--accent2);}
+.attack-dmg{font-family:'JetBrains Mono',monospace;}
+.attack-type{font-size:.65rem;color:var(--muted2);}
+.attacks-list{display:flex;flex-direction:column;gap:5px;}
+
+/* Inventory */
+.inv-list{display:flex;flex-direction:column;gap:4px;}
+.inv-row{
+  display:grid;grid-template-columns:1fr 2fr 50px 80px;gap:8px;align-items:center;
+  padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:rgba(255,255,255,.02);
+  font-size:.78rem;
+}
+.inv-name{font-weight:700;}
+.inv-desc{color:var(--muted2);font-size:.72rem;}
+.inv-qty{font-family:'JetBrains Mono',monospace;text-align:center;}
+.inv-cat{font-size:.62rem;color:var(--muted);padding:2px 6px;border-radius:999px;border:1px solid var(--line2);}
+
+/* Text blocks */
+.text-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.text-block{
+  border:1px solid var(--line);border-radius:10px;padding:12px;
+  background:rgba(255,255,255,.02);font-size:.78rem;color:var(--muted2);
+  line-height:1.6;white-space:pre-wrap;
+}
+.text-block-label{font-size:.65rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+
+/* Empty */
+.empty{text-align:center;color:var(--muted);padding:40px;font-family:'JetBrains Mono',monospace;font-size:.85rem;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:999px;}
+
+@media(max-width:900px){
+  .ability-grid{grid-template-columns:repeat(3,1fr);}
+  .list-grid{grid-template-columns:1fr 1fr;}
+  .text-grid{grid-template-columns:1fr;}
+  .g4{grid-template-columns:repeat(2,1fr);}
+  .g6{grid-template-columns:repeat(3,1fr);}
+  .abilities-grid{grid-template-columns:1fr;}
+  .attack-row{grid-template-columns:1fr 80px 80px;}
+  .inv-row{grid-template-columns:1fr 1fr 50px;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">GeezVTT · Party</div>
+  <div class="spacer"></div>
+  <div class="camp-label" id="campLabel">—</div>
+  <div class="status-dot" id="statusDot"></div>
+</div>
+
+<div class="tabbar" id="tabbar">
+  <div class="empty" style="padding:14px 20px;">Loading party...</div>
+</div>
+
+<div id="sheets"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const FB = {
+  apiKey:"AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+  authDomain:"sheets-e5838.firebaseapp.com",
+  databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",
+  projectId:"sheets-e5838",
+  storageBucket:"sheets-e5838.firebasestorage.app"
+};
+const app = initializeApp(FB);
+const db  = getDatabase(app);
+const $   = id => document.getElementById(id);
+
+const STATS = ["str","dex","con","int","wis","cha"];
+const STAT_LABELS = {str:"STR",dex:"DEX",con:"CON",int:"INT",wis:"WIS",cha:"CHA"};
+const SKILLS = [
+  {key:"athletics",label:"Athletics",stat:"str"},
+  {key:"acrobatics",label:"Acrobatics",stat:"dex"},
+  {key:"sleight_of_hand",label:"Sleight of Hand",stat:"dex"},
+  {key:"stealth",label:"Stealth",stat:"dex"},
+  {key:"arcana",label:"Arcana",stat:"int"},
+  {key:"history",label:"History",stat:"int"},
+  {key:"investigation",label:"Investigation",stat:"int"},
+  {key:"nature",label:"Nature",stat:"int"},
+  {key:"religion",label:"Religion",stat:"int"},
+  {key:"animal_handling",label:"Animal Handling",stat:"wis"},
+  {key:"insight",label:"Insight",stat:"wis"},
+  {key:"medicine",label:"Medicine",stat:"wis"},
+  {key:"perception",label:"Perception",stat:"wis"},
+  {key:"survival",label:"Survival",stat:"wis"},
+  {key:"deception",label:"Deception",stat:"cha"},
+  {key:"intimidation",label:"Intimidation",stat:"cha"},
+  {key:"performance",label:"Performance",stat:"cha"},
+  {key:"persuasion",label:"Persuasion",stat:"cha"},
+];
+
+let pcs = {};        // id -> character data
+let campaign = "";
+let activeId = null;
+
+function signed(n) { return n >= 0 ? `+${n}` : `${n}`; }
+function mod(score) { return Math.floor((score-10)/2); }
+function hpColor(cur,max) {
+  const pct = max>0 ? cur/max : 0;
+  return pct>.5 ? "#10b981" : pct>.25 ? "#f59e0b" : "#ef4444";
+}
+
+// ── Load ──
+async function loadParty(camp) {
+  campaign = camp;
+  $("campLabel").textContent = camp;
+
+  const snap = await get(ref(db,"characters/pcs"));
+  if (!snap.exists()) { showEmpty("No characters found."); return; }
+
+  const all = Object.values(snap.val());
+  const filtered = all.filter(pc => pc.campaign === camp)
+                      .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+
+  if (!filtered.length) { showEmpty(`No PCs in campaign "${camp}".`); return; }
+
+  pcs = {};
+  filtered.forEach(pc => { pcs[pc.id] = pc; });
+
+  buildTabs(filtered);
+  if (!activeId || !pcs[activeId]) activeId = filtered[0].id;
+  showSheet(activeId);
+
+  // Live HP/condition updates via vtt tokens
+  onValue(ref(db,`sessions/${camp}/active_scene`), async sceneSnap => {
+    if (!sceneSnap.exists()) return;
+    const sid = sceneSnap.val();
+    onValue(ref(db,`sessions/${camp}/scenes/${sid}/tokens`), tokSnap => {
+      if (!tokSnap.exists()) return;
+      Object.values(tokSnap.val()).forEach(tok => {
+        if (!tok.character_id || !pcs[tok.character_id]) return;
+        pcs[tok.character_id]._live_hp  = tok.hp_current;
+        pcs[tok.character_id]._live_conds = tok.conditions||[];
+        // Refresh active sheet if it's this character
+        if (tok.character_id === activeId) showSheet(activeId);
+      });
+    });
+  });
+}
+
+function showEmpty(msg) {
+  $("tabbar").innerHTML = `<div class="empty" style="padding:14px 20px;">${msg}</div>`;
+  $("sheets").innerHTML = "";
+}
+
+function buildTabs(list) {
+  const bar = $("tabbar");
+  bar.innerHTML = "";
+  list.forEach(pc => {
+    const tab = document.createElement("div");
+    tab.className = "char-tab" + (pc.id === activeId ? " active" : "");
+    tab.innerHTML = `<div class="tab-dot" style="background:${pc.vtt_profile?.token_color||"#60a5fa"};"></div>${pc.name}`;
+    tab.onclick = () => {
+      document.querySelectorAll(".char-tab").forEach(t=>t.classList.remove("active"));
+      tab.classList.add("active");
+      activeId = pc.id;
+      showSheet(pc.id);
+    };
+    bar.appendChild(tab);
+  });
+}
+
+function showSheet(id) {
+  const sheets = $("sheets");
+  sheets.innerHTML = "";
+  const pc = pcs[id];
+  if (!pc) return;
+
+  const panel = document.createElement("div");
+  panel.className = "main active";
+  panel.innerHTML = buildSheet(pc);
+  sheets.appendChild(panel);
+}
+
+function buildSheet(pc) {
+  const c   = pc.combat || {};
+  const st  = pc.stats  || {};
+  const sv  = pc.saves  || {};
+  const sk  = pc.skills || {};
+  const sp  = pc.spellcasting;
+  const tb  = pc.text_blocks || {};
+  const vp  = pc.vtt_profile || {};
+
+  // Use live HP if available from token
+  const hpCur = pc._live_hp ?? c.hp_current ?? 0;
+  const hpMax = c.hp_max ?? 0;
+  const hpPct = hpMax>0 ? Math.max(0,Math.min(1,hpCur/hpMax)) : 0;
+  const conditions = pc._live_conds ?? c.conditions ?? [];
+
+  return `<div class="sheet">
+
+    <!-- Identity -->
+    <div class="section">
+      <div class="char-name">${pc.name||"Unnamed"}</div>
+      <div class="char-sub">
+        Level ${pc.level||1} ${pc.species||""} ${pc.class||""}${pc.subclass?` · ${pc.subclass}`:""} · ${pc.background||""}
+        ${pc.player_name ? `· <span style="color:var(--accent3);">${pc.player_name}</span>` : ""}
+        ${pc.campaign ? `· <span style="color:var(--muted);">${pc.campaign}</span>` : ""}
+      </div>
+      ${conditions.length ? `<div class="cond-row">${conditions.map(c=>`<div class="cond-chip">${c}</div>`).join("")}</div>` : ""}
+    </div>
+
+    <!-- Combat -->
+    <div class="section">
+      <div class="section-title">Combat</div>
+      <div class="stat-grid g4" style="margin-bottom:10px;">
+        <div class="stat-box${hpPct<=.25?" bad":hpPct<=.5?" warn":""}">
+          <div class="stat-box-label">HP</div>
+          <div class="stat-box-val">${hpCur} / ${hpMax}${c.temp_hp>0?` (+${c.temp_hp} temp)`:""}</div>
+          <div class="hp-bar-wrap"><div class="hp-bar-fill" style="width:${hpPct*100}%;background:${hpColor(hpCur,hpMax)};"></div></div>
+        </div>
+        <div class="stat-box accent"><div class="stat-box-label">AC</div><div class="stat-box-val">${c.ac||10}</div></div>
+        <div class="stat-box"><div class="stat-box-label">Speed</div><div class="stat-box-val">${c.speed||30}ft</div></div>
+        <div class="stat-box"><div class="stat-box-label">Initiative</div><div class="stat-box-val">${signed(c.initiative_bonus||0)}</div></div>
+        <div class="stat-box"><div class="stat-box-label">Hit Dice</div><div class="stat-box-val">${c.hit_dice||"—"}</div></div>
+        <div class="stat-box"><div class="stat-box-label">Proficiency</div><div class="stat-box-val">${signed(c.proficiency_bonus||2)}</div></div>
+        <div class="stat-box"><div class="stat-box-label">Exhaustion</div><div class="stat-box-val ${c.exhaustion>0?"warn":""}">${c.exhaustion||0} / 6</div></div>
+        <div class="stat-box"><div class="stat-box-label">Inspiration</div><div class="stat-box-val ${c.inspiration?"good":""}">${c.inspiration?"Yes":"No"}</div></div>
+      </div>
+      ${c.concentration?.active ? `<div style="margin-top:6px;font-size:.78rem;color:var(--magic2);">⚡ Concentrating: <strong>${c.concentration.spell||"unknown"}</strong></div>` : ""}
+      <div class="stat-grid g3" style="margin-top:10px;">
+        <div class="stat-box"><div class="stat-box-label">Passive Perception</div><div class="stat-box-val">${pc.senses?.passive_perception||10}</div></div>
+        <div class="stat-box"><div class="stat-box-label">Passive Insight</div><div class="stat-box-val">${pc.senses?.passive_insight||10}</div></div>
+        <div class="stat-box"><div class="stat-box-label">Passive Investigation</div><div class="stat-box-val">${pc.senses?.passive_investigation||10}</div></div>
+      </div>
+      ${buildSenses(pc.senses)}
+      ${c.death_save_successes!==undefined ? `
+      <div style="margin-top:10px;display:flex;gap:16px;align-items:center;">
+        <span style="font-size:.72rem;color:var(--muted2);">Death Saves</span>
+        <span style="font-size:.78rem;color:var(--good2);">✓ ${c.death_save_successes||0}/3</span>
+        <span style="font-size:.78rem;color:var(--bad2);">✗ ${c.death_save_failures||0}/3</span>
+      </div>` : ""}
+    </div>
+
+    <!-- Ability Scores -->
+    <div class="section">
+      <div class="section-title">Ability Scores</div>
+      <div class="ability-grid">
+        ${STATS.map(k=>{
+          const score = st[k]||10;
+          const m = mod(score);
+          return `<div class="ability-box">
+            <div class="ability-label">${STAT_LABELS[k]}</div>
+            <div class="ability-score">${score}</div>
+            <div class="ability-mod">${signed(m)}</div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+
+    <!-- Saving Throws -->
+    <div class="section">
+      <div class="section-title">Saving Throws</div>
+      <div class="list-grid">
+        ${STATS.map(k=>{
+          const prof = sv.proficient?.includes(k);
+          return `<div class="list-item${prof?" prof":""}">
+            <span class="list-item-label">${STAT_LABELS[k]}${prof?" ●":""}</span>
+            <span class="list-item-val">${signed(sv[k]??0)}</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+
+    <!-- Skills -->
+    <div class="section">
+      <div class="section-title">Skills</div>
+      <div class="list-grid">
+        ${SKILLS.map(s=>{
+          const d = sk[s.key]||{};
+          const cls = d.expertise?" expert":d.proficient?" prof":"";
+          const tag = d.expertise?" ◆":d.proficient?" ●":"";
+          return `<div class="list-item${cls}">
+            <span class="list-item-label">${s.label}${tag} <span style="opacity:.5;font-size:.62rem;">${s.stat.toUpperCase()}</span></span>
+            <span class="list-item-val">${signed(d.bonus??0)}</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>
+
+    ${sp ? buildSpellcasting(sp) : ""}
+
+    ${buildAbilities(pc.abilities)}
+
+    ${buildAttacks(pc.attacks)}
+
+    ${buildInventory(pc.inventory)}
+
+    <!-- Text Blocks -->
+    <div class="section">
+      <div class="section-title">Character Info</div>
+      <div class="text-grid">
+        ${tb.features_traits ? `<div><div class="text-block-label">Features & Traits</div><div class="text-block">${tb.features_traits}</div></div>` : ""}
+        ${tb.proficiencies_languages ? `<div><div class="text-block-label">Proficiencies & Languages</div><div class="text-block">${tb.proficiencies_languages}</div></div>` : ""}
+        ${tb.appearance ? `<div><div class="text-block-label">Appearance</div><div class="text-block">${tb.appearance}</div></div>` : ""}
+        ${tb.backstory ? `<div style="grid-column:1/-1;"><div class="text-block-label">Backstory</div><div class="text-block">${tb.backstory}</div></div>` : ""}
+        ${tb.notes ? `<div style="grid-column:1/-1;"><div class="text-block-label">Notes</div><div class="text-block">${tb.notes}</div></div>` : ""}
+      </div>
+    </div>
+
+  </div>`;
+}
+
+function buildSenses(senses) {
+  if (!senses) return "";
+  const extras = [];
+  if (senses.darkvision>0)   extras.push(`Darkvision ${senses.darkvision}ft`);
+  if (senses.tremorsense>0)  extras.push(`Tremorsense ${senses.tremorsense}ft`);
+  if (senses.blindsight>0)   extras.push(`Blindsight ${senses.blindsight}ft`);
+  if (senses.truesight>0)    extras.push(`Truesight ${senses.truesight}ft`);
+  if (!extras.length) return "";
+  return `<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+    ${extras.map(e=>`<span style="font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--muted2);font-family:'JetBrains Mono',monospace;">${e}</span>`).join("")}
+  </div>`;
+}
+
+function buildSpellcasting(sp) {
+  const slots = sp.slots||{};
+  const used  = sp.slots_used||{};
+  const spells = sp.spells||[];
+
+  const slotPips = Object.entries(slots).filter(([,v])=>v>0).map(([lvl,max])=>{
+    const usedCount = used[lvl]||0;
+    const pips = Array.from({length:max},(_,i)=>`<div class="slot-pip${i<usedCount?" used":""}"></div>`).join("");
+    return `<div class="slot-level"><div class="slot-label">${lvl}${["st","nd","rd","th","th","th","th","th","th"][+lvl-1]}</div><div class="slot-pips">${pips}</div></div>`;
+  }).join("");
+
+  const spellCards = spells.map(s=>{
+    const badges = [];
+    if (s.level===0||s.prepared_type==="cantrip") badges.push(`<span class="spell-badge cantrip">Cantrip</span>`);
+    if (s.prepared_type==="always") badges.push(`<span class="spell-badge always">Always</span>`);
+    else if (s.prepared_type==="prepared") badges.push(`<span class="spell-badge prepared">Prepared</span>`);
+    if (s.concentration) badges.push(`<span class="spell-badge conc">Conc.</span>`);
+    if (s.level>0) badges.push(`<span class="spell-badge">${s.level}${["st","nd","rd","th","th","th","th","th","th"][s.level-1]}</span>`);
+
+    const details = [];
+    if (s.cast_time) details.push(`Cast: ${s.cast_time}`);
+    if (s.duration)  details.push(`Duration: ${s.duration}`);
+    if (s.to_hit)    details.push(`To Hit: ${s.to_hit}`);
+    if (s.damage)    details.push(`${s.damage} ${s.damage_type||""}`);
+    if (s.save_stat) details.push(`Save: ${s.save_stat.toUpperCase()}`);
+    if (s.upcast)    details.push(`Upcast: ${s.upcast}`);
+    if (s.notes)     details.push(s.notes);
+
+    return `<div class="spell-card">
+      <div class="spell-card-top">
+        <div class="spell-name">${s.name}</div>
+        <div class="spell-badges">${badges.join("")}</div>
+      </div>
+      ${details.length ? `<div class="spell-detail">${details.join(" · ")}</div>` : ""}
+    </div>`;
+  }).join("");
+
+  return `<div class="section">
+    <div class="section-title">
+      Spellcasting
+      <span style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted2);">
+        ${sp.ability?.toUpperCase()||""} · DC ${sp.spell_save_dc||0} · +${sp.spell_attack_bonus||0}
+      </span>
+    </div>
+    ${slotPips ? `<div class="slot-row" style="margin-bottom:12px;">${slotPips}</div>` : ""}
+    <div class="spell-list">${spellCards||"<div style='color:var(--muted);font-size:.8rem;'>No spells.</div>"}</div>
+  </div>`;
+}
+
+function buildAbilities(abilities) {
+  if (!abilities || !Object.keys(abilities).length) return "";
+  const cards = Object.values(abilities).map(ab=>{
+    const hasCharges = ab.max>0;
+    const pct = hasCharges ? ab.current/ab.max : 0;
+    return `<div class="ability-card">
+      <div class="ability-card-top">
+        <div class="ability-card-name">${ab.label||"Ability"}</div>
+        ${hasCharges ? `<div class="ability-card-charges">${ab.current}/${ab.max} · ${ab.recharge?.replace(/_/g," ")||""}</div>` : ""}
+      </div>
+      ${ab.effect_desc ? `<div class="ability-card-desc">${ab.effect_desc}</div>` : ""}
+    </div>`;
+  }).join("");
+  return `<div class="section">
+    <div class="section-title">Abilities & Resources</div>
+    <div class="abilities-grid">${cards}</div>
+  </div>`;
+}
+
+function buildAttacks(attacks) {
+  if (!attacks?.length) return "";
+  const rows = attacks.map(a=>`<div class="attack-row">
+    <div class="attack-name">${a.name}</div>
+    <div class="attack-stat">${a.to_hit||"—"}</div>
+    <div class="attack-dmg">${a.damage||"—"}</div>
+    <div class="attack-type">${a.damage_type||""} ${a.notes?`· ${a.notes}`:""}</div>
+  </div>`).join("");
+  return `<div class="section">
+    <div class="section-title">Attacks</div>
+    <div class="attacks-list">${rows}</div>
+  </div>`;
+}
+
+function buildInventory(inventory) {
+  if (!inventory?.length) return "";
+  const rows = inventory.map(item=>`<div class="inv-row">
+    <div class="inv-name">${item.name}</div>
+    <div class="inv-desc">${item.desc||""}</div>
+    <div class="inv-qty">×${item.qty||1}</div>
+    <div class="inv-cat">${item.category||"gear"}</div>
+  </div>`).join("");
+  return `<div class="section">
+    <div class="section-title">Inventory</div>
+    <div class="inv-list">${rows}</div>
+  </div>`;
+}
+
+// ── Boot ──
+// Check URL param first (?id=xxx opens that char directly)
+const params = new URLSearchParams(location.search);
+const focusId = params.get("id");
+const forceCamp = params.get("campaign");
+
+if (forceCamp) {
+  activeId = focusId;
+  loadParty(forceCamp);
+} else {
+  // Watch active campaign from GM
+  onValue(ref(db,"sessions/active_campaign"), snap=>{
+    const camp = snap.exists() ? snap.val() : null;
+    if (camp) loadParty(camp);
+    else $("tabbar").innerHTML = `<div class="empty" style="padding:14px 20px;">Waiting for GM to start a session...</div>`;
+  });
+}
+</script>
+</body>
+</html>
