@@ -155,8 +155,6 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
 /* ── MAP AREA ── */
 .map-area{flex:1;position:relative;overflow:hidden;background:#020408;}
 .map-wrap{position:absolute;inset:0;overflow:auto;}
-.map-wrap::-webkit-scrollbar{display:none;}
-.map-wrap{scrollbar-width:none;}
 
 /* The container that holds canvases + token layer, scaled by zoom */
 .map-stage{
@@ -299,7 +297,8 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
 .ctx-menu{
   position:fixed;background:var(--panel2);border:1px solid var(--line2);
   border-radius:10px;padding:6px;z-index:500;display:none;
-  box-shadow:0 16px 40px rgba(0,0,0,.55);min-width:176px;
+  box-shadow:0 16px 40px rgba(0,0,0,.55);min-width:200px;
+  max-height:80vh;overflow-y:auto;
 }
 .ctx-menu.open{display:block;}
 .ctx-title{font-size:.68rem;color:var(--muted2);padding:4px 10px 3px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
@@ -377,6 +376,9 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
   font-family:'Syne',sans-serif;
 }
 .ctx-cond.on{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:var(--bad2);}
+.ctx-url{display:flex;gap:5px;padding:5px 8px;}
+.ctx-url input{flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:5px;color:var(--text);padding:4px 6px;font-size:.72rem;font-family:'JetBrains Mono',monospace;outline:none;}
+.ctx-url button{background:var(--accent);border:none;border-radius:5px;color:#fff;padding:4px 8px;font-size:.72rem;font-weight:700;cursor:pointer;}
 .ctx-cond:hover:not(.on){border-color:var(--muted2);color:var(--text);}
 
 /* Quick NPC form */
@@ -560,14 +562,16 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
     <!-- MAP -->
     <div class="map-area" id="mapArea">
       <div class="map-wrap" id="mapWrap">
-        <div class="map-stage" id="mapStage">
+        <div id="mapSpacer" style="position:relative;flex-shrink:0;">
+          <div class="map-stage" id="mapStage">
           <canvas id="mapCanvas"></canvas>
           <canvas id="interiorCanvas"></canvas>
           <canvas id="fogCanvas"></canvas>
           <canvas id="gridCanvas"></canvas>
           <div id="tokenLayer"></div>
-        </div>
-      </div>
+        </div><!-- /mapStage -->
+        </div><!-- /mapSpacer -->
+      </div><!-- /mapWrap -->
 
       <!-- Placeholder -->
       <div class="map-ph" id="mapPh">
@@ -667,6 +671,9 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
     <input type="number" id="ctxHpMax" placeholder="max"/>
     <button id="ctxHpSave">✓</button>
   </div>
+  <div class="ctx-sep"></div>
+  <div style="font-size:.65rem;color:var(--muted2);padding:3px 10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;">Token Image</div>
+  <div class="ctx-url"><input type="text" id="ctxImgUrl" placeholder="https://..."/><button id="ctxImgSave">✓</button></div>
   <div class="ctx-sep"></div>
   <div style="font-size:.65rem;color:var(--muted2);padding:3px 10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;">Conditions</div>
   <div class="ctx-conds" id="ctxConds"></div>
@@ -2036,17 +2043,22 @@ function setZoom(z, cursorX, cursorY) {
   zoom = Math.max(.1, Math.min(4, z));
   $("zoomLbl").textContent = Math.round(zoom*100)+"%";
 
-  // Zoom toward cursor position
-  if (cursorX !== undefined && S.mapAsset) {
-    const scaleChange = zoom / prevZoom;
-    const rect = wrap.getBoundingClientRect();
-    const mouseX = cursorX - rect.left;
-    const mouseY = cursorY - rect.top;
-    wrap.scrollLeft = (wrap.scrollLeft + mouseX) * scaleChange - mouseX;
-    wrap.scrollTop  = (wrap.scrollTop  + mouseY) * scaleChange - mouseY;
-  }
+  // Capture scroll and mouse BEFORE resizing spacer
+  const rect = wrap.getBoundingClientRect();
+  const mouseX = cursorX !== undefined ? cursorX - rect.left : wrap.clientWidth  / 2;
+  const mouseY = cursorY !== undefined ? cursorY - rect.top  : wrap.clientHeight / 2;
+  const oldScrollLeft = wrap.scrollLeft;
+  const oldScrollTop  = wrap.scrollTop;
+  const scaleChange   = zoom / prevZoom;
 
+  // Resize spacer
   applyZoom();
+
+  // Defer scroll until browser has processed new spacer dimensions
+  requestAnimationFrame(() => {
+    wrap.scrollLeft = (oldScrollLeft + mouseX) * scaleChange - mouseX;
+    wrap.scrollTop  = (oldScrollTop  + mouseY) * scaleChange - mouseY;
+  });
 }
 
 function applyZoom() {
@@ -2055,8 +2067,10 @@ function applyZoom() {
   if (S.mapAsset) {
     const w = S.mapAsset.image_w * zoom;
     const h = S.mapAsset.image_h * zoom;
-    wrap.style.width  = w + "px";
-    wrap.style.height = h + "px";
+    // Size the spacer — this is what the scroll container actually scrolls
+    const spacer = $("mapSpacer");
+    spacer.style.width  = w + "px";
+    spacer.style.height = h + "px";
   }
 }
 
@@ -2221,6 +2235,57 @@ function renderLog(logObj){
     div.innerHTML=`<div class="roll-top"><span class="roll-who">${e.roller}</span><span class="roll-total ${n20?"nat20":n1?"nat1":""}">${e.total}</span></div><div class="roll-expr">${e.expression} → [${(e.results||[e.total]).join(", ")}]</div>`;
     log.insertBefore(div,log.firstChild);
   });
+}
+</script>
+</body>
+</html>
+// MIC
+// ══════════════════════════════════════
+let micInterval=null,isSpeaking=false,speakTimer=null;
+const THRESHOLD=18,DEBOUNCE=80;
+
+async function initMic(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const an=ctx.createAnalyser();an.fftSize=512;an.smoothingTimeConstant=0.4;
+    ctx.createMediaStreamSource(stream).connect(an);
+    const data=new Uint8Array(an.frequencyBinCount);
+    micInterval=setInterval(async()=>{
+      an.getByteFrequencyData(data);
+      const avg=data.reduce((s,v)=>s+v,0)/data.length;
+      const bar=$("micBar");if(bar)bar.style.width=Math.min(100,avg*4)+"%";
+      if(avg>THRESHOLD){
+        if(!isSpeaking){isSpeaking=true;await setSpeaking(true);}
+        clearTimeout(speakTimer);
+        speakTimer=setTimeout(async()=>{isSpeaking=false;await setSpeaking(false);},DEBOUNCE);
+      }
+    },40);
+    window.addEventListener("beforeunload",()=>{if(S.characterId)remove(ref(db,`speaking/${S.characterId}`));clearInterval(micInterval);ctx.close();});
+    return true;
+  }catch(e){return false;}
+}
+
+async function setSpeaking(val){
+  if(!S.characterId)return;
+  if(val)await set(ref(db,`speaking/${S.characterId}`),true);
+  else await remove(ref(db,`speaking/${S.characterId}`));
+}
+
+function subscribeSpeaking(){
+  if(_listeners.speaking)return;
+  const r=ref(db,"speaking");let prev={};
+  const fn=snap=>{
+    const next=snap.exists()?snap.val():{};
+    Object.keys(next).forEach(charId=>{
+      if(!prev[charId]){
+        const tid=Object.entries(tokens).find(([,t])=>t.character_id===charId)?.[0];
+        if(tid&&tokenEls[tid]){const el=tokenEls[tid];el.classList.remove("shaking");void el.offsetWidth;el.classList.add("shaking");el.addEventListener("animationend",()=>el.classList.remove("shaking"),{once:true});}
+      }
+    });
+    prev={...next};speakingState=next;updateSpeakingState();
+  };
+  onValue(r,fn);_listeners.speaking={ref:r,fn};
 }
 </script>
 </body>
