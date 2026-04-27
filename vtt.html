@@ -258,6 +258,12 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
   75%{transform:translate(calc(-50% - 1px),calc(-50% + 1px)) rotate(-.5deg);}
 }
 
+@keyframes pingAnim {
+  0%   { transform:translate(-50%,-50%) scale(0);   opacity:1; }
+  60%  { transform:translate(-50%,-50%) scale(1.8); opacity:.8; }
+  100% { transform:translate(-50%,-50%) scale(2.5); opacity:0; }
+}
+
 .token.shaking{animation:tokenShake .35s ease-in-out;}
 
 /* Dead token */
@@ -813,6 +819,7 @@ async function enterSession() {
   $("sessInfo").textContent = S.campaign;
 
   subscribeSpeaking();
+  subscribePings(S.campaign);
 
   // Primary: watch for GM-set active campaign
   onValue(ref(db,"sessions/active_campaign"), async snap=>{
@@ -821,11 +828,11 @@ async function enterSession() {
       activeCampaign = camp;
       subscribeSession(camp);
       subscribeDice(camp);
+      subscribePings(camp);
     }
   });
 
   // Also subscribe to our own campaign's active scene immediately
-  // (handles case where GM already loaded before player joined)
   subscribeSession(S.campaign);
   subscribeDice(S.campaign);
 }
@@ -932,6 +939,7 @@ async function loadGMCampaign(camp) {
   await set(ref(db,"sessions/active_campaign"), camp);
   subscribeSession(camp);
   subscribeDice(camp);
+  subscribePings(camp);
   await renderSceneList();
 }
 
@@ -1140,43 +1148,38 @@ function drawInterior() {
   if (!S.mapAsset) return;
   const { grid_size:gs, grid_offset_x:ox, grid_offset_y:oy,
           interiors, image_w:w, image_h:h } = S.mapAsset;
+  if (!gs) return;
 
   iCtx.clearRect(0,0,w,h);
-
-  // No interior image or no rectangles — nothing to reveal
   if (!interiorImg || !interiors?.length) return;
 
   const sx = ((ox%gs)+gs)%gs, sy = ((oy%gs)+gs)%gs;
 
-  // Find which rectangles contain MY token (or any token for GM)
+  // Find my token's cell
   const myTok = isGM
-    ? null  // GM sees all interiors
+    ? null
     : Object.values(tokens).find(t=>t.character_id===S.characterId);
-
-  const myCol = myTok?.x ?? null;
-  const myRow = myTok?.y ?? null;
 
   interiors.forEach(r => {
     const c1=Math.min(r.c1,r.c2), c2=Math.max(r.c1,r.c2);
     const r1=Math.min(r.r1,r.r2), r2=Math.max(r.r1,r.r2);
 
-    // Check if my token is inside this rectangle
-    const inside = isGM
-      || (myCol !== null && myCol >= c1 && myCol <= c2 && myRow >= r1 && myRow <= r2);
+    // GM always sees all interiors revealed
+    const inside = isGM || (
+      myTok !== null &&
+      myTok !== undefined &&
+      myTok.x >= c1 && myTok.x <= c2 &&
+      myTok.y >= r1 && myTok.y <= r2
+    );
 
     if (!inside) return;
 
-    // Draw the interior image fragment for this rectangle
     const px = sx + c1*gs;
     const py = sy + r1*gs;
     const pw = (c2-c1+1)*gs;
     const ph = (r2-r1+1)*gs;
 
-    iCtx.drawImage(
-      interiorImg,
-      px, py, pw, ph,   // source rect from interior image
-      px, py, pw, ph    // destination rect on canvas
-    );
+    iCtx.drawImage(interiorImg, px, py, pw, ph, px, py, pw, ph);
   });
 }
 
@@ -1474,8 +1477,8 @@ function onTokenMouseDown(e, tid) {
   if (!isGM && !mine) return;
 
   const {col,row} = pixelToCell(
-    (e.clientX - stage.getBoundingClientRect().left),
-    (e.clientY - stage.getBoundingClientRect().top)
+    (e.clientX - stage.getBoundingClientRect().left) / zoom,
+    (e.clientY - stage.getBoundingClientRect().top) / zoom
   );
 
   dragging = { tid, startCol:col, startRow:row, startX:e.clientX, startY:e.clientY };
@@ -1485,8 +1488,8 @@ function onTokenMouseDown(e, tid) {
 window.addEventListener("mousemove", e=>{
   if (!dragging || !S.mapAsset) return;
   const rect = stage.getBoundingClientRect();
-  const px = (e.clientX - rect.left);
-  const py = (e.clientY - rect.top);
+  const px = (e.clientX - rect.left) / zoom;
+  const py = (e.clientY - rect.top)  / zoom;
   const {col,row} = pixelToCell(px,py);
   const {x,y} = cellToPixel(col,row);
   const el = tokenEls[dragging.tid];
@@ -1500,8 +1503,8 @@ window.addEventListener("mouseup", async e=>{
   if (el) el.style.zIndex="";
 
   const rect = stage.getBoundingClientRect();
-  const px = (e.clientX - rect.left);
-  const py = (e.clientY - rect.top);
+  const px = (e.clientX - rect.left) / zoom;
+  const py = (e.clientY - rect.top)  / zoom;
   const {col,row} = pixelToCell(px,py);
 
   const tok = tokens[tid];
@@ -1529,7 +1532,7 @@ window.addEventListener("mouseup", async e=>{
 stage.addEventListener("mousedown", async e=>{
   if (e.button!==0 || !placingNpc || !S.mapAsset) return;
   const rect = stage.getBoundingClientRect();
-  const {col,row} = pixelToCell(e.clientX-rect.left, e.clientY-rect.top);
+  const {col,row} = pixelToCell((e.clientX-rect.left)/zoom, (e.clientY-rect.top)/zoom);
   await placeNpc(placingNpc,col,row);
   placingNpc=null;
   stage.style.cursor="";
@@ -1544,6 +1547,68 @@ stage.addEventListener("mousedown", e=>{
     hideCtxMenu();
   }
 });
+
+// ── Ping on double click ──
+stage.addEventListener("dblclick", async e => {
+  if (!S.mapAsset || placingNpc) return;
+  const rect = stage.getBoundingClientRect();
+  const px = (e.clientX - rect.left) / zoom;
+  const py = (e.clientY - rect.top)  / zoom;
+
+  // Create ping div
+  const ping = document.createElement("div");
+  ping.style.cssText = `
+    position:absolute;
+    left:${px}px; top:${py}px;
+    width:40px; height:40px;
+    border-radius:50%;
+    border:3px solid ${isGM ? "#d4a843" : "#60a5fa"};
+    transform:translate(-50%,-50%) scale(0);
+    pointer-events:none;
+    z-index:99;
+    animation:pingAnim .8s ease-out forwards;
+  `;
+  tokLay.appendChild(ping);
+  ping.addEventListener("animationend", () => ping.remove());
+
+  // Broadcast ping to RTDB so all clients see it
+  const camp = activeCampaign||S.campaign;
+  if (camp) {
+    await push(ref(db,`sessions/${camp}/pings`), {
+      x: px, y: py,
+      color: isGM ? "#d4a843" : (S.character?.vtt_profile?.token_color || "#60a5fa"),
+      who: S.playerName,
+      t: Date.now()
+    });
+  }
+});
+
+// Subscribe to pings
+function subscribePings(camp) {
+  const pingRef = ref(db,`sessions/${camp}/pings`);
+  onValue(pingRef, snap => {
+    if (!snap.exists()) return;
+    const pings = snap.val();
+    const now = Date.now();
+    Object.values(pings).forEach(p => {
+      if (now - p.t > 3000) return; // ignore old pings
+      const ping = document.createElement("div");
+      ping.style.cssText = `
+        position:absolute;
+        left:${p.x}px; top:${p.y}px;
+        width:40px; height:40px;
+        border-radius:50%;
+        border:3px solid ${p.color||"#60a5fa"};
+        transform:translate(-50%,-50%) scale(0);
+        pointer-events:none;
+        z-index:99;
+        animation:pingAnim .8s ease-out forwards;
+      `;
+      tokLay.appendChild(ping);
+      ping.addEventListener("animationend", () => ping.remove());
+    });
+  });
+}
 
 // ── Context Menu ──
 const CONDITIONS = ["blinded","charmed","deafened","exhaustion","frightened","grappled","incapacitated","invisible","paralyzed","petrified","poisoned","prone","restrained","stunned","unconscious"];
@@ -1845,35 +1910,48 @@ async function prevTurn() {
 // ══════════════════════════════════════
 // ZOOM / PAN
 // ══════════════════════════════════════
-function setZoom(z) {
-  zoom=Math.max(.1,Math.min(4,z));
-  $("zoomLbl").textContent=Math.round(zoom*100)+"%";
+function setZoom(z, cursorX, cursorY) {
+  const prevZoom = zoom;
+  zoom = Math.max(.1, Math.min(4, z));
+  $("zoomLbl").textContent = Math.round(zoom*100)+"%";
+
+  // Zoom toward cursor position
+  if (cursorX !== undefined && S.mapAsset) {
+    const scaleChange = zoom / prevZoom;
+    const rect = wrap.getBoundingClientRect();
+    const mouseX = cursorX - rect.left;
+    const mouseY = cursorY - rect.top;
+    wrap.scrollLeft = (wrap.scrollLeft + mouseX) * scaleChange - mouseX;
+    wrap.scrollTop  = (wrap.scrollTop  + mouseY) * scaleChange - mouseY;
+  }
+
   applyZoom();
 }
 
 function applyZoom() {
-  stage.style.transform=`scale(${zoom})`;
-  stage.style.transformOrigin="top left";
-  if(S.mapAsset){
-    const w=S.mapAsset.image_w*zoom, h=S.mapAsset.image_h*zoom;
-    // Set scroll container size so scrolling works correctly
-    wrap.style.minWidth = w+"px";
-    wrap.style.minHeight = h+"px";
-    // Use a spacer approach
-    stage.parentElement && (stage.parentElement.style.width=w+"px") && (stage.parentElement.style.height=h+"px");
+  stage.style.transform = `scale(${zoom})`;
+  stage.style.transformOrigin = "top left";
+  if (S.mapAsset) {
+    const w = S.mapAsset.image_w * zoom;
+    const h = S.mapAsset.image_h * zoom;
+    wrap.style.width  = w + "px";
+    wrap.style.height = h + "px";
   }
 }
 
 function fitScreen() {
-  if(!S.mapAsset) return;
-  setZoom(Math.min((wrap.clientWidth-40)/S.mapAsset.image_w,(wrap.clientHeight-40)/S.mapAsset.image_h,1));
-  wrap.scrollTop=0; wrap.scrollLeft=0;
+  if (!S.mapAsset) return;
+  setZoom(Math.min((wrap.clientWidth-40)/S.mapAsset.image_w, (wrap.clientHeight-40)/S.mapAsset.image_h, 1));
+  wrap.scrollTop = 0; wrap.scrollLeft = 0;
 }
 
-$("zoomIn").onclick  = ()=>setZoom(zoom*1.25);
-$("zoomOut").onclick = ()=>setZoom(zoom*.8);
+$("zoomIn").onclick  = () => setZoom(zoom*1.25);
+$("zoomOut").onclick = () => setZoom(zoom*.8);
 $("zoomFit").onclick = fitScreen;
-wrap.addEventListener("wheel",e=>{e.preventDefault();setZoom(zoom*(e.deltaY>0?.9:1.1));},{passive:false});
+wrap.addEventListener("wheel", e => {
+  e.preventDefault();
+  setZoom(zoom * (e.deltaY > 0 ? .9 : 1.1), e.clientX, e.clientY);
+}, {passive:false});
 wrap.addEventListener("mousedown",e=>{
   if(e.button===1){
     e.preventDefault(); isPanning=true;
@@ -1892,7 +1970,7 @@ window.addEventListener("mouseup",e=>{if(e.button===1){isPanning=false;wrap.styl
 // MIC DETECTION
 // ══════════════════════════════════════
 let micInterval=null, isSpeaking=false, speakTimer=null;
-const THRESHOLD=18, DEBOUNCE=180;
+const THRESHOLD=18, DEBOUNCE=80; // tightened from 180ms
 
 async function initMic() {
   try {
@@ -1969,14 +2047,39 @@ function parseRoll(expr){
   const results=Array.from({length:cnt},()=>rollDie(sides));
   return{results,total:results.reduce((s,v)=>s+v,0)+mod,expr};
 }
+function animateDie(sides, finalResult, callback) {
+  const log = $("rollLog");
+  const div = document.createElement("div");
+  div.className = "roll-entry";
+  div.style.opacity = "0.7";
+  div.innerHTML = `<div class="roll-top"><span class="roll-who">${S.playerName}</span><span class="roll-total" id="dieAnimVal">...</span></div><div class="roll-expr">rolling d${sides}...</div>`;
+  log.insertBefore(div, log.firstChild);
+
+  const valEl = div.querySelector("#dieAnimVal");
+  let ticks = 0;
+  const maxTicks = 10;
+  const interval = setInterval(() => {
+    ticks++;
+    valEl.textContent = Math.floor(Math.random() * sides) + 1;
+    if (ticks >= maxTicks) {
+      clearInterval(interval);
+      div.remove();
+      callback();
+    }
+  }, 60);
+}
+
 async function logRoll(expr,res){
   const camp=activeCampaign||S.campaign; if(!camp) return;
   await push(ref(db,`sessions/${camp}/dice_log`),{roller:S.playerName||"?",expression:expr,results:res.results,total:res.total,timestamp:Date.now()});
 }
 document.querySelectorAll(".die-btn").forEach(btn=>{
   btn.onclick=async()=>{
-    const d=btn.dataset.d; const expr=d==="100"?"d%":`d${d}`;
-    const res=parseRoll(`d${d}`); if(res) await logRoll(expr,res);
+    const d=parseInt(btn.dataset.d);
+    const expr=d===100?"d%":`d${d}`;
+    const res=parseRoll(`d${d}`);
+    if(!res) return;
+    animateDie(d===100?100:d, res.total, ()=>logRoll(expr,res));
   };
 });
 $("custRoll").onclick=async()=>{
