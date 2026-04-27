@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -8,556 +7,552 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
 
-```
-:root {
-  --bg: #080d18;
-  --bg2: #0d1525;
-  --panel: #111827;
-  --panel2: #0b1220;
-  --line: #1e2d45;
-  --line2: #374151;
-  --text: #e2e8f0;
-  --muted: #64748b;
-  --muted2: #94a3b8;
-  --accent: #3b82f6;
-  --accent2: #60a5fa;
-  --accent3: #93c5fd;
-  --good: #10b981;
-  --warn: #f59e0b;
-  --bad: #ef4444;
-  --grid-color: rgba(96, 165, 250, 0.55);
-  --grid-color-hover: rgba(251, 191, 36, 0.7);
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: 'Syne', Arial, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* ── HEADER ── */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(8,13,24,0.95);
-  backdrop-filter: blur(10px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.header-left h1 {
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text);
-}
-
-.header-left p {
-  font-size: 0.8rem;
-  color: var(--muted);
-  font-family: 'JetBrains Mono', monospace;
-  margin-top: 2px;
-}
-
-.status-pill {
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--line2);
-  background: rgba(255,255,255,0.03);
-  font-size: 0.82rem;
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--text);
-  transition: all 0.2s;
-  max-width: 360px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── MAIN LAYOUT ── */
-.app {
-  display: grid;
-  grid-template-columns: 340px 1fr;
-  grid-template-rows: 1fr;
-  height: calc(100vh - 57px);
-}
-
-/* ── SIDEBAR ── */
-.sidebar {
-  border-right: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: var(--bg2);
-}
-
-.sidebar-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--line);
-  flex-shrink: 0;
-}
-
-.sidebar-tab {
-  flex: 1;
-  padding: 10px 8px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  text-align: center;
-  cursor: pointer;
-  color: var(--muted);
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
-  background: none;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  font-family: 'Syne', Arial, sans-serif;
-}
-
-.sidebar-tab.active {
-  color: var(--accent2);
-  border-bottom-color: var(--accent);
-  background: rgba(59,130,246,0.06);
-}
-
-.sidebar-tab:hover:not(.active) {
-  color: var(--text);
-  background: rgba(255,255,255,0.03);
-}
-
-.sidebar-panel {
-  display: none;
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.sidebar-panel.active {
-  display: flex;
-}
-
-/* ── FORM ELEMENTS ── */
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.field label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--muted2);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.field input,
-.field textarea,
-.field select {
-  background: var(--panel2);
-  color: var(--text);
-  border: 1px solid var(--line2);
-  border-radius: 8px;
-  padding: 9px 11px;
-  font-size: 0.88rem;
-  font-family: 'JetBrains Mono', monospace;
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-  width: 100%;
-}
-
-.field input:focus,
-.field textarea:focus,
-.field select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(59,130,246,0.18);
-}
-
-.field textarea {
-  resize: vertical;
-  min-height: 70px;
-}
-
-.field select option {
-  background: var(--panel);
-}
-
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-/* ── SLIDER ── */
-.slider-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.slider-row input[type="range"] {
-  flex: 1;
-  -webkit-appearance: none;
-  background: var(--line2);
-  height: 4px;
-  border-radius: 999px;
-  outline: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-.slider-row input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--accent2);
-  cursor: pointer;
-  box-shadow: 0 0 6px rgba(96,165,250,0.5);
-}
-
-.slider-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.82rem;
-  color: var(--accent2);
-  min-width: 38px;
-  text-align: right;
-}
-
-/* ── BUTTONS ── */
-.btn {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 700;
-  font-size: 0.85rem;
-  font-family: 'Syne', Arial, sans-serif;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.btn-primary {
-  background: var(--accent);
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background: var(--accent2);
-  transform: translateY(-1px);
-}
-
-.btn-secondary {
-  background: rgba(255,255,255,0.07);
-  color: var(--text);
-  border: 1px solid var(--line2);
-}
-
-.btn-secondary:hover {
-  background: rgba(255,255,255,0.12);
-}
-
-.btn-danger {
-  background: rgba(239,68,68,0.12);
-  color: #fca5a5;
-  border: 1px solid rgba(239,68,68,0.3);
-}
-
-.btn-danger:hover {
-  background: rgba(239,68,68,0.22);
-}
-
-.btn-full { width: 100%; }
-
-.btn-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* ── DIVIDER ── */
-.divider {
-  border: none;
-  border-top: 1px solid var(--line);
-  margin: 2px 0;
-}
-
-/* ── SECTION LABEL ── */
-.section-label {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--line);
-}
-
-/* ── CALIBRATION STATS ── */
-.cal-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
-
-.cal-stat {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.cal-stat-label {
-  font-size: 0.68rem;
-  color: var(--muted);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.cal-stat-val {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--accent2);
-  margin-top: 2px;
-}
-
-/* ── HINT ── */
-.hint {
-  font-size: 0.75rem;
-  color: var(--muted);
-  line-height: 1.5;
-  font-family: 'JetBrains Mono', monospace;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
-}
-
-.hint strong {
-  color: var(--accent3);
-}
-
-/* ── MAP LIST ── */
-.map-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.map-item {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 11px 12px;
-  background: rgba(255,255,255,0.02);
-  cursor: pointer;
-  transition: all 0.15s;
-  position: relative;
-}
-
-.map-item:hover {
-  border-color: var(--accent);
-  background: rgba(59,130,246,0.06);
-}
-
-.map-item.loaded {
-  border-color: var(--accent);
-  background: rgba(59,130,246,0.08);
-}
-
-.map-item-name {
-  font-weight: 700;
-  font-size: 0.92rem;
-  margin-bottom: 3px;
-}
-
-.map-item-id {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.72rem;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-
-.chip-row {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.chip {
-  font-size: 0.7rem;
-  padding: 3px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--line2);
-  background: rgba(255,255,255,0.04);
-  font-family: 'JetBrains Mono', monospace;
-  color: var(--muted2);
-}
-
-.chip.good {
-  border-color: rgba(16,185,129,0.3);
-  color: #6ee7b7;
-  background: rgba(16,185,129,0.08);
-}
-
-.empty-state {
-  text-align: center;
-  color: var(--muted);
-  font-size: 0.85rem;
-  padding: 24px 0;
-}
-
-/* ── CANVAS AREA ── */
-.canvas-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background: #050a12;
-  position: relative;
-}
-
-.canvas-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--line);
-  background: rgba(8,13,24,0.9);
-  flex-shrink: 0;
-  flex-wrap: wrap;
-}
-
-.canvas-toolbar-label {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.canvas-wrap {
-  flex: 1;
-  overflow: auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  position: relative;
-  cursor: crosshair;
-}
-
-.canvas-wrap.tab-edit    { cursor: default; }
-.canvas-wrap.tab-fog     { cursor: cell; }
-.canvas-wrap.tab-interiors { cursor: crosshair; }
-.canvas-wrap.tab-assets  { cursor: default; }
-.canvas-wrap.panning     { cursor: grabbing !important; }
-
-#mainCanvas {
-  display: block;
-  image-rendering: pixelated;
-}
-
-.canvas-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--muted);
-}
-
-.canvas-placeholder svg {
-  opacity: 0.2;
-}
-
-.canvas-placeholder p {
-  font-size: 0.9rem;
-}
-
-/* ── ZOOM ── */
-.zoom-controls {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  display: flex;
-  gap: 6px;
-  z-index: 10;
-}
-
-.zoom-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--line2);
-  background: rgba(8,13,24,0.9);
-  color: var(--text);
-  font-size: 1.1rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-  font-family: 'Syne', Arial, sans-serif;
-}
-
-.zoom-btn:hover {
-  background: var(--panel);
-  border-color: var(--accent);
-}
-
-.zoom-label {
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--line2);
-  background: rgba(8,13,24,0.9);
-  color: var(--accent2);
-  font-size: 0.78rem;
-  font-family: 'JetBrains Mono', monospace;
-  display: flex;
-  align-items: center;
-}
-
-.fog-brush-btn.active {
-  background: rgba(59,130,246,0.15);
-  border-color: var(--accent);
-  color: var(--accent2);
-}
-
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-
-@media (max-width: 900px) {
-  .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .sidebar { max-height: 380px; }
-}
-```
-
+    :root {
+      --bg: #080d18;
+      --bg2: #0d1525;
+      --panel: #111827;
+      --panel2: #0b1220;
+      --line: #1e2d45;
+      --line2: #374151;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --muted2: #94a3b8;
+      --accent: #3b82f6;
+      --accent2: #60a5fa;
+      --accent3: #93c5fd;
+      --good: #10b981;
+      --warn: #f59e0b;
+      --bad: #ef4444;
+      --grid-color: rgba(96, 165, 250, 0.55);
+      --grid-color-hover: rgba(251, 191, 36, 0.7);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8,13,24,0.95);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .header-left h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .header-left p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .status-pill {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line2);
+      background: rgba(255,255,255,0.03);
+      font-size: 0.82rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text);
+      transition: all 0.2s;
+      max-width: 360px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .app {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      grid-template-rows: 1fr;
+      height: calc(100vh - 57px);
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg2);
+    }
+
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+
+    .sidebar-tab {
+      flex: 1;
+      padding: 10px 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+      font-family: 'Syne', Arial, sans-serif;
+    }
+
+    .sidebar-tab.active {
+      color: var(--accent2);
+      border-bottom-color: var(--accent);
+      background: rgba(59,130,246,0.06);
+    }
+
+    .sidebar-tab:hover:not(.active) {
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .sidebar-panel {
+      display: none;
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-panel.active {
+      display: flex;
+    }
+
+    /* ── FORM ELEMENTS ── */
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted2);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--line2);
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 0.88rem;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      width: 100%;
+    }
+
+    .field input:focus,
+    .field textarea:focus,
+    .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(59,130,246,0.18);
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    .field select option {
+      background: var(--panel);
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* ── SLIDER ── */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slider-row input[type="range"] {
+      flex: 1;
+      -webkit-appearance: none;
+      background: var(--line2);
+      height: 4px;
+      border-radius: 999px;
+      outline: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .slider-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent2);
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(96,165,250,0.5);
+    }
+
+    .slider-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--accent2);
+      min-width: 38px;
+      text-align: right;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.85rem;
+      font-family: 'Syne', Arial, sans-serif;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent2);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.07);
+      color: var(--text);
+      border: 1px solid var(--line2);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    .btn-danger {
+      background: rgba(239,68,68,0.12);
+      color: #fca5a5;
+      border: 1px solid rgba(239,68,68,0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239,68,68,0.22);
+    }
+
+    .btn-full { width: 100%; }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 2px 0;
+    }
+
+    /* ── SECTION LABEL ── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    /* ── CALIBRATION STATS ── */
+    .cal-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .cal-stat {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .cal-stat-label {
+      font-size: 0.68rem;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .cal-stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-top: 2px;
+    }
+
+    /* ── HINT ── */
+    .hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.5;
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .hint strong {
+      color: var(--accent3);
+    }
+
+    /* ── MAP LIST ── */
+    .map-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .map-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 11px 12px;
+      background: rgba(255,255,255,0.02);
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+    }
+
+    .map-item:hover {
+      border-color: var(--accent);
+      background: rgba(59,130,246,0.06);
+    }
+
+    .map-item.loaded {
+      border-color: var(--accent);
+      background: rgba(59,130,246,0.08);
+    }
+
+    .map-item-name {
+      font-weight: 700;
+      font-size: 0.92rem;
+      margin-bottom: 3px;
+    }
+
+    .map-item-id {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .chip-row {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .chip {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line2);
+      background: rgba(255,255,255,0.04);
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--muted2);
+    }
+
+    .chip.good {
+      border-color: rgba(16,185,129,0.3);
+      color: #6ee7b7;
+      background: rgba(16,185,129,0.08);
+    }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 24px 0;
+    }
+
+    /* ── CANVAS AREA ── */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #050a12;
+      position: relative;
+    }
+
+    .canvas-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8,13,24,0.9);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+
+    .canvas-toolbar-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .canvas-wrap {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      position: relative;
+      cursor: crosshair;
+    }
+
+    .canvas-wrap.tab-edit    { cursor: default; }
+    .canvas-wrap.tab-fog     { cursor: cell; }
+    .canvas-wrap.tab-interiors { cursor: crosshair; }
+    .canvas-wrap.tab-assets  { cursor: default; }
+    .canvas-wrap.panning     { cursor: grabbing !important; }
+
+    #mainCanvas {
+      display: block;
+      image-rendering: pixelated;
+    }
+
+    .canvas-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+    }
+
+    .canvas-placeholder svg {
+      opacity: 0.2;
+    }
+
+    .canvas-placeholder p {
+      font-size: 0.9rem;
+    }
+
+    /* ── ZOOM ── */
+    .zoom-controls {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    .zoom-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--line2);
+      background: rgba(8,13,24,0.9);
+      color: var(--text);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      font-family: 'Syne', Arial, sans-serif;
+    }
+
+    .zoom-btn:hover {
+      background: var(--panel);
+      border-color: var(--accent);
+    }
+
+    .zoom-label {
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line2);
+      background: rgba(8,13,24,0.9);
+      color: var(--accent2);
+      font-size: 0.78rem;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      align-items: center;
+    }
+
+    .fog-brush-btn.active {
+      background: rgba(59,130,246,0.15);
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .sidebar { max-height: 380px; }
+    }
   </style>
 </head>
 <body>
 
 <!-- HEADER -->
-
 <div class="header">
   <div class="header-left">
     <h1>Map Setup</h1>
@@ -567,11 +562,9 @@ body {
 </div>
 
 <!-- APP -->
-
 <div class="app">
 
   <!-- SIDEBAR -->
-
   <div class="sidebar">
     <div class="sidebar-tabs">
       <button class="sidebar-tab active" data-tab="edit">Edit Map</button>
@@ -581,233 +574,229 @@ body {
       <button class="sidebar-tab" data-tab="assets">Assets</button>
     </div>
 
-```
-<!-- EDIT TAB -->
-<div class="sidebar-panel active" id="tab-edit">
-  <div class="field">
-    <label>Map ID (unique key)</label>
-    <input id="mapId" type="text" placeholder="forest_road" />
-  </div>
+    <!-- EDIT TAB -->
+    <div class="sidebar-panel active" id="tab-edit">
+      <div class="field">
+        <label>Map ID (unique key)</label>
+        <input id="mapId" type="text" placeholder="forest_road" />
+      </div>
 
-  <div class="field">
-    <label>Display Name</label>
-    <input id="mapName" type="text" placeholder="Forest Road" />
-  </div>
+      <div class="field">
+        <label>Display Name</label>
+        <input id="mapName" type="text" placeholder="Forest Road" />
+      </div>
 
-  <div class="field">
-    <label>Image URL (with roofs / exterior)</label>
-    <input id="imageUrl" type="text" placeholder="https://..." />
-  </div>
+      <div class="field">
+        <label>Image URL (with roofs / exterior)</label>
+        <input id="imageUrl" type="text" placeholder="https://..." />
+      </div>
 
-  <div class="field">
-    <label>Interior URL (without roofs)</label>
-    <input id="interiorUrl" type="text" placeholder="https://... (optional)" />
-  </div>
+      <div class="field">
+        <label>Interior URL (without roofs)</label>
+        <input id="interiorUrl" type="text" placeholder="https://... (optional)" />
+      </div>
 
-  <div class="btn-row">
-    <button class="btn btn-secondary" id="previewBtn" style="flex:1">Preview</button>
-    <button class="btn btn-secondary" id="autocalBtn" style="flex:1">Auto-detect</button>
-  </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="previewBtn" style="flex:1">Preview</button>
+        <button class="btn btn-secondary" id="autocalBtn" style="flex:1">Auto-detect</button>
+      </div>
 
-  <hr class="divider" />
+      <hr class="divider" />
 
-  <div class="field-row">
-    <div class="field">
-      <label>Map Type</label>
-      <select id="mapType">
-        <option value="">— Select —</option>
-        <option value="battle">Battle</option>
-        <option value="dungeon">Dungeon</option>
-        <option value="town">Town</option>
-        <option value="wilderness">Wilderness</option>
-        <option value="interior">Interior</option>
-        <option value="other">Other</option>
-      </select>
+      <div class="field-row">
+        <div class="field">
+          <label>Map Type</label>
+          <select id="mapType">
+            <option value="">— Select —</option>
+            <option value="battle">Battle</option>
+            <option value="dungeon">Dungeon</option>
+            <option value="town">Town</option>
+            <option value="wilderness">Wilderness</option>
+            <option value="interior">Interior</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Scale (ft/sq)</label>
+          <input id="mapScale" type="number" value="5" min="1" step="1" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Notes</label>
+        <textarea id="notes" placeholder="Ambush road, daytime, ~30×20..."></textarea>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="saveBtn" style="flex:1">Save to RTDB</button>
+        <button class="btn btn-secondary" id="newBtn">New</button>
+      </div>
+
+      <button class="btn btn-danger btn-full" id="deleteBtn">Delete This Map Asset</button>
+
+      <div class="hint">
+        Saves to <strong>/map_assets/{id}</strong><br>
+        VTT reads grid, offset, and image from here.
+      </div>
     </div>
-    <div class="field">
-      <label>Scale (ft/sq)</label>
-      <input id="mapScale" type="number" value="5" min="1" step="1" />
+
+    <!-- CALIBRATE TAB -->
+    <div class="sidebar-panel" id="tab-calibrate">
+      <div class="section-label">Grid Size</div>
+      <div class="field">
+        <label>Cell Size (px)</label>
+        <div class="slider-row">
+          <input type="range" id="gridSizeSlider" min="10" max="200" value="70" step="1" />
+          <span class="slider-val" id="gridSizeVal">70</span>
+        </div>
+      </div>
+
+      <div class="section-label">Grid Offset</div>
+      <div class="field">
+        <label>Offset X (px)</label>
+        <div class="slider-row">
+          <input type="range" id="offsetXSlider" min="-200" max="200" value="0" step="1" />
+          <span class="slider-val" id="offsetXVal">0</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Offset Y (px)</label>
+        <div class="slider-row">
+          <input type="range" id="offsetYSlider" min="-200" max="200" value="0" step="1" />
+          <span class="slider-val" id="offsetYVal">0</span>
+        </div>
+      </div>
+
+      <div class="section-label">Computed</div>
+      <div class="cal-stats">
+        <div class="cal-stat">
+          <div class="cal-stat-label">Columns</div>
+          <div class="cal-stat-val" id="statCols">—</div>
+        </div>
+        <div class="cal-stat">
+          <div class="cal-stat-label">Rows</div>
+          <div class="cal-stat-val" id="statRows">—</div>
+        </div>
+        <div class="cal-stat">
+          <div class="cal-stat-label">Img W</div>
+          <div class="cal-stat-val" id="statImgW">—</div>
+        </div>
+        <div class="cal-stat">
+          <div class="cal-stat-label">Img H</div>
+          <div class="cal-stat-val" id="statImgH">—</div>
+        </div>
+      </div>
+
+      <div class="hint">
+        <strong>Drag</strong> on canvas to shift grid offset.<br>
+        Use sliders to fine-tune cell size.<br>
+        Align blue lines to map grid lines.<br>
+        Hit <strong>Save to RTDB</strong> when done.
+      </div>
+
+      <button class="btn btn-secondary btn-full" id="resetCalBtn">Reset Calibration</button>
     </div>
-  </div>
 
-  <div class="field">
-    <label>Notes</label>
-    <textarea id="notes" placeholder="Ambush road, daytime, ~30×20..."></textarea>
-  </div>
+    <!-- FOG TAB -->
+    <div class="sidebar-panel" id="tab-fog">
+      <div class="hint" id="fogWarning" style="border-color:rgba(245,158,11,0.4);color:var(--warn);display:none;">
+        ⚠ Calibrate grid first — fog painting requires a valid grid.
+      </div>
 
-  <div class="btn-row">
-    <button class="btn btn-primary" id="saveBtn" style="flex:1">Save to RTDB</button>
-    <button class="btn btn-secondary" id="newBtn">New</button>
-  </div>
+      <div class="section-label">Brush Mode</div>
+      <div class="btn-row">
+        <button class="btn btn-secondary fog-brush-btn active" data-brush="dark" id="brushDark" style="flex:1">🌑 Dark</button>
+        <button class="btn btn-secondary fog-brush-btn" data-brush="magic" id="brushMagic" style="flex:1">🟣 Magical</button>
+        <button class="btn btn-secondary fog-brush-btn" data-brush="erase" id="brushErase" style="flex:1">✦ Erase</button>
+      </div>
 
-  <button class="btn btn-danger btn-full" id="deleteBtn">Delete This Map Asset</button>
+      <div class="section-label">Brush Size</div>
+      <div class="field">
+        <label>Radius (cells)</label>
+        <div class="slider-row">
+          <input type="range" id="brushSizeSlider" min="1" max="5" value="1" step="1" />
+          <span class="slider-val" id="brushSizeVal">1</span>
+        </div>
+      </div>
 
-  <div class="hint">
-    Saves to <strong>/map_assets/{id}</strong><br>
-    VTT reads grid, offset, and image from here.
-  </div>
-</div>
+      <div class="section-label">Fill Operations</div>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-full" id="fogFillDark">🌑 Fill All — Darkness</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-full" id="fogFillMagic">🟣 Fill All — Magical</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-danger btn-full" id="fogClear">Clear All Fog</button>
+      </div>
 
-<!-- CALIBRATE TAB -->
-<div class="sidebar-panel" id="tab-calibrate">
-  <div class="section-label">Grid Size</div>
-  <div class="field">
-    <label>Cell Size (px)</label>
-    <div class="slider-row">
-      <input type="range" id="gridSizeSlider" min="10" max="200" value="70" step="1" />
-      <span class="slider-val" id="gridSizeVal">70</span>
+      <div class="section-label">Stats</div>
+      <div class="cal-stats">
+        <div class="cal-stat">
+          <div class="cal-stat-label">🌑 Dark</div>
+          <div class="cal-stat-val" id="fogDarkCount">0</div>
+        </div>
+        <div class="cal-stat">
+          <div class="cal-stat-label">🟣 Magical</div>
+          <div class="cal-stat-val" id="fogMagicCount">0</div>
+        </div>
+        <div class="cal-stat">
+          <div class="cal-stat-label">Clear</div>
+          <div class="cal-stat-val" id="fogRevealedCount">0</div>
+        </div>
+        <div class="cal-stat">
+          <div class="cal-stat-label">Total</div>
+          <div class="cal-stat-val" id="fogTotalCount">0</div>
+        </div>
+      </div>
+
+      <div class="hint">
+        Switch to <strong>Fog</strong> mode on the canvas toolbar.<br>
+        <strong>Hide</strong>: paint fog over cells.<br>
+        <strong>Reveal</strong>: erase fog from cells.<br>
+        Fog saves when you click <strong>Save to RTDB</strong> on the Edit tab.
+      </div>
     </div>
-  </div>
 
-  <div class="section-label">Grid Offset</div>
-  <div class="field">
-    <label>Offset X (px)</label>
-    <div class="slider-row">
-      <input type="range" id="offsetXSlider" min="-200" max="200" value="0" step="1" />
-      <span class="slider-val" id="offsetXVal">0</span>
+    <!-- INTERIORS TAB -->
+    <div class="sidebar-panel" id="tab-interiors">
+      <div class="hint">
+        Switch to <strong>Interiors</strong> tab, then <strong>drag rectangles</strong> over building interiors.<br>
+        When a token enters a rectangle, that player sees the <strong>interior map</strong> instead of the roof.<br>
+        Requires Interior URL to be set in Edit tab.
+      </div>
+
+      <div class="section-label">Rectangles</div>
+      <div class="cal-stats">
+        <div class="cal-stat">
+          <div class="cal-stat-label">Drawn</div>
+          <div class="cal-stat-val" id="interiorCount">0</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-danger btn-full" id="clearInteriorsBtn">Clear All Rectangles</button>
+      </div>
+
+      <div class="hint" style="margin-top:4px;">
+        <strong>Left-click drag</strong> to draw a rectangle.<br>
+        <strong>Right-click</strong> a rectangle to remove it.<br>
+        Saves with the map asset.
+      </div>
     </div>
-  </div>
-  <div class="field">
-    <label>Offset Y (px)</label>
-    <div class="slider-row">
-      <input type="range" id="offsetYSlider" min="-200" max="200" value="0" step="1" />
-      <span class="slider-val" id="offsetYVal">0</span>
+
+    <!-- ASSETS TAB -->
+    <div class="sidebar-panel" id="tab-assets">
+      <div class="btn-row">
+        <button class="btn btn-primary btn-full" id="refreshBtn">Refresh Assets</button>
+      </div>
+      <div id="mapList" class="map-list">
+        <div class="empty-state">Click Refresh Assets to load.</div>
+      </div>
     </div>
-  </div>
-
-  <div class="section-label">Computed</div>
-  <div class="cal-stats">
-    <div class="cal-stat">
-      <div class="cal-stat-label">Columns</div>
-      <div class="cal-stat-val" id="statCols">—</div>
-    </div>
-    <div class="cal-stat">
-      <div class="cal-stat-label">Rows</div>
-      <div class="cal-stat-val" id="statRows">—</div>
-    </div>
-    <div class="cal-stat">
-      <div class="cal-stat-label">Img W</div>
-      <div class="cal-stat-val" id="statImgW">—</div>
-    </div>
-    <div class="cal-stat">
-      <div class="cal-stat-label">Img H</div>
-      <div class="cal-stat-val" id="statImgH">—</div>
-    </div>
-  </div>
-
-  <div class="hint">
-    <strong>Drag</strong> on canvas to shift grid offset.<br>
-    Use sliders to fine-tune cell size.<br>
-    Align blue lines to map grid lines.<br>
-    Hit <strong>Save to RTDB</strong> when done.
-  </div>
-
-  <button class="btn btn-secondary btn-full" id="resetCalBtn">Reset Calibration</button>
-</div>
-
-<!-- FOG TAB -->
-<div class="sidebar-panel" id="tab-fog">
-  <div class="hint" id="fogWarning" style="border-color:rgba(245,158,11,0.4);color:var(--warn);display:none;">
-    ⚠ Calibrate grid first — fog painting requires a valid grid.
-  </div>
-
-  <div class="section-label">Brush Mode</div>
-  <div class="btn-row">
-    <button class="btn btn-secondary fog-brush-btn active" data-brush="dark" id="brushDark" style="flex:1">🌑 Dark</button>
-    <button class="btn btn-secondary fog-brush-btn" data-brush="magic" id="brushMagic" style="flex:1">🟣 Magical</button>
-    <button class="btn btn-secondary fog-brush-btn" data-brush="erase" id="brushErase" style="flex:1">✦ Erase</button>
-  </div>
-
-  <div class="section-label">Brush Size</div>
-  <div class="field">
-    <label>Radius (cells)</label>
-    <div class="slider-row">
-      <input type="range" id="brushSizeSlider" min="1" max="5" value="1" step="1" />
-      <span class="slider-val" id="brushSizeVal">1</span>
-    </div>
-  </div>
-
-  <div class="section-label">Fill Operations</div>
-  <div class="btn-row">
-    <button class="btn btn-secondary btn-full" id="fogFillDark">🌑 Fill All — Darkness</button>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-secondary btn-full" id="fogFillMagic">🟣 Fill All — Magical</button>
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-danger btn-full" id="fogClear">Clear All Fog</button>
-  </div>
-
-  <div class="section-label">Stats</div>
-  <div class="cal-stats">
-    <div class="cal-stat">
-      <div class="cal-stat-label">🌑 Dark</div>
-      <div class="cal-stat-val" id="fogDarkCount">0</div>
-    </div>
-    <div class="cal-stat">
-      <div class="cal-stat-label">🟣 Magical</div>
-      <div class="cal-stat-val" id="fogMagicCount">0</div>
-    </div>
-    <div class="cal-stat">
-      <div class="cal-stat-label">Clear</div>
-      <div class="cal-stat-val" id="fogRevealedCount">0</div>
-    </div>
-    <div class="cal-stat">
-      <div class="cal-stat-label">Total</div>
-      <div class="cal-stat-val" id="fogTotalCount">0</div>
-    </div>
-  </div>
-
-  <div class="hint">
-    Switch to <strong>Fog</strong> mode on the canvas toolbar.<br>
-    <strong>Hide</strong>: paint fog over cells.<br>
-    <strong>Reveal</strong>: erase fog from cells.<br>
-    Fog saves when you click <strong>Save to RTDB</strong> on the Edit tab.
-  </div>
-</div>
-
-<!-- INTERIORS TAB -->
-<div class="sidebar-panel" id="tab-interiors">
-  <div class="hint">
-    Switch to <strong>Interiors</strong> tab, then <strong>drag rectangles</strong> over building interiors.<br>
-    When a token enters a rectangle, that player sees the <strong>interior map</strong> instead of the roof.<br>
-    Requires Interior URL to be set in Edit tab.
-  </div>
-
-  <div class="section-label">Rectangles</div>
-  <div class="cal-stats">
-    <div class="cal-stat">
-      <div class="cal-stat-label">Drawn</div>
-      <div class="cal-stat-val" id="interiorCount">0</div>
-    </div>
-  </div>
-
-  <div class="btn-row">
-    <button class="btn btn-danger btn-full" id="clearInteriorsBtn">Clear All Rectangles</button>
-  </div>
-
-  <div class="hint" style="margin-top:4px;">
-    <strong>Left-click drag</strong> to draw a rectangle.<br>
-    <strong>Right-click</strong> a rectangle to remove it.<br>
-    Saves with the map asset.
-  </div>
-</div>
-
-<!-- ASSETS TAB -->
-<div class="sidebar-panel" id="tab-assets">
-  <div class="btn-row">
-    <button class="btn btn-primary btn-full" id="refreshBtn">Refresh Assets</button>
-  </div>
-  <div id="mapList" class="map-list">
-    <div class="empty-state">Click Refresh Assets to load.</div>
-  </div>
-</div>
-```
-
   </div>
 
   <!-- CANVAS AREA -->
-
   <div class="canvas-area">
     <div class="canvas-toolbar">
       <span class="canvas-toolbar-label" id="activeTabLabel">Edit</span>
@@ -815,26 +804,23 @@ body {
       <span class="canvas-toolbar-label" id="coordLabel" style="font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--muted2);">x: — y: —</span>
     </div>
 
-```
-<div class="canvas-wrap" id="canvasWrap">
-  <canvas id="mainCanvas"></canvas>
-  <div class="canvas-placeholder" id="canvasPlaceholder">
-    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
-    </svg>
-    <p>Paste an image URL and click <strong>Preview</strong></p>
-  </div>
-</div>
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="mainCanvas"></canvas>
+      <div class="canvas-placeholder" id="canvasPlaceholder">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+        </svg>
+        <p>Paste an image URL and click <strong>Preview</strong></p>
+      </div>
+    </div>
 
-<div class="zoom-controls">
-  <button class="zoom-btn" id="zoomOut">−</button>
-  <div class="zoom-label" id="zoomLabel">100%</div>
-  <button class="zoom-btn" id="zoomIn">+</button>
-  <button class="zoom-btn" id="zoomFit" title="Fit to screen">⊡</button>
-</div>
-```
-
+    <div class="zoom-controls">
+      <button class="zoom-btn" id="zoomOut">−</button>
+      <div class="zoom-label" id="zoomLabel">100%</div>
+      <button class="zoom-btn" id="zoomIn">+</button>
+      <button class="zoom-btn" id="zoomFit" title="Fit to screen">⊡</button>
+    </div>
   </div>
 </div>
 
@@ -1173,6 +1159,8 @@ body {
     updateInteriorCount();
     redraw();
   });
+
+  function updateFogStats() {
     const totalCells = Math.floor(imgNaturalW / gridSize) * Math.floor(imgNaturalH / gridSize);
     const vals = Object.values(fogCells);
     const darkCount  = vals.filter(v => v === "dark").length;
@@ -1593,6 +1581,5 @@ body {
   setStatus("Ready. Paste a map URL and click Preview.", "info");
   refreshAssets();
 </script>
-
 </body>
 </html>

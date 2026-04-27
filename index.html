@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -9,100 +8,100 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
 
 :root {
-–bg:#05080f; –bg2:#080d18; –panel:#0c1220; –line:#182030; –line2:#1e2d45;
-–text:#dde6f5; –muted:#3d5070; –muted2:#6a80a0;
-–accent:#4a7fe8; –accent2:#6b9ef5;
-–gold:#c8993a; –gold2:#e8bb5a;
-–good:#0fa372;
-–header-h:48px;
+  --bg:#05080f; --bg2:#080d18; --panel:#0c1220; --line:#182030; --line2:#1e2d45;
+  --text:#dde6f5; --muted:#3d5070; --muted2:#6a80a0;
+  --accent:#4a7fe8; --accent2:#6b9ef5;
+  --gold:#c8993a; --gold2:#e8bb5a;
+  --good:#0fa372;
+  --header-h:48px;
 }
 
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;overflow:hidden;}
-body{font-family:‘Syne’,sans-serif;background:var(–bg);color:var(–text);display:flex;flex-direction:column;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
 
 /* ── HEADER ── */
 .header{
-height:var(–header-h);background:var(–bg2);
-border-bottom:1px solid var(–line2);
-display:flex;align-items:stretch;flex-shrink:0;
-position:relative;
+  height:var(--header-h);background:var(--bg2);
+  border-bottom:1px solid var(--line2);
+  display:flex;align-items:stretch;flex-shrink:0;
+  position:relative;
 }
 
 /* Subtle gold line at bottom of header */
 .header::after{
-content:’’;position:absolute;bottom:0;left:0;right:0;height:1px;
-background:linear-gradient(90deg,transparent,rgba(200,153,58,.25),rgba(74,127,232,.2),transparent);
-pointer-events:none;
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(200,153,58,.25),rgba(74,127,232,.2),transparent);
+  pointer-events:none;
 }
 
 /* Brand */
 .brand{
-display:flex;align-items:center;gap:10px;
-padding:0 20px;border-right:1px solid var(–line2);flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+  padding:0 20px;border-right:1px solid var(--line2);flex-shrink:0;
 }
 
 .brand-mark{
-width:24px;height:24px;border:1px solid var(–gold);border-radius:5px;
-background:rgba(200,153,58,.08);display:flex;align-items:center;justify-content:center;
+  width:24px;height:24px;border:1px solid var(--gold);border-radius:5px;
+  background:rgba(200,153,58,.08);display:flex;align-items:center;justify-content:center;
 }
 
-.brand-mark svg{width:13px;height:13px;stroke:var(–gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.brand-mark svg{width:13px;height:13px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
 
-.brand-name{font-family:‘Cinzel’,serif;font-size:.88rem;font-weight:700;color:var(–gold2);letter-spacing:.08em;}
+.brand-name{font-family:'Cinzel',serif;font-size:.88rem;font-weight:700;color:var(--gold2);letter-spacing:.08em;}
 
 /* Tabs */
 .tabs{display:flex;align-items:stretch;flex:1;overflow:hidden;}
 
 .tab{
-display:flex;align-items:center;gap:8px;
-padding:0 22px;font-size:.78rem;font-weight:700;letter-spacing:.03em;
-color:var(–muted2);cursor:pointer;
-border-right:1px solid var(–line);border-bottom:2px solid transparent;
-transition:all .15s;white-space:nowrap;user-select:none;
+  display:flex;align-items:center;gap:8px;
+  padding:0 22px;font-size:.78rem;font-weight:700;letter-spacing:.03em;
+  color:var(--muted2);cursor:pointer;
+  border-right:1px solid var(--line);border-bottom:2px solid transparent;
+  transition:all .15s;white-space:nowrap;user-select:none;
 }
 
-.tab:hover{color:var(–text);background:rgba(255,255,255,.02);}
+.tab:hover{color:var(--text);background:rgba(255,255,255,.02);}
 
 .tab.active{
-color:var(–accent2);border-bottom-color:var(–accent);
-background:rgba(74,127,232,.05);
+  color:var(--accent2);border-bottom-color:var(--accent);
+  background:rgba(74,127,232,.05);
 }
 
 .tab.tab-vtt.active{
-color:var(–gold2);border-bottom-color:var(–gold);
-background:rgba(200,153,58,.05);
+  color:var(--gold2);border-bottom-color:var(--gold);
+  background:rgba(200,153,58,.05);
 }
 
 .tab svg{
-width:14px;height:14px;stroke:currentColor;fill:none;
-stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
-flex-shrink:0;opacity:.7;transition:opacity .15s;
+  width:14px;height:14px;stroke:currentColor;fill:none;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
+  flex-shrink:0;opacity:.7;transition:opacity .15s;
 }
 
 .tab.active svg{opacity:1;}
 
 /* Header right */
 .header-right{
-margin-left:auto;display:flex;align-items:center;gap:8px;
-padding:0 14px;border-left:1px solid var(–line2);flex-shrink:0;
+  margin-left:auto;display:flex;align-items:center;gap:8px;
+  padding:0 14px;border-left:1px solid var(--line2);flex-shrink:0;
 }
 
 .hbtn{
-border:1px solid var(–line2);background:rgba(255,255,255,.04);color:var(–muted2);
-border-radius:6px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;
-font-family:‘Syne’,sans-serif;transition:all .12s;white-space:nowrap;
+  border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--muted2);
+  border-radius:6px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;
+  font-family:'Syne',sans-serif;transition:all .12s;white-space:nowrap;
 }
 
-.hbtn:hover{color:var(–text);border-color:var(–accent);}
+.hbtn:hover{color:var(--text);border-color:var(--accent);}
 
-.hbtn.gold{border-color:rgba(200,153,58,.4);color:var(–gold2);background:rgba(200,153,58,.06);}
+.hbtn.gold{border-color:rgba(200,153,58,.4);color:var(--gold2);background:rgba(200,153,58,.06);}
 .hbtn.gold:hover{background:rgba(200,153,58,.12);}
 
 .status-dot{
-width:6px;height:6px;border-radius:50%;
-background:var(–good);box-shadow:0 0 5px var(–good);
-animation:blink 2.5s ease-in-out infinite;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--good);box-shadow:0 0 5px var(--good);
+  animation:blink 2.5s ease-in-out infinite;
 }
 
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
@@ -113,9 +112,8 @@ animation:blink 2.5s ease-in-out infinite;
 .panel{position:absolute;inset:0;display:none;}
 .panel.active{display:block;}
 
-.panel iframe{width:100%;height:100%;border:none;background:var(–bg);}
+.panel iframe{width:100%;height:100%;border:none;background:var(--bg);}
 </style>
-
 </head>
 <body>
 
@@ -129,7 +127,6 @@ animation:blink 2.5s ease-in-out infinite;
   </div>
 
   <!-- Tabs -->
-
   <div class="tabs">
     <div class="tab active" data-tab="character">
       <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -146,7 +143,6 @@ animation:blink 2.5s ease-in-out infinite;
   </div>
 
   <!-- Right controls -->
-
   <div class="header-right">
     <button class="hbtn" id="refreshBtn">↺ Refresh</button>
     <button class="hbtn" id="newTabBtn">⤢ New Tab</button>
@@ -200,6 +196,5 @@ animation:blink 2.5s ease-in-out infinite;
     window.open("vtt.html", "_blank", "noopener,noreferrer");
   });
 </script>
-
 </body>
 </html>
