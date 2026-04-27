@@ -118,50 +118,13 @@ body.is-gm .npc-panel.open,
 body.is-gm .scene-panel.open,
 body.is-gm #quickNpcMenu.open { display:block!important; }
 
-/* ── MAIN ── */
-.main-area{display:flex;flex:1;min-height:0;overflow:hidden;}
+/* ── APP LAYOUT ── */
+#vttApp{display:none;height:100vh;position:relative;}
+#vttApp.visible{display:block;}
 
-/* ── LEFT PANEL ── */
-.side-panel{
-  width:var(--panel-w);flex-shrink:0;background:var(--panel);
-  border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden;
-}
-.panel-hdr{
-  padding:9px 12px;border-bottom:1px solid var(--line);
-  font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);
-  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
-}
-.panel-body{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:5px;}
-
-/* PC card */
-.pc-card{border:1px solid var(--line2);border-radius:10px;padding:9px;background:rgba(255,255,255,.02);}
-.pc-card.active-turn{border-color:var(--gold);box-shadow:0 0 0 1px rgba(212,168,67,.15);}
-.card-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
-.card-dot{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;color:#fff;border:2px solid rgba(255,255,255,.2);}
-.card-name{font-weight:700;font-size:.85rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.card-sub{font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
-.hp-wrap{background:rgba(0,0,0,.4);border-radius:999px;height:5px;overflow:hidden;margin-bottom:5px;}
-.hp-fill{height:100%;border-radius:999px;transition:width .3s;}
-.chip-row{display:flex;gap:4px;flex-wrap:wrap;}
-.chip{font-size:.6rem;font-family:'JetBrains Mono',monospace;padding:2px 6px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--muted2);white-space:nowrap;}
-.chip.warn{border-color:rgba(245,158,11,.4);color:var(--warn);}
-.chip.good{border-color:rgba(16,185,129,.4);color:var(--good2);}
-.chip.magic{border-color:rgba(139,92,246,.4);color:var(--magic2);}
-.cond-row{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px;}
-.cond{font-size:.58rem;padding:1px 5px;border-radius:999px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--bad2);font-weight:700;}
-.npc-card{border:1px solid rgba(139,92,246,.2);border-radius:9px;padding:8px 10px;background:rgba(139,92,246,.04);}
-.npc-card.active-turn{border-color:var(--gold);}
-
-/* ── MAP AREA ── */
-.map-area{flex:1;position:relative;overflow:hidden;background:#020408;}
+/* ── MAP AREA (full screen) ── */
+.map-area{position:absolute;top:44px;left:0;right:0;bottom:0;background:#020408;overflow:hidden;}
 .map-wrap{position:absolute;inset:0;overflow:auto;}
-
-/* The container that holds canvases + token layer, scaled by zoom */
-.map-stage{
-  position:relative;
-  display:inline-block;
-  transform-origin:top left;
-}
 
 .map-stage canvas{position:absolute;top:0;left:0;pointer-events:none;}
 #mapCanvas{position:relative;z-index:1;}
@@ -274,6 +237,123 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
 }
 .map-ph svg{opacity:.12;}
 .map-ph p{font-size:.88rem;font-family:'JetBrains Mono',monospace;}
+
+/* ── MAP STAGE ── */
+.map-stage{position:relative;display:inline-block;transform-origin:top left;}
+.map-stage canvas{position:absolute;top:0;left:0;pointer-events:none;}
+#mapCanvas{position:relative;z-index:1;}
+#interiorCanvas{z-index:2;}
+#fogCanvas{z-index:3;}
+#gridCanvas{z-index:4;}
+#rulerCanvas{z-index:5;}
+#tokenLayer{position:absolute;top:0;left:0;z-index:6;pointer-events:none;}
+
+/* ── FLOATING TOOLBAR ── */
+.floating-toolbar{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  z-index:60;display:flex;gap:6px;align-items:center;
+  background:rgba(6,9,15,.92);border:1px solid var(--line2);
+  border-radius:999px;padding:6px 10px;
+  backdrop-filter:blur(12px);
+  box-shadow:0 8px 32px rgba(0,0,0,.5),0 0 0 1px rgba(79,142,247,.06);
+}
+.tool-btn{
+  width:40px;height:40px;border-radius:50%;border:1px solid var(--line2);
+  background:rgba(255,255,255,.04);color:var(--muted2);
+  cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;position:relative;flex-shrink:0;
+}
+.tool-btn:hover{background:rgba(79,142,247,.12);border-color:var(--accent);color:var(--text);}
+.tool-btn.active{background:rgba(79,142,247,.18);border-color:var(--accent);color:var(--accent2);}
+.tool-btn .tool-label{
+  position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);
+  font-size:.55rem;font-weight:700;color:var(--muted);white-space:nowrap;
+  font-family:'Syne',sans-serif;pointer-events:none;
+}
+.tool-sep{width:1px;height:24px;background:var(--line2);}
+
+/* ── MODULES ── */
+.module{
+  position:fixed;z-index:100;
+  background:var(--panel);border:1px solid var(--line2);border-radius:14px;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  display:none;flex-direction:column;
+  width:300px;max-height:70vh;overflow:hidden;
+}
+.module.open{display:flex;}
+.module-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-bottom:1px solid var(--line);
+  cursor:move;flex-shrink:0;background:rgba(0,0,0,.2);user-select:none;
+}
+.module-title{font-family:'Cinzel',serif;font-size:.78rem;font-weight:700;color:var(--accent2);letter-spacing:.06em;}
+.module-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;padding:2px 6px;border-radius:4px;transition:all .1s;}
+.module-close:hover{color:var(--text);background:rgba(255,255,255,.08);}
+.module-body{flex:1;overflow-y:auto;padding:10px;}
+
+/* ── PARTY CARDS (in module) ── */
+.party-card{border:1px solid var(--line2);border-radius:9px;padding:9px 10px;background:rgba(255,255,255,.02);margin-bottom:6px;cursor:pointer;transition:border-color .12s;}
+.party-card:hover{border-color:var(--accent);}
+.party-card:last-child{margin-bottom:0;}
+.party-card.active-turn{border-color:var(--gold);}
+.party-card-top{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+.party-dot{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:800;color:#fff;overflow:hidden;}
+.party-dot img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.party-name{font-weight:700;font-size:.85rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.party-sub{font-size:.65rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
+.hp-wrap{background:rgba(0,0,0,.4);border-radius:999px;height:4px;overflow:hidden;margin-bottom:4px;}
+.hp-fill{height:100%;border-radius:999px;transition:width .3s;}
+.chip-row{display:flex;gap:3px;flex-wrap:wrap;}
+.chip{font-size:.58rem;font-family:'JetBrains Mono',monospace;padding:1px 5px;border-radius:999px;border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--muted2);white-space:nowrap;}
+.chip.warn{border-color:rgba(245,158,11,.4);color:var(--warn);}
+.chip.good{border-color:rgba(16,185,129,.4);color:var(--good2);}
+.chip.magic{border-color:rgba(139,92,246,.4);color:var(--magic2);}
+.cond-row{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px;}
+.cond{font-size:.58rem;padding:1px 5px;border-radius:999px;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--bad2);font-weight:700;}
+
+/* Initiative in module */
+.init-item{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.02);margin-bottom:4px;transition:all .15s;}
+.init-item.active-turn{border-color:var(--gold);background:rgba(212,168,67,.05);}
+.init-roll{font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:700;color:var(--accent2);min-width:20px;text-align:center;background:none;border:none;outline:none;width:30px;cursor:text;}
+.init-roll:focus{background:var(--bg2);border:1px solid var(--accent);border-radius:4px;padding:1px 3px;}
+.init-name{flex:1;font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.init-hp{font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);}
+.init-add{display:flex;gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
+.init-add input{flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.72rem;font-family:'JetBrains Mono',monospace;outline:none;}
+.init-controls{display:flex;gap:5px;margin-top:6px;}
+
+/* Dice in module */
+.dice-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px;}
+.die-btn{border:1px solid var(--line2);background:rgba(255,255,255,.03);color:var(--accent2);border-radius:8px;padding:10px 4px;font-size:.8rem;font-weight:700;font-family:'Cinzel',serif;cursor:pointer;text-align:center;transition:all .12s;}
+.die-btn:hover{background:rgba(79,142,247,.12);border-color:var(--accent);transform:translateY(-1px);}
+.dice-custom{display:flex;gap:5px;}
+.dice-custom input{flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:7px;color:var(--text);padding:7px 9px;font-size:.8rem;font-family:'JetBrains Mono',monospace;outline:none;}
+.dice-custom button{background:var(--accent);border:none;border-radius:7px;color:#fff;padding:7px 12px;font-size:.77rem;font-weight:700;cursor:pointer;}
+
+/* Notes */
+.notes-area{width:100%;min-height:160px;background:var(--bg2);border:1px solid var(--line2);border-radius:8px;color:var(--text);padding:10px;font-size:.82rem;font-family:'JetBrains Mono',monospace;outline:none;resize:vertical;line-height:1.5;}
+.notes-area:focus{border-color:var(--accent);}
+.notes-save-status{font-size:.65rem;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:4px;text-align:right;}
+
+/* Inventory */
+.inv-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:7px;margin-bottom:4px;font-size:.78rem;background:rgba(255,255,255,.02);}
+.inv-name{font-weight:700;flex:1;}
+.inv-qty{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--accent2);}
+
+/* Ruler */
+.ruler-hint{font-size:.72rem;color:var(--muted2);text-align:center;line-height:1.5;margin-bottom:8px;}
+.ruler-info{font-family:'JetBrains Mono',monospace;font-size:.85rem;color:var(--accent2);text-align:center;padding:8px 0;}
+
+/* ── DICE POPUP ── */
+#dicePopup{position:fixed;inset:0;z-index:300;pointer-events:none;display:flex;align-items:center;justify-content:center;}
+.dice-roll-bubble{background:rgba(6,9,15,.95);border:1px solid var(--line2);border-radius:20px;padding:24px 36px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:bubbleIn .25s ease;min-width:160px;}
+@keyframes bubbleIn{from{opacity:0;transform:scale(.8);}to{opacity:1;transform:scale(1);}}
+@keyframes bubbleOut{from{opacity:1;transform:scale(1);}to{opacity:0;transform:scale(.7);}}
+.bubble-roller{font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;margin-bottom:8px;}
+.bubble-die{font-family:'Cinzel',serif;font-size:.85rem;color:var(--muted2);margin-bottom:4px;}
+.bubble-num{font-family:'Cinzel',serif;font-size:4rem;font-weight:700;color:var(--accent2);line-height:1;}
+.bubble-num.nat20{color:var(--good2);}
+.bubble-num.nat1{color:var(--bad2);}
 
 /* ── ZOOM CONTROLS ── */
 .zoom-bar{
@@ -482,22 +562,12 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
   <div class="login-card">
     <div class="login-title">GeezVTT</div>
     <div class="login-sub">2024 · Virtual Tabletop</div>
-
-    <!-- Step 1: Name + Campaign -->
     <div class="login-step active" id="s1">
-      <div>
-        <div class="f-label">Your Name</div>
-        <input class="f-input" id="lName" type="text" placeholder="Jon" autocomplete="off"/>
-      </div>
-      <div>
-        <div class="f-label">Campaign</div>
-        <select class="f-input" id="lCampaign"><option value="">Loading...</option></select>
-      </div>
+      <div><div class="f-label">Your Name</div><input class="f-input" id="lName" type="text" placeholder="Jon" autocomplete="off"/></div>
+      <div><div class="f-label">Campaign</div><select class="f-input" id="lCampaign"><option value="">Loading...</option></select></div>
       <div class="login-err" id="e1"></div>
       <button class="login-btn" id="toS2">Continue →</button>
     </div>
-
-    <!-- Step 2: Character select -->
     <div class="login-step" id="s2">
       <div class="f-label">Select Your Character</div>
       <div class="char-list" id="charList"></div>
@@ -507,8 +577,6 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
         <button class="login-btn" id="toS3">Continue →</button>
       </div>
     </div>
-
-    <!-- Step 3: Mic -->
     <div class="login-step" id="s3">
       <div class="mic-icon">🎙</div>
       <div class="mic-desc">Your token shakes when you speak.<br>Other players see it in real time.</div>
@@ -527,148 +595,99 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
   <div class="topbar">
     <div class="topbar-title">GeezVTT</div>
     <div class="tb-sep"></div>
-
-    <!-- GM controls -->
     <select class="tb-sel gm-only" id="campSelect"><option value="">— Campaign —</option></select>
-    <select class="tb-sel gm-only" id="mapSelect"><option value="">— Map Asset —</option></select>
-    <button class="tb-btn gm-only" id="loadSceneBtn">Load Scene</button>
+    <select class="tb-sel gm-only" id="mapSelect"><option value="">— Map —</option></select>
+    <button class="tb-btn gm-only" id="loadSceneBtn">Load</button>
     <div class="tb-sep gm-only"></div>
     <button class="tb-btn gm-only" id="scenesBtn">Scenes</button>
     <button class="tb-btn gm-only" id="placeNpcBtn">+ NPC</button>
-    <button class="tb-btn gm-only" id="clearToksBtn">Clear Tokens</button>
-    <div class="tb-sep gm-only"></div>
-    <button class="tb-btn gm-only" id="rollInitBtn">⚔ Initiative</button>
-    <button class="tb-btn gm-only" id="clearInitBtn">Clear Init</button>
-
+    <button class="tb-btn gm-only" id="clearToksBtn">Clear</button>
     <div class="spacer"></div>
     <div class="status-dot"></div>
-    <div class="session-info" id="sessInfo">—</div>
+    <div class="sess-info" id="sessInfo">—</div>
     <div class="tb-sep"></div>
-    <div class="session-info" id="userLabel">—</div>
+    <div class="sess-info" id="userLabel">—</div>
   </div>
 
-  <!-- MAIN -->
-  <div class="main-area">
-
-    <!-- LEFT: Party panel -->
-    <div class="side-panel">
-      <div class="panel-hdr">
-        <span>Party</span>
-        <span id="partyCount" style="color:var(--muted);">0</span>
-      </div>
-      <div class="panel-body" id="partyPanel"></div>
-    </div>
-
-    <!-- MAP -->
-    <div class="map-area" id="mapArea">
-      <div class="map-wrap" id="mapWrap">
-        <div id="mapSpacer" style="position:relative;flex-shrink:0;">
-          <div class="map-stage" id="mapStage">
+  <!-- MAP (full screen below topbar) -->
+  <div class="map-area" id="mapArea">
+    <div class="map-wrap" id="mapWrap">
+      <div id="mapSpacer" style="position:relative;flex-shrink:0;">
+        <div class="map-stage" id="mapStage">
           <canvas id="mapCanvas"></canvas>
           <canvas id="interiorCanvas"></canvas>
           <canvas id="fogCanvas"></canvas>
           <canvas id="gridCanvas"></canvas>
+          <canvas id="rulerCanvas"></canvas>
           <div id="tokenLayer"></div>
-        </div><!-- /mapStage -->
-        </div><!-- /mapSpacer -->
-      </div><!-- /mapWrap -->
-
-      <!-- Placeholder -->
-      <div class="map-ph" id="mapPh">
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
-        <p id="phTxt">Waiting for GM to load a map...</p>
-      </div>
-
-      <!-- Zoom -->
-      <div class="zoom-bar">
-        <button class="zoom-btn" id="zoomOut">−</button>
-        <div class="zoom-lbl" id="zoomLbl">100%</div>
-        <button class="zoom-btn" id="zoomIn">+</button>
-        <button class="zoom-btn" id="zoomFit" title="Fit">⊡</button>
-      </div>
-
-      <!-- NPC place panel -->
-      <div class="npc-panel gm-b" id="npcPanel">
-        <div style="font-size:.7rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;">Place NPC Token</div>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace;">Click NPC → click grid cell</div>
-        <div class="npc-list" id="npcList"></div>
-        <button class="btn btn-s btn-full btn-sm" id="cancelNpc" style="margin-top:8px;">Cancel</button>
-      </div>
-
-      <!-- Scene manager panel -->
-      <div class="scene-panel gm-b" id="scenePanel">
-        <div style="font-size:.7rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;">Scenes</div>
-        <div class="scene-list" id="sceneList"></div>
-        <div style="display:flex;gap:6px;margin-top:4px;">
-          <input id="newSceneName" placeholder="New scene name..." style="flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:7px;color:var(--text);padding:6px 9px;font-size:.78rem;font-family:'JetBrains Mono',monospace;outline:none;"/>
-          <button class="btn btn-p btn-sm" id="createSceneBtn">+</button>
         </div>
       </div>
     </div>
 
-    <!-- RIGHT: Initiative + Dice -->
-    <div class="right-panel">
-      <div class="panel-hdr">
-        <span>Initiative</span>
-        <span id="roundLbl" style="color:var(--muted);font-family:'JetBrains Mono',monospace;">—</span>
-      </div>
-      <div class="panel-body" id="initList" style="max-height:200px;flex:0 0 auto;"></div>
-      <!-- Manual add entry (GM only) -->
-      <div class="init-add gm-only">
-        <input id="initAddName" placeholder="Name..." />
-        <input id="initAddRoll" placeholder="Roll" type="number" style="width:54px;flex:none;" />
-        <button class="btn btn-p btn-sm" id="initAddBtn">+</button>
-      </div>
-      <div class="init-controls gm-only">
-        <button class="btn btn-s btn-sm" id="prevTurn" style="flex:1;">◀ Prev</button>
-        <button class="btn btn-p btn-sm" id="nextTurn" style="flex:1;">Next ▶</button>
-      </div>
+    <div class="map-ph" id="mapPh">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+      <p id="phTxt">Waiting for GM to load a map...</p>
+    </div>
 
-      <div class="dice-wrap">
-        <div class="panel-hdr" style="flex-shrink:0;">
-          <span>Dice</span>
-          <span id="rollerName" style="color:var(--muted);font-size:.65rem;"></span>
-        </div>
-        <div class="dice-grid">
-          <button class="die-btn" data-d="4">d4</button>
-          <button class="die-btn" data-d="6">d6</button>
-          <button class="die-btn" data-d="8">d8</button>
-          <button class="die-btn" data-d="10">d10</button>
-          <button class="die-btn" data-d="12">d12</button>
-          <button class="die-btn" data-d="20">d20</button>
-          <button class="die-btn" data-d="100">d%</button>
-          <button class="die-btn" data-d="2">coin</button>
-        </div>
-        <div class="dice-custom">
-          <input id="custExpr" placeholder="2d6+3"/>
-          <button id="custRoll">Roll</button>
-        </div>
-        <div class="roll-log" id="rollLog"></div>
+    <!-- Zoom -->
+    <div class="zoom-bar">
+      <button class="zoom-btn" id="zoomOut">−</button>
+      <div class="zoom-lbl" id="zoomLbl">100%</div>
+      <button class="zoom-btn" id="zoomIn">+</button>
+      <button class="zoom-btn" id="zoomFit">⊡</button>
+    </div>
+
+    <!-- NPC panels (GM) -->
+    <div class="npc-panel gm-b" id="npcPanel">
+      <div style="font-size:.7rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;">Place NPC</div>
+      <div style="font-size:.68rem;color:var(--muted);margin-top:3px;font-family:'JetBrains Mono',monospace;">Click NPC → click grid cell</div>
+      <div class="npc-list" id="npcList"></div>
+      <button class="btn btn-s btn-full btn-sm" id="cancelNpc" style="margin-top:8px;">Cancel</button>
+    </div>
+    <div class="scene-panel gm-b" id="scenePanel">
+      <div style="font-size:.7rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;">Scenes</div>
+      <div class="scene-list" id="sceneList"></div>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <input id="newSceneName" placeholder="New scene name..." style="flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:7px;color:var(--text);padding:6px 9px;font-size:.78rem;font-family:'JetBrains Mono',monospace;outline:none;"/>
+        <button class="btn btn-p btn-sm" id="createSceneBtn">+</button>
       </div>
     </div>
   </div>
-</div>
 
-<!-- PARTY POPUP -->
-<div class="party-popup" id="partyPopup">
-  <div class="party-popup-inner">
-    <div class="party-popup-header">
-      <div class="party-popup-title" id="popupTitle">Character Sheet</div>
-      <button class="party-popup-close" id="popupClose">✕ Close</button>
-    </div>
-    <iframe class="party-popup-frame" id="popupFrame" src="about:blank"></iframe>
+  <!-- FLOATING TOOLBAR -->
+  <div class="floating-toolbar" id="floatingToolbar">
+    <button class="tool-btn" data-mod="party" title="Party">👥<span class="tool-label">Party</span></button>
+    <button class="tool-btn" data-mod="initiative" title="Initiative">⚔<span class="tool-label">Initiative</span></button>
+    <button class="tool-btn" data-mod="dice" title="Dice">🎲<span class="tool-label">Dice</span></button>
+    <button class="tool-btn" data-mod="ruler" title="Ruler">📏<span class="tool-label">Ruler</span></button>
+    <button class="tool-btn" data-mod="inventory" title="Inventory">🎒<span class="tool-label">Inventory</span></button>
+    <button class="tool-btn" data-mod="notes" title="Notes">📝<span class="tool-label">Notes</span></button>
+    <div class="tool-sep gm-only"></div>
+    <button class="tool-btn gm-only" id="rollInitTool" title="Roll Initiative">🎯<span class="tool-label">Roll Init</span></button>
+    <button class="tool-btn gm-only" id="clearInitTool" title="Clear Initiative">🗑<span class="tool-label">Clear Init</span></button>
+    <button class="tool-btn gm-only" id="quickTokTool" title="Quick Token">⚡<span class="tool-label">Quick Tok</span></button>
   </div>
+
+  <!-- MODULES -->
+  <div class="module" id="mod-party"><div class="module-header"><div class="module-title">👥 Party</div><button class="module-close">✕</button></div><div class="module-body" id="partyBody"></div></div>
+  <div class="module" id="mod-initiative"><div class="module-header"><div class="module-title">⚔ Initiative</div><button class="module-close">✕</button></div><div class="module-body" id="initBody"></div></div>
+  <div class="module" id="mod-dice"><div class="module-header"><div class="module-title">🎲 Dice</div><button class="module-close">✕</button></div><div class="module-body" id="diceBody"></div></div>
+  <div class="module" id="mod-ruler"><div class="module-header"><div class="module-title">📏 Ruler</div><button class="module-close">✕</button></div><div class="module-body" id="rulerBody"></div></div>
+  <div class="module" id="mod-inventory"><div class="module-header"><div class="module-title">🎒 Inventory</div><button class="module-close">✕</button></div><div class="module-body" id="inventoryBody"></div></div>
+  <div class="module" id="mod-notes"><div class="module-header"><div class="module-title">📝 Notes</div><button class="module-close">✕</button></div><div class="module-body" id="notesBody"></div></div>
+
 </div>
 
-<!-- TOKEN CONTEXT MENU -->
+<!-- DICE POPUP -->
+<div id="dicePopup"></div>
+
+<!-- CTX MENU -->
 <div class="ctx-menu" id="ctxMenu">
   <div class="ctx-title" id="ctxTitle">Token</div>
   <div class="ctx-sep"></div>
   <div class="ctx-hp">
-    <span>HP</span>
-    <input type="number" id="ctxHpCur" placeholder="cur"/>
-    <span>/</span>
-    <input type="number" id="ctxHpMax" placeholder="max"/>
+    <span>HP</span><input type="number" id="ctxHpCur" placeholder="cur"/>
+    <span>/</span><input type="number" id="ctxHpMax" placeholder="max"/>
     <button id="ctxHpSave">✓</button>
   </div>
   <div class="ctx-sep"></div>
@@ -682,17 +701,27 @@ body.is-gm #quickNpcMenu.open { display:block!important; }
   <div class="ctx-item danger gm-b" id="ctxRemove">✕ Remove Token</div>
 </div>
 
-<!-- QUICK NPC (GM) -->
-<div class="ctx-menu gm-b" id="quickNpcMenu" style="min-width:220px;">
-  <div class="ctx-title">Quick NPC Token</div>
-  <div class="ctx-sep"></div>
-  <div class="quick-npc">
-    <input id="qnName" placeholder="Name (e.g. Goblin #3)" />
-    <div class="quick-npc-row">
-      <input id="qnHp" type="number" placeholder="HP" />
-      <input id="qnColor" type="color" value="#ef4444" style="width:36px;height:32px;padding:2px;border:1px solid var(--line2);border-radius:6px;cursor:pointer;background:none;" />
+<!-- QUICK NPC -->
+<div id="quickNpcMenu" style="position:fixed;background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:12px;z-index:200;display:none;box-shadow:0 16px 40px rgba(0,0,0,.5);min-width:220px;">
+  <div style="font-size:.7rem;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Quick Token</div>
+  <div style="display:flex;flex-direction:column;gap:5px;">
+    <input id="qnName" placeholder="Name (e.g. Goblin #3)" style="background:var(--bg2);border:1px solid var(--line2);border-radius:7px;color:var(--text);padding:7px 9px;font-size:.78rem;font-family:'JetBrains Mono',monospace;outline:none;width:100%;"/>
+    <div style="display:flex;gap:5px;">
+      <input id="qnHp" type="number" placeholder="HP" style="flex:1;background:var(--bg2);border:1px solid var(--line2);border-radius:7px;color:var(--text);padding:7px 9px;font-size:.78rem;font-family:'JetBrains Mono',monospace;outline:none;"/>
+      <input id="qnColor" type="color" value="#ef4444" style="width:36px;height:34px;padding:2px 4px;border:1px solid var(--line2);border-radius:6px;cursor:pointer;background:none;"/>
     </div>
     <button class="btn btn-p btn-full btn-sm" id="qnPlace">Place on Map (click cell)</button>
+  </div>
+</div>
+
+<!-- PARTY POPUP -->
+<div class="party-popup" id="partyPopup">
+  <div class="party-popup-inner">
+    <div class="party-popup-header">
+      <div class="party-popup-title" id="popupTitle">Character Sheet</div>
+      <button class="party-popup-close" id="popupClose">✕ Close</button>
+    </div>
+    <iframe class="party-popup-frame" id="popupFrame" src="about:blank"></iframe>
   </div>
 </div>
 
@@ -756,7 +785,7 @@ if (isGM) {
   document.querySelectorAll(".gm-b").forEach(el=>el.style.display="block");
   S.playerName = "GM";
   $("userLabel").textContent = "GM";
-  $("rollerName").textContent = "GM";
+  // rollerName removed;
   $("loginScreen").style.display = "none";
   $("vttApp").classList.add("visible");
   $("phTxt").textContent = "Select campaign and map above, then Load Scene.";
@@ -856,7 +885,7 @@ async function enterSession() {
   $("loginScreen").style.display = "none";
   $("vttApp").classList.add("visible");
   $("userLabel").textContent = `${S.playerName} · ${S.character?.name||""}`;
-  $("rollerName").textContent = S.playerName;
+  // rollerName removed;
   $("sessInfo").textContent = S.campaign;
 
   subscribeSpeaking();
@@ -915,61 +944,41 @@ async function bootGM() {
 
   $("loadSceneBtn").onclick = loadScene;
   $("clearToksBtn").onclick = clearTokens;
-  $("rollInitBtn").onclick  = rollInit;
-  $("clearInitBtn").onclick = clearInit;
-  $("nextTurn").onclick     = nextTurn;
-  $("prevTurn").onclick     = prevTurn;
-
-  // Manual initiative add
-  $("initAddBtn").onclick = async () => {
-    const name = $("initAddName").value.trim();
-    const roll = parseInt($("initAddRoll").value, 10);
-    if (!name) return;
-    const camp=activeCampaign||S.campaign, sid=activeScene||S.sceneId;
-    if (!camp||!sid) return;
-    const newEntry = { token_id: null, character_id: null, name, color:"#64748b", roll: isNaN(roll)?0:roll };
-    const order = [...initiative.order, newEntry].sort((a,b)=>b.roll-a.roll);
-    await update(ref(db,`sessions/${camp}/scenes/${sid}/initiative`),{order});
-    $("initAddName").value=""; $("initAddRoll").value="";
-  };
-  $("initAddName").onkeydown = e=>{ if(e.key==="Enter") $("initAddBtn").click(); };
-
   $("placeNpcBtn").onclick  = () => { renderNpcList(); $("npcPanel").classList.toggle("open"); };
   $("cancelNpc").onclick    = () => { $("npcPanel").classList.remove("open"); placingNpc=null; };
+  $("scenesBtn").onclick    = () => { renderSceneList(); $("scenePanel").classList.toggle("open"); };
+  $("createSceneBtn").onclick = createScene;
 
-  // Quick NPC — ad-hoc token without a saved character
-  const quickNpcBtn = document.createElement("button");
-  quickNpcBtn.className = "tb-btn gm-only";
-  quickNpcBtn.textContent = "Quick Token";
-  quickNpcBtn.style.display = "flex";
-  $("clearToksBtn").after(quickNpcBtn);
+  // Toolbar initiative buttons
+  $("rollInitTool").onclick  = rollInit;
+  $("clearInitTool").onclick = clearInit;
 
-  quickNpcBtn.onclick = () => {
+  // Quick token toolbar button
+  $("quickTokTool").onclick = () => {
     const menu = $("quickNpcMenu");
-    const rect = quickNpcBtn.getBoundingClientRect();
-    menu.style.left = rect.left+"px";
-    menu.style.top  = (rect.bottom+4)+"px";
-    menu.classList.toggle("open");
+    const rect = $("quickTokTool").getBoundingClientRect();
+    menu.style.left   = rect.left+"px";
+    menu.style.bottom = (window.innerHeight - rect.top + 8)+"px";
+    menu.style.top    = "auto";
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
   };
 
   $("qnPlace").onclick = () => {
     const name  = $("qnName").value.trim() || "Token";
-    const hp    = parseInt(document.getElementById("qnHp").value,10)||10;
-    const color = document.getElementById("qnColor").value||"#ef4444";
-    placingNpc = { id: null, name, vtt_profile:{ token_color:color, hp_current:hp, hp_max:hp }, cr:"?", is_quick:true };
-    $("quickNpcMenu").classList.remove("open");
+    const hp    = parseInt($("qnHp").value,10)||10;
+    const color = $("qnColor").value||"#ef4444";
+    placingNpc = { id:null, name, vtt_profile:{ token_color:color, hp_current:hp, hp_max:hp }, cr:"?", is_quick:true };
+    $("quickNpcMenu").style.display = "none";
     stage.style.cursor = "crosshair";
   };
 
   document.addEventListener("click", e=>{
-    if (!$("quickNpcMenu").contains(e.target) && e.target !== quickNpcBtn)
-      $("quickNpcMenu").classList.remove("open");
+    const menu=$("quickNpcMenu"),btn=$("quickTokTool");
+    if(menu&&btn&&!menu.contains(e.target)&&e.target!==btn) menu.style.display="none";
   });
 
-  $("scenesBtn").onclick    = () => { renderSceneList(); $("scenePanel").classList.toggle("open"); };
-  $("createSceneBtn").onclick = createScene;
-
   subscribeSpeaking();
+  buildDiceModule();
 }
 
 async function loadGMCampaign(camp) {
@@ -1608,12 +1617,22 @@ stage.addEventListener("mousedown", async e=>{
   $("npcPanel").classList.remove("open");
 });
 
-// Click empty map to deselect
+// Click empty map to deselect / ruler
 stage.addEventListener("mousedown", e=>{
-  if (e.target===stage || e.target.tagName==="CANVAS") {
-    if (selectedTid && tokenEls[selectedTid]) tokenEls[selectedTid].classList.remove("selected");
-    selectedTid=null;
-    hideCtxMenu();
+  if(e.button!==0||!S.mapAsset) return;
+
+  // Ruler
+  if(rulerActive){
+    const rect=stage.getBoundingClientRect();
+    const{col,row}=pixelToCell((e.clientX-rect.left)/zoom,(e.clientY-rect.top)/zoom);
+    if(!rulerStart){rulerStart={col,row};}
+    else{drawRuler(rulerStart,{col,row});rulerStart=null;}
+    return;
+  }
+
+  if(e.target===stage||e.target.tagName==="CANVAS"){
+    if(selectedTid&&tokenEls[selectedTid])tokenEls[selectedTid].classList.remove("selected");
+    selectedTid=null;hideCtxMenu();
   }
 });
 
@@ -1818,7 +1837,7 @@ async function clearTokens() {
 // PARTY PANEL
 // ══════════════════════════════════════
 function renderParty() {
-  const panel=$("partyPanel"); panel.innerHTML="";
+  const panel=$("partyBody"); if(!panel) return; panel.innerHTML="";
   const all=Object.entries(tokens);
 
   // PCs — all PCs always show in party panel
@@ -1834,7 +1853,7 @@ function renderParty() {
   );
 
   const count = pcs.length + friendlyNpcs.length;
-  $("partyCount").textContent = count;
+  
 
   if (!count) {
     panel.innerHTML="<div style='font-size:.75rem;color:var(--muted);padding:6px;'>No tokens on map.</div>";
@@ -1917,35 +1936,11 @@ function renderParty() {
   });
 }
 
-// ── Party popup ──
-function openPartyPopup(charId, name, isNpc=false) {
-  const camp = activeCampaign||S.campaign;
-  const bucket = isNpc ? "npcs" : "pcs";
-  // party.html accepts ?id=xxx&campaign=yyy
-  const url = `party.html?campaign=${encodeURIComponent(camp)}&id=${encodeURIComponent(charId)}`;
-  $("popupTitle").textContent = name||"Character Sheet";
-  $("popupFrame").src = url;
-  $("partyPopup").classList.add("open");
-}
-
-$("popupClose").onclick = () => {
-  $("partyPopup").classList.remove("open");
-  $("popupFrame").src = "about:blank";
-};
-
-// Close on backdrop click
-$("partyPopup").addEventListener("click", e => {
-  if (e.target === $("partyPopup")) {
-    $("partyPopup").classList.remove("open");
-    $("popupFrame").src = "about:blank";
-  }
-});
-
 // ══════════════════════════════════════
 // INITIATIVE
 // ══════════════════════════════════════
 function renderInit() {
-  const list=$("initList"); list.innerHTML="";
+  const list=$("initBody"); if(!list) return; list.innerHTML="";
   $("roundLbl").textContent=initiative.order.length?`Round ${initiative.round}`:"—";
   if(!initiative.order.length){list.innerHTML="<div style='font-size:.72rem;color:var(--muted);padding:7px;'>No initiative. Roll or add manually.</div>";return;}
 
@@ -2170,123 +2165,218 @@ function subscribeSpeaking() {
   _listeners.speaking = { ref: speakRef, fn: speakFn };
 }
 
-// ══════════════════════════════════════
-// DICE
-// ══════════════════════════════════════
-function rollDie(s){return Math.floor(Math.random()*s)+1;}
+function renderLog(logObj){
+  // No-op — dice uses broadcast popup
+}
+
+function initModules() {
+  // Make modules draggable
+  document.querySelectorAll(".module").forEach(mod=>{
+    const header=mod.querySelector(".module-header");
+    const closeBtn=mod.querySelector(".module-close");
+    let ox=0,oy=0,draggingMod=false;
+
+    closeBtn.onclick=()=>{
+      mod.classList.remove("open");
+      const key=mod.id.replace("mod-","");
+      const btn=document.querySelector(`[data-mod="${key}"]`);
+      if(btn)btn.classList.remove("active");
+      if(key==="ruler"){rulerActive=false;rulerStart=null;if(rulerC)rCtx.clearRect(0,0,rulerC.width,rulerC.height);}
+    };
+
+    header.addEventListener("mousedown",e=>{
+      if(e.target===closeBtn)return;
+      draggingMod=true;
+      ox=mod.offsetLeft-e.clientX;oy=mod.offsetTop-e.clientY;
+      e.preventDefault();
+    });
+    window.addEventListener("mousemove",e=>{
+      if(!draggingMod)return;
+      mod.style.left=(e.clientX+ox)+"px";mod.style.top=(e.clientY+oy)+"px";
+      mod.style.right="auto";mod.style.bottom="auto";
+    });
+    window.addEventListener("mouseup",()=>draggingMod=false);
+  });
+
+  // Toolbar button toggle
+  document.querySelectorAll(".tool-btn[data-mod]").forEach(btn=>{
+    btn.onclick=()=>{
+      const modId="mod-"+btn.dataset.mod;
+      const mod=$(modId);if(!mod)return;
+      const wasOpen=mod.classList.contains("open");
+      mod.classList.toggle("open",!wasOpen);
+      btn.classList.toggle("active",!wasOpen);
+      if(!wasOpen){
+        // Position above toolbar
+        const tb=$("floatingToolbar").getBoundingClientRect();
+        mod.style.bottom=(window.innerHeight-tb.top+12)+"px";
+        mod.style.left="20px";mod.style.top="auto";mod.style.right="auto";
+        // Build content
+        if(btn.dataset.mod==="party")renderParty();
+        if(btn.dataset.mod==="initiative")renderInit();
+        if(btn.dataset.mod==="ruler")renderRulerModule();
+        if(btn.dataset.mod==="inventory")loadInventoryModule();
+        if(btn.dataset.mod==="notes")buildNotesModule();
+        if(btn.dataset.mod==="dice")buildDiceModule();
+      }
+    };
+  });
+}
+
+// ── Dice module ──
+function buildDiceModule(){
+  const body=$("diceBody");if(!body)return;
+  body.innerHTML=`
+    <div class="dice-grid">
+      <button class="die-btn" data-d="4">d4</button>
+      <button class="die-btn" data-d="6">d6</button>
+      <button class="die-btn" data-d="8">d8</button>
+      <button class="die-btn" data-d="10">d10</button>
+      <button class="die-btn" data-d="12">d12</button>
+      <button class="die-btn" data-d="20">d20</button>
+      <button class="die-btn" data-d="100">d%</button>
+      <button class="die-btn" data-d="2">coin</button>
+    </div>
+    <div class="dice-custom">
+      <input id="custExpr" placeholder="2d6+3"/>
+      <button id="custRoll">Roll</button>
+    </div>`;
+  body.querySelectorAll(".die-btn").forEach(btn=>{
+    btn.onclick=async()=>{
+      const d=parseInt(btn.dataset.d);
+      const res=parseRoll(`d${d}`);if(!res)return;
+      await broadcastRoll(d===100?"d%":`d${d}`,res);
+    };
+  });
+  $("custRoll").onclick=async()=>{
+    const expr=$("custExpr").value.trim();if(!expr)return;
+    const res=parseRoll(expr);if(!res)return;
+    await broadcastRoll(expr,res);$("custExpr").value="";
+  };
+  $("custExpr").onkeydown=e=>{if(e.key==="Enter")$("custRoll").click();};
+}
+
+// ── Ruler module ──
+let rulerActive=false,rulerStart=null;
+function renderRulerModule(){
+  const body=$("rulerBody");if(!body)return;
+  body.innerHTML=`
+    <div class="ruler-hint">Click two points on the map to measure.<br>Scale: ${S.mapAsset?.scale_ft||5}ft per cell.</div>
+    <div class="ruler-info" id="rulerResult">—</div>
+    <button class="btn btn-s btn-full btn-sm" id="rulerClearBtn" style="margin-top:8px;">Clear</button>`;
+  rulerActive=true;rulerStart=null;
+  $("rulerClearBtn").onclick=()=>{if(rulerC)rCtx.clearRect(0,0,rulerC.width,rulerC.height);rulerStart=null;$("rulerResult").textContent="—";};
+}
+
+function drawRuler(start,end){
+  if(!S.mapAsset||!rulerC)return;
+  const{grid_size:gs,grid_offset_x:ox,grid_offset_y:oy,scale_ft:scaleFt}=S.mapAsset;
+  const sx=((ox%gs)+gs)%gs,sy=((oy%gs)+gs)%gs;
+  const x1=sx+start.col*gs+gs/2,y1=sy+start.row*gs+gs/2;
+  const x2=sx+end.col*gs+gs/2,y2=sy+end.row*gs+gs/2;
+  rCtx.clearRect(0,0,rulerC.width,rulerC.height);
+  rCtx.strokeStyle="#f59e0b";rCtx.lineWidth=2;rCtx.setLineDash([6,4]);
+  rCtx.beginPath();rCtx.moveTo(x1,y1);rCtx.lineTo(x2,y2);rCtx.stroke();
+  rCtx.setLineDash([]);
+  rCtx.fillStyle="#f59e0b";
+  rCtx.beginPath();rCtx.arc(x1,y1,4,0,Math.PI*2);rCtx.fill();
+  rCtx.beginPath();rCtx.arc(x2,y2,4,0,Math.PI*2);rCtx.fill();
+  const dist=Math.round(Math.sqrt((end.col-start.col)**2+(end.row-start.row)**2)*(scaleFt||5));
+  const el=$("rulerResult");if(el)el.textContent=`${dist} ft`;
+}
+
+// ── Inventory module ──
+async function loadInventoryModule(){
+  const body=$("inventoryBody");if(!body)return;
+  body.innerHTML="<div style='color:var(--muted);font-size:.78rem;'>Loading...</div>";
+  if(!S.characterId){body.innerHTML="<div style='color:var(--muted);font-size:.78rem;'>Log in to see inventory.</div>";return;}
+  const snap=await get(ref(db,`characters/pcs/${S.characterId}`));
+  if(!snap.exists()){body.innerHTML="<div style='color:var(--muted2);'>Character not found.</div>";return;}
+  const inv=snap.val().inventory||[];
+  if(!inv.length){body.innerHTML="<div style='color:var(--muted);font-size:.78rem;'>No items.</div>";return;}
+  body.innerHTML="";
+  inv.forEach(item=>{
+    const el=document.createElement("div");el.className="inv-item";
+    el.innerHTML=`<div class="inv-name">${item.name}</div><div style="color:var(--muted2);font-size:.68rem;flex:1;">${item.desc||""}</div><div class="inv-qty">×${item.qty||1}</div>`;
+    body.appendChild(el);
+  });
+}
+
+// ── Notes module ──
+let noteSaveTimer=null;
+function buildNotesModule(){
+  const body=$("notesBody");if(!body)return;
+  body.innerHTML=`<textarea class="notes-area" id="notesArea" placeholder="Write notes here..."></textarea><div class="notes-save-status" id="notesSaveStatus">—</div>`;
+  if(!S.characterId)return;
+  const camp=activeCampaign||S.campaign;
+  get(ref(db,`sessions/${camp}/notes/${S.characterId}`)).then(snap=>{
+    if(snap.exists()&&$("notesArea"))$("notesArea").value=snap.val();
+  });
+  $("notesArea").addEventListener("input",()=>{
+    $("notesSaveStatus").textContent="Saving...";
+    clearTimeout(noteSaveTimer);
+    noteSaveTimer=setTimeout(async()=>{
+      const c=activeCampaign||S.campaign;
+      await set(ref(db,`sessions/${c}/notes/${S.characterId}`),$("notesArea").value);
+      if($("notesSaveStatus"))$("notesSaveStatus").textContent="Saved ✓";
+    },1000);
+  });
+}
+
+// ── Party popup ──
+function openPartyPopup(charId,name){
+  const camp=activeCampaign||S.campaign;
+  const url=`party.html?campaign=${encodeURIComponent(camp)}&id=${encodeURIComponent(charId)}`;
+  $("popupTitle").textContent=name||"Character Sheet";
+  $("popupFrame").src=url;$("partyPopup").classList.add("open");
+}
+$("popupClose").onclick=()=>{$("partyPopup").classList.remove("open");$("popupFrame").src="about:blank";};
+$("partyPopup").addEventListener("click",e=>{if(e.target===$("partyPopup")){$("partyPopup").classList.remove("open");$("popupFrame").src="about:blank";}});
+
+// ── Dice broadcast ──
 function parseRoll(expr){
   expr=expr.trim().replace("d%","d100").toLowerCase();
   const m=expr.match(/^(\d+)?d(\d+)([+-]\d+)?$/);
-  if(!m){const n=parseInt(expr,10);return isNaN(n)?null:{results:[n],total:n,expr};}
+  if(!m){const n=parseInt(expr,10);return isNaN(n)?null:{results:[n],total:n,expr,sides:6};}
   const cnt=parseInt(m[1]||"1",10),sides=parseInt(m[2],10),mod=parseInt(m[3]||"0",10);
-  const results=Array.from({length:cnt},()=>rollDie(sides));
-  return{results,total:results.reduce((s,v)=>s+v,0)+mod,expr};
+  const results=Array.from({length:cnt},()=>Math.floor(Math.random()*sides)+1);
+  return{results,total:results.reduce((s,v)=>s+v,0)+mod,expr,sides};
 }
-function animateDie(sides, finalResult, callback) {
-  const log = $("rollLog");
-  const div = document.createElement("div");
-  div.className = "roll-entry";
-  div.style.opacity = "0.7";
-  div.innerHTML = `<div class="roll-top"><span class="roll-who">${S.playerName}</span><span class="roll-total" id="dieAnimVal">...</span></div><div class="roll-expr">rolling d${sides}...</div>`;
-  log.insertBefore(div, log.firstChild);
 
-  const valEl = div.querySelector("#dieAnimVal");
-  let ticks = 0;
-  const maxTicks = 10;
-  const interval = setInterval(() => {
+async function broadcastRoll(expr,res){
+  const camp=activeCampaign||S.campaign;if(!camp)return;
+  const payload={roller:S.playerName||"?",expr,results:res.results,total:res.total,sides:res.sides||20,timestamp:Date.now()};
+  await set(ref(db,`sessions/${camp}/dice_active`),payload);
+  setTimeout(async()=>{
+    const cur=await get(ref(db,`sessions/${camp}/dice_active`));
+    if(cur.exists()&&cur.val().timestamp===payload.timestamp)await remove(ref(db,`sessions/${camp}/dice_active`));
+  },4000);
+}
+
+let dicePopupTimer=null;
+function showDicePopup(data){
+  clearTimeout(dicePopupTimer);
+  const popup=$("dicePopup");
+  const total=data.total,sides=data.sides||20;
+  const isNat20=sides===20&&total===20,isNat1=sides===20&&total===1;
+  const bubble=document.createElement("div");
+  bubble.className="dice-roll-bubble";
+  bubble.innerHTML=`<div class="bubble-roller">${data.roller}</div><div class="bubble-die">${data.expr}</div><div class="bubble-num" id="bubbleNum">?</div>`;
+  popup.innerHTML="";popup.appendChild(bubble);
+  const numEl=bubble.querySelector("#bubbleNum");
+  let ticks=0;const iv=setInterval(()=>{
     ticks++;
-    valEl.textContent = Math.floor(Math.random() * sides) + 1;
-    if (ticks >= maxTicks) {
-      clearInterval(interval);
-      div.remove();
-      callback();
-    }
-  }, 60);
+    if(ticks<14){numEl.textContent=Math.floor(Math.random()*sides)+1;numEl.style.color=`hsl(${Math.random()*60+180},70%,70%)`;}
+    else{clearInterval(iv);numEl.textContent=total;numEl.className="bubble-num "+(isNat20?"nat20":isNat1?"nat1":"");numEl.style.color="";}
+  },80);
+  dicePopupTimer=setTimeout(()=>{
+    bubble.style.animation="bubbleOut .3s ease forwards";
+    bubble.addEventListener("animationend",()=>popup.innerHTML="");
+  },3000);
 }
 
-async function logRoll(expr,res){
-  const camp=activeCampaign||S.campaign; if(!camp) return;
-  await push(ref(db,`sessions/${camp}/dice_log`),{roller:S.playerName||"?",expression:expr,results:res.results,total:res.total,timestamp:Date.now()});
-}
-document.querySelectorAll(".die-btn").forEach(btn=>{
-  btn.onclick=async()=>{
-    const d=parseInt(btn.dataset.d);
-    const expr=d===100?"d%":`d${d}`;
-    const res=parseRoll(`d${d}`);
-    if(!res) return;
-    animateDie(d===100?100:d, res.total, ()=>logRoll(expr,res));
-  };
-});
-$("custRoll").onclick=async()=>{
-  const expr=$("custExpr").value.trim(); if(!expr) return;
-  const res=parseRoll(expr); if(!res) return;
-  await logRoll(expr,res); $("custExpr").value="";
-};
-$("custExpr").onkeydown=e=>{if(e.key==="Enter")$("custRoll").click();};
-
-function renderLog(logObj){
-  const log=$("rollLog");
-  Object.values(logObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,40).forEach((e,i)=>{
-    const id="rle_"+e.timestamp;
-    if($( id)) return; // already rendered
-    const div=document.createElement("div"); div.className="roll-entry"; div.id=id;
-    const n20=e.expression?.includes("d20")&&e.total===20;
-    const n1=e.expression?.includes("d20")&&e.total===1;
-    div.innerHTML=`<div class="roll-top"><span class="roll-who">${e.roller}</span><span class="roll-total ${n20?"nat20":n1?"nat1":""}">${e.total}</span></div><div class="roll-expr">${e.expression} → [${(e.results||[e.total]).join(", ")}]</div>`;
-    log.insertBefore(div,log.firstChild);
-  });
-}
-</script>
-</body>
-</html>
-// MIC
-// ══════════════════════════════════════
-let micInterval=null,isSpeaking=false,speakTimer=null;
-const THRESHOLD=18,DEBOUNCE=80;
-
-async function initMic(){
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
-    const ctx=new(window.AudioContext||window.webkitAudioContext)();
-    const an=ctx.createAnalyser();an.fftSize=512;an.smoothingTimeConstant=0.4;
-    ctx.createMediaStreamSource(stream).connect(an);
-    const data=new Uint8Array(an.frequencyBinCount);
-    micInterval=setInterval(async()=>{
-      an.getByteFrequencyData(data);
-      const avg=data.reduce((s,v)=>s+v,0)/data.length;
-      const bar=$("micBar");if(bar)bar.style.width=Math.min(100,avg*4)+"%";
-      if(avg>THRESHOLD){
-        if(!isSpeaking){isSpeaking=true;await setSpeaking(true);}
-        clearTimeout(speakTimer);
-        speakTimer=setTimeout(async()=>{isSpeaking=false;await setSpeaking(false);},DEBOUNCE);
-      }
-    },40);
-    window.addEventListener("beforeunload",()=>{if(S.characterId)remove(ref(db,`speaking/${S.characterId}`));clearInterval(micInterval);ctx.close();});
-    return true;
-  }catch(e){return false;}
-}
-
-async function setSpeaking(val){
-  if(!S.characterId)return;
-  if(val)await set(ref(db,`speaking/${S.characterId}`),true);
-  else await remove(ref(db,`speaking/${S.characterId}`));
-}
-
-function subscribeSpeaking(){
-  if(_listeners.speaking)return;
-  const r=ref(db,"speaking");let prev={};
-  const fn=snap=>{
-    const next=snap.exists()?snap.val():{};
-    Object.keys(next).forEach(charId=>{
-      if(!prev[charId]){
-        const tid=Object.entries(tokens).find(([,t])=>t.character_id===charId)?.[0];
-        if(tid&&tokenEls[tid]){const el=tokenEls[tid];el.classList.remove("shaking");void el.offsetWidth;el.classList.add("shaking");el.addEventListener("animationend",()=>el.classList.remove("shaking"),{once:true});}
-      }
-    });
-    prev={...next};speakingState=next;updateSpeakingState();
-  };
-  onValue(r,fn);_listeners.speaking={ref:r,fn};
-}
+// ── Init modules on boot ──
+initModules();
 </script>
 </body>
 </html>
