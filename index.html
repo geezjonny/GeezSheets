@@ -3,198 +3,456 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>GeezVTT — DM Console</title>
+<title>GeezVTT — Party</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
-
 :root {
-  --bg:#05080f; --bg2:#080d18; --panel:#0c1220; --line:#182030; --line2:#1e2d45;
-  --text:#dde6f5; --muted:#3d5070; --muted2:#6a80a0;
-  --accent:#4a7fe8; --accent2:#6b9ef5;
-  --gold:#c8993a; --gold2:#e8bb5a;
-  --good:#0fa372;
-  --header-h:48px;
+  --bg:#05080f;--bg2:#080d18;--panel:#0c1220;
+  --line:#182030;--line2:#1e2d45;
+  --text:#dde6f5;--muted:#3d5070;--muted2:#6a80a0;
+  --accent:#4a7fe8;--accent2:#6b9ef5;
+  --gold:#c8993a;--gold2:#e8bb5a;
+  --good:#10b981;--warn:#f59e0b;--bad:#ef4444;
+  --magic:#8b5cf6;--magic2:#c084fc;
+  --skill:#0ea5e9;--skill2:#38bdf8;
+  --weapon:#e8834a;--weapon2:#f5a87b;
 }
-
-*{box-sizing:border-box;margin:0;padding:0;}
-html,body{height:100%;overflow:hidden;}
-body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
-
-/* ── HEADER ── */
-.header{
-  height:var(--header-h);background:var(--bg2);
-  border-bottom:1px solid var(--line2);
-  display:flex;align-items:stretch;flex-shrink:0;
-  position:relative;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;}
+body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);}
+.header{position:sticky;top:0;z-index:100;height:52px;background:var(--bg2);border-bottom:1px solid var(--line2);display:flex;align-items:center;padding:0 20px;gap:14px;}
+.header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(200,153,58,.2),rgba(74,127,232,.15),transparent);pointer-events:none;}
+.brand{display:flex;align-items:center;gap:9px;}
+.brand-mark{width:22px;height:22px;border:1px solid var(--gold);border-radius:5px;background:rgba(200,153,58,.08);display:flex;align-items:center;justify-content:center;}
+.brand-mark svg{width:12px;height:12px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.brand-name{font-family:'Cinzel',serif;font-size:.85rem;font-weight:700;color:var(--gold2);letter-spacing:.08em;}
+.header-sep{width:1px;height:18px;background:var(--line2);}
+.campaign-select{
+  background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:7px;
+  color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.72rem;
+  padding:4px 8px;outline:none;cursor:pointer;
 }
-
-/* Subtle gold line at bottom of header */
-.header::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent,rgba(200,153,58,.25),rgba(74,127,232,.2),transparent);
-  pointer-events:none;
-}
-
-/* Brand */
-.brand{
-  display:flex;align-items:center;gap:10px;
-  padding:0 20px;border-right:1px solid var(--line2);flex-shrink:0;
-}
-
-.brand-mark{
-  width:24px;height:24px;border:1px solid var(--gold);border-radius:5px;
-  background:rgba(200,153,58,.08);display:flex;align-items:center;justify-content:center;
-}
-
-.brand-mark svg{width:13px;height:13px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
-
-.brand-name{font-family:'Cinzel',serif;font-size:.88rem;font-weight:700;color:var(--gold2);letter-spacing:.08em;}
-
-/* Tabs */
-.tabs{display:flex;align-items:stretch;flex:1;overflow:hidden;}
-
-.tab{
-  display:flex;align-items:center;gap:8px;
-  padding:0 22px;font-size:.78rem;font-weight:700;letter-spacing:.03em;
-  color:var(--muted2);cursor:pointer;
-  border-right:1px solid var(--line);border-bottom:2px solid transparent;
-  transition:all .15s;white-space:nowrap;user-select:none;
-}
-
-.tab:hover{color:var(--text);background:rgba(255,255,255,.02);}
-
-.tab.active{
-  color:var(--accent2);border-bottom-color:var(--accent);
-  background:rgba(74,127,232,.05);
-}
-
-.tab.tab-vtt.active{
-  color:var(--gold2);border-bottom-color:var(--gold);
-  background:rgba(200,153,58,.05);
-}
-
-.tab svg{
-  width:14px;height:14px;stroke:currentColor;fill:none;
-  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;
-  flex-shrink:0;opacity:.7;transition:opacity .15s;
-}
-
-.tab.active svg{opacity:1;}
-
-/* Header right */
-.header-right{
-  margin-left:auto;display:flex;align-items:center;gap:8px;
-  padding:0 14px;border-left:1px solid var(--line2);flex-shrink:0;
-}
-
-.hbtn{
-  border:1px solid var(--line2);background:rgba(255,255,255,.04);color:var(--muted2);
-  border-radius:6px;padding:5px 10px;font-size:.72rem;font-weight:700;cursor:pointer;
-  font-family:'Syne',sans-serif;transition:all .12s;white-space:nowrap;
-}
-
-.hbtn:hover{color:var(--text);border-color:var(--accent);}
-
-.hbtn.gold{border-color:rgba(200,153,58,.4);color:var(--gold2);background:rgba(200,153,58,.06);}
-.hbtn.gold:hover{background:rgba(200,153,58,.12);}
-
-.status-dot{
-  width:6px;height:6px;border-radius:50%;
-  background:var(--good);box-shadow:0 0 5px var(--good);
-  animation:blink 2.5s ease-in-out infinite;
-}
-
+.campaign-select:focus{border-color:var(--accent);color:var(--text);}
+.campaign-select option{background:var(--bg2);}
+.spacer{flex:1;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--good);box-shadow:0 0 5px var(--good);animation:blink 2.5s ease-in-out infinite;}
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
-
-/* ── CONTENT ── */
-.content{flex:1;position:relative;min-height:0;}
-
-.panel{position:absolute;inset:0;display:none;}
-.panel.active{display:block;}
-
-.panel iframe{width:100%;height:100%;border:none;background:var(--bg);}
+.state-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 52px);gap:14px;color:var(--muted2);font-family:'JetBrains Mono',monospace;font-size:.85rem;}
+.spinner{width:32px;height:32px;border:2px solid var(--line2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.cards-wrap{padding:24px 20px 40px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;}
+.card{background:var(--panel);border:1px solid var(--line2);border-radius:16px;width:310px;flex-shrink:0;overflow:hidden;transition:border-color .15s;}
+.card:hover{border-color:rgba(74,127,232,.35);}
+.card-header{padding:16px 16px 12px;border-bottom:1px solid var(--line);}
+.char-name{font-family:'Cinzel',serif;font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:2px;}
+.char-sub{font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
+.hp-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.hp-label{font-size:.65rem;font-weight:700;color:var(--muted2);letter-spacing:.06em;text-transform:uppercase;width:16px;}
+.hp-bar-wrap{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;}
+.hp-bar{height:100%;border-radius:999px;transition:width .4s,background-color .4s;}
+.hp-val{font-size:.72rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);white-space:nowrap;min-width:52px;text-align:right;}
+.temp-badge{font-size:.62rem;font-family:'JetBrains Mono',monospace;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);color:var(--magic2);border-radius:999px;padding:1px 7px;white-space:nowrap;}
+.hp-controls{display:flex;align-items:center;gap:6px;margin-top:10px;}
+.hp-delta{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--line2);border-radius:7px;color:var(--text);padding:5px 8px;font-size:.82rem;font-family:'JetBrains Mono',monospace;outline:none;text-align:center;min-width:0;}
+.hp-delta:focus{border-color:var(--accent);}
+.hp-delta::placeholder{color:var(--muted);}
+.hp-btn{border:none;border-radius:7px;padding:5px 11px;font-size:.78rem;font-weight:700;font-family:'Syne',sans-serif;cursor:pointer;transition:all .12s;white-space:nowrap;}
+.hp-btn.heal{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:var(--good);}
+.hp-btn.heal:hover{background:rgba(16,185,129,.22);}
+.hp-btn.dmg{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;}
+.hp-btn.dmg:hover{background:rgba(239,68,68,.22);}
+.stats-row{display:flex;border-bottom:1px solid var(--line);}
+.stat-cell{flex:1;padding:9px 4px;text-align:center;border-right:1px solid var(--line);}
+.stat-cell:last-child{border-right:none;}
+.stat-label{font-size:.58rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+.stat-val{font-size:.95rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.ability-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;padding:10px;border-bottom:1px solid var(--line);}
+.ab-box{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:8px;padding:7px 3px;text-align:center;}
+.ab-name{font-size:.58rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2);margin-bottom:3px;}
+.ab-score{font-size:.95rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);line-height:1;}
+.ab-mod{font-size:.7rem;font-family:'JetBrains Mono',monospace;color:var(--accent2);margin-top:2px;}
+.conditions-row{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px;border-bottom:1px solid var(--line);}
+.conditions-row:empty{display:none;}
+.cond-pill{font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;}
+.card-footer{padding:10px;display:flex;flex-direction:column;gap:6px;}
+.panel-btn{width:100%;border-radius:8px;color:var(--muted2);font-family:'Syne',sans-serif;font-size:.75rem;font-weight:700;padding:8px 12px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;border:1px solid var(--line2);background:rgba(255,255,255,.03);}
+.panel-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.panel-btn .chevron{margin-left:auto;transition:transform .2s;}
+.panel-btn.open .chevron{transform:rotate(180deg);}
+.panel-btn.spell-btn:hover,.panel-btn.spell-btn.open{border-color:var(--magic);color:var(--magic2);background:rgba(139,92,246,.08);}
+.panel-btn.skill-btn:hover,.panel-btn.skill-btn.open{border-color:var(--skill);color:var(--skill2);background:rgba(14,165,233,.08);}
+.panel-btn.weapon-btn:hover,.panel-btn.weapon-btn.open{border-color:var(--weapon);color:var(--weapon2);background:rgba(232,131,74,.08);}
+.expand-panel{display:none;border-top:1px solid var(--line);padding:14px 12px;background:rgba(8,13,24,.5);}
+.expand-panel.open{display:block;}
+.sp-meta{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.sp-meta-item{font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);}
+.sp-meta-item span{color:var(--accent2);font-weight:700;}
+.slot-levels{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+.slot-level-row{display:flex;align-items:center;gap:8px;}
+.slot-level-label{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);width:42px;flex-shrink:0;}
+.slot-pips{display:flex;gap:5px;flex-wrap:wrap;}
+.slot-pip{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--accent);background:rgba(74,127,232,.18);cursor:pointer;transition:all .12s;flex-shrink:0;}
+.slot-pip:hover{transform:scale(1.15);}
+.slot-pip.used{background:rgba(255,255,255,.05);border-color:var(--line2);}
+.sp-section-title{font-size:.62rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;margin-top:10px;}
+.spell-list{display:flex;flex-direction:column;gap:3px;}
+.spell-item{padding:6px 8px;border-radius:6px;background:rgba(255,255,255,.02);border:1px solid var(--line);}
+.spell-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px;}
+.spell-name{font-size:.76rem;font-weight:700;color:var(--text);}
+.spell-level-tag{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);white-space:nowrap;}
+.spell-desc{font-size:.68rem;color:var(--muted2);line-height:1.5;margin-top:3px;font-family:'JetBrains Mono',monospace;}
+.empty-panel{font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--muted);text-align:center;padding:10px 0;}
+.skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px;}
+.skill-row-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 8px;border-radius:6px;background:rgba(255,255,255,.02);border:1px solid var(--line);font-size:.72rem;}
+.skill-name{color:var(--muted2);}
+.skill-val{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text);}
+.skill-row-item.prof .skill-name{color:var(--skill2);}
+.skill-row-item.expert .skill-name{color:var(--good);}
+.feat-item{padding:7px 9px;border-radius:7px;border:1px solid var(--line);background:rgba(255,255,255,.02);margin-bottom:4px;}
+.feat-name{font-size:.76rem;font-weight:700;color:var(--text);margin-bottom:2px;}
+.feat-desc{font-size:.68rem;color:var(--muted2);line-height:1.5;font-family:'JetBrains Mono',monospace;}
+.weapon-list{display:flex;flex-direction:column;gap:6px;}
+.weapon-item{border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.02);overflow:hidden;}
+.weapon-top{display:flex;align-items:center;gap:8px;padding:8px 10px;}
+.weapon-name{font-size:.8rem;font-weight:700;color:var(--text);flex:1;}
+.weapon-type{font-size:.6rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);padding:2px 6px;border:1px solid var(--line2);border-radius:999px;white-space:nowrap;}
+.weapon-stats{display:flex;gap:6px;padding:0 10px 10px;flex-wrap:wrap;}
+.wstat{display:flex;flex-direction:column;align-items:center;background:rgba(232,131,74,.07);border:1px solid rgba(232,131,74,.2);border-radius:7px;padding:5px 10px;min-width:64px;}
+.wstat-label{font-size:.55rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--weapon);margin-bottom:2px;}
+.wstat-val{font-size:.88rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--weapon2);}
+.weapon-notes{font-size:.67rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);padding:0 10px 8px;line-height:1.5;}
 </style>
 </head>
 <body>
-
 <div class="header">
-  <!-- Brand -->
   <div class="brand">
-    <div class="brand-mark">
-      <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-    </div>
+    <div class="brand-mark"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
     <div class="brand-name">GeezVTT</div>
   </div>
-
-  <!-- Tabs -->
-  <div class="tabs">
-    <div class="tab active" data-tab="character">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Characters
-    </div>
-    <div class="tab" data-tab="mapsetup">
-      <svg viewBox="0 0 24 24"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
-      Map Setup
-    </div>
-    <div class="tab tab-vtt" data-tab="vtt">
-      <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      VTT
-    </div>
-  </div>
-
-  <!-- Right controls -->
-  <div class="header-right">
-    <button class="hbtn" id="refreshBtn">↺ Refresh</button>
-    <button class="hbtn" id="newTabBtn">⤢ New Tab</button>
-    <button class="hbtn gold" id="launchVttBtn">⚔ Launch VTT for Players</button>
-    <div class="status-dot"></div>
-  </div>
+  <div class="header-sep"></div>
+  <select id="campaignSelect" class="campaign-select"><option value="">All campaigns</option></select>
+  <div class="spacer"></div>
+  <div class="status-dot"></div>
 </div>
+<div id="loadingScreen" class="state-screen"><div class="spinner"></div><div>Loading characters...</div></div>
+<div id="errorScreen" class="state-screen" style="display:none;"><div style="font-size:1.5rem;">&#9888;</div><div id="errorMsg">Could not load characters.</div></div>
+<div class="cards-wrap" id="cardsWrap" style="display:none;"></div>
 
-<div class="content">
-  <div class="panel active" id="panel-character">
-    <iframe id="frame-character" src="character.html" title="Characters"></iframe>
-  </div>
-  <div class="panel" id="panel-mapsetup">
-    <iframe id="frame-mapsetup" src="mapsetup.html" title="Map Setup" loading="lazy"></iframe>
-  </div>
-  <div class="panel" id="panel-vtt">
-    <iframe id="frame-vtt" src="vtt.html?gm=true" title="VTT" loading="lazy"></iframe>
-  </div>
-</div>
+<script type="module">
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+  authDomain:        "sheets-e5838.firebaseapp.com",
+  databaseURL:       "https://sheets-e5838-default-rtdb.firebaseio.com",
+  projectId:         "sheets-e5838",
+  storageBucket:     "sheets-e5838.firebasestorage.app",
+};
 
-<script>
-  const tabs   = document.querySelectorAll(".tab");
-  const panels = document.querySelectorAll(".panel");
-  let active   = "character";
+import { initializeApp }                               from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-  function switchTab(id) {
-    if (id === active) return;
-    active = id;
-    tabs.forEach(t   => t.classList.toggle("active", t.dataset.tab === id));
-    panels.forEach(p => p.classList.toggle("active", p.id === `panel-${id}`));
+const app = initializeApp(FIREBASE_CONFIG);
+const db  = getDatabase(app);
+const $   = id => document.getElementById(id);
+
+const CANTRIP_DESC = {
+  "acid splash":"Hurl a bubble of acid. One or two creatures within 5 ft take 1d6 acid damage on a failed DEX save.",
+  "blade ward":"Until end of next turn, resistance to bludgeoning, piercing, and slashing damage from weapon attacks.",
+  "booming blade":"Melee attack that deals normal damage. If the target moves before your next turn, it takes 1d8 thunder damage.",
+  "chill touch":"Spectral hand prevents healing and deals 1d8 necrotic on a hit. Undead also have disadvantage attacking you.",
+  "control flames":"Instantly expand, move, extinguish, or change the color/shape of a non-magical flame up to a 5-ft cube.",
+  "create bonfire":"Conjure a 5-ft bonfire. Creatures entering or starting their turn in it take 1d8 fire damage (DEX save negates).",
+  "dancing lights":"Create up to 4 torch-sized lights you can move 60 ft per turn. Concentration, up to 1 minute.",
+  "druidcraft":"Minor nature tricks: predict weather, make flowers bloom, light or snuff candles, create harmless sensory effects.",
+  "eldritch blast":"A beam of crackling force energy. 1d10 force damage on hit. Extra beams at 5th, 11th, and 17th level.",
+  "encode thoughts":"Pull a thought or memory from your mind as a visible strand that others can experience.",
+  "fire bolt":"A mote of fire streaks to the target. 1d10 fire damage on hit. Ignites unattended flammable objects.",
+  "friends":"Advantage on CHA checks against one non-hostile creature for 1 minute. They may become hostile afterward.",
+  "frostbite":"CON save or take 1d6 cold damage and have disadvantage on their next weapon attack roll.",
+  "green-flame blade":"Melee attack; on hit, fire leaps to a creature within 5 ft for your spellcasting mod fire damage.",
+  "guidance":"Touch a willing creature. They add 1d4 to one ability check of their choice before the spell ends.",
+  "gust":"Push one creature 5 ft (STR save negates), or move a 5-lb object, or open/close a door or window.",
+  "hand of radiance":"Each creature of your choice within 5 ft must succeed a CON save or take 1d6 radiant damage.",
+  "infestation":"CON save or take 1d6 poison damage and be moved 5 ft in a random direction.",
+  "light":"Touch an object. It sheds bright light 20 ft and dim light 20 ft beyond for 1 hour.",
+  "lightning lure":"Pull a creature within 15 ft up to 10 ft toward you (STR save). If adjacent after, 1d8 lightning damage.",
+  "mage hand":"Spectral hand appears. Manipulate objects, open containers, stow items up to 10 lb within 30 ft.",
+  "magic stone":"Enchant up to 3 pebbles. Thrown attack: 1d6 + WIS mod bludgeoning. Works with slings.",
+  "mending":"Repair a single break or tear in an object no larger than 1 ft in any dimension.",
+  "message":"Whisper a message to a creature within 120 ft. They can whisper a reply only you hear.",
+  "mind sliver":"INT save or take 1d6 psychic damage and subtract 1d4 from their next saving throw.",
+  "minor illusion":"Create a sound or an image no larger than a 5-ft cube. Investigation check to see through it.",
+  "mold earth":"Move or shape up to 5 cubic ft of earth, create difficult terrain, or change its color/texture.",
+  "poison spray":"Project a puff of noxious gas at a creature within 10 ft. CON save or take 1d12 poison damage.",
+  "prestidigitation":"Minor magical tricks: clean, soil, chill, warm, flavor, color, make a symbol, or create a small sensory effect.",
+  "primal savagery":"Your teeth or nails become natural weapons. Melee spell attack: 1d10 acid damage.",
+  "produce flame":"A flickering flame appears in your hand. Hurl it as a ranged spell attack for 1d8 fire damage.",
+  "ray of frost":"Blue-white beam. 1d8 cold damage on hit and target speed reduced by 10 ft until your next turn.",
+  "resistance":"Touch a willing creature. They add 1d4 to one saving throw of their choice before the spell ends.",
+  "sacred flame":"Flame-like radiance descends. DEX save or take 1d8 radiant damage. Cover provides no bonus to the save.",
+  "sapping sting":"CON save or take 1d4 necrotic damage and fall prone.",
+  "shape water":"Move water up to 5 ft, change its flow, freeze it, or animate it into simple moving shapes.",
+  "shillelagh":"Your club or quarterstaff becomes magical. Use WIS for attack and damage rolls; damage die becomes 1d8.",
+  "shocking grasp":"Melee spell attack with advantage if target wears metal armor. 1d8 lightning damage; target cannot take reactions.",
+  "spare the dying":"Stabilize a dying creature at 0 HP. No effect on undead or constructs.",
+  "sword burst":"Spectral blades swirl around you. Each creature within 5 ft: DEX save or take 1d6 force damage.",
+  "thaumaturgy":"Minor divine tricks: booming voice, flickering flames, tremors, unnatural wind, or changing eye color.",
+  "thorn whip":"Thorn-covered vine. Melee spell attack: 1d6 piercing damage and pull target up to 10 ft toward you.",
+  "thunderclap":"A thunderclap audible 100 ft away. Each creature within 5 ft: CON save or take 1d6 thunder damage.",
+  "toll the dead":"Point at a creature. WIS save or take 1d8 necrotic damage (1d12 if already missing any HP).",
+  "true strike":"Gain advantage on your first attack roll against the target on your next turn. Concentration.",
+  "vicious mockery":"Hurl magical insults. WIS save or take 1d4 psychic damage and have disadvantage on next attack roll.",
+  "word of radiance":"Utter a divine word. Each creature of your choice within 5 ft: CON save or take 1d6 radiant damage.",
+};
+
+const SKILLS = [
+  {key:"acrobatics",label:"Acrobatics",stat:"dex"},
+  {key:"animal_handling",label:"Animal Handling",stat:"wis"},
+  {key:"arcana",label:"Arcana",stat:"int"},
+  {key:"athletics",label:"Athletics",stat:"str"},
+  {key:"deception",label:"Deception",stat:"cha"},
+  {key:"history",label:"History",stat:"int"},
+  {key:"insight",label:"Insight",stat:"wis"},
+  {key:"intimidation",label:"Intimidation",stat:"cha"},
+  {key:"investigation",label:"Investigation",stat:"int"},
+  {key:"medicine",label:"Medicine",stat:"wis"},
+  {key:"nature",label:"Nature",stat:"int"},
+  {key:"perception",label:"Perception",stat:"wis"},
+  {key:"performance",label:"Performance",stat:"cha"},
+  {key:"persuasion",label:"Persuasion",stat:"cha"},
+  {key:"religion",label:"Religion",stat:"int"},
+  {key:"sleight_of_hand",label:"Sleight of Hand",stat:"dex"},
+  {key:"stealth",label:"Stealth",stat:"dex"},
+  {key:"survival",label:"Survival",stat:"wis"},
+];
+
+const ABILITY_KEYS   = ["str","dex","con","int","wis","cha"];
+const ABILITY_LABELS = {str:"STR",dex:"DEX",con:"CON",int:"INT",wis:"WIS",cha:"CHA"};
+
+function mod(s){const m=Math.floor((s-10)/2);return(m>=0?"+":"")+m;}
+function fmtBonus(n){return(n>=0?"+":"")+n;}
+function parseBonus(v){return parseInt(String(v).replace(/[^0-9\-]/g,""),10)||0;}
+function hpColor(cur,max){if(!max)return"#4a7fe8";const p=cur/max;if(p>.5)return"#10b981";if(p>.25)return"#f59e0b";return"#ef4444";}
+function spellLevelLabel(lvl){if(lvl===0)return"Cantrip";const s=["th","st","nd","rd","th","th","th","th","th","th"][lvl]||"th";return lvl+s;}
+
+function buildCard(char){
+  const c=char.combat||{},st=char.stats||{},sp=char.spellcasting||null,sk=char.skills||{};
+  const conds=c.conditions||[];
+  const hpCur=c.hp_current??0,hpMax=c.hp_max??1,hpPct=Math.max(0,Math.min(1,hpCur/hpMax)),tempHp=c.temp_hp??0;
+  const initBonus=c.initiative_bonus??Math.floor(((st.dex??10)-10)/2);
+  const profBonus=c.proficiency_bonus??2;
+  const passPerc=char.senses?.passive_perception??(10+Math.floor(((st.wis??10)-10)/2));
+  const subLine=`Lv ${char.level??'?'} ${char.class||''}${char.subclass?` (${char.subclass})`:''}${char.species?` · ${char.species}`:''}`;
+
+  const abilityBoxes=ABILITY_KEYS.map(k=>{const score=st[k]??10;return`<div class="ab-box"><div class="ab-name">${ABILITY_LABELS[k]}</div><div class="ab-score">${score}</div><div class="ab-mod">${mod(score)}</div></div>`;}).join('');
+  const condPills=conds.map(cd=>`<div class="cond-pill">${cd}</div>`).join('');
+
+  // Weapons
+  const attacks=char.attacks||[];
+  let weaponPanelHtml='',hasWeapons=attacks.length>0;
+  if(hasWeapons){
+    const weaponItems=attacks.map(a=>{
+      const atkBonus=a.to_hit!=null&&a.to_hit!==''?fmtBonus(parseBonus(a.to_hit)):(a.attack_bonus!=null?fmtBonus(parseBonus(a.attack_bonus)):'—');
+      const dmgFull=a.damage||a.damage_dice||'—';
+      const dmgType=a.damage_type||'';
+      const range=a.range||null;
+      const notes=[a.properties,a.notes].filter(Boolean).join(' · ');
+      return`<div class="weapon-item">
+        <div class="weapon-top">
+          <div class="weapon-name">${a.name||'Unnamed'}</div>
+          ${dmgType?`<div class="weapon-type">${dmgType}</div>`:''}
+        </div>
+        <div class="weapon-stats">
+          <div class="wstat"><div class="wstat-label">Attack</div><div class="wstat-val">${atkBonus}</div></div>
+          <div class="wstat"><div class="wstat-label">Damage</div><div class="wstat-val">${dmgFull}</div></div>
+          ${range?`<div class="wstat"><div class="wstat-label">Range</div><div class="wstat-val">${range}</div></div>`:''}
+        </div>
+        ${notes?`<div class="weapon-notes">${notes}</div>`:''}
+      </div>`;
+    }).join('');
+    weaponPanelHtml=`<div class="expand-panel" id="wp-${char.id}"><div class="weapon-list">${weaponItems}</div></div>`;
   }
 
-  tabs.forEach(tab => {
-    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
-  });
+  // Spells
+  let spellPanelHtml='',hasSpells=false;
+  if(sp){
+    const spMetaHtml=[
+      sp.ability?`Ability: <span>${sp.ability.toUpperCase()}</span>`:null,
+      sp.spell_save_dc?`DC <span>${sp.spell_save_dc}</span>`:null,
+      sp.spell_attack_bonus!=null?`Atk <span>${fmtBonus(sp.spell_attack_bonus)}</span>`:null,
+    ].filter(Boolean).map(s=>`<div class="sp-meta-item">${s}</div>`).join('');
+    let slotRowsHtml='';
+    for(let lvl=1;lvl<=9;lvl++){
+      const maxS=sp.slots?.[String(lvl)]??0;if(!maxS)continue;
+      const usedS=sp.slots_used?.[String(lvl)]??0;
+      let pips='';
+      for(let i=0;i<maxS;i++)pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;
+      slotRowsHtml+=`<div class="slot-level-row"><div class="slot-level-label">${spellLevelLabel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;
+    }
+    const spells=sp.spells||[];
+    const cantrips=spells.filter(s=>s.prepared_type==='cantrip'||s.level===0);
+    const prepared=spells.filter(s=>s.prepared_type!=='cantrip'&&s.level!==0);
+    const cantripHtml=cantrips.map(s=>{const desc=CANTRIP_DESC[s.name?.toLowerCase()]||'';return`<div class="spell-item"><div class="spell-item-top"><span class="spell-name">${s.name}</span><span class="spell-level-tag">Cantrip</span></div>${desc?`<div class="spell-desc">${desc}</div>`:''}</div>`;}).join('');
+    const preparedHtml=prepared.map(s=>`<div class="spell-item"><div class="spell-item-top"><span class="spell-name">${s.name}</span><span class="spell-level-tag">${spellLevelLabel(s.level||1)}</span></div></div>`).join('');
+    hasSpells=!!(cantrips.length||prepared.length||slotRowsHtml);
+    spellPanelHtml=`<div class="expand-panel" id="sp-${char.id}">
+      ${spMetaHtml?`<div class="sp-meta">${spMetaHtml}</div>`:''}
+      ${slotRowsHtml?`<div class="slot-levels">${slotRowsHtml}</div>`:''}
+      ${cantrips.length?`<div class="sp-section-title" style="margin-top:0">Cantrips</div><div class="spell-list">${cantripHtml}</div>`:''}
+      ${prepared.length?`<div class="sp-section-title">Prepared Spells</div><div class="spell-list">${preparedHtml}</div>`:''}
+      ${!cantrips.length&&!prepared.length?`<div class="empty-panel">No spells recorded.</div>`:''}
+    </div>`;
+  }
 
-  // Refresh current iframe
-  document.getElementById("refreshBtn").addEventListener("click", () => {
-    const iframe = document.querySelector(`#panel-${active} iframe`);
-    if (iframe) iframe.src = iframe.src;
-  });
+  // Skills & Feats
+  const skillRowsHtml=SKILLS.map(s=>{
+    const data=sk[s.key]||{};
+    const base=Math.floor(((st[s.stat]??10)-10)/2);
+    const bonus=data.bonus!=null?data.bonus:(base+(data.proficient?profBonus:0)+(data.expertise?profBonus:0));
+    const cls=data.expertise?'expert':data.proficient?'prof':'';
+    return`<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${fmtBonus(bonus)}</span></div>`;
+  }).join('');
+  const abilityCards=Object.entries(char.abilities||{}).map(([,ab])=>{
+    if(!ab||!ab.label)return'';
+    return`<div class="feat-item"><div class="feat-name">${ab.label}</div>${ab.effect_desc?`<div class="feat-desc">${ab.effect_desc}</div>`:''}</div>`;
+  }).join('');
+  const featuresText=char.text_blocks?.features_traits||'';
+  const profText=char.text_blocks?.proficiencies_languages||'';
+  const featuresBlock=featuresText?`<div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${featuresText}</div></div>`:'';
+  const profBlock=profText?`<div class="sp-section-title">Proficiencies &amp; Languages</div><div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${profText}</div></div>`:'';
+  const skillPanelHtml=`<div class="expand-panel" id="sk-${char.id}">
+    <div class="sp-section-title" style="margin-top:0">Skills</div>
+    <div class="skill-grid">${skillRowsHtml}</div>
+    ${abilityCards||featuresBlock?`<div class="sp-section-title">Features &amp; Traits</div>${abilityCards}${featuresBlock}`:''}
+    ${profBlock}
+  </div>`;
 
-  // Open current tool in new tab
-  document.getElementById("newTabBtn").addEventListener("click", () => {
-    const iframe = document.querySelector(`#panel-${active} iframe`);
-    if (iframe) window.open(iframe.src, "_blank", "noopener,noreferrer");
-  });
+  const card=document.createElement('div');
+  card.className='card';card.id=`card-${char.id}`;
+  card.innerHTML=`
+    <div class="card-header">
+      <div class="char-name">${char.name||'Unnamed'}</div>
+      <div class="char-sub">${subLine}</div>
+      <div class="hp-row">
+        <div class="hp-label">HP</div>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${hpColor(hpCur,hpMax)}"></div></div>
+        <div class="hp-val" id="hpval-${char.id}">${hpCur} / ${hpMax}</div>
+        ${tempHp?`<div class="temp-badge">+${tempHp} tmp</div>`:''}
+      </div>
+      <div class="hp-controls">
+        <input class="hp-delta" id="hpdelta-${char.id}" type="number" min="1" placeholder="amount"/>
+        <button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button>
+        <button class="hp-btn dmg"  onclick="window.adjustHp('${char.id}',false)">&#8722; Dmg</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-cell"><div class="stat-label">AC</div><div class="stat-val">${c.ac??'&#8212;'}</div></div>
+      <div class="stat-cell"><div class="stat-label">Speed</div><div class="stat-val">${c.speed??30}</div></div>
+      <div class="stat-cell"><div class="stat-label">Init</div><div class="stat-val">${fmtBonus(initBonus)}</div></div>
+      <div class="stat-cell"><div class="stat-label">Prof</div><div class="stat-val">+${profBonus}</div></div>
+      <div class="stat-cell"><div class="stat-label">Perc</div><div class="stat-val">${passPerc}</div></div>
+    </div>
+    <div class="ability-grid">${abilityBoxes}</div>
+    ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
+    <div class="card-footer">
+      ${hasWeapons?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">
+        <svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/></svg>
+        Weapons &amp; Attacks
+        <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>`:''}
+      <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Skills &amp; Feats
+        <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        Spells &amp; Cantrips
+        <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>`:''}
+    </div>
+    ${weaponPanelHtml}
+    ${skillPanelHtml}
+    ${spellPanelHtml}`;
+  return card;
+}
 
-  // Launch VTT for players in new window (no ?gm=true)
-  document.getElementById("launchVttBtn").addEventListener("click", () => {
-    window.open("vtt.html", "_blank", "noopener,noreferrer");
+window.togglePanel=function(panelId,btnId){
+  const panel=$(panelId),btn=$(btnId);if(!panel||!btn)return;
+  const open=panel.classList.toggle('open');btn.classList.toggle('open',open);
+};
+
+window.toggleSlot=function(pip){
+  const charId=pip.dataset.charid,lvl=pip.dataset.lvl,idx=parseInt(pip.dataset.idx,10),max=parseInt(pip.dataset.max,10);
+  const pips=[...pip.parentElement.querySelectorAll('.slot-pip')];
+  const clamped=Math.max(0,Math.min(max,pip.classList.contains('used')?idx:idx+1));
+  pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
+  set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(e=>console.error(e));
+};
+
+window.adjustHp=async function(charId,isHeal){
+  const deltaEl=$(`hpdelta-${charId}`);
+  const delta=parseInt(deltaEl?.value,10);
+  if(!deltaEl||isNaN(delta)||delta<=0)return;
+  try{
+    const snap=await get(ref(db,`characters/pcs/${charId}/combat`));if(!snap.exists())return;
+    const c=snap.val(),max=c.hp_max??1;
+    let cur=c.hp_current??0;
+    cur=isHeal?Math.min(max,cur+delta):Math.max(0,cur-delta);
+    await update(ref(db,`characters/pcs/${charId}/combat`),{hp_current:cur});
+    deltaEl.value='';
+  }catch(e){console.error('HP save failed:',e);}
+};
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||!e.target.classList.contains('hp-delta'))return;
+  window.adjustHp(e.target.id.replace('hpdelta-',''),true);
+});
+
+function watchCharacter(charId){
+  onValue(ref(db,`characters/pcs/${charId}/combat`),snap=>{
+    if(!snap.exists())return;
+    const c=snap.val(),hpCur=c.hp_current??0,hpMax=c.hp_max??1;
+    const pct=Math.max(0,Math.min(1,hpCur/hpMax));
+    const bar=$(`hpbar-${charId}`),val=$(`hpval-${charId}`);
+    if(bar){bar.style.width=Math.round(pct*100)+'%';bar.style.backgroundColor=hpColor(hpCur,hpMax);}
+    if(val)val.textContent=`${hpCur} / ${hpMax}`;
   });
+}
+
+let allPcs=[];
+
+function renderCards(campaign){
+  const wrap=$('cardsWrap');
+  wrap.innerHTML='';
+  const filtered=campaign?allPcs.filter(c=>(c.campaign||c.vtt_profile?.campaign||'')=== campaign):allPcs;
+  if(!filtered.length){
+    wrap.innerHTML='<div style="color:var(--muted2);font-family:\'JetBrains Mono\',monospace;font-size:.82rem;padding:40px 20px;">No characters for this campaign.</div>';
+    return;
+  }
+  for(const pc of filtered){wrap.appendChild(buildCard(pc));watchCharacter(pc.id);}
+}
+
+async function loadParty(){
+  try{
+    const snap=await get(ref(db,'characters/pcs'));
+    $('loadingScreen').style.display='none';
+    if(!snap.exists()){$('errorMsg').textContent='No player characters found.';$('errorScreen').style.display='flex';return;}
+    allPcs=Object.values(snap.val()).filter(c=>c&&c.name).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    const campaigns=[...new Set(allPcs.map(c=>c.campaign||c.vtt_profile?.campaign||'').filter(Boolean))].sort();
+    const sel=$('campaignSelect');
+    campaigns.forEach(camp=>{const opt=document.createElement('option');opt.value=camp;opt.textContent=camp;sel.appendChild(opt);});
+    if(campaigns.length===1){sel.value=campaigns[0];}
+    sel.addEventListener('change',()=>renderCards(sel.value));
+    $('cardsWrap').style.display='flex';
+    renderCards(sel.value);
+  }catch(err){
+    $('loadingScreen').style.display='none';
+    $('errorMsg').textContent=`Firebase error: ${err.message}`;
+    $('errorScreen').style.display='flex';
+    console.error(err);
+  }
+}
+loadParty();
 </script>
 </body>
 </html>
