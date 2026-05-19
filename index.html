@@ -391,8 +391,8 @@ window.toggleSlot=function(pip){
 
 window.adjustHp=async function(charId,isHeal){
   const deltaEl=$(`hpdelta-${charId}`);
-  const delta=parseInt(deltaEl?.value,10);
-  if(!deltaEl||isNaN(delta)||delta<=0)return;
+  const delta=parseInt(deltaEl?.value,10)||1;
+  if(!deltaEl||delta<=0)return;
   try{
     const snap=await get(ref(db,`characters/pcs/${charId}/combat`));if(!snap.exists())return;
     const c=snap.val(),max=c.hp_max??1;
