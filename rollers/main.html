@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GM Roller Suite</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f0e8;color:#1a1814;min-height:100vh;padding:2rem 1rem 3rem}
+h1{font-size:22px;font-weight:500;margin-bottom:4px}
+.subtitle{font-size:14px;color:#8a7a60;margin-bottom:2.5rem}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{display:block;background:#fff8e8;border:0.5px solid #c8b98a;border-radius:12px;padding:1.25rem 1rem;text-decoration:none;color:#1a1814;transition:background 0.1s,border-color 0.1s}
+.card:hover{background:#f0e4c8;border-color:#a89060}
+.card:active{transform:scale(0.97)}
+.card-icon{font-size:26px;margin-bottom:8px;display:block}
+.card-title{font-size:15px;font-weight:500;display:block;margin-bottom:3px}
+.card-desc{font-size:12px;color:#8a7a60;line-height:1.4;display:block}
+.card.coming{opacity:0.45;pointer-events:none}
+</style>
+</head>
+<body>
+<h1>GM Roller Suite</h1>
+<p class="subtitle">Open one, roll, close it.</p>
+
+<div class="grid">
+  <a class="card" href="npc.html">
+    <span class="card-icon">🎭</span>
+    <span class="card-title">NPC</span>
+    <span class="card-desc">Race, weapon, armor, secret, hook</span>
+  </a>
+  <a class="card" href="loot.html">
+    <span class="card-icon">💎</span>
+    <span class="card-title">Loot</span>
+    <span class="card-desc">Gems, consumables, magic, intel</span>
+  </a>
+  <a class="card coming" href="#">
+    <span class="card-icon">⚔️</span>
+    <span class="card-title">Encounter</span>
+    <span class="card-desc">Coming soon</span>
+  </a>
+  <a class="card coming" href="#">
+    <span class="card-icon">🎲</span>
+    <span class="card-title">Scene</span>
+    <span class="card-desc">Coming soon</span>
+  </a>
+</div>
+</body>
+</html>
