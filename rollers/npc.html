@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NPC Roller</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f0e8;color:#1a1814;min-height:100vh;padding:1.5rem 1rem 3rem}
+h1{font-size:18px;font-weight:500;margin-bottom:1.5rem;color:#1a1814}
+.back{font-size:13px;color:#8a7a60;text-decoration:none;display:inline-block;margin-bottom:1rem}
+.back:hover{color:#1a1814}
+.section-label{font-size:11px;color:#8a7a60;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+.hybrid-row{display:flex;gap:8px;margin-bottom:1.5rem}
+.hybrid-btn{flex:1;padding:10px 8px;border-radius:8px;border:0.5px solid #c8b98a;background:#fff8e8;color:#1a1814;font-size:14px;cursor:pointer;text-align:center}
+.hybrid-btn:hover{background:#f0e4c8}
+.hybrid-btn.active{border:2px solid #1a1814;font-weight:500;background:#fff8e8}
+.roll-btn{width:100%;padding:14px;font-size:16px;font-weight:500;border-radius:12px;border:0.5px solid #c8b98a;background:#fff8e8;color:#1a1814;cursor:pointer;margin-bottom:1.5rem}
+.roll-btn:hover{background:#f0e4c8}
+.roll-btn:active{transform:scale(0.98)}
+.result-section{margin-bottom:1.25rem}
+.result-card{background:#fff8e8;border:0.5px solid #c8b98a;border-radius:8px;padding:12px 14px;font-size:15px;line-height:1.5}
+.result-card.race-card{font-size:18px;font-weight:500}
+.result-card.hook-card{border-color:#b8906a;background:#fdf0e0}
+.result-card.secret-card{border-color:#a0886a;background:#f8ece0}
+.empty-state{text-align:center;padding:2rem 1rem;color:#8a7a60;font-size:14px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem}
+</style>
+</head>
+<body>
+<a class="back" href="index.html">← suite</a>
+<h1>NPC Roller</h1>
+
+<button class="roll-btn" onclick="rollNPC()">⚄ Roll NPC</button>
+
+<div id="results"><div class="empty-state">Hit roll.</div></div>
+
+<script>
+const RACES = ["Human","High Elf","Wood Elf","Drow","Hill Dwarf","Mountain Dwarf","Lightfoot Halfling","Stout Halfling","Rock Gnome","Forest Gnome","Half-Elf","Half-Orc","Tiefling","Dragonborn","Aasimar","Goliath","Tabaxi","Kenku","Lizardfolk","Tortle","Firbolg","Yuan-ti"];
+
+const WEAPONS = [
+  "longsword", "shortsword", "dagger (hidden)", "two daggers",
+  "handaxe", "battleaxe", "greataxe", "warhammer", "maul",
+  "spear", "quarterstaff", "club", "mace",
+  "shortbow", "longbow", "crossbow (light)", "crossbow (heavy)",
+  "rapier", "whip", "net and trident",
+  "unarmed — no weapon", "unarmed — fighting gloves",
+  "improvised — whatever's nearby", "a strange weapon, hard to name",
+];
+
+const ARMOR = [
+  "no armor at all", "travelling clothes, no protection",
+  "worn leather, cracked at the joints", "studded leather, well-maintained",
+  "a single pauldron, mismatched gear", "piecemeal armor, cobbled together",
+  "hide armor, rough-stitched", "chain shirt, no other protection",
+  "scale mail, dented", "breastplate only",
+  "full chain mail", "half-plate",
+  "a shield but no armor", "heavy cloak, concealing something underneath",
+  "robes — scholarly or religious", "ceremonial armor, not built for fighting",
+];
+
+const SECRETS = [
+  "in search of something they lost long ago",
+  "carrying something dangerous they won't explain",
+  "running from someone who's still looking",
+  "owes a debt that can't be repaid in coin",
+  "knows something about someone powerful — and knows to keep quiet",
+  "not who they say they are",
+  "was present when something terrible happened",
+  "is being watched, and knows it",
+  "made a promise they regret",
+  "is dying, and hasn't told anyone",
+  "was once someone important, and walked away from it",
+  "has a second loyalty no one knows about",
+  "is looking for a specific person",
+  "did something unforgivable — and got away with it",
+  "knows where something is buried",
+  "was betrayed, and hasn't decided what to do about it",
+"has done this before — the last time didn't end well",
+"is keeping someone else's secret, not their own",
+"arrived just before something went wrong — make of that what you will",
+"has a price on their head in a place they're trying to get back to",
+"lost something here once and never really left",
+"is the only one who didn't run when they should have",
+"knows exactly what this place is — and came anyway",
+"hasn't slept properly in weeks",
+"is pretending not to recognize someone in the room",
+"swore an oath that now puts them at odds with everything they want",
+
+];
+
+const HOOKS = [
+  "needs something moved without questions asked",
+  "is looking for someone who doesn't want to be found",
+  "has information worth more than they realize",
+  "is the last person standing between something bad and everyone else",
+  "is protecting someone at great personal cost",
+  "wants revenge but lacks the means",
+  "is trying to stop something before it's too late",
+  "has made an enemy of exactly the wrong person",
+  "is sitting on a secret that could change everything",
+  "needs the party to do something they can't be seen doing themselves",
+  "is the only one who knows the way",
+  "is about to make a terrible decision and doesn't know it",
+  "has already done something the party will care about — they just don't know yet",
+  "is in the wrong place and knows far too much",
+  "is being used by someone else and is starting to suspect it",
+  "has outlived everyone who knew their real name",
+  "is owed a favor by someone very dangerous — and is finally collecting",
+  "came here for one reason and found something that changed everything",
+  "is the only survivor, and doesn't know why",
+  "has been hired by two different people for the same job",
+  "knows this ends badly and is doing it anyway",
+  "is waiting for someone who isn't coming",
+  "recently walked away from something — and it followed them",
+  "has a way in, but won't say how they know it",
+  "is carrying a message they haven't read",
+  "made a deal they thought was symbolic — it wasn't",
+  "has been here before, under a different name",
+  "is trying to undo something they set in motion years ago",
+  "is the reason this problem exists, though they'd never say so",
+  "trusts the party for reasons they haven't explained yet",
+]  ;
+
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function rollNPC(){
+  const isHybrid = Math.random() < 0.3;
+  let race;
+  if(isHybrid){
+    const pool=[...RACES];
+    const r1=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    const r2=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    race=`${r1} / ${r2}`;
+  } else {
+    race=pick(RACES);
+  }
+  const weapon=pick(WEAPONS);
+  const armor=pick(ARMOR);
+  const secret=pick(SECRETS);
+  const hook=pick(HOOKS);
+
+  document.getElementById('results').innerHTML=`
+    <div class="result-section">
+      <p class="section-label">Race</p>
+      <div class="result-card race-card">${race}</div>
+    </div>
+    <div class="row">
+      <div>
+        <p class="section-label">Weapon</p>
+        <div class="result-card">${weapon}</div>
+      </div>
+      <div>
+        <p class="section-label">Armor</p>
+        <div class="result-card">${armor}</div>
+      </div>
+    </div>
+    <div class="result-section">
+      <p class="section-label">Secret</p>
+      <div class="result-card secret-card">${secret}</div>
+    </div>
+    <div class="result-section">
+      <p class="section-label">Self-contained hook</p>
+      <div class="result-card hook-card">${hook}</div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
