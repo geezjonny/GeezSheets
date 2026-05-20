@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GM Roller Suite</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f0e8;color:#1a1814;min-height:100vh}
+nav{display:flex;overflow-x:auto;border-bottom:0.5px solid #c8b98a;background:#f0e8d0;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+.tab{flex-shrink:0;padding:12px 16px;font-size:13px;color:#8a7a60;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;background:none;border-left:none;border-right:none;border-top:none}
+.tab:hover{color:#1a1814}
+.tab.active{color:#1a1814;font-weight:500;border-bottom-color:#1a1814}
+.page{display:none;padding:1.5rem 1rem 3rem}
+.page.active{display:block}
+.section-label{font-size:11px;color:#8a7a60;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px}
+.roll-btn{width:100%;padding:14px;font-size:16px;font-weight:500;border-radius:12px;border:0.5px solid #c8b98a;background:#fff8e8;color:#1a1814;cursor:pointer;margin-bottom:1.5rem}
+.roll-btn:hover{background:#f0e4c8}
+.roll-btn:active{transform:scale(0.98)}
+.card{background:#fff8e8;border:0.5px solid #c8b98a;border-radius:8px;padding:12px 14px;font-size:15px;line-height:1.5;margin-bottom:0}
+.card.danger-low{border-color:#8ab88a;background:#f0f8f0}
+.card.danger-mid{border-color:#c8a858;background:#fdf5e0}
+.card.danger-high{border-color:#b87858;background:#fdf0e8}
+.card.complication{border-color:#a08060;background:#f8ece0}
+.card.threat{border-color:#a08060;background:#f8ece0}
+.card.magic{border-color:#6a8ab8;background:#e8f0f8;color:#1a2a4a}
+.card.intel{border-color:#b88a30;background:#f8f0d8;color:#3a2a08}
+.card.flavor{border-color:#9a80a0;background:#f5f0f8}
+.card.nothing{color:#8a7a60;font-size:14px;font-style:italic}
+.card.race{font-size:18px;font-weight:500}
+.result-section{margin-bottom:1.25rem}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1.25rem}
+.count-big{font-size:22px;font-weight:500;line-height:1.2}
+.count-sub{font-size:12px;color:#8a7a60;margin-top:2px}
+.empty-state{text-align:center;padding:2rem 1rem;color:#8a7a60;font-size:14px;font-style:italic}
+.section-divider{font-size:13px;font-weight:500;color:#1a1814;margin-bottom:8px;padding-bottom:6px;border-bottom:0.5px solid #e0d4b0;margin-top:1.5rem}
+.section-divider:first-child{margin-top:0}
+</style>
+</head>
+<body>
+
+<nav>
+  <button class="tab active" onclick="show('chaos')">⚄ Chaos</button>
+  <button class="tab" onclick="show('npc')">NPC</button>
+  <button class="tab" onclick="show('encounter')">Encounter</button>
+  <button class="tab" onclick="show('scene')">Scene</button>
+  <button class="tab" onclick="show('loot')">Loot</button>
+  <button class="tab" onclick="show('flavor')">Flavor</button>
+</nav>
+
+<!-- CHAOS -->
+<div id="page-chaos" class="page active">
+  <button class="roll-btn" style="margin-top:0.5rem" onclick="rollChaos()">⚄ Roll everything</button>
+  <div id="chaos-results"><div class="empty-state">One button. Full scene.</div></div>
+</div>
+
+<!-- NPC -->
+<div id="page-npc" class="page">
+  <button class="roll-btn" style="margin-top:0.5rem" onclick="rollNPC()">⚄ Roll NPC</button>
+  <div id="npc-results"><div class="empty-state">Hit roll.</div></div>
+</div>
+
+<!-- ENCOUNTER -->
+<div id="page-encounter" class="page">
+  <button class="roll-btn" style="margin-top:0.5rem" onclick="rollEncounter()">⚄ Roll encounter</button>
+  <div id="encounter-results"><div class="empty-state">Hit roll.</div></div>
+</div>
+
+<!-- SCENE -->
+<div id="page-scene" class="page">
+  <button class="roll-btn" style="margin-top:0.5rem" onclick="rollMood()">⚄ Roll mood</button>
+  <div id="mood-results"><div class="empty-state">What does this moment feel like?</div></div>
+  <button class="roll-btn" onclick="rollThreat()">⚄ Roll threat reveal</button>
+  <div id="threat-results"><div class="empty-state">How does the big enemy show up?</div></div>
+</div>
+
+<!-- LOOT -->
+<div id="page-loot" class="page">
+  <button class="roll-btn" style="margin-top:0.5rem" onclick="rollLoot('trash')">⚄ Trash</button>
+  <button class="roll-btn" onclick="rollLoot('standard')">⚄ Standard</button>
+  <button class="roll-btn" onclick="rollLoot('elite')">⚄ Elite</button>
+  <button class="roll-btn" onclick="rollLoot('boss')">⚄ Boss</button>
+  <div id="loot-results"><div class="empty-state">Pick an encounter tier and roll.</div></div>
+</div>
+
+<!-- FLAVOR -->
+<div id="page-flavor" class="page">
+  <button class="roll-btn" style="margin-top:0.5rem" onclick="rollFlavor()">⚄ Roll something weird</button>
+  <div id="flavor-results"><div class="empty-state">What's the strange thing in this room?</div></div>
+</div>
+
+<script src="data.js"></script>
+<script>
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function rand(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function d(n){return Math.floor(Math.random()*n)+1;}
+
+function show(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function dangerClass(tier){
+  if(tier==='low')return 'danger-low';
+  if(tier==='medium')return 'danger-mid';
+  return 'danger-high';
+}
+
+function npcRace(){
+  if(Math.random()<0.3){
+    const pool=[...RACES];
+    const r1=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    const r2=pool.splice(Math.floor(Math.random()*pool.length),1)[0];
+    return `${r1} / ${r2}`;
+  }
+  return pick(RACES);
+}
+
+function magicItem(){
+  const r=d(20);
+  if(r<=12)return pick(MAGIC_A);
+  if(r<=18)return pick(MAGIC_B);
+  return pick(MAGIC_C);
+}
+
+function encounterHTML(tier){
+  const t=TIERS[tier];
+  const count=rand(t.countMin,t.countMax);
+  const mix=Math.random()<t.strongChance?pick(STRONG_MIX[tier]):'all grunts';
+  const spacing=pick(SPACING);
+  const complication=Math.random()<t.complicationChance?pick(COMPLICATIONS):null;
+  const dc=dangerClass(tier);
+  return `
+    <div class="row">
+      <div><p class="section-label">Danger</p><div class="card ${dc}" style="font-weight:500">${tier}</div></div>
+      <div><p class="section-label">Count</p><div class="card ${dc}"><span class="count-big">${count}</span><span class="count-sub">enemies</span></div></div>
+    </div>
+    <div class="result-section"><p class="section-label">Mix</p><div class="card ${dc}">${mix}</div></div>
+    <div class="result-section"><p class="section-label">Spacing</p><div class="card">${spacing}</div></div>
+    <div class="result-section"><p class="section-label">Complication</p>
+      ${complication?`<div class="card complication">${complication}</div>`:'<div class="card nothing">Straight fight.</div>'}
+    </div>`;
+}
+
+function lootHTML(tier){
+  const chances={trash:{gem:0.15,con:0.10,mag:0.03,int:0.20},standard:{gem:0.30,con:0.30,mag:0.10,int:0.40},elite:{gem:0.55,con:0.70,mag:0.28,int:0.65},boss:{gem:0.90,con:1.00,mag:0.55,int:0.90}};
+  const c=chances[tier];
+  const gem=Math.random()<c.gem?pick(GEMS):null;
+  const con=Math.random()<c.con?pick(CONSUMABLES):null;
+  const mag=Math.random()<c.mag?magicItem():null;
+  const intel=Math.random()<c.int?pick(INTEL):null;
+  return `
+    <div class="result-section"><p class="section-label">Valuables</p>
+      ${gem?`<div class="card">${gem}</div>`:'<div class="card nothing">Nothing worth taking.</div>'}
+    </div>
+    <div class="result-section"><p class="section-label">Consumable</p>
+      ${con?`<div class="card">${con}</div>`:'<div class="card nothing">None.</div>'}
+    </div>
+    <div class="result-section"><p class="section-label">Magic item</p>
+      ${mag?`<div class="card magic">${mag}</div>`:'<div class="card nothing">None.</div>'}
+    </div>
+    <div class="result-section"><p class="section-label">Intel</p>
+      ${intel?`<div class="card intel">${intel}</div>`:'<div class="card nothing">Nothing useful.</div>'}
+    </div>`;
+}
+
+function rollNPC(){
+  const race=npcRace();
+  document.getElementById('npc-results').innerHTML=`
+    <div class="result-section"><p class="section-label">Race</p><div class="card race">${race}</div></div>
+    <div class="row">
+      <div><p class="section-label">Weapon</p><div class="card">${pick(WEAPONS)}</div></div>
+      <div><p class="section-label">Armor</p><div class="card">${pick(ARMOR)}</div></div>
+    </div>
+    <div class="result-section"><p class="section-label">Secret</p><div class="card">${pick(SECRETS)}</div></div>
+    <div class="result-section"><p class="section-label">Hook</p><div class="card complication">${pick(HOOKS)}</div></div>`;
+}
+
+function rollEncounter(){
+  document.getElementById('encounter-results').innerHTML=encounterHTML(pick(TIER_WEIGHTS));
+}
+
+function rollMood(){
+  document.getElementById('mood-results').innerHTML=`<div class="result-section"><div class="card">${pick(MOODS)}</div></div>`;
+}
+
+function rollThreat(){
+  document.getElementById('threat-results').innerHTML=`<div class="result-section"><div class="card threat">${pick(THREATS)}</div></div>`;
+}
+
+function rollLoot(tier){
+  document.getElementById('loot-results').innerHTML=lootHTML(tier);
+}
+
+function rollFlavor(){
+  document.getElementById('flavor-results').innerHTML=`<div class="result-section"><div class="card flavor">${pick(FLAVORS)}</div></div>`;
+}
+
+function rollChaos(){
+  const tier=pick(TIER_WEIGHTS);
+  document.getElementById('chaos-results').innerHTML=`
+    <p class="section-divider">Scene</p>
+    <div class="result-section"><p class="section-label">Mood</p><div class="card">${pick(MOODS)}</div></div>
+    <div class="result-section"><p class="section-label">Threat reveal</p><div class="card threat">${pick(THREATS)}</div></div>
+    <p class="section-divider">Encounter</p>
+    ${encounterHTML(tier)}
+    <p class="section-divider">NPC</p>
+    <div class="result-section"><p class="section-label">Race</p><div class="card race">${npcRace()}</div></div>
+    <div class="row">
+      <div><p class="section-label">Weapon</p><div class="card">${pick(WEAPONS)}</div></div>
+      <div><p class="section-label">Armor</p><div class="card">${pick(ARMOR)}</div></div>
+    </div>
+    <div class="result-section"><p class="section-label">Secret</p><div class="card">${pick(SECRETS)}</div></div>
+    <div class="result-section"><p class="section-label">Hook</p><div class="card complication">${pick(HOOKS)}</div></div>
+    <p class="section-divider">Loot</p>
+    ${lootHTML(pick(['trash','standard','elite','boss']))}
+    <p class="section-divider">Flavor</p>
+    <div class="result-section"><div class="card flavor">${pick(FLAVORS)}</div></div>`;
+}
+</script>
+</body>
+</html>
