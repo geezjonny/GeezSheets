@@ -159,6 +159,39 @@ const INTEL = [
   "a map with a location marked that doesn't appear on any other map",
 ];
 
+const ENCOUNTER_TYPES=[
+"Enemy fleeing",
+"Hostage situation",
+"Rescue operation",
+"Elevation problem",
+"Neutralize key target",
+"Protect vulnerable target",
+"Prevent escape",
+"Prevent objective completion",
+"Recover important object",
+"Secure area",
+"Hold position",
+"Delay advancing force",
+"Break enemy formation",
+"Reach destination",
+"Escape dangerous area",
+"Maintain stealth",
+"Split priorities",
+"Enemy reinforcements imminent",
+"Cross hazardous terrain",
+"Planar instability",
+"Reality distortion",
+"Environmental collapse",
+"Competing factions present",
+"Unstable magic effects",
+"Civilians caught nearby",
+"Unknown threat emerges",
+"Timed pressure",
+"Enemy fortification",
+"Restricted movement",
+"Terrain advantage problem"
+];
+
 const MOODS = [
   "slow dread — something is wrong but no one can name it yet",
   "false calm — too quiet, too still, everything waiting",
