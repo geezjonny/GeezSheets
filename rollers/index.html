@@ -129,26 +129,67 @@ function magicItem(){
 function encounterHTML(tier){
   const t=TIERS[tier];
   const count=rand(t.countMin,t.countMax);
-  const mix=Math.random()<t.strongChance?pick(STRONG_MIX[tier]):'all grunts';
-const spacing=pick(SPACING);
-const encounterType=pick(ENCOUNTER_TYPES);
-const complication=Math.random()<t.complicationChance?pick(COMPLICATIONS):null;
+  const mix=Math.random()<t.strongChance
+    ? pick(STRONG_MIX[tier])
+    : 'all grunts';
+
+  const spacing=pick(SPACING);
+  const encounterType=pick(ENCOUNTER_TYPES);
+  const complication=Math.random()<t.complicationChance
+    ? pick(COMPLICATIONS)
+    : null;
+
   const dc=dangerClass(tier);
+
   return `
     <div class="row">
-      <div><p class="section-label">Danger</p><div class="card ${dc}" style="font-weight:500">${tier}</div></div>
-      <div><p class="section-label">Count</p><div class="card ${dc}"><span class="count-big">${count}</span><span class="count-sub">enemies</span></div></div>
-    </div>
-    <div class="result-section"><p class="section-label">Mix</p><div class="card ${dc}">${mix}</div></div>
-    <div class="result-section"><p class="section-label">Spacing</p><div class="card">${spacing}</div></div>
-    <div class="result-section"><p class="section-label">Complication</p>
-      ${complication?`<div class="card complication">${complication}</div>`:'<div class="card nothing">Straight fight.</div>'}
-    </div>`;
-      <div class="result-section">
-      <p class="section-label">Encounter Type</p>
-      <div class="card complication">${encounterType}</div>
+      <div>
+        <p class="section-label">Danger</p>
+        <div class="card ${dc}" style="font-weight:500">
+          ${tier}
+        </div>
+      </div>
+
+      <div>
+        <p class="section-label">Count</p>
+        <div class="card ${dc}">
+          <span class="count-big">${count}</span>
+          <span class="count-sub">enemies</span>
+        </div>
+      </div>
     </div>
 
+    <div class="result-section">
+      <p class="section-label">Mix</p>
+      <div class="card ${dc}">
+        ${mix}
+      </div>
+    </div>
+
+    <div class="result-section">
+      <p class="section-label">Spacing</p>
+      <div class="card">
+        ${spacing}
+      </div>
+    </div>
+
+    <div class="result-section">
+      <p class="section-label">Encounter Type</p>
+      <div class="card complication">
+        ${encounterType}
+      </div>
+    </div>
+
+    <div class="result-section">
+      <p class="section-label">Complication</p>
+
+      ${
+        complication
+        ? `<div class="card complication">${complication}</div>`
+        : `<div class="card nothing">Straight fight.</div>`
+      }
+    </div>
+  `;
 }
 
 function lootHTML(tier){
