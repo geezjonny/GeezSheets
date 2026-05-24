@@ -130,8 +130,9 @@ function encounterHTML(tier){
   const t=TIERS[tier];
   const count=rand(t.countMin,t.countMax);
   const mix=Math.random()<t.strongChance?pick(STRONG_MIX[tier]):'all grunts';
-  const spacing=pick(SPACING);
-  const complication=Math.random()<t.complicationChance?pick(COMPLICATIONS):null;
+const spacing=pick(SPACING);
+const encounterType=pick(ENCOUNTER_TYPES);
+const complication=Math.random()<t.complicationChance?pick(COMPLICATIONS):null;
   const dc=dangerClass(tier);
   return `
     <div class="row">
@@ -143,6 +144,11 @@ function encounterHTML(tier){
     <div class="result-section"><p class="section-label">Complication</p>
       ${complication?`<div class="card complication">${complication}</div>`:'<div class="card nothing">Straight fight.</div>'}
     </div>`;
+      <div class="result-section">
+      <p class="section-label">Encounter Type</p>
+      <div class="card complication">${encounterType}</div>
+    </div>
+
 }
 
 function lootHTML(tier){
