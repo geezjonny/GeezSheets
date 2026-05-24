@@ -189,7 +189,7 @@ const ENCOUNTER_TYPES=[
   "Timed pressure",
   "Enemy fortification",
   "Restricted movement",
-  "Terrain advantage problem"
+  "Terrain advantage problem",
 ];
 
 const MOODS = [
