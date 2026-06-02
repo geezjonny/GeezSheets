@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeezSheets Character Editor</title>
+<style>
+body{background:#111827;color:#fff;font-family:Arial,sans-serif;padding:20px}
+select,button{padding:10px;margin-right:8px}
+select{width:420px}
+textarea{width:100%;height:75vh;margin-top:15px;background:#0f172a;color:#d1fae5;
+font-family:Consolas,monospace;font-size:14px;padding:12px}
+#status{margin-top:10px;color:#93c5fd}
+#path{margin-top:10px;color:#fbbf24}
+</style>
+</head>
+<body>
+
+<h2>GeezSheets Character Editor</h2>
+
+<select id="characterSelect">
+<option>Loading characters...</option>
+</select>
+
+<button onclick="loadSelectedCharacter()">Load</button>
+<button onclick="saveCharacter()">Save</button>
+<button onclick="formatJson()">Format</button>
+<button onclick="exportCharacter()">Export</button>
+<button onclick="importCharacter()">Import</button>
+
+<input
+    type="file"
+    id="importFile"
+    accept=".json"
+    style="display:none"
+/>
+
+<div id="path"></div>
+<div id="status">Ready.</div>
+
+<textarea id="editor"></textarea>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+  authDomain: "sheets-e5838.firebaseapp.com",
+  databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
+  projectId: "sheets-e5838",
+  storageBucket: "sheets-e5838.firebasestorage.app"
+};
+
+const app = initializeApp(FIREBASE_CONFIG);
+const db = getDatabase(app);
+
+let loadedPath = null;
+let characterIndex = {};
+
+async function populateCharacterList(){
+    const select = document.getElementById("characterSelect");
+    select.innerHTML = "";
+
+    const pcsSnap = await get(ref(db,"characters/pcs"));
+    if(pcsSnap.exists()){
+        const pcs = pcsSnap.val();
+        for(const [id,char] of Object.entries(pcs)){
+            characterIndex["pc_"+id] = {
+                path:`characters/pcs/${id}`,
+                data:char
+            };
+            const opt = document.createElement("option");
+            opt.value = "pc_"+id;
+            opt.textContent = `[PC] ${char.name}`;
+            select.appendChild(opt);
+        }
+    }
+
+    const npcSnap = await get(ref(db,"characters/npcs"));
+    if(npcSnap.exists()){
+        const npcs = npcSnap.val();
+        for(const [id,char] of Object.entries(npcs)){
+            characterIndex["npc_"+id] = {
+                path:`characters/npcs/${id}`,
+                data:char
+            };
+            const opt = document.createElement("option");
+            opt.value = "npc_"+id;
+            opt.textContent = `[NPC] ${char.name}`;
+            select.appendChild(opt);
+        }
+    }
+
+    document.getElementById("status").textContent =
+        `${Object.keys(characterIndex).length} records loaded.`;
+}
+
+window.loadSelectedCharacter = function(){
+    const key = document.getElementById("characterSelect").value;
+    if(!key) return;
+
+    const record = characterIndex[key];
+    loadedPath = record.path;
+
+    document.getElementById("path").textContent = loadedPath;
+    document.getElementById("editor").value =
+        JSON.stringify(record.data,null,2);
+
+    document.getElementById("status").textContent = "Loaded.";
+}
+
+window.saveCharacter = async function(){
+    if(!loadedPath){
+        alert("Load a character first.");
+        return;
+    }
+
+    try{
+        const data = JSON.parse(
+            document.getElementById("editor").value
+        );
+
+        await set(ref(db,loadedPath),data);
+
+        document.getElementById("status").textContent =
+            "Saved successfully.";
+    }
+    catch(err){
+        alert("Save failed:\n\n" + err.message);
+    }
+}
+
+window.formatJson = function(){
+    try{
+        const obj = JSON.parse(
+            document.getElementById("editor").value
+        );
+
+        document.getElementById("editor").value =
+            JSON.stringify(obj,null,2);
+    }
+    catch(err){
+        alert("Invalid JSON.");
+    }
+}
+
+populateCharacterList();
+
+window.exportCharacter = function(){
+
+    if(!loadedPath){
+        alert("Load a character first.");
+        return;
+    }
+
+    try{
+
+        const text =
+            document.getElementById("editor").value;
+
+        const data =
+            JSON.parse(text);
+
+        const blob =
+            new Blob(
+                [JSON.stringify(data,null,2)],
+                {type:"application/json"}
+            );
+
+        const a =
+            document.createElement("a");
+
+        const filename =
+            (data.name || "character")
+                .replaceAll(" ","_")
+                + ".json";
+
+        a.href =
+            URL.createObjectURL(blob);
+
+        a.download =
+            filename;
+
+        document.body.appendChild(a);
+
+        a.click();
+
+        document.body.removeChild(a);
+
+        URL.revokeObjectURL(a.href);
+
+        document.getElementById("status").textContent =
+            "Character exported.";
+
+    }
+    catch(err){
+
+        alert(
+            "Cannot export invalid JSON."
+        );
+    }
+};
+
+window.importCharacter = function(){
+
+    document
+        .getElementById("importFile")
+        .click();
+};
+
+document
+    .getElementById("importFile")
+    .addEventListener("change", async e => {
+
+        const file =
+            e.target.files[0];
+
+        if(!file) return;
+
+        try{
+
+            const text =
+                await file.text();
+
+            const obj =
+                JSON.parse(text);
+
+            document
+                .getElementById("editor")
+                .value =
+                JSON.stringify(obj,null,2);
+
+            document
+                .getElementById("status")
+                .textContent =
+                "Character imported.";
+
+        }
+        catch(err){
+
+            alert(
+                "Invalid JSON file."
+            );
+        }
+});
+
+</script>
+</body>
+</html>
