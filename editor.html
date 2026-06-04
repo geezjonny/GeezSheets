@@ -22,11 +22,13 @@ font-family:Consolas,monospace;font-size:14px;padding:12px}
 <option>Loading characters...</option>
 </select>
 
+<button onclick="newCharacter()">New Character</button>
 <button onclick="loadSelectedCharacter()">Load</button>
 <button onclick="saveCharacter()">Save</button>
 <button onclick="formatJson()">Format</button>
 <button onclick="exportCharacter()">Export</button>
 <button onclick="importCharacter()">Import</button>
+<button onclick="copyAiPrompt()">AI Prompt</button>
 
 <input
     type="file"
@@ -111,23 +113,45 @@ window.loadSelectedCharacter = function(){
 }
 
 window.saveCharacter = async function(){
-    if(!loadedPath){
-        alert("Load a character first.");
-        return;
-    }
 
     try{
+
         const data = JSON.parse(
             document.getElementById("editor").value
         );
 
-        await set(ref(db,loadedPath),data);
+        // If we're creating a new character
+        if(!loadedPath){
 
-        document.getElementById("status").textContent =
+            const safeName =
+                (data.name || "new_character")
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g,"_")
+                .replace(/^_+|_+$/g,"");
+
+            loadedPath =
+                `characters/pcs/${safeName}`;
+
+            document.getElementById("path")
+                .textContent = loadedPath;
+        }
+
+        await set(
+            ref(db,loadedPath),
+            data
+        );
+
+        document.getElementById("status")
+            .textContent =
             "Saved successfully.";
+
     }
     catch(err){
-        alert("Save failed:\n\n" + err.message);
+
+        alert(
+            "Save failed:\n\n" +
+            err.message
+        );
     }
 }
 
@@ -145,7 +169,39 @@ window.formatJson = function(){
     }
 }
 
-populateCharacterList();
+window.newCharacter = function(){
+
+    loadedPath = null;
+
+    document.getElementById("path").textContent =
+        "NEW CHARACTER";
+
+    document.getElementById("editor").value =
+JSON.stringify({
+  "name": "New Character",
+  "level": 1,
+  "class": "",
+  "subclass": "",
+  "species": "",
+  "combat": {
+    "hp_current": 1,
+    "hp_max": 1,
+    "temp_hp": 0,
+    "ac": 10
+  },
+  "stats": {
+    "str": 10,
+    "dex": 10,
+    "con": 10,
+    "int": 10,
+    "wis": 10,
+    "cha": 10
+  }
+}, null, 2);
+
+    document.getElementById("status").textContent =
+        "New character template created.";
+};
 
 window.exportCharacter = function(){
 
@@ -156,49 +212,43 @@ window.exportCharacter = function(){
 
     try{
 
-        const text =
-            document.getElementById("editor").value;
+        const data = JSON.parse(
+            document.getElementById("editor").value
+        );
 
-        const data =
-            JSON.parse(text);
+        const blob = new Blob(
+            [JSON.stringify(data,null,2)],
+            {type:"application/json"}
+        );
 
-        const blob =
-            new Blob(
-                [JSON.stringify(data,null,2)],
-                {type:"application/json"}
-            );
-
-        const a =
+        const link =
             document.createElement("a");
 
         const filename =
             (data.name || "character")
-                .replaceAll(" ","_")
-                + ".json";
+            .replaceAll(" ","_")
+            + ".json";
 
-        a.href =
+        link.href =
             URL.createObjectURL(blob);
 
-        a.download =
+        link.download =
             filename;
 
-        document.body.appendChild(a);
+        document.body.appendChild(link);
 
-        a.click();
+        link.click();
 
-        document.body.removeChild(a);
+        document.body.removeChild(link);
 
-        URL.revokeObjectURL(a.href);
+        URL.revokeObjectURL(link.href);
 
         document.getElementById("status").textContent =
             "Character exported.";
 
-    }
-    catch(err){
+    }catch(err){
 
-        alert(
-            "Cannot export invalid JSON."
-        );
+        alert("Cannot export invalid JSON.");
     }
 };
 
@@ -210,41 +260,79 @@ window.importCharacter = function(){
 };
 
 document
-    .getElementById("importFile")
-    .addEventListener("change", async e => {
+.getElementById("importFile")
+.addEventListener("change", async e => {
 
-        const file =
-            e.target.files[0];
+    const file = e.target.files[0];
 
-        if(!file) return;
+    if(!file) return;
 
-        try{
+    try{
 
-            const text =
-                await file.text();
+        const text =
+            await file.text();
 
-            const obj =
-                JSON.parse(text);
+        const obj =
+            JSON.parse(text);
 
-            document
-                .getElementById("editor")
-                .value =
-                JSON.stringify(obj,null,2);
+        document
+            .getElementById("editor")
+            .value =
+            JSON.stringify(obj,null,2);
 
-            document
-                .getElementById("status")
-                .textContent =
-                "Character imported.";
+        document
+            .getElementById("status")
+            .textContent =
+            "Character imported.";
 
-        }
-        catch(err){
+    }catch(err){
 
-            alert(
-                "Invalid JSON file."
-            );
-        }
+        alert("Invalid JSON file.");
+    }
 });
 
+window.copyAiPrompt = async function(){
+
+    try{
+
+        const json =
+            document.getElementById("editor").value;
+
+        const prompt =
+`You are updating a D&D 5e character.
+
+Rules:
+- Preserve the JSON schema exactly.
+- Do not remove fields.
+- Do not rename fields.
+- Keep all IDs and references intact.
+- Return ONLY valid JSON.
+
+Examples:
+- Level this character from 3 to 4.
+- Add equipment.
+- Update spell selections.
+- Modify stats.
+
+Character JSON:
+
+${json}`;
+
+        await navigator.clipboard.writeText(
+            prompt
+        );
+
+        document.getElementById("status")
+            .textContent =
+            "AI prompt copied.";
+
+    }catch(err){
+
+        alert(err.message);
+    }
+};
+
+populateCharacterList();
 </script>
 </body>
 </html>
