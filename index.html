@@ -16,6 +16,7 @@
   --magic:#8b5cf6;--magic2:#c084fc;
   --skill:#0ea5e9;--skill2:#38bdf8;
   --weapon:#e8834a;--weapon2:#f5a87b;
+  --tip:#22c55e;--tip2:#4ade80;--tip-bg:rgba(34,197,94,.08);--tip-border:rgba(34,197,94,.25);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html,body{min-height:100%;}
@@ -46,6 +47,7 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);}
 .card-header{padding:16px 16px 12px;border-bottom:1px solid var(--line);}
 .char-name{font-family:'Cinzel',serif;font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:2px;}
 .char-sub{font-size:.72rem;color:var(--muted2);font-family:'JetBrains Mono',monospace;}
+.char-role-badge{display:inline-block;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(200,153,58,.1);border:1px solid rgba(200,153,58,.3);color:var(--gold2);margin-top:5px;}
 .hp-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
 .hp-label{font-size:.65rem;font-weight:700;color:var(--muted2);letter-spacing:.06em;text-transform:uppercase;width:16px;}
 .hp-bar-wrap{flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden;}
@@ -82,8 +84,15 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);}
 .panel-btn.spell-btn:hover,.panel-btn.spell-btn.open{border-color:var(--magic);color:var(--magic2);background:rgba(139,92,246,.08);}
 .panel-btn.skill-btn:hover,.panel-btn.skill-btn.open{border-color:var(--skill);color:var(--skill2);background:rgba(14,165,233,.08);}
 .panel-btn.weapon-btn:hover,.panel-btn.weapon-btn.open{border-color:var(--weapon);color:var(--weapon2);background:rgba(232,131,74,.08);}
+.panel-btn.tip-btn:hover,.panel-btn.tip-btn.open{border-color:var(--tip);color:var(--tip2);background:var(--tip-bg);}
 .expand-panel{display:none;border-top:1px solid var(--line);padding:14px 12px;background:rgba(8,13,24,.5);}
 .expand-panel.open{display:block;}
+
+/* Combat Guide (beginner tip) panel */
+.combat-guide{font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--tip2);line-height:1.7;white-space:pre-wrap;}
+.combat-guide-wrap{background:var(--tip-bg);border:1px solid var(--tip-border);border-radius:10px;padding:10px 12px;}
+
+/* Spell panels */
 .sp-meta{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
 .sp-meta-item{font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);}
 .sp-meta-item span{color:var(--accent2);font-weight:700;}
@@ -101,6 +110,11 @@ body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);}
 .spell-name{font-size:.76rem;font-weight:700;color:var(--text);}
 .spell-level-tag{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--muted2);white-space:nowrap;}
 .spell-desc{font-size:.68rem;color:var(--muted2);line-height:1.5;margin-top:3px;font-family:'JetBrains Mono',monospace;}
+/* Beginner tip on spells */
+.spell-tip{display:flex;align-items:flex-start;gap:5px;margin-top:5px;padding:5px 7px;border-radius:5px;background:var(--tip-bg);border:1px solid var(--tip-border);}
+.spell-tip-icon{font-size:.65rem;color:var(--tip);flex-shrink:0;margin-top:1px;}
+.spell-tip-text{font-size:.67rem;font-family:'JetBrains Mono',monospace;color:var(--tip2);line-height:1.5;}
+
 .empty-panel{font-size:.72rem;font-family:'JetBrains Mono',monospace;color:var(--muted);text-align:center;padding:10px 0;}
 .skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px;}
 .skill-row-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:5px 8px;border-radius:6px;background:rgba(255,255,255,.02);border:1px solid var(--line);font-size:.72rem;}
@@ -233,6 +247,7 @@ function fmtBonus(n){return(n>=0?"+":"")+n;}
 function parseBonus(v){return parseInt(String(v).replace(/[^0-9\-]/g,""),10)||0;}
 function hpColor(cur,max){if(!max)return"#4a7fe8";const p=cur/max;if(p>.5)return"#10b981";if(p>.25)return"#f59e0b";return"#ef4444";}
 function spellLevelLabel(lvl){if(lvl===0)return"Cantrip";const s=["th","st","nd","rd","th","th","th","th","th","th"][lvl]||"th";return lvl+s;}
+function esc(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 function buildCard(char){
   const c=char.combat||{},st=char.stats||{},sp=char.spellcasting||null,sk=char.skills||{};
@@ -242,6 +257,8 @@ function buildCard(char){
   const profBonus=c.proficiency_bonus??2;
   const passPerc=char.senses?.passive_perception??(10+Math.floor(((st.wis??10)-10)/2));
   const subLine=`Lv ${char.level??'?'} ${char.class||''}${char.subclass?` (${char.subclass})`:''}${char.species?` · ${char.species}`:''}`;
+  const combatRole=char.combat_role||'';
+  const charTip=char.beginner_tip||'';
 
   const abilityBoxes=ABILITY_KEYS.map(k=>{const score=st[k]??10;return`<div class="ab-box"><div class="ab-name">${ABILITY_LABELS[k]}</div><div class="ab-score">${score}</div><div class="ab-mod">${mod(score)}</div></div>`;}).join('');
   const condPills=conds.map(cd=>`<div class="cond-pill">${cd}</div>`).join('');
@@ -282,8 +299,8 @@ function buildCard(char){
     ].filter(Boolean).map(s=>`<div class="sp-meta-item">${s}</div>`).join('');
     let slotRowsHtml='';
     for(let lvl=1;lvl<=9;lvl++){
-      const maxS=sp.slots?.[String(lvl)]??0;if(!maxS)continue;
-      const usedS=sp.slots_used?.[String(lvl)]??0;
+      const maxS=sp.slots?.[String(lvl)]??sp.slots?.[lvl]??0;if(!maxS)continue;
+      const usedS=sp.slots_used?.[String(lvl)]??sp.slots_used?.[lvl]??0;
       let pips='';
       for(let i=0;i<maxS;i++)pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;
       slotRowsHtml+=`<div class="slot-level-row"><div class="slot-level-label">${spellLevelLabel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;
@@ -291,8 +308,26 @@ function buildCard(char){
     const spells=sp.spells||[];
     const cantrips=spells.filter(s=>s.prepared_type==='cantrip'||s.level===0);
     const prepared=spells.filter(s=>s.prepared_type!=='cantrip'&&s.level!==0);
-    const cantripHtml=cantrips.map(s=>{const desc=CANTRIP_DESC[s.name?.toLowerCase()]||'';return`<div class="spell-item"><div class="spell-item-top"><span class="spell-name">${s.name}</span><span class="spell-level-tag">Cantrip</span></div>${desc?`<div class="spell-desc">${desc}</div>`:''}</div>`;}).join('');
-    const preparedHtml=prepared.map(s=>`<div class="spell-item"><div class="spell-item-top"><span class="spell-name">${s.name}</span><span class="spell-level-tag">${spellLevelLabel(s.level||1)}</span></div></div>`).join('');
+
+    function spellTipHtml(spell){
+      if(!spell.beginner_tip)return'';
+      return`<div class="spell-tip"><span class="spell-tip-icon">✦</span><span class="spell-tip-text">${esc(spell.beginner_tip)}</span></div>`;
+    }
+
+    const cantripHtml=cantrips.map(s=>{
+      const desc=CANTRIP_DESC[s.name?.toLowerCase()]||'';
+      return`<div class="spell-item">
+        <div class="spell-item-top"><span class="spell-name">${s.name}</span><span class="spell-level-tag">Cantrip</span></div>
+        ${desc?`<div class="spell-desc">${desc}</div>`:''}
+        ${spellTipHtml(s)}
+      </div>`;
+    }).join('');
+
+    const preparedHtml=prepared.map(s=>`<div class="spell-item">
+      <div class="spell-item-top"><span class="spell-name">${s.name}</span><span class="spell-level-tag">${spellLevelLabel(s.level||1)}</span></div>
+      ${spellTipHtml(s)}
+    </div>`).join('');
+
     hasSpells=!!(cantrips.length||prepared.length||slotRowsHtml);
     spellPanelHtml=`<div class="expand-panel" id="sp-${char.id}">
       ${spMetaHtml?`<div class="sp-meta">${spMetaHtml}</div>`:''}
@@ -326,12 +361,19 @@ function buildCard(char){
     ${profBlock}
   </div>`;
 
+  // Combat Guide panel (beginner_tip at character level)
+  const hasTip=!!charTip;
+  const tipPanelHtml=hasTip?`<div class="expand-panel" id="tg-${char.id}">
+    <div class="combat-guide-wrap"><div class="combat-guide">${esc(charTip)}</div></div>
+  </div>`:'';
+
   const card=document.createElement('div');
   card.className='card';card.id=`card-${char.id}`;
   card.innerHTML=`
     <div class="card-header">
       <div class="char-name">${char.name||'Unnamed'}</div>
       <div class="char-sub">${subLine}</div>
+      ${combatRole?`<div class="char-role-badge">${esc(combatRole)}</div>`:''}
       <div class="hp-row">
         <div class="hp-label">HP</div>
         <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${hpColor(hpCur,hpMax)}"></div></div>
@@ -354,6 +396,11 @@ function buildCard(char){
     <div class="ability-grid">${abilityBoxes}</div>
     ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
     <div class="card-footer">
+      ${hasTip?`<button class="panel-btn tip-btn" id="tgbtn-${char.id}" onclick="window.togglePanel('tg-${char.id}','tgbtn-${char.id}')">
+        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2H10c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        Combat Guide
+        <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>`:''}
       ${hasWeapons?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">
         <svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/></svg>
         Weapons &amp; Attacks
@@ -370,6 +417,7 @@ function buildCard(char){
         <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
       </button>`:''}
     </div>
+    ${tipPanelHtml}
     ${weaponPanelHtml}
     ${skillPanelHtml}
     ${spellPanelHtml}`;
