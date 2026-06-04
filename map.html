@@ -48,6 +48,33 @@ canvas{display:block;width:100%;height:100%}
 #fog-toast button{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid #b8a880;background:#f0e8d0;color:#3a3530;cursor:pointer}
 #fog-toast button.reveal{background:#c8e0b0;border-color:#6a9a50;color:#1a4a10}
 #zoom-hint{position:absolute;bottom:10px;right:12px;font-size:11px;color:#8a7a60;pointer-events:none}
+
+/* Name prompt overlay */
+#name-overlay{position:fixed;inset:0;z-index:100;background:rgba(30,24,14,0.7);display:flex;align-items:center;justify-content:center}
+#name-box{background:#f5eed8;border:1px solid #b8a880;border-radius:12px;padding:24px 28px;width:300px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+#name-box h3{font-size:17px;color:#3a3530;margin-bottom:6px}
+#name-box p{font-size:12px;color:#8a7a60;margin-bottom:14px}
+#name-box input{width:100%;padding:8px 10px;font-size:14px;border:1px solid #b8a880;border-radius:7px;background:#fff8e8;color:#3a3530;margin-bottom:12px;text-align:center}
+#name-box input:focus{outline:none;border-color:#3a3530}
+#name-box button{width:100%;padding:8px;background:#3a3530;color:#e8dfc8;border:none;border-radius:7px;font-size:14px;cursor:pointer}
+#name-box button:hover{background:#5a4a30}
+
+/* Dice roller panel */
+#dice-panel{position:absolute;bottom:38px;right:12px;z-index:20;background:#f5eed8;border:1px solid #b8a880;border-radius:10px;padding:10px;width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.15)}
+#dice-panel h5{font-size:12px;font-weight:700;color:#3a3530;margin-bottom:8px;text-align:center;letter-spacing:0.04em;text-transform:uppercase}
+#dice-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}
+#dice-btns button{font-size:11px;padding:5px 2px;border:1px solid #c8b98a;border-radius:6px;background:transparent;cursor:pointer;color:#3a3530;font-weight:600}
+#dice-btns button:hover{background:#e0d4b0}
+#dice-result{text-align:center;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:8px}
+#dice-number{font-size:36px;font-weight:900;color:#3a3530;line-height:1;font-variant-numeric:tabular-nums}
+#dice-label{font-size:11px;color:#8a7a60;margin-top:2px}
+#roll-log{max-height:90px;overflow-y:auto;border-top:1px solid #e0d4b0;padding-top:6px;display:flex;flex-direction:column;gap:3px}
+.roll-entry{font-size:11px;color:#5a4a30;display:flex;justify-content:space-between;align-items:baseline}
+.roll-entry .roll-who{color:#8a7a60;font-style:italic;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roll-entry .roll-val{font-weight:700;color:#3a3530}
+.roll-entry .roll-die{color:#a89070;font-size:10px}
+#btn-dice-toggle{font-size:12px;padding:4px 9px}
+#btn-dice-toggle.active{background:#3a3530;color:#e8dfc8;border-color:#3a3530}
 </style>
 </head>
 <body>
@@ -64,15 +91,19 @@ canvas{display:block;width:100%;height:100%}
       <div class="sep"></div>
       <button class="tool" id="btn-token">+ Token</button>
       <button class="tool" id="btn-sym">+ Symbol</button>
-      <button class="tool" id="btn-image">🖼 Image</button>
       <div class="sep"></div>
       <button class="tool" id="btn-undo">↩ Undo</button>
+      <button class="tool" id="btn-ping-gm">📍 Ping</button>
+      <button class="tool" id="btn-dice-toggle">🎲 Dice</button>
       <button class="tool" id="btn-clear">Clear</button>
       <button class="tool" id="btn-save">⬇ PNG</button>
       <span id="hint">scroll=zoom · space/middle=pan · hover to delete</span>
     </div>
     <div id="player-tools" style="display:none;align-items:center;gap:8px">
       <span style="font-size:13px;color:#5a4a30;font-weight:600">👁 Player view — live</span>
+      <div class="sep"></div>
+      <button class="tool" id="btn-ping-player">📍 Ping</button>
+      <button class="tool" id="btn-dice-toggle">🎲 Dice</button>
     </div>
     <span id="status">connecting…</span>
   </div>
@@ -107,17 +138,37 @@ canvas{display:block;width:100%;height:100%}
       <div id="sym-grid"></div>
       <div class="popup-btns"><button id="sym-cancel">Cancel</button></div>
     </div>
-    <div class="popup" id="img-pop" style="display:none;width:260px">
-      <h4>🖼 Background image</h4>
-      <p style="font-size:11px;color:#8a7a60;margin-bottom:8px;line-height:1.5">Paste an image URL. Then drag to reposition and drag the ◢ corner to resize.</p>
-      <input id="img-url" type="url" placeholder="https://…" style="width:100%;padding:6px 9px;font-size:12px;border:1px solid #b8a880;border-radius:6px;background:#fff8e8;color:#3a3530;margin-bottom:8px"/>
-      <div class="popup-btns">
-        <button id="img-cancel">Cancel</button>
-        <button id="img-clear" style="color:#8a2010">Remove</button>
-        <button class="ok" id="img-ok">Set</button>
-      </div>
-    </div>
     <div id="zoom-hint">scroll to zoom · space+drag to pan</div>
+
+    <!-- Dice roller panel -->
+    <div id="dice-panel" style="display:none">
+      <h5>Dice Roller</h5>
+      <div id="dice-btns">
+        <button data-sides="4">d4</button>
+        <button data-sides="6">d6</button>
+        <button data-sides="8">d8</button>
+        <button data-sides="10">d10</button>
+        <button data-sides="12">d12</button>
+        <button data-sides="20">d20</button>
+        <button data-sides="100">d100</button>
+        <button data-sides="2">d2</button>
+      </div>
+      <div id="dice-result">
+        <div id="dice-number">—</div>
+        <div id="dice-label">pick a die</div>
+      </div>
+      <div id="roll-log"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Name prompt -->
+<div id="name-overlay">
+  <div id="name-box">
+    <h3>Welcome to the table</h3>
+    <p>Enter your name so others can see your rolls and pings.</p>
+    <input id="name-input" placeholder="Your name…" maxlength="20" autocomplete="off"/>
+    <button id="name-ok">Join session</button>
   </div>
 </div>
 
@@ -129,6 +180,119 @@ const firebaseConfig={apiKey:"AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",authDomai
 const fbApp=initializeApp(firebaseConfig);
 const db=getDatabase(fbApp);
 const mapRef=ref(db,'dungeon/map');
+const pingRef=ref(db,'dungeon/ping');
+const rollRef=ref(db,'dungeon/roll');
+
+// ── Player identity ──
+let playerName=sessionStorage.getItem('dungeonName')||'';
+
+// Name prompt
+const nameOverlay=document.getElementById('name-overlay');
+const nameInput=document.getElementById('name-input');
+function joinSession(){
+  const n=nameInput.value.trim();
+  if(!n)return;
+  playerName=n;
+  sessionStorage.setItem('dungeonName',n);
+  nameOverlay.style.display='none';
+}
+document.getElementById('name-ok').addEventListener('click',joinSession);
+nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')joinSession();});
+if(playerName){
+  nameOverlay.style.display='none';
+} else {
+  setTimeout(()=>nameInput.focus(),100);
+}
+
+// Listen for pings from anyone
+onValue(pingRef,snap=>{
+  const d=snap.val();
+  if(!d)return;
+  pings.push({wx:d.wx,wy:d.wy,born:performance.now(),color:d.color||'#c0392b',name:d.name||''});
+  scheduleAnim();
+});
+
+// ── Dice roller ──
+let rollLog=[]; // [{who,sides,value,t}] local display
+let diceAnim=null; // rolling animation interval
+let currentRollSides=20;
+
+const dicePanel=document.getElementById('dice-panel');
+const diceNumber=document.getElementById('dice-number');
+const diceLabel=document.getElementById('dice-label');
+const rollLogEl=document.getElementById('roll-log');
+
+function renderRollLog(){
+  rollLogEl.innerHTML='';
+  [...rollLog].reverse().forEach(entry=>{
+    const el=document.createElement('div');
+    el.className='roll-entry';
+    el.innerHTML=`<span class="roll-who">${entry.who}</span><span class="roll-die">d${entry.sides}</span><span class="roll-val">${entry.value}</span>`;
+    rollLogEl.appendChild(el);
+  });
+}
+
+// Listen for rolls from anyone
+onValue(rollRef,snap=>{
+  const d=snap.val();
+  if(!d)return;
+  // Animate the number tumbling to the result
+  animateRoll(d.sides,d.value,d.who,false);
+});
+
+function animateRoll(sides,finalValue,who,broadcast){
+  currentRollSides=sides;
+  diceLabel.textContent=`${who} · d${sides}`;
+  clearInterval(diceAnim);
+  let flips=0;
+  const total=20;
+
+  function step(){
+    flips++;
+    if(flips>=total){
+      diceNumber.textContent=finalValue;
+      diceNumber.style.color='#3a3530';
+      rollLog.push({who,sides,value:finalValue,t:Date.now()});
+      if(rollLog.length>20)rollLog.shift();
+      renderRollLog();
+      if(broadcast) set(rollRef,{sides,value:finalValue,who,t:Date.now()});
+      return;
+    }
+    diceNumber.textContent=Math.floor(Math.random()*sides)+1;
+    diceNumber.style.color='#a89070';
+    const progress=flips/total;
+    const delay=progress<0.5?35:progress<0.75?70:progress<0.9?120:180;
+    diceAnim=setTimeout(step,delay);
+  }
+  diceAnim=setTimeout(step,35);
+}
+
+function rollDie(sides){
+  if(!playerName){nameOverlay.style.display='flex';nameInput.focus();return;}
+  const value=Math.floor(Math.random()*sides)+1;
+  animateRoll(sides,value,playerName,true);
+  dicePanel.style.display='block';
+  document.querySelectorAll('#btn-dice-toggle').forEach(b=>b.classList.add('active'));
+}
+
+document.querySelectorAll('#btn-dice-toggle').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const visible=dicePanel.style.display!=='none';
+    dicePanel.style.display=visible?'none':'block';
+    document.querySelectorAll('#btn-dice-toggle').forEach(b=>b.classList.toggle('active',!visible));
+  });
+});
+
+document.getElementById('dice-btns').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-sides]');
+  if(btn) rollDie(parseInt(btn.dataset.sides));
+});
+
+function sendPing(wx,wy,color){
+  pings.push({wx,wy,born:performance.now(),color,name:playerName});
+  set(pingRef,{wx,wy,color,name:playerName,t:Date.now()});
+  scheduleAnim();
+}
 
 const IS_GM=location.search.includes('gm');
 const statusEl=document.getElementById('status');
@@ -167,7 +331,7 @@ const FX_TYPES=[
   {id:'psychic',label:'🔮 Psychic'},
 ];
 const FLOOR_COLORS=Object.fromEntries(FLOOR_TYPES.map(f=>[f.id,f.base]));
-const TEX_ALPHA={blank:0,wood:0.5,water:0,grass:0.55,cobble:0.65};
+const TEX_ALPHA={blank:0, wood:0.85, water:0.6, grass:0.85, cobble:0.9};
 
 let brush={floor:'blank',fx:'none'};
 
@@ -208,15 +372,13 @@ let fogHandles=[];
 let deleteHandles=[];
 let hoverWP={x:-9999,y:-9999};
 let ignoreRemote=false;
-
-// Background image state
-let bgImage={url:'',x:0,y:0,w:0,h:0};
-let bgImg=null; // loaded HTMLImageElement
-let imgDragging=false,imgResizing=false,imgDragOff={x:0,y:0};
 let spaceDown=false,panning=false,panStart={x:0,y:0},panOrigin={x:0,y:0};
 let pendingRevealId=null;
 let tick=0,animFrame=null;
-const texCache={};
+
+// ── Pings ──
+let pings=[]; // [{wx,wy,born,color}] — local only, animate then expire
+let pingMode=false; // when true, next click drops a ping
 
 // ── Fog toast ──
 const fogToast=document.getElementById('fog-toast');
@@ -231,19 +393,6 @@ document.getElementById('fog-reveal-btn').addEventListener('click',()=>{
 });
 document.getElementById('fog-dismiss-btn').addEventListener('click',hideFogToast);
 
-function loadBgImage(url){
-  if(!url){bgImg=null;scheduleAnim();return;}
-  const img=new Image();img.crossOrigin='anonymous';
-  img.onload=()=>{
-    bgImg=img;
-    // default size: fit to CELL grid naturally, up to 20x20 cells
-    if(!bgImage.w){bgImage.w=img.naturalWidth;bgImage.h=img.naturalHeight;}
-    scheduleAnim();
-  };
-  img.onerror=()=>{bgImg=null;scheduleAnim();};
-  img.src=url;
-}
-
 // ── Firebase ──
 let pushTimeout=null;
 function pushState(){
@@ -253,7 +402,7 @@ function pushState(){
     ignoreRemote=true;
     // Serialize tileGrid compactly: encode as string per cell "floor:fx" or ""
     const tg=tileGrid.map(r=>r.map(v=>v?`${v.floor}:${v.fx}`:''));
-    set(mapRef,{tg,tokens,syms,wallSegs,doors,fogPatches,bgImage})
+    set(mapRef,{tg,tokens,syms,wallSegs,doors,fogPatches})
       .then(()=>{ignoreRemote=false;setStatus('live','synced');})
       .catch(e=>{ignoreRemote=false;setStatus('err','sync error');console.error(e);});
   },120);
@@ -272,11 +421,6 @@ onValue(mapRef,snap=>{
       }
   }
   tokens=d.tokens||[];syms=d.syms||[];wallSegs=d.wallSegs||[];doors=d.doors||[];fogPatches=d.fogPatches||[];
-  if(d.bgImage){
-    const prev=bgImage.url;
-    bgImage=d.bgImage;
-    if(d.bgImage.url!==prev) loadBgImage(d.bgImage.url);
-  }
   setStatus('live',IS_GM?'synced':'live');
   scheduleAnim();
 },e=>{setStatus('err','connection error');console.error(e);});
@@ -294,8 +438,7 @@ function snapshot(){
     tg:tileGrid.map(r=>r.map(v=>v?{...v}:null)),
     tokens:tokens.map(t=>({...t})),syms:syms.map(s=>({...s})),
     wallSegs:wallSegs.map(w=>({...w})),doors:doors.map(d=>({...d})),
-    fogPatches:fogPatches.map(f=>({...f})),
-    bgImage:{...bgImage}
+    fogPatches:fogPatches.map(f=>({...f}))
   });
   if(history.length>80)history.shift();
 }
@@ -303,8 +446,6 @@ function undo(){
   if(!history.length)return;
   const s=history.pop();
   tileGrid=s.tg;tokens=s.tokens;syms=s.syms;wallSegs=s.wallSegs;doors=s.doors;fogPatches=s.fogPatches;
-  if(s.bgImage&&s.bgImage.url!==bgImage.url){bgImage=s.bgImage;loadBgImage(bgImage.url);}
-  else if(s.bgImage){bgImage=s.bgImage;}
   wallAnchor=null;scheduleAnim();pushState();
 }
 function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
@@ -328,37 +469,74 @@ function checkPcFog(){
   });
 }
 
-// ── Texture generators ──
-function getTexture(type){
-  if(texCache[type])return texCache[type];
-  const sz=56,tc=document.createElement('canvas');tc.width=sz;tc.height=sz;
-  const tx=tc.getContext('2d');
-  if(type==='wood'){
-    tx.fillStyle='#b8884a';tx.fillRect(0,0,sz,sz);
-    tx.strokeStyle='rgba(0,0,0,0.18)';tx.lineWidth=1.5;
-    for(let i=0;i<9;i++){tx.beginPath();tx.moveTo(0,i*7-1);tx.lineTo(sz,i*7+2);tx.stroke();}
-    tx.strokeStyle='rgba(0,0,0,0.08)';tx.lineWidth=3;
-    tx.beginPath();tx.moveTo(sz/2,0);tx.lineTo(sz/2,sz);tx.stroke();
-  } else if(type==='cobble'){
-    tx.fillStyle='#7a7068';tx.fillRect(0,0,sz,sz);
-    tx.strokeStyle='rgba(0,0,0,0.25)';tx.lineWidth=1.2;
-    [[2,2,18,16],[22,2,14,16],[38,2,16,16],[2,20,14,16],[18,20,20,16],[40,20,14,16],[2,38,20,16],[24,38,16,16],[42,38,12,16]]
-      .forEach(([x,y,w,h])=>{tx.strokeRect(x,y,w,h);});
-  } else if(type==='grass'){
-    tx.fillStyle='#4a8a3a';tx.fillRect(0,0,sz,sz);
-    tx.strokeStyle='rgba(0,0,0,0.12)';tx.lineWidth=0.8;
-    for(let i=0;i<18;i++){
-      const bx=(Math.sin(i*137.5)*0.5+0.5)*sz,by=(Math.cos(i*97.3)*0.5+0.5)*sz;
-      tx.beginPath();tx.moveTo(bx,by);tx.lineTo(bx+Math.sin(i)*2,by-4);tx.stroke();
-    }
+// ── Texture URLs — swap these out for your own assets ──
+const TEXTURE_URLS={
+  wood:   'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/hardwood2_diffuse.jpg',
+  cobble: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/brick_diffuse.jpg',
+  grass:  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/terrain/grasslight-big.jpg',
+  water:  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/waternormals.jpg',
+  blank:  null,
+};
+
+// ── FX texture URLs — drawn at lowered opacity over the floor ──
+const FX_URLS={
+  fire:    null, // keep procedural
+  water:   null, // keep procedural
+  void:    null,
+  astral:  null,
+  ice:     'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/waternormals.jpg',
+  lava:    'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/lava/lavatile.jpg',
+  psychic: null,
+};
+// Opacity of the FX image overlay (0–1). Procedural animation still draws on top.
+const FX_URL_ALPHA={
+  fire:0, water:0, void:0, astral:0, ice:0.45, lava:0.65, psychic:0,
+};
+
+// ── Texture loader — loads image → canvas pattern, cached by URL key ──
+const texCache={};
+const texImgs={};
+
+function getTexture(key, urlMap){
+  if(texCache[key]) return texCache[key];
+  const url=urlMap[key];
+  if(!url) return null;
+  if(!texImgs[key]){
+    texImgs[key]='loading';
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+      texImgs[key]=img;
+      texCache[key]=ctx.createPattern(img,'repeat');
+      scheduleAnim();
+    };
+    img.onerror=()=>{ texImgs[key]='error'; };
+    img.src=url;
   }
-  const pat=ctx.createPattern(tc,'repeat');
-  texCache[type]=pat;return pat;
+  return null;
 }
 
 // ── FX per cell ──
 function drawFxCell(r,c,fx,t){
   const x=c*CELL,y=r*CELL,T=t/60;
+
+  // URL-based texture overlay (drawn first, under procedural animation)
+  const fxAlpha=FX_URL_ALPHA[fx]||0;
+  if(fxAlpha>0){
+    const pat=getTexture(fx, FX_URLS);
+    if(pat){
+      fxCtx.save();
+      fxCtx.globalAlpha=fxAlpha;
+      const img=texImgs[fx];
+      if(img&&img.naturalWidth){
+        const scale=CELL/img.naturalWidth;
+        pat.setTransform(new DOMMatrix([scale,0,0,scale,x,y]));
+      }
+      fxCtx.fillStyle=pat;
+      fxCtx.fillRect(x,y,CELL,CELL);
+      fxCtx.restore();
+    }
+  }
   if(fx==='fire'){
     const h=Math.sin(T*4+c*1.2+r*0.8)*0.15+0.85;
     const g=fxCtx.createLinearGradient(x,y+CELL,x,y);
@@ -472,7 +650,8 @@ function nearWP(wx,wy,radius){
 // ── Animation ──
 function scheduleAnim(){
   let needs=false;
-  outer:for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const t=tileGrid[r]?.[c];if(t&&t.fx&&t.fx!=='none'){needs=true;break outer;}}
+  if(pings.length>0) needs=true;
+  if(!needs) outer:for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const t=tileGrid[r]?.[c];if(t&&t.fx&&t.fx!=='none'){needs=true;break outer;}}
   if(needs){if(!animFrame)loop();}
   else{if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}draw();}
 }
@@ -493,27 +672,6 @@ function draw(){
   const worldW=COLS*CELL,worldH=ROWS*CELL;
   ctx.fillStyle=PARCHMENT;ctx.fillRect(0,0,worldW,worldH);
 
-  // Background image — drawn below everything
-  if(bgImg&&bgImage.w>0&&bgImage.h>0){
-    ctx.save();ctx.globalAlpha=0.9;
-    ctx.drawImage(bgImg,bgImage.x,bgImage.y,bgImage.w,bgImage.h);
-    ctx.restore();
-    // GM: show drag handle (resize corner) and border
-    if(IS_GM){
-      ctx.save();
-      ctx.strokeStyle='rgba(58,53,48,0.4)';ctx.lineWidth=1/zoom;ctx.setLineDash([4/zoom,4/zoom]);
-      ctx.strokeRect(bgImage.x,bgImage.y,bgImage.w,bgImage.h);ctx.setLineDash([]);
-      // Resize handle — bottom-right corner
-      const hr=7/zoom;
-      ctx.fillStyle='#f0e8d0';ctx.strokeStyle='#3a3530';ctx.lineWidth=1.5/zoom;
-      ctx.beginPath();ctx.arc(bgImage.x+bgImage.w,bgImage.y+bgImage.h,hr,0,Math.PI*2);
-      ctx.fill();ctx.stroke();
-      ctx.fillStyle='#3a3530';ctx.font=`bold ${8/zoom}px system-ui`;
-      ctx.textAlign='center';ctx.textBaseline='middle';
-      ctx.fillText('◢',bgImage.x+bgImage.w,bgImage.y+bgImage.h);
-      ctx.restore();
-    }
-  }
   let hasAnim=false;
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
     const tile=tileGrid[r]?.[c];
@@ -522,7 +680,21 @@ function draw(){
     ctx.fillStyle=FLOOR_COLORS[tile.floor]||'#d4c5a0';
     ctx.fillRect(x,y,CELL,CELL);
     const ta=TEX_ALPHA[tile.floor]||0;
-    if(ta>0){const pat=getTexture(tile.floor);if(pat){ctx.save();ctx.globalAlpha=ta;ctx.fillStyle=pat;ctx.fillRect(x,y,CELL,CELL);ctx.restore();}}
+    if(ta>0){
+      const pat=getTexture(tile.floor, TEXTURE_URLS);
+      if(pat){
+        ctx.save();
+        ctx.globalAlpha=ta;
+        const img=texImgs[tile.floor];
+        if(img&&img.naturalWidth){
+          const scale=CELL/img.naturalWidth;
+          pat.setTransform(new DOMMatrix([scale,0,0,scale,x,y]));
+        }
+        ctx.fillStyle=pat;
+        ctx.fillRect(x,y,CELL,CELL);
+        ctx.restore();
+      }
+    }
     if(tile.fx&&tile.fx!=='none'){hasAnim=true;drawFxCell(r,c,tile.fx,tick);}
   }
 
@@ -544,10 +716,7 @@ function draw(){
     ctx.fillRect(c1*CELL,r1*CELL,(c2-c1+1)*CELL,(r2-r1+1)*CELL);
   }
 
-  // Grid
-  ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=0.5;
-  for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*CELL,0);ctx.lineTo(c*CELL,worldH);ctx.stroke();}
-  for(let r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*CELL);ctx.lineTo(worldW,r*CELL);ctx.stroke();}
+  // Grid drawn later, on top of everything
 
   // Walls
   ctx.strokeStyle=WALL;ctx.lineWidth=WALL_W;ctx.lineCap='square';
@@ -672,6 +841,47 @@ function draw(){
     });
   }
 
+  // Pings — rippling circles that fade out over ~2 seconds
+  const now=performance.now();
+  pings=pings.filter(p=>now-p.born<2200);
+  pings.forEach(p=>{
+    const age=(now-p.born)/2200; // 0→1
+    const alpha=Math.pow(1-age,1.5);
+    const maxR=CELL*2.5;
+    // three expanding rings at staggered phases
+    [0,0.25,0.5].forEach(offset=>{
+      const phase=(age+offset)%1;
+      const r=phase*maxR;
+      ctx.save();
+      ctx.strokeStyle=p.color;
+      ctx.globalAlpha=alpha*(1-phase)*0.9;
+      ctx.lineWidth=2.5/zoom;
+      ctx.beginPath();ctx.arc(p.wx,p.wy,r,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    });
+    // center dot
+    ctx.save();
+    ctx.fillStyle=p.color;
+    ctx.globalAlpha=alpha*0.9;
+    ctx.beginPath();ctx.arc(p.wx,p.wy,3/zoom,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    // name label
+    if(p.name){
+      ctx.save();
+      ctx.globalAlpha=alpha;
+      ctx.fillStyle=p.color;
+      ctx.font=`bold ${11/zoom}px system-ui,sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='bottom';
+      ctx.fillText(p.name,p.wx,p.wy-CELL*0.4);
+      ctx.restore();
+    }
+  });
+
+  // Grid — drawn last so it's always visible over tiles, FX, fog, everything
+  ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=0.5/zoom;
+  for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*CELL,0);ctx.lineTo(c*CELL,worldH);ctx.stroke();}
+  for(let r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*CELL);ctx.lineTo(worldW,r*CELL);ctx.stroke();}
+
   ctx.restore();
 }
 
@@ -763,6 +973,16 @@ canvas.addEventListener('mousedown',e=>{
     panning=true;panStart={x:sx,y:sy};panOrigin={x:panX,y:panY};
     canvas.style.cursor='grabbing';return;
   }
+
+  // Ping click — works for both GM (when pingMode) and players always
+  const wp0=toWorld(sx,sy);
+  if(pingMode||!IS_GM){
+    const color=IS_GM?'#c0392b':'#2980b9';
+    sendPing(wp0.x,wp0.y,color);
+    if(pingMode){pingMode=false;document.getElementById('btn-ping-gm').classList.remove('active');canvas.style.cursor='crosshair';}
+    return;
+  }
+
   if(!IS_GM)return;
 
   if(mode==='token'){const pos=cellOfScreen(sx,sy);if(pos.col<0||pos.col>=COLS||pos.row<0||pos.row>=ROWS)return;pendingPos=pos;showPopup('tok-pop',e);return;}
@@ -786,19 +1006,6 @@ canvas.addEventListener('mousedown',e=>{
     pushState();scheduleAnim();return;
   }
 
-  // Image drag/resize (GM only, any mode)
-  if(IS_GM&&bgImg){
-    const wp0=toWorld(sx,sy);
-    const hr=7/zoom;
-    const rx=bgImage.x+bgImage.w,ry=bgImage.y+bgImage.h;
-    if(Math.sqrt((wp0.x-rx)**2+(wp0.y-ry)**2)<hr*1.8){
-      imgResizing=true;imgDragOff={x:wp0.x-bgImage.w,y:wp0.y-bgImage.h};snapshot();return;
-    }
-    if(wp0.x>=bgImage.x&&wp0.x<=bgImage.x+bgImage.w&&wp0.y>=bgImage.y&&wp0.y<=bgImage.y+bgImage.h){
-      imgDragging=true;imgDragOff={x:wp0.x-bgImage.x,y:wp0.y-bgImage.y};snapshot();return;
-    }
-  }
-
   // Fog X handle
   const wp=toWorld(sx,sy);
   const hitFog=fogHandles.find(h=>Math.sqrt((wp.x-h.wx)**2+(wp.y-h.wy)**2)<=h.R*1.5);
@@ -819,14 +1026,6 @@ canvas.addEventListener('mousemove',e=>{
   const{sx,sy}=getSXY(e);
   if(panning){panX=panOrigin.x+(sx-panStart.x);panY=panOrigin.y+(sy-panStart.y);scheduleAnim();return;}
   hoverWP=toWorld(sx,sy);
-  if(imgDragging){
-    bgImage.x=hoverWP.x-imgDragOff.x;bgImage.y=hoverWP.y-imgDragOff.y;scheduleAnim();return;
-  }
-  if(imgResizing){
-    bgImage.w=Math.max(CELL,hoverWP.x-bgImage.x);
-    bgImage.h=Math.max(CELL,hoverWP.y-bgImage.y);
-    scheduleAnim();return;
-  }
   if(!IS_GM){scheduleAnim();return;}
   if(mode==='wall-seg'){cursorGP=gridPointOfScreen(sx,sy);scheduleAnim();return;}
   if(mode==='door'){cursorEdge=edgeOfScreen(sx,sy);scheduleAnim();return;}
@@ -836,7 +1035,6 @@ canvas.addEventListener('mousemove',e=>{
 });
 
 function finishDrag(){
-  if(imgDragging||imgResizing){imgDragging=false;imgResizing=false;pushState();return;}
   if(panning){panning=false;canvas.style.cursor=spaceDown?'grab':(mode==='token'||mode==='sym'?'cell':'crosshair');return;}
   if(!IS_GM)return;
   if(moveTok){snapshot();checkPcFog();pushState();moveTok=null;return;}
@@ -947,39 +1145,6 @@ if(IS_GM){
     tokColWrap.appendChild(wrap2);
   });
 
-  document.getElementById('btn-image').addEventListener('click',e=>{
-    const pop=document.getElementById('img-pop');
-    if(pop.style.display==='none'){
-      document.getElementById('img-url').value=bgImage.url||'';
-      let left=e.clientX-130,top=e.clientY+10;
-      if(left<5)left=5;if(left+265>window.innerWidth)left=window.innerWidth-270;
-      if(top+160>window.innerHeight)top=e.clientY-165;
-      pop.style.left=left+'px';pop.style.top=top+'px';pop.style.display='block';
-      setTimeout(()=>document.getElementById('img-url').focus(),10);
-    } else {
-      pop.style.display='none';
-    }
-  });
-  document.getElementById('img-ok').addEventListener('click',()=>{
-    const url=document.getElementById('img-url').value.trim();
-    if(!url){document.getElementById('img-pop').style.display='none';return;}
-    snapshot();
-    bgImage={url,x:0,y:0,w:0,h:0};
-    loadBgImage(url);
-    document.getElementById('img-pop').style.display='none';
-    pushState();
-  });
-  document.getElementById('img-clear').addEventListener('click',()=>{
-    snapshot();bgImage={url:'',x:0,y:0,w:0,h:0};bgImg=null;
-    document.getElementById('img-pop').style.display='none';
-    pushState();scheduleAnim();
-  });
-  document.getElementById('img-cancel').addEventListener('click',()=>{
-    document.getElementById('img-pop').style.display='none';
-  });
-  document.getElementById('img-url').addEventListener('keydown',e=>{
-    if(e.key==='Enter')document.getElementById('img-ok').click();
-  });
   function setMode(m){
     mode=m;wallAnchor=null;cursorGP=null;cursorEdge=null;
     document.querySelectorAll('button.tool').forEach(b=>b.classList.remove('active'));
@@ -997,6 +1162,11 @@ if(IS_GM){
   document.getElementById('btn-token').addEventListener('click',()=>setMode('token'));
   document.getElementById('btn-sym').addEventListener('click',()=>setMode('sym'));
   document.getElementById('btn-undo').addEventListener('click',undo);
+  document.getElementById('btn-ping-gm').addEventListener('click',()=>{
+    pingMode=!pingMode;
+    document.getElementById('btn-ping-gm').classList.toggle('active',pingMode);
+    canvas.style.cursor=pingMode?'crosshair':'crosshair';
+  });
   document.getElementById('btn-clear').addEventListener('click',()=>{
     if(confirm('Clear the whole map?')){
       snapshot();tileGrid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
@@ -1010,6 +1180,15 @@ if(IS_GM){
 
   // Show sub-bar on load since default mode is 'room'
   subBar.classList.add('visible');
+}
+
+// Player ping button — toggles ping mode for next click
+if(!IS_GM){
+  document.getElementById('btn-ping-player').addEventListener('click',()=>{
+    pingMode=!pingMode;
+    document.getElementById('btn-ping-player').classList.toggle('active',pingMode);
+    canvas.style.cursor=pingMode?'crosshair':'default';
+  });
 }
 
 function showPopup(id,e){
