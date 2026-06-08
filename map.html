@@ -1,1212 +1,1509 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Dungeon Mapper</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dungeon Editor</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#e8dfc8;font-family:system-ui,sans-serif}
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=IM+Fell+English&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0b08;--panel:#1a1510;--border:#3d2e1a;
+  --gold:#c8a84b;--gold-dim:#7a6228;
+  --red:#8b2020;--red-bright:#e04040;
+  --text:#d4c49a;--text-dim:#6b5a38;
+  --fog:#1a2a3a;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
 #app{display:flex;flex-direction:column;width:100vw;height:100vh}
-#toolbar{display:flex;align-items:center;gap:5px;padding:7px 12px;border-bottom:1px solid #c8b98a;background:#f0e8d0;flex-wrap:wrap;flex-shrink:0}
-.sep{width:1px;height:22px;background:#c8b98a;margin:0 2px;flex-shrink:0}
-button.tool{font-size:13px;padding:5px 11px;border:1px solid #b8a880;border-radius:6px;background:transparent;cursor:pointer;color:#3a3530;white-space:nowrap}
-button.tool:hover{background:#e0d4b0}
-button.tool.active{background:#3a3530;color:#e8dfc8;border-color:#3a3530}
-#hint{font-size:11px;color:#8a7a60;margin-left:4px}
-#status{font-size:11px;margin-left:auto;padding:3px 8px;border-radius:4px;background:#e0d4b0;color:#5a4a30;flex-shrink:0}
-#status.live{background:#c8e0b0;color:#2a5a10}
-#status.err{background:#e0c0b0;color:#5a2010}
 
-/* Sub-tile picker — shown below toolbar when in Floor mode */
-#sub-bar{display:none;align-items:center;gap:4px;padding:5px 12px;border-bottom:1px solid #c8b98a;background:#ede5cc;flex-wrap:wrap;flex-shrink:0}
-#sub-bar.visible{display:flex}
-.sub-label{font-size:10px;color:#8a7a60;text-transform:uppercase;letter-spacing:0.05em;margin-right:2px}
-button.sub{font-size:12px;padding:3px 10px;border:1px solid #c8b98a;border-radius:20px;background:transparent;cursor:pointer;color:#5a4a30;white-space:nowrap;display:flex;align-items:center;gap:5px}
-button.sub:hover{background:#e0d4b0}
-button.sub.active{background:#3a3530;color:#e8dfc8;border-color:#3a3530}
-.sub-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.sub-sep{width:1px;height:18px;background:#c8b98a;margin:0 3px}
+/* toolbar */
+#toolbar{flex-shrink:0;height:56px;background:var(--panel);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;overflow-x:auto;overflow-y:hidden}
+#toolbar::-webkit-scrollbar{height:4px}
+#toolbar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.sep{width:1px;height:30px;background:var(--border);flex-shrink:0;margin:0 4px}
+.tool-label{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;flex-shrink:0}
+button{flex-shrink:0;height:36px;padding:0 14px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.05em;cursor:pointer;transition:all .15s;white-space:nowrap}
+button:hover{border-color:var(--gold-dim);color:var(--text)}
+button.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
+button.fog-active{border-color:#4a8aaa;color:#7ac0e0;background:rgba(74,138,170,.1)}
 
-#wrap{flex:1;overflow:hidden;position:relative}
-canvas{display:block;width:100%;height:100%}
-.popup{position:absolute;z-index:30;background:#f5eed8;border:1px solid #b8a880;border-radius:10px;padding:12px;width:215px;box-shadow:0 4px 16px rgba(0,0,0,0.15)}
-.popup h4{font-size:13px;font-weight:600;color:#3a3530;margin-bottom:8px}
-.popup input{width:100%;padding:6px 9px;font-size:13px;border:1px solid #b8a880;border-radius:6px;background:#fff8e8;color:#3a3530;margin-bottom:8px}
-.popup input:focus{outline:none;border-color:#3a3530}
-.color-row{display:flex;gap:5px;margin-bottom:9px}
-.tc{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;flex-shrink:0}
-.tc.sel{border-color:#3a3530}
-.popup-btns{display:flex;gap:6px}
-.popup-btns button{flex:1;font-size:12px;padding:5px 0;border:1px solid #b8a880;border-radius:6px;background:transparent;cursor:pointer;color:#3a3530}
-.popup-btns button:hover{background:#e0d4b0}
-.popup-btns button.ok{background:#3a3530;color:#e8dfc8;border-color:#3a3530}
-#sym-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:9px}
-#sym-grid button{font-size:22px;border:1px solid #c8b98a;border-radius:6px;background:transparent;cursor:pointer;padding:4px;aspect-ratio:1}
-#sym-grid button:hover{background:#e0d4b0}
-#fog-toast{display:none;position:absolute;z-index:50;bottom:18px;left:50%;transform:translateX(-50%);background:#3a3530;color:#e8dfc8;border-radius:10px;padding:10px 16px;font-size:13px;align-items:center;gap:10px;white-space:nowrap}
-#fog-toast button{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid #b8a880;background:#f0e8d0;color:#3a3530;cursor:pointer}
-#fog-toast button.reveal{background:#c8e0b0;border-color:#6a9a50;color:#1a4a10}
-#zoom-hint{position:absolute;bottom:10px;right:12px;font-size:11px;color:#8a7a60;pointer-events:none}
+/* dropdown pickers */
+.picker-wrap{position:relative;flex-shrink:0}
+.picker-btn{display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;cursor:pointer}
+.picker-swatch{width:18px;height:18px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.15)}
+.picker-dropdown{position:fixed;top:56px;z-index:200;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px;display:none;grid-template-columns:repeat(4,1fr);gap:6px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.picker-dropdown.open{display:grid}
+.pd-item{width:40px;height:40px;border-radius:4px;border:2px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:border-color .12s}
+.pd-item:hover{border-color:var(--gold-dim)}
+.pd-item.active{border-color:var(--gold);box-shadow:0 0 6px rgba(200,168,75,.4)}
+.pd-item-inner{width:100%;height:100%;background-size:cover;background-position:center}
+.pd-item-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.65);font-size:6px;font-family:'Cinzel',serif;text-align:center;padding:1px 0;color:#fff;letter-spacing:.04em}
+/* stamp picker items are emoji, no swatch */
+.pd-stamp{font-size:20px;background:transparent;border:2px solid var(--border)}
+.pd-stamp:hover{border-color:var(--gold-dim);background:rgba(255,255,255,.05)}
+.pd-stamp.active{border-color:var(--gold)}
 
-/* Name prompt overlay */
-#name-overlay{position:fixed;inset:0;z-index:100;background:rgba(30,24,14,0.7);display:flex;align-items:center;justify-content:center}
-#name-box{background:#f5eed8;border:1px solid #b8a880;border-radius:12px;padding:24px 28px;width:300px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
-#name-box h3{font-size:17px;color:#3a3530;margin-bottom:6px}
-#name-box p{font-size:12px;color:#8a7a60;margin-bottom:14px}
-#name-box input{width:100%;padding:8px 10px;font-size:14px;border:1px solid #b8a880;border-radius:7px;background:#fff8e8;color:#3a3530;margin-bottom:12px;text-align:center}
-#name-box input:focus{outline:none;border-color:#3a3530}
-#name-box button{width:100%;padding:8px;background:#3a3530;color:#e8dfc8;border:none;border-radius:7px;font-size:14px;cursor:pointer}
-#name-box button:hover{background:#5a4a30}
+/* status */
+#status{margin-left:auto;flex-shrink:0;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;padding:4px 10px;border-radius:3px;border:1px solid var(--border);color:var(--text-dim);transition:all .3s}
+#status.saving{color:var(--gold);border-color:var(--gold-dim)}
+#status.saved{color:#5a9a5a;border-color:#2a5a2a}
+#status.live{color:#5a9a5a;border-color:#2a5a2a}
+#status.error{color:var(--red-bright);border-color:var(--red)}
 
-/* Dice roller panel */
-#dice-panel{position:absolute;bottom:38px;right:12px;z-index:20;background:#f5eed8;border:1px solid #b8a880;border-radius:10px;padding:10px;width:220px;box-shadow:0 4px 16px rgba(0,0,0,0.15)}
-#dice-panel h5{font-size:12px;font-weight:700;color:#3a3530;margin-bottom:8px;text-align:center;letter-spacing:0.04em;text-transform:uppercase}
-#dice-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px}
-#dice-btns button{font-size:11px;padding:5px 2px;border:1px solid #c8b98a;border-radius:6px;background:transparent;cursor:pointer;color:#3a3530;font-weight:600}
-#dice-btns button:hover{background:#e0d4b0}
-#dice-result{text-align:center;min-height:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:8px}
-#dice-number{font-size:36px;font-weight:900;color:#3a3530;line-height:1;font-variant-numeric:tabular-nums}
-#dice-label{font-size:11px;color:#8a7a60;margin-top:2px}
-#roll-log{max-height:90px;overflow-y:auto;border-top:1px solid #e0d4b0;padding-top:6px;display:flex;flex-direction:column;gap:3px}
-.roll-entry{font-size:11px;color:#5a4a30;display:flex;justify-content:space-between;align-items:baseline}
-.roll-entry .roll-who{color:#8a7a60;font-style:italic;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.roll-entry .roll-val{font-weight:700;color:#3a3530}
-.roll-entry .roll-die{color:#a89070;font-size:10px}
-#btn-dice-toggle{font-size:12px;padding:4px 9px}
-#btn-dice-toggle.active{background:#3a3530;color:#e8dfc8;border-color:#3a3530}
+/* canvas */
+#canvas-wrap{flex:1;overflow:hidden;position:relative}
+canvas{display:block;cursor:crosshair}
+
+/* map name */
+#map-name{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--gold);font-family:'Cinzel',serif;font-size:12px;width:120px;padding:2px 4px;outline:none}
+#map-name:focus{border-bottom-color:var(--gold)}
+#map-name::placeholder{color:var(--text-dim)}
+
+/* coords */
+#coords{position:absolute;bottom:8px;left:8px;font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);pointer-events:none;background:rgba(13,11,8,.7);padding:3px 8px;border-radius:3px;border:1px solid var(--border)}
+
+/* toast */
+#toast{position:absolute;bottom:36px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;padding:6px 16px;border-radius:4px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ping cursor */
+canvas.pinging{cursor:crosshair!important}
+
+/* ping toast */
+#ping-toast{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
+#ping-toast.show{opacity:1}
+
+/* name modal */
+#name-modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:200}
+#name-modal.hidden{display:none}
+#name-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:28px;min-width:300px;text-align:center;display:flex;flex-direction:column;gap:16px}
+#name-box h2{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);letter-spacing:.1em}
+#name-box p{font-size:12px;color:var(--text-dim)}
+#name-input{background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:15px;padding:8px 12px;border-radius:4px;outline:none;text-align:center;width:100%}
+#name-input:focus{border-color:var(--gold-dim)}
+#name-confirm{width:100%;height:36px;border-color:var(--gold);color:var(--gold)}
+#token-modal{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);align-items:center;justify-content:center}
+#token-modal.open{display:flex}
+#token-modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px;min-width:340px;max-width:420px;width:90%}
+#token-modal-box h2{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);margin-bottom:16px;letter-spacing:.1em}
+.modal-section{margin-bottom:14px}
+.modal-section label{display:block;font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px}
+.modal-section select,.modal-section input{width:100%;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:13px;padding:6px 8px;border-radius:4px;outline:none}
+.modal-section select:focus,.modal-section input:focus{border-color:var(--gold-dim)}
+.modal-row{display:flex;gap:8px}
+.modal-row .modal-section{flex:1}
+#token-modal-btns{display:flex;gap:8px;margin-top:18px}
+#token-modal-btns button{flex:1;height:36px}
+#token-modal-btns button.primary{border-color:var(--gold);color:var(--gold)}
+
+/* dice panel */
+#dice-panel{position:fixed;bottom:0;left:50%;transform:translateX(-50%);background:rgba(13,11,8,.95);border:1px solid var(--border);border-top-left-radius:8px;border-top-right-radius:8px;padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:30;min-width:320px;backdrop-filter:blur(8px);transition:opacity .3s,transform .3s}
+#dice-panel.hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(16px)}
+#dice-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.die-btn{width:44px;height:44px;padding:0;font-family:'Cinzel',serif;font-size:11px;border-radius:6px}
+#dice-result{font-family:'Cinzel',serif;font-size:36px;color:var(--gold);min-height:48px;text-align:center;letter-spacing:.05em}
+#dice-result.rolling{color:var(--text-dim)}
+#dice-log{font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);text-align:center;min-height:16px}
+#weather-panel{position:fixed;top:56px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+#weather-panel.open{display:flex}
+.wx-row{display:flex;align-items:center;gap:10px}
+.wx-label{font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);width:52px;flex-shrink:0}
+.wx-slider{flex:1;accent-color:var(--gold);cursor:pointer}
+.wx-sub{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);margin-top:-6px}
+.wx-check{appearance:none;-webkit-appearance:none;width:36px;height:20px;border-radius:10px;border:1px solid var(--border);background:#111;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;outline:none}
+.wx-check:checked{background:rgba(200,168,75,.3);border-color:var(--gold)}
+.wx-check::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text-dim);transition:left .2s,background .2s}
+.wx-check:checked::after{left:18px;background:var(--gold)}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="toolbar">
-    <div id="gm-tools" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-      <div style="display:flex;gap:4px;align-items:center">
-        <button class="tool active" id="btn-room">Floor</button>
-        <button class="tool" id="btn-wall-seg">Wall</button>
-        <button class="tool" id="btn-door">Door</button>
-        <button class="tool" id="btn-fog">Fog</button>
-        <button class="tool" id="btn-erase">Erase</button>
-      </div>
-      <div class="sep"></div>
-      <button class="tool" id="btn-token">+ Token</button>
-      <button class="tool" id="btn-sym">+ Symbol</button>
-      <div class="sep"></div>
-      <button class="tool" id="btn-undo">↩ Undo</button>
-      <button class="tool" id="btn-ping-gm">📍 Ping</button>
-      <button class="tool" id="btn-dice-toggle">🎲 Dice</button>
-      <button class="tool" id="btn-clear">Clear</button>
-      <button class="tool" id="btn-save">⬇ PNG</button>
-      <span id="hint">scroll=zoom · space/middle=pan · hover to delete</span>
+    <span class="tool-label">Map</span>
+    <input id="map-name" type="text" placeholder="map-name" value="dungeon-1" spellcheck="false">
+
+    <div class="sep"></div>
+    <span class="tool-label">Shape</span>
+    <button class="shape active" data-shape="rect">▭ Rect</button>
+    <button class="shape" data-shape="circle">◯ Ellipse</button>
+    <button class="shape" data-shape="line">╱ Line</button>
+    <button class="shape" data-shape="select">⬚ Select</button>
+
+    <div class="sep"></div>
+    <span class="tool-label">Terrain</span>
+    <div class="picker-wrap" id="terrain-picker-wrap">
+      <button class="picker-btn" id="terrain-picker-btn">
+        <div class="picker-swatch" id="terrain-preview-swatch"></div>
+        <span id="terrain-preview-label">Grass</span> ▾
+      </button>
+      <div class="picker-dropdown" id="terrain-dropdown"></div>
     </div>
-    <div id="player-tools" style="display:none;align-items:center;gap:8px">
-      <span style="font-size:13px;color:#5a4a30;font-weight:600">👁 Player view — live</span>
-      <div class="sep"></div>
-      <button class="tool" id="btn-ping-player">📍 Ping</button>
-      <button class="tool" id="btn-dice-toggle">🎲 Dice</button>
+
+    <div class="sep"></div>
+    <span class="tool-label">Walls</span>
+    <button id="wallBtn" class="active">On</button>
+
+    <div class="sep"></div>
+    <span class="tool-label">Fog</span>
+    <button id="fogBtn">🌫 Fog</button>
+
+    <div class="sep"></div>
+    <span class="tool-label">Tokens</span>
+    <button id="tokenBtn">⚔ Token</button>
+
+    <div class="sep"></div>
+    <span class="tool-label">Stamps</span>
+    <div class="picker-wrap" id="stamp-picker-wrap">
+      <button class="picker-btn" id="stamp-picker-btn">
+        <span id="stamp-preview-label">None</span> ▾
+      </button>
+      <div class="picker-dropdown" id="stamp-dropdown"></div>
     </div>
-    <span id="status">connecting…</span>
+
+    <div class="sep"></div>
+    <button id="pingBtn">📍 Ping</button>
+    <button id="weatherBtn">🌦 Weather</button>
+    <button id="diceBtn">🎲 Dice</button>
+    <div class="sep"></div>
+    <button id="clearBtn">Clear</button>
+    <div id="status">Connecting…</div>
+    <span id="player-name-display" style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);cursor:pointer;flex-shrink:0" title="Click to change name"></span>
   </div>
 
-  <!-- Tile sub-picker (floor mode only) -->
-  <div id="sub-bar">
-    <span class="sub-label">Floor</span>
-    <!-- floor type buttons injected by JS -->
-    <div class="sub-sep"></div>
-    <span class="sub-label">FX</span>
-    <!-- fx buttons injected by JS -->
-  </div>
-
-  <div id="wrap">
-    <canvas id="c"></canvas>
-    <div id="fog-toast">
-      <span id="fog-toast-msg">🟡 PC entered fogged area</span>
-      <button class="reveal" id="fog-reveal-btn">Reveal</button>
-      <button id="fog-dismiss-btn">Keep hidden</button>
-    </div>
-    <div class="popup" id="tok-pop" style="display:none">
-      <h4>New token</h4>
-      <input id="tok-name" placeholder="Name (Riven, Goblin…)" maxlength="16"/>
-      <div class="color-row" id="tok-colors"></div>
-      <div class="popup-btns">
-        <button id="tok-cancel">Cancel</button>
-        <button class="ok" id="tok-ok">Place</button>
-      </div>
-    </div>
-    <div class="popup" id="sym-pop" style="display:none">
-      <h4>Place symbol</h4>
-      <div id="sym-grid"></div>
-      <div class="popup-btns"><button id="sym-cancel">Cancel</button></div>
-    </div>
-    <div id="zoom-hint">scroll to zoom · space+drag to pan</div>
-
-    <!-- Dice roller panel -->
-    <div id="dice-panel" style="display:none">
-      <h5>Dice Roller</h5>
-      <div id="dice-btns">
-        <button data-sides="4">d4</button>
-        <button data-sides="6">d6</button>
-        <button data-sides="8">d8</button>
-        <button data-sides="10">d10</button>
-        <button data-sides="12">d12</button>
-        <button data-sides="20">d20</button>
-        <button data-sides="100">d100</button>
-        <button data-sides="2">d2</button>
-      </div>
-      <div id="dice-result">
-        <div id="dice-number">—</div>
-        <div id="dice-label">pick a die</div>
-      </div>
-      <div id="roll-log"></div>
-    </div>
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <div id="coords">0, 0</div>
+    <div id="toast"></div>
+    <div id="ping-toast"></div>
   </div>
 </div>
 
-<!-- Name prompt -->
-<div id="name-overlay">
+<!-- Dice panel -->
+<div id="dice-panel" class="hidden">
+  <div id="dice-btns">
+    <button class="die-btn" data-sides="4">d4</button>
+    <button class="die-btn" data-sides="6">d6</button>
+    <button class="die-btn" data-sides="8">d8</button>
+    <button class="die-btn" data-sides="10">d10</button>
+    <button class="die-btn" data-sides="12">d12</button>
+    <button class="die-btn" data-sides="20">d20</button>
+    <button class="die-btn" data-sides="100">d100</button>
+  </div>
+  <div id="dice-result">—</div>
+  <div id="dice-log"></div>
+</div>
+
+<!-- Weather panel -->
+<div id="weather-panel">
+  <div class="wx-row">
+    <input class="wx-check" type="checkbox" id="wx-rain-toggle">
+    <span class="wx-label">Rain</span>
+    <input class="wx-slider" type="range" id="wx-rain-intensity" min="0" max="1" step="0.05" value="0.5">
+  </div>
+  <div class="wx-row">
+    <input class="wx-check" type="checkbox" id="wx-snow-toggle">
+    <span class="wx-label">Snow</span>
+    <input class="wx-slider" type="range" id="wx-snow-intensity" min="0" max="1" step="0.05" value="0.3">
+  </div>
+  <div class="wx-row">
+    <input class="wx-check" type="checkbox" id="wx-mist-toggle">
+    <span class="wx-label">Mist</span>
+    <input class="wx-slider" type="range" id="wx-mist-intensity" min="0" max="1" step="0.05" value="0.4">
+  </div>
+  <div class="wx-row">
+    <input class="wx-check" type="checkbox" id="wx-storm-toggle">
+    <span class="wx-label">Storm</span>
+    <input class="wx-slider" type="range" id="wx-storm-intensity" min="0" max="1" step="0.05" value="0.5">
+  </div>
+  <div class="wx-sub">Storm adds lightning — works best with rain</div>
+</div>
+
+<!-- Name modal -->
+<div id="name-modal" class="hidden">
   <div id="name-box">
-    <h3>Welcome to the table</h3>
-    <p>Enter your name so others can see your rolls and pings.</p>
-    <input id="name-input" placeholder="Your name…" maxlength="20" autocomplete="off"/>
-    <button id="name-ok">Join session</button>
+    <h2>Who Are You?</h2>
+    <p>Enter your name to join the session</p>
+    <input id="name-input" type="text" placeholder="Your name…" maxlength="30" spellcheck="false">
+    <button id="name-confirm">Enter the Dungeon</button>
+  </div>
+</div>
+
+<!-- Token modal -->
+<div id="token-modal">
+  <div id="token-modal-box">
+    <h2>Place Token</h2>
+    <div class="modal-section">
+      <label>Character</label>
+      <select id="tok-char"></select>
+    </div>
+    <div class="modal-row">
+      <div class="modal-section">
+        <label>Name (override)</label>
+        <input id="tok-name" type="text" placeholder="auto">
+      </div>
+      <div class="modal-section">
+        <label>Type</label>
+        <select id="tok-type">
+          <option value="pc">PC</option>
+          <option value="npc">NPC</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-row" id="tok-hp-row" style="display:none">
+      <div class="modal-section">
+        <label>HP</label>
+        <input id="tok-hp" type="number" placeholder="10" min="0">
+      </div>
+      <div class="modal-section">
+        <label>Max HP</label>
+        <input id="tok-maxhp" type="number" placeholder="10" min="1">
+      </div>
+    </div>
+    <div id="token-modal-btns">
+      <button id="tok-cancel">Cancel</button>
+      <button id="tok-place" class="primary">Place on Map</button>
+    </div>
   </div>
 </div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, set, get, child, onValue, remove, update, push }
+  from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-const firebaseConfig={apiKey:"AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",authDomain:"sheets-e5838.firebaseapp.com",databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",projectId:"sheets-e5838",storageBucket:"sheets-e5838.firebasestorage.app"};
-const fbApp=initializeApp(firebaseConfig);
-const db=getDatabase(fbApp);
-const mapRef=ref(db,'dungeon/map');
-const pingRef=ref(db,'dungeon/ping');
-const rollRef=ref(db,'dungeon/roll');
+const firebaseConfig = {
+  apiKey:"AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
+  authDomain:"sheets-e5838.firebaseapp.com",
+  databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",
+  projectId:"sheets-e5838",
+  storageBucket:"sheets-e5838.firebasestorage.app",
+};
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
 
-// ── Player identity ──
-let playerName=sessionStorage.getItem('dungeonName')||'';
+// ── Constants ─────────────────────────────────────────────────────────────────
+const TILE = 32;
+const FALLBACK = {
+  grass:"#3a6b3a", stone:"#6b6b6b", wood:"#7a5c3a",
+  water:"#2a5a8a", cobble:"#9a9a8a", sand:"#b8a86a",
+  lava:"#8b2a0a",  dirt:"#6b4a2a",  gravel:"#555a50",
+  ice:"#a8d0e0",   void:"#080808",  carpet:"#6b2a5a",
+  marble:"#d0ccc0",mud:"#4a3520",
+};
+const TERRAINS = Object.keys(FALLBACK);
+const TEXTURE_PATH = "./textures/";
 
-// Name prompt
-const nameOverlay=document.getElementById('name-overlay');
-const nameInput=document.getElementById('name-input');
-function joinSession(){
-  const n=nameInput.value.trim();
+// ── State ─────────────────────────────────────────────────────────────────────
+const tiles    = {};
+const textures = {};
+const fogGroups = {};  // { "fogId": { cells: {"x,y": true} } }  — one entry per stroke
+const tokens   = {};     // { id: { x,y,name,type,hp,maxHp,characterId } }
+
+let currentShape   = "rect";
+let currentTerrain = "grass";
+let wallsEnabled   = true;
+let fogMode        = false;   // when true, left-drag paints fog
+
+let dragging   = false;
+let startX = 0, startY = 0, curX = 0, curY = 0;
+let hoverTileX = 0, hoverTileY = 0;
+
+// Camera
+let camX = 0, camY = 0, zoom = 1;
+
+// Selection
+let selectPhase = null;
+let selectTiles = {};
+let selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
+let moveOffX=0,moveOffY=0;
+let moveStartWorldX=0,moveStartWorldY=0;
+
+// Token dragging
+let draggingToken = null;
+let placingToken  = null;
+
+// Stamps
+const stamps = {};
+let currentStamp = null;
+
+// Player name
+let playerName = localStorage.getItem("vtt_player_name")||"";
+
+// Ping
+let pingMode = false;
+const activePings = {};
+
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const canvas   = document.getElementById("canvas");
+const ctx      = canvas.getContext("2d");
+const statusEl = document.getElementById("status");
+const coordsEl = document.getElementById("coords");
+const toastEl  = document.getElementById("toast");
+const mapInput = document.getElementById("map-name");
+const wallBtn  = document.getElementById("wallBtn");
+const fogBtn   = document.getElementById("fogBtn");
+const tokenBtn = document.getElementById("tokenBtn");
+const clearBtn = document.getElementById("clearBtn");
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function key(x,y){ return `${x},${y}`; }
+function toWorld(sx,sy){ return [(sx-camX)/zoom,(sy-camY)/zoom]; }
+function worldToTile(wx,wy){ return [Math.floor(wx/TILE),Math.floor(wy/TILE)]; }
+function screenPos(e){ const r=canvas.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; }
+function hasWall(x,y){ const t=tiles[key(x,y)]; return t&&t.walls; }
+
+function applyTile(x,y){
+  const k=key(x,y);
+  if(currentTerrain==="erase"){ delete tiles[k]; return; }
+  tiles[k]={terrain:currentTerrain,walls:wallsEnabled};
+}
+
+// ── Toast / status ────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg){ toastEl.textContent=msg; toastEl.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove("show"),2200); }
+function setStatus(s,text){ statusEl.className=s; statusEl.textContent=text; }
+
+// ── Textures ──────────────────────────────────────────────────────────────────
+function loadTextures(){
+  return Promise.all(TERRAINS.map(t=>new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{textures[t]=img;resolve()};
+    img.onerror=()=>resolve();
+    img.src=`${TEXTURE_PATH}${t}.png`;
+  })));
+}
+
+// ── Particles (declared early so resize can call initParticles) ───────────────
+const rainDrops=[], snowFlakes=[], mistClouds=[];
+let lastLightning=0, lightningAlpha=0;
+
+function initParticles(){
+  const W=canvas.width||window.innerWidth, H=canvas.height||window.innerHeight;
+  rainDrops.length=0; snowFlakes.length=0; mistClouds.length=0;
+  for(let i=0;i<400;i++) rainDrops.push({x:Math.random()*W,y:Math.random()*H,len:Math.random()*14+8,speed:Math.random()*6+14});
+  for(let i=0;i<300;i++) snowFlakes.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*2+1,speed:Math.random()*1.2+0.4,drift:Math.random()*0.6-0.3});
+  for(let i=0;i<12;i++) mistClouds.push({x:Math.random()*W,y:Math.random()*H,rx:Math.random()*W*0.3+100,ry:Math.random()*100+50,speed:Math.random()*0.3+0.1,phase:Math.random()*Math.PI*2});
+}
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+function resize(){
+  const w=document.getElementById("canvas-wrap");
+  canvas.width=w.clientWidth; canvas.height=w.clientHeight;
+  initParticles();
+}
+resize();
+window.addEventListener("resize",resize);
+
+// ── Player name ───────────────────────────────────────────────────────────────
+const nameModal   = document.getElementById("name-modal");
+const nameInputEl = document.getElementById("name-input");
+const nameDisplay = document.getElementById("player-name-display");
+const pingToastEl = document.getElementById("ping-toast");
+
+function showNameModal(){
+  nameInputEl.value=playerName;
+  nameModal.classList.remove("hidden");
+  setTimeout(()=>nameInputEl.focus(),50);
+}
+function confirmName(){
+  const n=nameInputEl.value.trim();
   if(!n)return;
   playerName=n;
-  sessionStorage.setItem('dungeonName',n);
-  nameOverlay.style.display='none';
+  localStorage.setItem("vtt_player_name",n);
+  nameModal.classList.add("hidden");
+  nameDisplay.textContent=playerName;
 }
-document.getElementById('name-ok').addEventListener('click',joinSession);
-nameInput.addEventListener('keydown',e=>{if(e.key==='Enter')joinSession();});
-if(playerName){
-  nameOverlay.style.display='none';
-} else {
-  setTimeout(()=>nameInput.focus(),100);
-}
+document.getElementById("name-confirm").onclick=confirmName;
+nameInputEl.addEventListener("keydown",e=>{if(e.key==="Enter")confirmName();});
+nameDisplay.onclick=showNameModal;
 
-// Listen for pings from anyone
-onValue(pingRef,snap=>{
-  const d=snap.val();
-  if(!d)return;
-  pings.push({wx:d.wx,wy:d.wy,born:performance.now(),color:d.color||'#c0392b',name:d.name||''});
-  scheduleAnim();
-});
-
-// ── Dice roller ──
-let rollLog=[]; // [{who,sides,value,t}] local display
-let diceAnim=null; // rolling animation interval
-let currentRollSides=20;
-
-const dicePanel=document.getElementById('dice-panel');
-const diceNumber=document.getElementById('dice-number');
-const diceLabel=document.getElementById('dice-label');
-const rollLogEl=document.getElementById('roll-log');
-
-function renderRollLog(){
-  rollLogEl.innerHTML='';
-  [...rollLog].reverse().forEach(entry=>{
-    const el=document.createElement('div');
-    el.className='roll-entry';
-    el.innerHTML=`<span class="roll-who">${entry.who}</span><span class="roll-die">d${entry.sides}</span><span class="roll-val">${entry.value}</span>`;
-    rollLogEl.appendChild(el);
-  });
+function showPingToast(msg){
+  pingToastEl.textContent=msg;
+  pingToastEl.classList.add("show");
+  setTimeout(()=>pingToastEl.classList.remove("show"),2000);
 }
 
-// Listen for rolls from anyone
-onValue(rollRef,snap=>{
-  const d=snap.val();
-  if(!d)return;
-  // Animate the number tumbling to the result
-  animateRoll(d.sides,d.value,d.who,false);
-});
-
-function animateRoll(sides,finalValue,who,broadcast){
-  currentRollSides=sides;
-  diceLabel.textContent=`${who} · d${sides}`;
-  clearInterval(diceAnim);
-  let flips=0;
-  const total=20;
-
-  function step(){
-    flips++;
-    if(flips>=total){
-      diceNumber.textContent=finalValue;
-      diceNumber.style.color='#3a3530';
-      rollLog.push({who,sides,value:finalValue,t:Date.now()});
-      if(rollLog.length>20)rollLog.shift();
-      renderRollLog();
-      if(broadcast) set(rollRef,{sides,value:finalValue,who,t:Date.now()});
-      return;
+// Listen for pings
+onValue(ref(db,"pings"),snap=>{
+  const data=snap.val()||{};
+  const now=Date.now();
+  for(const[id,ping]of Object.entries(data)){
+    if(!activePings[id]&&now-ping.t<4000){
+      activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};
+      if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);
     }
-    diceNumber.textContent=Math.floor(Math.random()*sides)+1;
-    diceNumber.style.color='#a89070';
-    const progress=flips/total;
-    const delay=progress<0.5?35:progress<0.75?70:progress<0.9?120:180;
-    diceAnim=setTimeout(step,delay);
   }
-  diceAnim=setTimeout(step,35);
+});
+
+async function sendPing(sx,sy){
+  const[wx,wy]=toWorld(sx,sy);
+  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
+  const pingRef=push(ref(db,"pings"));
+  await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});
+  setTimeout(()=>remove(pingRef),4000);
 }
 
-function rollDie(sides){
-  if(!playerName){nameOverlay.style.display='flex';nameInput.focus();return;}
-  const value=Math.floor(Math.random()*sides)+1;
-  animateRoll(sides,value,playerName,true);
-  dicePanel.style.display='block';
-  document.querySelectorAll('#btn-dice-toggle').forEach(b=>b.classList.add('active'));
+// ── Weather ───────────────────────────────────────────────────────────────────
+const weather = { rain:{enabled:false,intensity:0.5}, snow:{enabled:false,intensity:0.3}, mist:{enabled:false,intensity:0.4}, storm:{enabled:false,intensity:0.5} };
+initParticles();
+
+async function saveWeather(){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  try{ await set(ref(db,"weather"), weather); }
+  catch(e){ toast("Weather save failed"); }
 }
 
-document.querySelectorAll('#btn-dice-toggle').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const visible=dicePanel.style.display!=='none';
-    dicePanel.style.display=visible?'none':'block';
-    document.querySelectorAll('#btn-dice-toggle').forEach(b=>b.classList.toggle('active',!visible));
+function buildWeatherPanel(){
+  const types=["rain","snow","mist","storm"];
+  types.forEach(t=>{
+    const toggle=document.getElementById(`wx-${t}-toggle`);
+    const slider=document.getElementById(`wx-${t}-intensity`);
+    toggle.checked=weather[t].enabled;
+    slider.value=weather[t].intensity;
+    toggle.onchange=()=>{ weather[t].enabled=toggle.checked; saveWeather(); };
+    slider.oninput=()=>{ weather[t].intensity=parseFloat(slider.value); saveWeather(); };
   });
-});
-
-document.getElementById('dice-btns').addEventListener('click',e=>{
-  const btn=e.target.closest('[data-sides]');
-  if(btn) rollDie(parseInt(btn.dataset.sides));
-});
-
-function sendPing(wx,wy,color){
-  pings.push({wx,wy,born:performance.now(),color,name:playerName});
-  set(pingRef,{wx,wy,color,name:playerName,t:Date.now()});
-  scheduleAnim();
 }
 
-const IS_GM=location.search.includes('gm');
-const statusEl=document.getElementById('status');
+const weatherPanel=document.getElementById("weather-panel");
+const weatherBtn=document.getElementById("weatherBtn");
+weatherBtn.onclick=(e)=>{
+  e.stopPropagation();
+  const r=weatherBtn.getBoundingClientRect();
+  weatherPanel.style.left=r.left+"px";
+  weatherPanel.classList.toggle("open");
+};
+document.addEventListener("click",()=>weatherPanel.classList.remove("open"));
+weatherPanel.addEventListener("click",e=>e.stopPropagation());
+weatherPanel.addEventListener("pointerdown",e=>e.stopPropagation());
+weatherPanel.addEventListener("pointerup",e=>e.stopPropagation());
 
-if(!IS_GM){
-  document.getElementById('gm-tools').style.display='none';
-  document.getElementById('player-tools').style.display='flex';
-}
+function drawWeather(W,H){
+  const now=Date.now();
 
-// ── Constants ──
-const CELL=28;
-const COLS=80, ROWS=60;
-const PARCHMENT='#e8dfc8';
-const WALL='#1a1612';
-const WALL_W=2.5;
-const PC_COLOR='#d4a017';
-const TOK_COLORS=[PC_COLOR,'#c0392b','#2980b9','#27ae60','#8e44ad','#c0607a'];
-const SYMBOLS=['📦','🪜','⚠️','🕯','💀','⛲','🗿','🏺','🔱','🗝','🛡'];
-
-// ── Tile types ──
-const FLOOR_TYPES=[
-  {id:'blank',  label:'Blank',  color:'#d4c5a0', base:'#c8b888'},
-  {id:'wood',   label:'Wood',   color:'#b8884a', base:'#a8784a'},
-  {id:'water',  label:'Water',  color:'#4a8ab8', base:'#1a5a9a'},
-  {id:'grass',  label:'Grass',  color:'#5a9a4a', base:'#3a7a2a'},
-  {id:'cobble', label:'Cobble', color:'#8a8078', base:'#6a6058'},
-];
-const FX_TYPES=[
-  {id:'none',   label:'None'},
-  {id:'fire',   label:'🔥 Fire'},
-  {id:'water',  label:'🌊 Water'},
-  {id:'void',   label:'🌑 Void'},
-  {id:'astral', label:'✨ Astral'},
-  {id:'ice',    label:'❄️ Ice'},
-  {id:'lava',   label:'🌋 Lava'},
-  {id:'psychic',label:'🔮 Psychic'},
-];
-const FLOOR_COLORS=Object.fromEntries(FLOOR_TYPES.map(f=>[f.id,f.base]));
-const TEX_ALPHA={blank:0, wood:0.85, water:0.6, grass:0.85, cobble:0.9};
-
-let brush={floor:'blank',fx:'none'};
-
-// ── View transform ──
-const canvas=document.getElementById('c');
-const ctx=canvas.getContext('2d');
-const fxCanvas=document.createElement('canvas');
-const fxCtx=fxCanvas.getContext('2d');
-const wrap=document.getElementById('wrap');
-
-let zoom=1,panX=0,panY=0;
-const MIN_ZOOM=0.15,MAX_ZOOM=4;
-
-function toWorld(sx,sy){return{x:(sx-panX)/zoom,y:(sy-panY)/zoom};}
-function cellOfScreen(sx,sy){const w=toWorld(sx,sy);return{col:Math.floor(w.x/CELL),row:Math.floor(w.y/CELL)};}
-function gridPointOfScreen(sx,sy){const w=toWorld(sx,sy);return{gx:Math.round(w.x/CELL),gy:Math.round(w.y/CELL)};}
-function edgeOfScreen(sx,sy){
-  const w=toWorld(sx,sy),mx=w.x,my=w.y;
-  const col=Math.floor(mx/CELL),row=Math.floor(my/CELL);
-  let best=null,bestD=999;
-  const chk=(edge,r2,c2,d)=>{if(d<bestD){bestD=d;best={edge,r:r2,c:c2};}};
-  chk('h',row,col,Math.abs(my-row*CELL));chk('h',row+1,col,Math.abs(my-(row+1)*CELL));
-  chk('v',row,col,Math.abs(mx-col*CELL));chk('v',row,col+1,Math.abs(mx-(col+1)*CELL));
-  return best;
-}
-function getSXY(e){const r=canvas.getBoundingClientRect();return{sx:e.clientX-r.left,sy:e.clientY-r.top};}
-
-// ── State ──
-// tileGrid[r][c] = null | {floor:'blank'|'wood'|..., fx:'none'|'fire'|...}
-let tileGrid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
-let tokens=[],syms=[],wallSegs=[],doors=[],fogPatches=[],history=[];
-let mode='room';
-let painting=false,dragStart=null,dragEnd=null;
-let moveTok=null,moveOff={x:0,y:0};
-let pendingPos=null,tokColor=TOK_COLORS[0];
-let wallAnchor=null,cursorGP=null,cursorEdge=null;
-let fogHandles=[];
-let deleteHandles=[];
-let hoverWP={x:-9999,y:-9999};
-let ignoreRemote=false;
-let spaceDown=false,panning=false,panStart={x:0,y:0},panOrigin={x:0,y:0};
-let pendingRevealId=null;
-let tick=0,animFrame=null;
-
-// ── Pings ──
-let pings=[]; // [{wx,wy,born,color}] — local only, animate then expire
-let pingMode=false; // when true, next click drops a ping
-
-// ── Fog toast ──
-const fogToast=document.getElementById('fog-toast');
-const fogToastMsg=document.getElementById('fog-toast-msg');
-function showFogToast(id,name){pendingRevealId=id;fogToastMsg.textContent=`🟡 ${name} entered a fogged area`;fogToast.style.display='flex';}
-function hideFogToast(){fogToast.style.display='none';pendingRevealId=null;}
-document.getElementById('fog-reveal-btn').addEventListener('click',()=>{
-  if(!pendingRevealId)return;
-  const p=fogPatches.find(f=>f.id===pendingRevealId);
-  if(p){snapshot();p.hidden=false;pushState();draw();}
-  hideFogToast();
-});
-document.getElementById('fog-dismiss-btn').addEventListener('click',hideFogToast);
-
-// ── Firebase ──
-let pushTimeout=null;
-function pushState(){
-  if(!IS_GM)return;
-  clearTimeout(pushTimeout);
-  pushTimeout=setTimeout(()=>{
-    ignoreRemote=true;
-    // Serialize tileGrid compactly: encode as string per cell "floor:fx" or ""
-    const tg=tileGrid.map(r=>r.map(v=>v?`${v.floor}:${v.fx}`:''));
-    set(mapRef,{tg,tokens,syms,wallSegs,doors,fogPatches})
-      .then(()=>{ignoreRemote=false;setStatus('live','synced');})
-      .catch(e=>{ignoreRemote=false;setStatus('err','sync error');console.error(e);});
-  },120);
-}
-function setStatus(cls,text){statusEl.className=cls;statusEl.textContent=text;}
-
-onValue(mapRef,snap=>{
-  if(ignoreRemote)return;
-  const d=snap.val();
-  if(!d){setStatus('live',IS_GM?'ready':'waiting for GM');return;}
-  if(d.tg){
-    for(let r=0;r<Math.min(d.tg.length,ROWS);r++)
-      for(let c=0;c<Math.min(d.tg[r].length,COLS);c++){
-        const v=d.tg[r][c];
-        tileGrid[r][c]=v?{floor:v.split(':')[0],fx:v.split(':')[1]}:null;
-      }
+  // ── Mist ──
+  if(weather.mist.enabled){
+    const intensity=weather.mist.intensity;
+    mistClouds.forEach(c=>{
+      c.x+=c.speed;
+      if(c.x-c.rx>W) c.x=-c.rx;
+      const pulse=0.5+0.5*Math.sin(now/3000+c.phase);
+      const alpha=intensity*0.18*pulse;
+      const grad=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,c.rx);
+      grad.addColorStop(0,`rgba(180,190,210,${alpha})`);
+      grad.addColorStop(1,"rgba(180,190,210,0)");
+      ctx.save(); ctx.scale(1,c.ry/c.rx);
+      ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(c.x,c.y*(c.rx/c.ry),c.rx,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    });
   }
-  tokens=d.tokens||[];syms=d.syms||[];wallSegs=d.wallSegs||[];doors=d.doors||[];fogPatches=d.fogPatches||[];
-  setStatus('live',IS_GM?'synced':'live');
-  scheduleAnim();
-},e=>{setStatus('err','connection error');console.error(e);});
 
-// ── Resize ──
-function resize(){
-  canvas.width=wrap.clientWidth;canvas.height=wrap.clientHeight;
-  fxCanvas.width=canvas.width;fxCanvas.height=canvas.height;
-  scheduleAnim();
+  // ── Rain ──
+  if(weather.rain.enabled){
+    const intensity=weather.rain.intensity;
+    const count=Math.floor(intensity*rainDrops.length);
+    ctx.strokeStyle=`rgba(174,194,220,${0.25+intensity*0.35})`;
+    ctx.lineWidth=1;
+    for(let i=0;i<count;i++){
+      const d=rainDrops[i];
+      d.y+=d.speed; d.x+=d.speed*0.22;
+      if(d.y>H){d.y=-20;d.x=Math.random()*W;}
+      if(d.x>W){d.x=0;}
+      ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x+d.len*0.22,d.y+d.len); ctx.stroke();
+    }
+  }
+
+  // ── Snow ──
+  if(weather.snow.enabled){
+    const intensity=weather.snow.intensity;
+    const count=Math.floor(intensity*snowFlakes.length);
+    ctx.fillStyle=`rgba(220,230,255,${0.5+intensity*0.3})`;
+    for(let i=0;i<count;i++){
+      const f=snowFlakes[i];
+      f.y+=f.speed; f.x+=f.drift+Math.sin(now/1200+i)*0.3;
+      if(f.y>H){f.y=-10;f.x=Math.random()*W;}
+      if(f.x>W)f.x=0; if(f.x<0)f.x=W;
+      ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.fill();
+    }
+  }
+
+  // ── Storm / Lightning ──
+  if(weather.storm.enabled){
+    const interval=8000-weather.storm.intensity*6000;
+    if(now-lastLightning>interval&&Math.random()<0.02){
+      lastLightning=now; lightningAlpha=1;
+      // Draw jagged bolt
+      ctx.save();
+      ctx.strokeStyle=`rgba(200,210,255,0.9)`; ctx.lineWidth=2;
+      let bx=W*0.2+Math.random()*W*0.6, by=0;
+      ctx.beginPath(); ctx.moveTo(bx,by);
+      while(by<H*0.7){ bx+=Math.random()*80-40; by+=Math.random()*60+30; ctx.lineTo(bx,by); }
+      ctx.stroke();
+      ctx.restore();
+    }
+    if(lightningAlpha>0){
+      ctx.fillStyle=`rgba(180,190,255,${lightningAlpha*0.12})`;
+      ctx.fillRect(0,0,W,H);
+      lightningAlpha=Math.max(0,lightningAlpha-0.06);
+    }
+  }
 }
 
-// ── Helpers ──
-function snapshot(){
-  history.push({
-    tg:tileGrid.map(r=>r.map(v=>v?{...v}:null)),
-    tokens:tokens.map(t=>({...t})),syms:syms.map(s=>({...s})),
-    wallSegs:wallSegs.map(w=>({...w})),doors:doors.map(d=>({...d})),
-    fogPatches:fogPatches.map(f=>({...f}))
-  });
-  if(history.length>80)history.shift();
+// ── Dice ──────────────────────────────────────────────────────────────────────
+const dicePanelEl = document.getElementById("dice-panel");
+const diceResultEl = document.getElementById("dice-result");
+const diceLogEl = document.getElementById("dice-log");
+let diceVisible = false;
+let shuffleTimer = null;
+
+onValue(ref(db,"dice/last"),snap=>{
+  const data=snap.val();
+  if(!data)return;
+  // Ignore rolls older than 10s (catches stale data on page load)
+  if(Date.now()-data.t>30000)return;
+  // Always show panel when anyone rolls
+  dicePanelEl.classList.remove("hidden");
+  document.getElementById("diceBtn").classList.add("active");
+  diceVisible=true;
+  diceResultEl.classList.add("rolling");
+  diceLogEl.textContent=`${data.roller} rolled d${data.sides}…`;
+  let ticks=0;
+  clearInterval(shuffleTimer);
+  shuffleTimer=setInterval(()=>{
+    ticks++;
+    diceResultEl.textContent=Math.ceil(Math.random()*data.sides);
+    if(ticks>=18){
+      clearInterval(shuffleTimer);
+      diceResultEl.textContent=data.result;
+      diceResultEl.classList.remove("rolling");
+      diceLogEl.textContent=`${data.roller} rolled d${data.sides} → ${data.result}`;
+      // Auto-hide after 5s
+      setTimeout(()=>{
+        dicePanelEl.classList.add("hidden");
+        document.getElementById("diceBtn").classList.remove("active");
+        diceVisible=false;
+      },5000);
+    }
+  },60);
+});
+
+async function rollDie(sides){
+  if(!playerName){showNameModal();return;}
+  const result=Math.ceil(Math.random()*sides);
+  await set(ref(db,"dice/last"),{sides,result,roller:playerName,t:Date.now()});
 }
+
+document.getElementById("diceBtn").onclick=()=>{
+  diceVisible=!diceVisible;
+  dicePanelEl.classList.toggle("hidden",!diceVisible);
+  document.getElementById("diceBtn").classList.toggle("active",diceVisible);
+};
+
+document.querySelectorAll(".die-btn").forEach(btn=>{
+  btn.onclick=()=>rollDie(parseInt(btn.dataset.sides));
+});
+
+// prevent dice panel clicks from hitting canvas
+dicePanelEl.addEventListener("pointerdown",e=>e.stopPropagation());
+dicePanelEl.addEventListener("pointerup",e=>e.stopPropagation());
+let saveTimer=null, pendingSaves=0;
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  setStatus("saving","Saving…");
+  saveTimer=setTimeout(async()=>{
+    const mapName=mapInput.value.trim()||"dungeon-1";
+    try{
+      pendingSaves++;
+      await set(ref(db,`maps/${mapName}/tiles`), Object.keys(tiles).length ? tiles : null);
+      await set(ref(db,`maps/${mapName}/updatedAt`), Date.now());
+      setStatus("live","Live ✓");
+    }catch(e){ setStatus("error","Error"); toast("Save failed: "+e.message); }
+  },600);
+}
+
+async function saveFog(){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  try{ await set(ref(db,`maps/${mapName}/fog`), Object.keys(fogGroups).length?fogGroups:null); }
+  catch(e){ toast("Fog save failed"); }
+}
+
+async function deleteFogGroup(id){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  try{ await remove(ref(db,`maps/${mapName}/fog/${id}`)); delete fogGroups[id]; }
+  catch(e){ toast("Fog delete failed"); }
+}
+
+async function saveToken(id, data){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  try{ await set(ref(db,`maps/${mapName}/tokens/${id}`), data); }
+  catch(e){ toast("Token save failed"); }
+}
+
+async function deleteToken(id){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  try{ await remove(ref(db,`maps/${mapName}/tokens/${id}`)); delete tokens[id]; }
+  catch(e){ toast("Delete failed"); }
+}
+
+async function saveStamp(k, emoji){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  try{ await set(ref(db,`maps/${mapName}/stamps/${k.replace(",","_")}`), emoji||null); }
+  catch(e){ toast("Stamp save failed"); }
+}
+
+async function deleteStamp(k){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  try{ await remove(ref(db,`maps/${mapName}/stamps/${k.replace(",","_")}`)); delete stamps[k]; }
+  catch(e){ toast("Stamp delete failed"); }
+}
+
+// ── Undo / Redo ───────────────────────────────────────────────────────────────
+const UNDO_MAX = 50;
+const undoStack = [];
+const redoStack = [];
+
+function snapshotTiles(){
+  return JSON.stringify(tiles);
+}
+
+function pushUndo(){
+  undoStack.push(snapshotTiles());
+  if(undoStack.length > UNDO_MAX) undoStack.shift();
+  redoStack.length = 0; // new action clears redo
+}
+
+function restoreTiles(snapshot){
+  for(const k in tiles) delete tiles[k];
+  Object.assign(tiles, JSON.parse(snapshot));
+}
+
 function undo(){
-  if(!history.length)return;
-  const s=history.pop();
-  tileGrid=s.tg;tokens=s.tokens;syms=s.syms;wallSegs=s.wallSegs;doors=s.doors;fogPatches=s.fogPatches;
-  wallAnchor=null;scheduleAnim();pushState();
+  if(!undoStack.length){ toast("Nothing to undo"); return; }
+  redoStack.push(snapshotTiles());
+  restoreTiles(undoStack.pop());
+  scheduleSave();
 }
-function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
-function isFloor(r,c){return r>=0&&r<ROWS&&c>=0&&c<COLS&&!!tileGrid[r]?.[c];}
-function hasDoor(r,c,side){
-  if(side==='top') return doors.some(d=>d.edge==='h'&&d.r===r&&d.c===c);
-  if(side==='bottom') return doors.some(d=>d.edge==='h'&&d.r===r+1&&d.c===c);
-  if(side==='left') return doors.some(d=>d.edge==='v'&&d.r===r&&d.c===c);
-  if(side==='right') return doors.some(d=>d.edge==='v'&&d.r===r&&d.c===c+1);
-  return false;
+
+function redo(){
+  if(!redoStack.length){ toast("Nothing to redo"); return; }
+  undoStack.push(snapshotTiles());
+  restoreTiles(redoStack.pop());
+  scheduleSave();
 }
-function fogAt(row,col){return fogPatches.find(f=>f.hidden&&col>=f.c1&&col<=f.c2&&row>=f.r1&&row<=f.r2)||null;}
-function isFogged(row,col){return!!fogAt(row,col);}
-function checkPcFog(){
-  if(!IS_GM)return;
-  tokens.forEach(t=>{
-    if(t.color!==PC_COLOR)return;
-    const col=Math.floor((t.x+CELL/2)/CELL),row=Math.floor((t.y+CELL/2)/CELL);
-    const f=fogAt(row,col);
-    if(f&&f.id!==pendingRevealId)showFogToast(f.id,t.name);
+let liveUnsub=null;
+
+function subscribeLive(){
+  if(liveUnsub){liveUnsub();liveUnsub=null;}
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
+    if(pendingSaves>0){pendingSaves--;return;}
+    const data=snap.val();
+    for(const k in tiles)delete tiles[k];
+    for(const k in fogGroups)delete fogGroups[k];
+    for(const k in tokens)delete tokens[k];
+    for(const k in stamps)delete stamps[k];
+    if(data){
+      if(data.tiles)Object.assign(tiles,data.tiles);
+      if(data.fog)Object.assign(fogGroups,data.fog);
+      if(data.tokens)Object.assign(tokens,data.tokens);
+      if(data.stamps){
+        // stamps stored with _ separator, convert back to ,
+        for(const[k,v]of Object.entries(data.stamps))
+          stamps[k.replace("_",",")]=v;
+      }
+    }
+    setStatus("live","Live ✓");
+  },()=>setStatus("error","RTDB error"));
+}
+
+// Listen for weather from RTDB
+onValue(ref(db,"weather"),snap=>{
+  const data=snap.val();
+  if(!data)return;
+  ["rain","snow","mist","storm"].forEach(t=>{ if(data[t])Object.assign(weather[t],data[t]); });
+  buildWeatherPanel();
+});
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+// ── Terrain dropdown ──────────────────────────────────────────────────────────
+const TERRAIN_NAMES = {
+  grass:"Grass", stone:"Stone", wood:"Wood", water:"Water",
+  cobble:"Cobble", sand:"Sand", lava:"Lava", dirt:"Dirt",
+  gravel:"Gravel", ice:"Ice", void:"Void", carpet:"Carpet",
+  marble:"Marble", mud:"Mud", erase:"Erase",
+};
+
+const terrainDropdown   = document.getElementById("terrain-dropdown");
+const terrainPickerBtn  = document.getElementById("terrain-picker-btn");
+const terrainSwatchPrev = document.getElementById("terrain-preview-swatch");
+const terrainLabelPrev  = document.getElementById("terrain-preview-label");
+
+function buildTerrainDropdown(){
+  terrainDropdown.innerHTML="";
+  const allTerrains=[...Object.keys(FALLBACK),"erase"];
+  allTerrains.forEach(t=>{
+    const el=document.createElement("div");
+    el.className="pd-item"+(t===currentTerrain?" active":"");
+    el.dataset.terrain=t;
+    if(t==="erase"){
+      el.innerHTML=`<div style="font-size:16px;line-height:40px">✕</div><div class="pd-item-label">Erase</div>`;
+      el.style.background="#1a1510";
+    }else{
+      el.innerHTML=`<div class="pd-item-inner"></div><div class="pd-item-label">${TERRAIN_NAMES[t]||t}</div>`;
+      const inner=el.querySelector(".pd-item-inner");
+      if(textures[t]) inner.style.backgroundImage=`url(${textures[t].src})`;
+      else inner.style.backgroundColor=FALLBACK[t];
+    }
+    el.onclick=()=>{ selectTerrain(t); terrainDropdown.classList.remove("open"); };
+    terrainDropdown.appendChild(el);
   });
 }
 
-// ── Texture URLs — swap these out for your own assets ──
-const TEXTURE_URLS={
-  wood:   'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/hardwood2_diffuse.jpg',
-  cobble: 'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/brick_diffuse.jpg',
-  grass:  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/terrain/grasslight-big.jpg',
-  water:  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/waternormals.jpg',
-  blank:  null,
+function selectTerrain(t){
+  currentTerrain=t;
+  terrainLabelPrev.textContent=TERRAIN_NAMES[t]||t;
+  if(t==="erase"){ terrainSwatchPrev.style.background="#1a1510"; terrainSwatchPrev.textContent="✕"; }
+  else{ terrainSwatchPrev.style.background=FALLBACK[t]; terrainSwatchPrev.textContent=""; if(textures[t]) terrainSwatchPrev.style.backgroundImage=`url(${textures[t].src})`; else terrainSwatchPrev.style.backgroundImage="none"; }
+  buildTerrainDropdown();
+}
+
+terrainPickerBtn.onclick=(e)=>{
+  e.stopPropagation();
+  const r=terrainPickerBtn.getBoundingClientRect();
+  terrainDropdown.style.left=r.left+"px";
+  terrainDropdown.classList.toggle("open");
+  stampDropdown.classList.remove("open");
 };
 
-// ── FX texture URLs — drawn at lowered opacity over the floor ──
-const FX_URLS={
-  fire:    null, // keep procedural
-  water:   null, // keep procedural
-  void:    null,
-  astral:  null,
-  ice:     'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/waternormals.jpg',
-  lava:    'https://cdn.jsdelivr.net/gh/mrdoob/three.js@master/examples/textures/lava/lavatile.jpg',
-  psychic: null,
-};
-// Opacity of the FX image overlay (0–1). Procedural animation still draws on top.
-const FX_URL_ALPHA={
-  fire:0, water:0, void:0, astral:0, ice:0.45, lava:0.65, psychic:0,
+// ── Stamp dropdown ────────────────────────────────────────────────────────────
+const STAMPS_LIST = ["⭐","❗","🔒","💀","🔥","💎","🚪","👁","🗡","🛡","💰","📜","🧪","⚡","❄","🌿","🕯","🗝","🎭","🐉"];
+
+const stampDropdown  = document.getElementById("stamp-dropdown");
+const stampPickerBtn = document.getElementById("stamp-picker-btn");
+const stampLabelPrev = document.getElementById("stamp-preview-label");
+
+function buildStampDropdown(){
+  stampDropdown.innerHTML="";
+  // Erase option first
+  const eraseEl=document.createElement("div");
+  eraseEl.className="pd-item pd-stamp"+(currentStamp==="erase"?" active":"");
+  eraseEl.textContent="✕";
+  eraseEl.style.fontSize="16px";
+  eraseEl.onclick=()=>{ selectStamp("erase"); stampDropdown.classList.remove("open"); };
+  stampDropdown.appendChild(eraseEl);
+
+  STAMPS_LIST.forEach(s=>{
+    const el=document.createElement("div");
+    el.className="pd-item pd-stamp"+(s===currentStamp?" active":"");
+    el.textContent=s;
+    el.onclick=()=>{ selectStamp(s); stampDropdown.classList.remove("open"); };
+    stampDropdown.appendChild(el);
+  });
+}
+
+function selectStamp(s){
+  currentStamp=s;
+  stampLabelPrev.textContent=s==="erase"?"Erase ✕":s||"None";
+  fogMode=false; fogBtn.classList.remove("fog-active");
+  buildStampDropdown();
+}
+
+stampPickerBtn.onclick=(e)=>{
+  e.stopPropagation();
+  const r=stampPickerBtn.getBoundingClientRect();
+  stampDropdown.style.left=r.left+"px";
+  stampDropdown.classList.toggle("open");
+  terrainDropdown.classList.remove("open");
 };
 
-// ── Texture loader — loads image → canvas pattern, cached by URL key ──
-const texCache={};
-const texImgs={};
+// Close dropdowns on outside click
+document.addEventListener("click",()=>{ terrainDropdown.classList.remove("open"); stampDropdown.classList.remove("open"); });
 
-function getTexture(key, urlMap){
-  if(texCache[key]) return texCache[key];
-  const url=urlMap[key];
-  if(!url) return null;
-  if(!texImgs[key]){
-    texImgs[key]='loading';
-    const img=new Image();
-    img.crossOrigin='anonymous';
-    img.onload=()=>{
-      texImgs[key]=img;
-      texCache[key]=ctx.createPattern(img,'repeat');
-      scheduleAnim();
-    };
-    img.onerror=()=>{ texImgs[key]='error'; };
-    img.src=url;
+document.querySelectorAll(".shape").forEach(btn=>{
+  btn.onclick=()=>{
+    if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();
+    fogMode=false; fogBtn.classList.remove("fog-active");
+    currentStamp=null; stampLabelPrev.textContent="None"; buildStampDropdown();
+    currentShape=btn.dataset.shape;
+    document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+  };
+});
+
+document.getElementById("pingBtn").onclick=()=>{
+  if(!playerName){showNameModal();return;}
+  pingMode=!pingMode;
+  document.getElementById("pingBtn").classList.toggle("active",pingMode);
+  if(pingMode)showPingToast("Click the map to ping");
+};
+
+wallBtn.onclick=()=>{
+  wallsEnabled=!wallsEnabled;
+  wallBtn.textContent=wallsEnabled?"On":"Off";
+  wallBtn.classList.toggle("active",wallsEnabled);
+};
+
+fogBtn.onclick=()=>{
+  fogMode=!fogMode;
+  fogBtn.classList.toggle("fog-active",fogMode);
+  if(fogMode){
+    currentStamp=null;
+    stampLabelPrev.textContent="None"; buildStampDropdown();
+    document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));
+    if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();
+  }
+};
+
+clearBtn.onclick=()=>{
+  if(!confirm("Clear the entire map?"))return;
+  pushUndo();
+  for(const k in tiles)delete tiles[k];
+  toast("Map cleared");
+  scheduleSave();
+};
+
+// ── Token modal ───────────────────────────────────────────────────────────────
+const tokenModal   = document.getElementById("token-modal");
+const tokCharSel   = document.getElementById("tok-char");
+const tokNameInput = document.getElementById("tok-name");
+const tokTypeInput = document.getElementById("tok-type");
+const tokHpInput   = document.getElementById("tok-hp");
+const tokMaxHpInput= document.getElementById("tok-maxhp");
+
+tokenBtn.onclick=async()=>{
+  // Load characters from RTDB
+  tokCharSel.innerHTML='<option value="">Loading…</option>';
+  try{
+    const snap=await get(child(ref(db),"characters/pcs"));
+    tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';
+    if(snap.exists()){
+      const chars=snap.val();
+      for(const [id,c] of Object.entries(chars)){
+        const opt=document.createElement("option");
+        opt.value=id;
+        opt.textContent=c.name||(c.charName)||id;
+        opt.dataset.hp   = c.hp    ?? c.currentHp ?? 10;
+        opt.dataset.maxhp= c.maxHp ?? c.hp        ?? 10;
+        opt.dataset.type = "pc";
+        tokCharSel.appendChild(opt);
+      }
+    }
+  }catch(e){
+    tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';
+  }
+  tokNameInput.value="";
+  tokHpInput.value="";
+  tokMaxHpInput.value="";
+  tokTypeInput.value="pc";
+  document.getElementById("tok-hp-row").style.display="none";
+  tokenModal.classList.add("open");
+};
+
+tokCharSel.addEventListener("change",()=>{
+  const opt=tokCharSel.selectedOptions[0];
+  const isNpc=!opt||opt.value==="__npc__";
+  document.getElementById("tok-hp-row").style.display=isNpc?"flex":"none";
+  if(!isNpc&&opt.dataset.hp){
+    tokHpInput.value=opt.dataset.hp;
+    tokMaxHpInput.value=opt.dataset.maxhp;
+    tokTypeInput.value=opt.dataset.type||"pc";
+    tokNameInput.placeholder=opt.textContent;
+  }else{
+    tokHpInput.value="";tokMaxHpInput.value="";
+    tokTypeInput.value="npc";
+    tokNameInput.placeholder="NPC Name";
+  }
+});
+
+document.getElementById("tok-cancel").onclick=()=>{
+  tokenModal.classList.remove("open");
+  placingToken=null;
+};
+
+document.getElementById("tok-place").onclick=()=>{
+  const charId=tokCharSel.value;
+  const opt=tokCharSel.selectedOptions[0];
+  const name=tokNameInput.value.trim()||opt?.textContent||"Token";
+  const type=tokTypeInput.value;
+  const hp=parseInt(tokHpInput.value)||10;
+  const maxHp=parseInt(tokMaxHpInput.value)||hp;
+  placingToken={ id:"tok_"+Date.now(), characterId:charId, name, type, hp, maxHp, x:0, y:0 };
+  tokenModal.classList.remove("open");
+  toast("Click the map to place token");
+};
+
+// ── Draw ──────────────────────────────────────────────────────────────────────
+function drawTile(x,y,terrain){
+  const px=x*TILE,py=y*TILE;
+  if(textures[terrain]){ctx.drawImage(textures[terrain],px,py,TILE,TILE);}
+  else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}
+}
+
+function drawTiles(){
+  for(const k in tiles){
+    const[x,y]=k.split(",").map(Number);
+    drawTile(x,y,tiles[k].terrain);
+  }
+}
+
+function drawWalls(){
+  ctx.strokeStyle="#c0392b"; ctx.lineWidth=2.5/zoom; ctx.lineCap="round";
+  for(const k in tiles){
+    if(!tiles[k].walls)continue;
+    const[x,y]=k.split(",").map(Number);
+    const px=x*TILE,py=y*TILE;
+    const checks=[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]];
+    for(const[dx,dy,x1,y1,x2,y2]of checks){
+      if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+    }
+  }
+}
+
+function drawGrid(){
+  ctx.strokeStyle="rgba(255,255,255,0.04)"; ctx.lineWidth=1/zoom;
+  const l=-camX/zoom,t=-camY/zoom,r=(canvas.width-camX)/zoom,b=(canvas.height-camY)/zoom;
+  for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
+  for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
+}
+
+// Tokens: draw below fog (NPC) or above fog (PC) — editor draws all dimly above fog for GM
+function drawToken(id, tok, alpha){
+  ctx.save();
+  ctx.globalAlpha=alpha??1;
+  const px=tok.x*TILE, py=tok.y*TILE;
+  const r=TILE*0.42;
+  const cx2=px+TILE/2, cy2=py+TILE/2;
+
+  // Circle body
+  ctx.beginPath();
+  ctx.arc(cx2,cy2,r,0,Math.PI*2);
+  ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";
+  ctx.fill();
+  ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";
+  ctx.lineWidth=2/zoom;
+  ctx.stroke();
+
+  // Initial letter
+  ctx.fillStyle="#fff";
+  ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;
+  ctx.textAlign="center";
+  ctx.textBaseline="middle";
+  ctx.fillText((tok.name||"?")[0].toUpperCase(),cx2,cy2);
+
+  // Name below
+  ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;
+  ctx.fillStyle="#ddd";
+  ctx.fillText(tok.name||"",cx2,py+TILE+10/zoom);
+
+  // HP bar
+  const bw=TILE*0.85, bh=5/zoom;
+  const bx=px+(TILE-bw)/2, by=py+TILE+1/zoom;
+  const pct=Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1)));
+  ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillRect(bx,by,bw,bh);
+  ctx.fillStyle=pct>0.5?"#4a9a4a":pct>0.25?"#aaaa30":"#aa3030";
+  ctx.fillRect(bx,by,bw*pct,bh);
+
+  ctx.restore();
+}
+
+function drawTokens(){
+  // NPC tokens first (below fog layer)
+  for(const[id,tok]of Object.entries(tokens)){
+    if(tok.type==="npc") drawToken(id,tok,1);
+  }
+}
+
+function drawPCTokens(){
+  // PC tokens on top of fog
+  for(const[id,tok]of Object.entries(tokens)){
+    if(tok.type==="pc") drawToken(id,tok,1);
+  }
+}
+
+function drawFog(){
+  // Draw all fog cells across all groups
+  ctx.fillStyle="rgba(10,20,40,0.6)";
+  for(const gid in fogGroups){
+    const cells=fogGroups[gid].cells||{};
+    for(const k in cells){
+      const[x,y]=k.split(",").map(Number);
+      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    }
+  }
+
+  // One X button per group (top-right of the group's bounding box), only in fog mode
+  if(fogMode){
+    ctx.save();
+    ctx.font=`bold ${Math.round(11/zoom)}px sans-serif`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    for(const gid in fogGroups){
+      const cells=fogGroups[gid].cells||{};
+      const coords=Object.keys(cells).map(k=>k.split(",").map(Number));
+      if(!coords.length)continue;
+      const maxX=Math.max(...coords.map(([x])=>x));
+      const minY=Math.min(...coords.map(([,y])=>y));
+      // X button at top-right of bounding box
+      const bx=(maxX+1)*TILE-14/zoom, by=minY*TILE;
+      const bs=14/zoom;
+      ctx.fillStyle="rgba(200,50,50,0.92)";
+      ctx.fillRect(bx,by,bs,bs);
+      ctx.fillStyle="#fff";
+      ctx.fillText("×",bx+bs/2,by+bs/2);
+    }
+    ctx.restore();
+  }
+}
+
+function drawFogPreview(){
+  if(!fogMode||!dragging)return;
+  const minX=Math.floor(Math.min(startX,curX)/TILE);
+  const maxX=Math.floor(Math.max(startX,curX)/TILE);
+  const minY=Math.floor(Math.min(startY,curY)/TILE);
+  const maxY=Math.floor(Math.max(startY,curY)/TILE);
+  ctx.fillStyle="rgba(10,20,40,0.35)";
+  for(let x=minX;x<=maxX;x++)
+    for(let y=minY;y<=maxY;y++)
+      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+}
+
+function drawStamps(){
+  ctx.save();
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  const fontSize=Math.round(TILE*0.65);
+  ctx.font=`${fontSize}px serif`;
+  for(const[k,emoji]of Object.entries(stamps)){
+    const[x,y]=k.split(",").map(Number);
+    ctx.fillText(emoji, x*TILE+TILE/2, y*TILE+TILE/2);
+  }
+  // Hover preview when placing a stamp
+  if(currentStamp&&currentStamp!=="erase"){
+    ctx.globalAlpha=0.5;
+    ctx.fillText(currentStamp, hoverTileX*TILE+TILE/2, hoverTileY*TILE+TILE/2);
+    ctx.globalAlpha=1;
+  }
+  ctx.restore();
+}
+
+function drawPlacingTokenPreview(){
+  if(!placingToken)return;
+  const alpha=0.6+0.2*Math.sin(Date.now()/300);
+  drawToken("preview",{...placingToken,x:hoverTileX,y:hoverTileY},alpha);
+}
+
+// ── Terrain preview ───────────────────────────────────────────────────────────
+function getPreviewTiles(){
+  if(!dragging)return null;
+  const minX=Math.floor(Math.min(startX,curX)/TILE);
+  const maxX=Math.floor(Math.max(startX,curX)/TILE);
+  const minY=Math.floor(Math.min(startY,curY)/TILE);
+  const maxY=Math.floor(Math.max(startY,curY)/TILE);
+  const cells=[];
+  if(currentShape==="rect"){
+    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) cells.push([x,y]);
+  }else if(currentShape==="circle"){
+    const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+    const rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;
+    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++){
+      const dx=(x-cx)/rx,dy=(y-cy)/ry;
+      if(dx*dx+dy*dy<=1)cells.push([x,y]);
+    }
+  }else if(currentShape==="line"){
+    let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE);
+    let x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);
+    const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0);
+    const sx=x0<x1?1:-1,sy=y0<y1?1:-1;
+    let err=dx-dy;
+    while(true){
+      cells.push([x0,y0]);
+      if(x0===x1&&y0===y1)break;
+      const e2=2*err;
+      if(e2>-dy){err-=dy;x0+=sx;}
+      if(e2<dx){err+=dx;y0+=sy;}
+    }
+  }
+  return cells;
+}
+
+function drawPreview(){
+  if(fogMode)return;
+  if(!dragging){
+    ctx.fillStyle="rgba(200,168,75,0.15)";
+    ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);
+    return;
+  }
+  const cells=getPreviewTiles();
+  if(!cells)return;
+  const isErase=currentTerrain==="erase";
+  ctx.fillStyle=isErase?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";
+  for(const[x,y]of cells) ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+  ctx.strokeStyle=isErase?"rgba(220,60,60,0.9)":"rgba(200,168,75,0.9)";
+  ctx.lineWidth=1.5/zoom; ctx.setLineDash([]);
+  for(const[x,y]of cells) ctx.strokeRect(x*TILE+.5/zoom,y*TILE+.5/zoom,TILE-1/zoom,TILE-1/zoom);
+}
+
+// ── Selection draw ────────────────────────────────────────────────────────────
+function drawSelection(){
+  if(currentShape!=="select")return;
+  if(selectPhase==="marquee"&&dragging){
+    const minX=Math.floor(Math.min(startX,curX)/TILE);
+    const maxX=Math.floor(Math.max(startX,curX)/TILE);
+    const minY=Math.floor(Math.min(startY,curY)/TILE);
+    const maxY=Math.floor(Math.max(startY,curY)/TILE);
+    ctx.fillStyle="rgba(100,160,255,0.15)";
+    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    ctx.strokeStyle="rgba(100,160,255,0.9)"; ctx.lineWidth=1.5/zoom;
+    ctx.setLineDash([5/zoom,3/zoom]);
+    ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);
+    ctx.setLineDash([]);
+    return;
+  }
+  if(selectPhase==="selected"||selectPhase==="moving"){
+    const ox=moveOffX,oy=moveOffY;
+    for(const k in selectTiles){
+      const[tx,ty]=k.split(",").map(Number);
+      const{terrain}=selectTiles[k];
+      const px=(tx+ox)*TILE,py=(ty+oy)*TILE;
+      if(textures[terrain]){ctx.drawImage(textures[terrain],px,py,TILE,TILE);}
+      else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}
+    }
+    const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE;
+    const pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;
+    ctx.fillStyle="rgba(100,160,255,0.18)"; ctx.fillRect(px,py,pw,ph);
+    ctx.strokeStyle="rgba(100,160,255,0.95)"; ctx.lineWidth=2/zoom;
+    ctx.setLineDash([5/zoom,3/zoom]); ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([]);
+  }
+}
+
+// ── Render loop ───────────────────────────────────────────────────────────────
+function drawPings(){
+  const now=Date.now();
+  for(const[id,ping]of Object.entries(activePings)){
+    const age=(now-ping.startTime)/1000;
+    if(age>3){delete activePings[id];continue;}
+    const alpha=1-age/3;
+    const sx=ping.wx*zoom+camX, sy=ping.wy*zoom+camY;
+    for(let i=0;i<3;i++){
+      const phase=(age+i*0.4)%1.2;
+      ctx.beginPath();ctx.arc(sx,sy,20+phase*60,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,200,50,${alpha*(1-phase/1.2)*0.8})`;
+      ctx.lineWidth=2.5;ctx.stroke();
+    }
+    ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fill();
+    ctx.font="bold 11px Cinzel,serif";
+    ctx.textAlign="center";ctx.textBaseline="bottom";
+    ctx.fillStyle=`rgba(255,220,80,${alpha})`;
+    ctx.fillText(ping.name,sx,sy-10);
+  }
+}
+
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#0d0b08"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.translate(camX,camY); ctx.scale(zoom,zoom);
+
+  drawTiles();
+  drawWalls();
+  drawStamps();          // POI stamps above tiles, below tokens and fog
+  drawTokens();          // NPCs below fog
+  drawFog();             // fog (GM semi-transparent)
+  drawFogPreview();
+  drawPCTokens();        // PCs above fog
+  drawPlacingTokenPreview();
+  drawGrid();
+  if(currentShape==="select") drawSelection();
+  else drawPreview();
+
+  ctx.restore();
+  drawPings();
+  drawWeather(canvas.width, canvas.height);
+  requestAnimationFrame(render);
+}
+
+// ── Selection helpers ─────────────────────────────────────────────────────────
+function liftSelection(minX,minY,maxX,maxY){
+  selectTiles={}; selMinX=minX;selMinY=minY;selMaxX=maxX;selMaxY=maxY;
+  for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++){
+    const k=key(x,y);
+    if(tiles[k]) selectTiles[k]={...tiles[k]};
+    if(currentTerrain!=="erase") tiles[k]={terrain:currentTerrain,walls:wallsEnabled};
+    else delete tiles[k];
+  }
+  moveOffX=0;moveOffY=0;
+  // Save immediately so the fill-void is persisted even if user refreshes before committing
+  scheduleSave();
+}
+
+function commitSelection(){
+  pushUndo();
+  for(const k in selectTiles){
+    const[tx,ty]=k.split(",").map(Number);
+    tiles[key(tx+moveOffX,ty+moveOffY)]={...selectTiles[k]};
+  }
+  selectTiles={}; selectPhase=null; moveOffX=0;moveOffY=0;
+  scheduleSave();
+}
+
+function inSelection(wx,wy){
+  if(!selectPhase||selectPhase==="marquee")return false;
+  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
+  return tx>=selMinX+moveOffX&&tx<=selMaxX+moveOffX&&ty>=selMinY+moveOffY&&ty<=selMaxY+moveOffY;
+}
+
+// ── Token hit test ────────────────────────────────────────────────────────────
+function tokenAtTile(tx,ty){
+  for(const[id,tok]of Object.entries(tokens)){
+    if(tok.x===tx&&tok.y===ty)return id;
   }
   return null;
 }
 
-// ── FX per cell ──
-function drawFxCell(r,c,fx,t){
-  const x=c*CELL,y=r*CELL,T=t/60;
-
-  // URL-based texture overlay (drawn first, under procedural animation)
-  const fxAlpha=FX_URL_ALPHA[fx]||0;
-  if(fxAlpha>0){
-    const pat=getTexture(fx, FX_URLS);
-    if(pat){
-      fxCtx.save();
-      fxCtx.globalAlpha=fxAlpha;
-      const img=texImgs[fx];
-      if(img&&img.naturalWidth){
-        const scale=CELL/img.naturalWidth;
-        pat.setTransform(new DOMMatrix([scale,0,0,scale,x,y]));
-      }
-      fxCtx.fillStyle=pat;
-      fxCtx.fillRect(x,y,CELL,CELL);
-      fxCtx.restore();
-    }
+// Hit test: returns the fog group ID if the X button was clicked
+function fogGroupXHit(wx,wy){
+  for(const gid in fogGroups){
+    const cells=fogGroups[gid].cells||{};
+    const coords=Object.keys(cells).map(k=>k.split(",").map(Number));
+    if(!coords.length)continue;
+    const maxX=Math.max(...coords.map(([x])=>x));
+    const minY=Math.min(...coords.map(([,y])=>y));
+    const bx=(maxX+1)*TILE-14/zoom, by=minY*TILE, bs=14/zoom;
+    if(wx>=bx&&wx<=bx+bs&&wy>=by&&wy<=by+bs) return gid;
   }
-  if(fx==='fire'){
-    const h=Math.sin(T*4+c*1.2+r*0.8)*0.15+0.85;
-    const g=fxCtx.createLinearGradient(x,y+CELL,x,y);
-    g.addColorStop(0,`rgba(200,40,0,${0.85*h})`);g.addColorStop(0.4,`rgba(240,140,0,${0.7*h})`);
-    g.addColorStop(0.75,`rgba(255,220,60,${0.5*h})`);g.addColorStop(1,`rgba(255,240,180,0)`);
-    fxCtx.fillStyle=g;fxCtx.fillRect(x,y,CELL,CELL);
-    const fx2=x+CELL/2+Math.sin(T*7+c*2)*4,fy2=y+CELL*0.3+Math.cos(T*5+r*3)*4;
-    const fg=fxCtx.createRadialGradient(fx2,fy2,0,fx2,fy2,6);
-    fg.addColorStop(0,`rgba(255,230,100,${0.65*h})`);fg.addColorStop(1,'rgba(255,80,0,0)');
-    fxCtx.fillStyle=fg;fxCtx.fillRect(fx2-8,fy2-8,16,16);
-  } else if(fx==='water'){
-    const w1=Math.sin(T*2+c*0.8+r*0.5)*0.15+0.85;
-    const g=fxCtx.createLinearGradient(x,y,x+CELL,y+CELL);
-    g.addColorStop(0,`rgba(30,100,200,${0.6*w1})`);g.addColorStop(0.5,`rgba(60,160,240,${0.45*w1})`);g.addColorStop(1,`rgba(20,80,180,${0.6*w1})`);
-    fxCtx.fillStyle=g;fxCtx.fillRect(x,y,CELL,CELL);
-    const rr=(T*14+c*6+r*4)%CELL*0.45;
-    fxCtx.strokeStyle=`rgba(150,210,255,${Math.max(0,0.45-rr/CELL)})`;fxCtx.lineWidth=0.8;
-    fxCtx.beginPath();fxCtx.arc(x+CELL/2+Math.sin(T*3+c)*2,y+CELL/2+Math.cos(T*2.5+r)*2,rr,0,Math.PI*2);fxCtx.stroke();
-  } else if(fx==='void'){
-    const d=Math.sin(T*0.8+c*0.3+r*0.5)*0.12+0.88;
-    fxCtx.fillStyle=`rgba(4,0,18,${0.85*d})`;fxCtx.fillRect(x,y,CELL,CELL);
-    const seed=c*31+r*17;
-    for(let i=0;i<3;i++){
-      const sx2=x+(seed*13+i*37)%CELL,sy2=y+(seed*7+i*23)%CELL;
-      fxCtx.fillStyle=`rgba(200,200,255,${Math.abs(Math.sin(T*(0.5+i*0.3)+seed+i))*0.75})`;
-      fxCtx.fillRect(sx2,sy2,1.2,1.2);
-    }
-    const nh=(T*10+c*8+r*5)%360;
-    const ng=fxCtx.createRadialGradient(x+CELL/2,y+CELL/2,0,x+CELL/2,y+CELL/2,CELL*0.5);
-    ng.addColorStop(0,`hsla(${nh},60%,40%,${0.12*d})`);ng.addColorStop(1,'transparent');
-    fxCtx.fillStyle=ng;fxCtx.fillRect(x,y,CELL,CELL);
-  } else if(fx==='astral'){
-    const pulse=Math.sin(T*2+c*0.4+r*0.6)*0.12+0.88;
-    const hue=(T*30+c*20+r*15)%360;
-    const g=fxCtx.createRadialGradient(x+CELL/2,y+CELL/2,0,x+CELL/2,y+CELL/2,CELL*0.7);
-    g.addColorStop(0,`hsla(${hue},80%,70%,${0.55*pulse})`);
-    g.addColorStop(0.5,`hsla(${(hue+60)%360},70%,50%,${0.32*pulse})`);
-    g.addColorStop(1,`hsla(${(hue+120)%360},60%,30%,0)`);
-    fxCtx.fillStyle=g;fxCtx.fillRect(x,y,CELL,CELL);
-    fxCtx.fillStyle=`rgba(255,255,255,${Math.abs(Math.sin(T*3+c+r))*0.85})`;
-    fxCtx.fillRect(x+((c*17+r*13+Math.floor(T))%CELL),y+((c*11+r*19+Math.floor(T*0.7))%CELL),1.5,1.5);
-  } else if(fx==='ice'){
-    const sh=Math.sin(T*3+c*1.5+r*1.1)*0.08+0.92;
-    const g=fxCtx.createLinearGradient(x,y,x+CELL,y+CELL);
-    g.addColorStop(0,`rgba(180,225,255,${0.58*sh})`);g.addColorStop(0.5,`rgba(220,242,255,${0.45*sh})`);g.addColorStop(1,`rgba(160,215,255,${0.58*sh})`);
-    fxCtx.fillStyle=g;fxCtx.fillRect(x,y,CELL,CELL);
-    fxCtx.strokeStyle=`rgba(255,255,255,${0.28*sh})`;fxCtx.lineWidth=0.5;
-    [c*37%6,r*41%6,(c+r)*29%6].forEach(a=>{
-      const ang=a*Math.PI/3,mx2=x+CELL/2,my2=y+CELL/2;
-      fxCtx.beginPath();fxCtx.moveTo(mx2,my2);fxCtx.lineTo(mx2+Math.cos(ang)*CELL*0.45,my2+Math.sin(ang)*CELL*0.45);fxCtx.stroke();
-    });
-  } else if(fx==='lava'){
-    const lv=Math.sin(T*1.5+c*0.6+r*0.4)*0.5+0.5;
-    const g=fxCtx.createRadialGradient(x+CELL/2+Math.sin(T+c)*3,y+CELL/2+Math.cos(T*0.8+r)*3,0,x+CELL/2,y+CELL/2,CELL*0.6);
-    g.addColorStop(0,`rgba(255,${Math.floor(180+lv*55)},0,${0.75+lv*0.15})`);
-    g.addColorStop(0.4,`rgba(220,60,0,0.75)`);g.addColorStop(1,`rgba(55,8,0,0.88)`);
-    fxCtx.fillStyle=g;fxCtx.fillRect(x,y,CELL,CELL);
-    if(lv>0.78){
-      const bx=x+CELL/2+Math.sin(T*8+c*3)*5,by=y+CELL/2+Math.cos(T*6+r*2)*4;
-      const bg=fxCtx.createRadialGradient(bx,by,0,bx,by,4);
-      bg.addColorStop(0,'rgba(255,240,200,0.92)');bg.addColorStop(1,'rgba(255,120,0,0)');
-      fxCtx.fillStyle=bg;fxCtx.fillRect(bx-6,by-6,12,12);
-    }
-  } else if(fx==='psychic'){
-    const wv=Math.sin(T*3+c*0.9-r*0.7),p=(Math.sin(T+c*0.5+r*0.3)*0.5+0.5);
-    const g=fxCtx.createLinearGradient(x,y,x+CELL,y+CELL);
-    g.addColorStop(0,`rgba(${120+wv*80},0,${200+wv*55},${0.55+p*0.18})`);
-    g.addColorStop(0.5,`rgba(180,0,240,${0.35+p*0.18})`);
-    g.addColorStop(1,`rgba(60,0,${150+wv*100},${0.55+p*0.18})`);
-    fxCtx.fillStyle=g;fxCtx.fillRect(x,y,CELL,CELL);
-    const rr2=(T*8+c*4+r*3)%(CELL*0.5);
-    fxCtx.strokeStyle=`rgba(220,180,255,${Math.max(0,0.5-rr2/(CELL*0.5)*0.5)})`;fxCtx.lineWidth=1;
-    fxCtx.beginPath();fxCtx.arc(x+CELL/2,y+CELL/2,rr2,0,Math.PI*2);fxCtx.stroke();
-  }
+  return null;
 }
 
-// ── Door ──
-function drawDoor(edge,r,c){
-  const floorColor=tileGrid[r]?.[c]?FLOOR_COLORS[tileGrid[r][c].floor]||'#d4c5a0':'#d4c5a0';
-  const x=c*CELL,y=r*CELL,half=CELL/2;
-  ctx.save();ctx.strokeStyle=WALL;ctx.lineWidth=WALL_W;ctx.lineCap='square';
-  if(edge==='h'){
-    const mx=x+half,my=y,gapH=CELL*0.55,dw=gapH*0.9,dh=CELL*0.18;
-    ctx.fillStyle=floorColor;ctx.fillRect(mx-gapH/2,my-WALL_W,gapH,WALL_W*2);
-    ctx.strokeRect(mx-dw/2,my-dh,dw,dh*2);
-  } else {
-    const mx=x,my=y+half,gapH=CELL*0.55,dw=CELL*0.18,dh=gapH*0.9;
-    ctx.fillStyle=floorColor;ctx.fillRect(mx-WALL_W,my-gapH/2,WALL_W*2,gapH);
-    ctx.strokeRect(mx-dw,my-dh/2,dw*2,dh);
+// Right-click: reveal (delete) whichever fog group contains that tile
+function fogGroupAtTile(tx,ty){
+  const k=key(tx,ty);
+  for(const gid in fogGroups){
+    if(fogGroups[gid].cells&&fogGroups[gid].cells[k]) return gid;
   }
-  ctx.restore();
+  return null;
 }
 
-// ── Delete handle helpers ──
-function drawX(wx,wy,onDelete){
-  const R=7/zoom;
-  deleteHandles.push({wx,wy,R,onDelete});
-  ctx.save();
-  ctx.fillStyle='#c0392b';
-  ctx.beginPath();ctx.arc(wx,wy,R,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1.2,1.8/zoom);ctx.lineCap='round';
-  const o=R*0.55;
-  ctx.beginPath();ctx.moveTo(wx-o,wy-o);ctx.lineTo(wx+o,wy+o);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(wx+o,wy-o);ctx.lineTo(wx-o,wy+o);ctx.stroke();
-  ctx.restore();
-}
-function nearWP(wx,wy,radius){
-  return Math.sqrt((hoverWP.x-wx)**2+(hoverWP.y-wy)**2)<radius;
-}
+// ── Pointer events ────────────────────────────────────────────────────────────
+let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0;
+let spaceDown=false;
 
-// ── Animation ──
-function scheduleAnim(){
-  let needs=false;
-  if(pings.length>0) needs=true;
-  if(!needs) outer:for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const t=tileGrid[r]?.[c];if(t&&t.fx&&t.fx!=='none'){needs=true;break outer;}}
-  if(needs){if(!animFrame)loop();}
-  else{if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}draw();}
-}
-function loop(){tick++;draw();animFrame=requestAnimationFrame(loop);}
-
-// ── Draw ──
-function draw(){
-  const W=canvas.width,H=canvas.height;
-  ctx.fillStyle=PARCHMENT;ctx.fillRect(0,0,W,H);
-  fxCtx.clearRect(0,0,W,H);
-  deleteHandles=[];
-
-  ctx.save();
-  ctx.translate(panX,panY);ctx.scale(zoom,zoom);
-  fxCtx.save();
-  fxCtx.translate(panX,panY);fxCtx.scale(zoom,zoom);
-
-  const worldW=COLS*CELL,worldH=ROWS*CELL;
-  ctx.fillStyle=PARCHMENT;ctx.fillRect(0,0,worldW,worldH);
-
-  let hasAnim=false;
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    const tile=tileGrid[r]?.[c];
-    if(!tile)continue;
-    const x=c*CELL,y=r*CELL;
-    ctx.fillStyle=FLOOR_COLORS[tile.floor]||'#d4c5a0';
-    ctx.fillRect(x,y,CELL,CELL);
-    const ta=TEX_ALPHA[tile.floor]||0;
-    if(ta>0){
-      const pat=getTexture(tile.floor, TEXTURE_URLS);
-      if(pat){
-        ctx.save();
-        ctx.globalAlpha=ta;
-        const img=texImgs[tile.floor];
-        if(img&&img.naturalWidth){
-          const scale=CELL/img.naturalWidth;
-          pat.setTransform(new DOMMatrix([scale,0,0,scale,x,y]));
-        }
-        ctx.fillStyle=pat;
-        ctx.fillRect(x,y,CELL,CELL);
-        ctx.restore();
-      }
-    }
-    if(tile.fx&&tile.fx!=='none'){hasAnim=true;drawFxCell(r,c,tile.fx,tick);}
+window.addEventListener("keydown",e=>{
+  if(e.code==="Space"){spaceDown=true;canvas.style.cursor="grab";}
+  if(e.code==="Escape"){
+    if(placingToken){placingToken=null;toast("Placement cancelled.");}
+    if(selectPhase&&selectPhase!=="marquee")commitSelection();
   }
-
-  fxCtx.restore();
-  if(hasAnim){ctx.restore();ctx.drawImage(fxCanvas,0,0);ctx.save();ctx.translate(panX,panY);ctx.scale(zoom,zoom);}
-
-  // Fog — player covers floor AND walls by drawing after them
-  // (moved to after walls below)
-
-  // Drag preview
-  if(painting&&dragStart&&dragEnd){
-    const c1=Math.min(dragStart.col,dragEnd.col),c2=Math.max(dragStart.col,dragEnd.col);
-    const r1=Math.min(dragStart.row,dragEnd.row),r2=Math.max(dragStart.row,dragEnd.row);
-    let col='rgba(160,130,70,0.3)';
-    if(mode==='erase')col='rgba(200,60,60,0.15)';
-    else if(mode==='room'){const fc=FLOOR_COLORS[brush.floor];col=fc+'44';}
-    else if(mode==='fog')col='rgba(40,30,20,0.35)';
-    ctx.fillStyle=col;
-    ctx.fillRect(c1*CELL,r1*CELL,(c2-c1+1)*CELL,(r2-r1+1)*CELL);
-  }
-
-  // Grid drawn later, on top of everything
-
-  // Walls
-  ctx.strokeStyle=WALL;ctx.lineWidth=WALL_W;ctx.lineCap='square';
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    if(!isFloor(r,c))continue;
-    if(!IS_GM&&isFogged(r,c))continue;
-    const x=c*CELL,y=r*CELL;
-    if(!isFloor(r-1,c)&&!hasDoor(r,c,'top')&&(IS_GM||!isFogged(r-1,c))){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+CELL,y);ctx.stroke();}
-    if(!isFloor(r+1,c)&&!hasDoor(r,c,'bottom')&&(IS_GM||!isFogged(r+1,c))){ctx.beginPath();ctx.moveTo(x,y+CELL);ctx.lineTo(x+CELL,y+CELL);ctx.stroke();}
-    if(!isFloor(r,c-1)&&!hasDoor(r,c,'left')&&(IS_GM||!isFogged(r,c-1))){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+CELL);ctx.stroke();}
-    if(!isFloor(r,c+1)&&!hasDoor(r,c,'right')&&(IS_GM||!isFogged(r,c+1))){ctx.beginPath();ctx.moveTo(x+CELL,y);ctx.lineTo(x+CELL,y+CELL);ctx.stroke();}
-  }
-  wallSegs.forEach(w=>{
-    if(!IS_GM){const mx2=Math.round((w.x1+w.x2)/2),my2=Math.round((w.y1+w.y2)/2);if(isFogged(my2,mx2))return;}
-    ctx.beginPath();ctx.moveTo(w.x1*CELL,w.y1*CELL);ctx.lineTo(w.x2*CELL,w.y2*CELL);ctx.stroke();
-  });
-
-  // Wall seg preview
-  if(IS_GM&&mode==='wall-seg'){
-    if(wallAnchor&&cursorGP){
-      let ex=cursorGP.gx,ey=cursorGP.gy;
-      if(Math.abs(ex-wallAnchor.gx)>=Math.abs(ey-wallAnchor.gy))ey=wallAnchor.gy;else ex=wallAnchor.gx;
-      ctx.strokeStyle='rgba(26,22,18,0.4)';ctx.lineWidth=WALL_W;ctx.setLineDash([4,4]);
-      ctx.beginPath();ctx.moveTo(wallAnchor.gx*CELL,wallAnchor.gy*CELL);ctx.lineTo(ex*CELL,ey*CELL);ctx.stroke();
-      ctx.setLineDash([]);
-    }
-    if(cursorGP){
-      ctx.fillStyle=wallAnchor?WALL:'rgba(26,22,18,0.5)';
-      ctx.beginPath();ctx.arc(cursorGP.gx*CELL,cursorGP.gy*CELL,4,0,Math.PI*2);ctx.fill();
-    }
-  }
-
-  // Doors
-  doors.forEach(d=>{if(!IS_GM&&isFogged(d.r,d.c))return;drawDoor(d.edge,d.r,d.c);});
-  if(IS_GM&&mode==='door'&&cursorEdge){ctx.save();ctx.globalAlpha=0.4;drawDoor(cursorEdge.edge,cursorEdge.r,cursorEdge.c);ctx.restore();}
-
-  // Fog — drawn after walls+doors so it fully covers them for players
-  if(!IS_GM){
-    fogPatches.forEach(f=>{
-      if(!f.hidden)return;
-      ctx.fillStyle=PARCHMENT;
-      ctx.fillRect(f.c1*CELL,f.r1*CELL,(f.c2-f.c1+1)*CELL,(f.r2-f.r1+1)*CELL);
-    });
-  }
-
-  // Fog GM overlay
-  fogHandles=[];
-  if(IS_GM){
-    fogPatches.forEach(f=>{
-      const x=f.c1*CELL,y=f.r1*CELL,w=(f.c2-f.c1+1)*CELL,h=(f.r2-f.r1+1)*CELL;
-      if(f.hidden){
-        ctx.fillStyle='rgba(30,22,14,0.55)';ctx.fillRect(x,y,w,h);
-        ctx.save();
-        ctx.strokeStyle='rgba(220,180,80,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([5,4]);
-        ctx.strokeRect(x+1,y+1,w-2,h-2);ctx.setLineDash([]);
-        ctx.font=`bold ${clamp(11/zoom,8,14)}px system-ui`;
-        ctx.fillStyle='rgba(220,180,80,0.9)';ctx.textAlign='center';ctx.textBaseline='middle';
-        ctx.fillText('FOG',x+w/2,y+h/2);
-        ctx.restore();
-      } else {
-        ctx.save();ctx.strokeStyle='rgba(220,180,80,0.25)';ctx.lineWidth=1;ctx.setLineDash([3,5]);
-        ctx.strokeRect(x+1,y+1,w-2,h-2);ctx.setLineDash([]);ctx.restore();
-      }
-      // Fog X handle (top-right corner)
-      const R=9/zoom,hx=x+w+R+2,hy=y-R-2;
-      fogHandles.push({id:f.id,wx:hx,wy:hy,R});
-      ctx.save();
-      ctx.fillStyle='#c0392b';ctx.beginPath();ctx.arc(hx,hy,R,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle='#fff';ctx.lineWidth=Math.max(1.5,2/zoom);ctx.lineCap='round';
-      const o=R*0.55;
-      ctx.beginPath();ctx.moveTo(hx-o,hy-o);ctx.lineTo(hx+o,hy+o);ctx.stroke();
-      ctx.beginPath();ctx.moveTo(hx+o,hy-o);ctx.lineTo(hx-o,hy+o);ctx.stroke();
-      ctx.restore();
-    });
-  }
-
-  // Symbols
-  syms.forEach(s=>{
-    if(!IS_GM&&isFogged(s.row,s.col))return;
-    const cx=s.col*CELL+CELL/2,cy=s.row*CELL+CELL/2;
-    ctx.font=`${CELL*0.62}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(s.g,cx,cy);
-    if(IS_GM&&nearWP(cx,cy,CELL*0.7))
-      drawX(cx+CELL*0.38,cy-CELL*0.38,()=>{snapshot();syms=syms.filter(x=>x!==s);pushState();scheduleAnim();});
-  });
-
-  // Tokens
-  tokens.forEach(t=>{
-    const isPC=t.color===PC_COLOR;
-    const tcol=Math.floor((t.x+CELL/2)/CELL),trow=Math.floor((t.y+CELL/2)/CELL);
-    if(!IS_GM&&!isPC&&isFogged(trow,tcol))return;
-    const cx=t.x+CELL/2,cy=t.y+CELL/2,rad=CELL*0.38;
-    ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.fillStyle=t.color;ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.4)';ctx.lineWidth=1.5;ctx.stroke();
-    ctx.fillStyle='#fff';
-    const label=t.name.length>8?t.name.slice(0,7)+'…':t.name;
-    ctx.font=`600 ${label.length>6?8:10}px system-ui,sans-serif`;
-    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,cx,cy);
-    if(IS_GM&&nearWP(cx,cy,rad+4/zoom))
-      drawX(cx+rad,cy-rad,()=>{snapshot();tokens=tokens.filter(x=>x!==t);pushState();scheduleAnim();});
-  });
-
-  // Wall segs — X appears near midpoint when hovering the line
-  if(IS_GM){
-    wallSegs.forEach(w=>{
-      const x1=w.x1*CELL,y1=w.y1*CELL,x2=w.x2*CELL,y2=w.y2*CELL;
-      const dx=x2-x1,dy=y2-y1,len2=dx*dx+dy*dy;
-      let t2=len2?((hoverWP.x-x1)*dx+(hoverWP.y-y1)*dy)/len2:0;t2=Math.max(0,Math.min(1,t2));
-      const nx=x1+t2*dx,ny=y1+t2*dy;
-      if(Math.sqrt((hoverWP.x-nx)**2+(hoverWP.y-ny)**2)<12/zoom)
-        drawX((x1+x2)/2,(y1+y2)/2-8/zoom,()=>{snapshot();wallSegs=wallSegs.filter(x=>x!==w);pushState();scheduleAnim();});
-    });
-  }
-
-  // Doors — X on hover
-  if(IS_GM){
-    doors.forEach(d=>{
-      const px=d.edge==='h'?(d.c+0.5)*CELL:d.c*CELL;
-      const py=d.edge==='h'?d.r*CELL:(d.r+0.5)*CELL;
-      if(nearWP(px,py,CELL*0.55))
-        drawX(px+CELL*0.35,py-CELL*0.35,()=>{snapshot();doors=doors.filter(x=>x!==d);pushState();scheduleAnim();});
-    });
-  }
-
-  // Pings — rippling circles that fade out over ~2 seconds
-  const now=performance.now();
-  pings=pings.filter(p=>now-p.born<2200);
-  pings.forEach(p=>{
-    const age=(now-p.born)/2200; // 0→1
-    const alpha=Math.pow(1-age,1.5);
-    const maxR=CELL*2.5;
-    // three expanding rings at staggered phases
-    [0,0.25,0.5].forEach(offset=>{
-      const phase=(age+offset)%1;
-      const r=phase*maxR;
-      ctx.save();
-      ctx.strokeStyle=p.color;
-      ctx.globalAlpha=alpha*(1-phase)*0.9;
-      ctx.lineWidth=2.5/zoom;
-      ctx.beginPath();ctx.arc(p.wx,p.wy,r,0,Math.PI*2);ctx.stroke();
-      ctx.restore();
-    });
-    // center dot
-    ctx.save();
-    ctx.fillStyle=p.color;
-    ctx.globalAlpha=alpha*0.9;
-    ctx.beginPath();ctx.arc(p.wx,p.wy,3/zoom,0,Math.PI*2);ctx.fill();
-    ctx.restore();
-    // name label
-    if(p.name){
-      ctx.save();
-      ctx.globalAlpha=alpha;
-      ctx.fillStyle=p.color;
-      ctx.font=`bold ${11/zoom}px system-ui,sans-serif`;
-      ctx.textAlign='center';ctx.textBaseline='bottom';
-      ctx.fillText(p.name,p.wx,p.wy-CELL*0.4);
-      ctx.restore();
-    }
-  });
-
-  // Grid — drawn last so it's always visible over tiles, FX, fog, everything
-  ctx.strokeStyle='rgba(0,0,0,0.18)';ctx.lineWidth=0.5/zoom;
-  for(let c=0;c<=COLS;c++){ctx.beginPath();ctx.moveTo(c*CELL,0);ctx.lineTo(c*CELL,worldH);ctx.stroke();}
-  for(let r=0;r<=ROWS;r++){ctx.beginPath();ctx.moveTo(0,r*CELL);ctx.lineTo(worldW,r*CELL);ctx.stroke();}
-
-  ctx.restore();
-}
-
-// ── Zoom & Pan ──
-wrap.addEventListener('wheel',e=>{
-  e.preventDefault();
-  const rect=canvas.getBoundingClientRect();
-  const sx=e.clientX-rect.left,sy=e.clientY-rect.top;
-  const factor=e.deltaY<0?1.1:1/1.1;
-  const newZoom=clamp(zoom*factor,MIN_ZOOM,MAX_ZOOM);
-  panX=sx-(sx-panX)*(newZoom/zoom);
-  panY=sy-(sy-panY)*(newZoom/zoom);
-  zoom=newZoom;scheduleAnim();
-},{passive:false});
-
-// Touch pinch+pan
-let pinchDist=null,pinchMid={x:0,y:0},pinchZoomStart=1,pinchPanStart={x:0,y:0};
-let touchPaintTouch=null;
-function tDist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
-function tMid(t,rect){return{x:(t[0].clientX+t[1].clientX)/2-rect.left,y:(t[0].clientY+t[1].clientY)/2-rect.top};}
-
-wrap.addEventListener('touchstart',e=>{
-  e.preventDefault();
-  const touches=[...e.touches];
-  if(touches.length===1&&IS_GM){
-    // single finger draws
-    touchPaintTouch=touches[0];
-    const{sx,sy}=getSXYtouch(touches[0]);
-    canvas.dispatchEvent(Object.assign(new MouseEvent('mousedown',{bubbles:true}),{clientX:touches[0].clientX,clientY:touches[0].clientY,button:0}));
-  } else if(touches.length===1&&!IS_GM){
-    panning=true;const rect=canvas.getBoundingClientRect();
-    panStart={x:touches[0].clientX-rect.left,y:touches[0].clientY-rect.top};panOrigin={x:panX,y:panY};
-  } else if(touches.length>=2){
-    if(touchPaintTouch){touchPaintTouch=null;canvas.dispatchEvent(new MouseEvent('mouseup',{button:0}));}
-    panning=false;
-    const rect=canvas.getBoundingClientRect();
-    pinchDist=tDist(touches);pinchMid=tMid(touches,rect);
-    pinchZoomStart=zoom;pinchPanStart={x:panX,y:panY};
-  }
-},{passive:false});
-function getSXYtouch(t){const r=canvas.getBoundingClientRect();return{sx:t.clientX-r.left,sy:t.clientY-r.top};}
-
-wrap.addEventListener('touchmove',e=>{
-  e.preventDefault();
-  const touches=[...e.touches];
-  if(touches.length===1&&!IS_GM&&panning){
-    const rect=canvas.getBoundingClientRect();
-    panX=panOrigin.x+(touches[0].clientX-rect.left-panStart.x);
-    panY=panOrigin.y+(touches[0].clientY-rect.top-panStart.y);
-    scheduleAnim();
-  } else if(touches.length===1&&IS_GM&&touchPaintTouch){
-    canvas.dispatchEvent(Object.assign(new MouseEvent('mousemove',{bubbles:true}),{clientX:touches[0].clientX,clientY:touches[0].clientY,buttons:1}));
-  } else if(touches.length>=2&&pinchDist!==null){
-    const rect=canvas.getBoundingClientRect();
-    const dist=tDist(touches),mid=tMid(touches,rect);
-    const newZoom=clamp(pinchZoomStart*(dist/pinchDist),MIN_ZOOM,MAX_ZOOM);
-    const worldPX=(pinchMid.x-pinchPanStart.x)/pinchZoomStart;
-    const worldPY=(pinchMid.y-pinchPanStart.y)/pinchZoomStart;
-    panX=mid.x-worldPX*newZoom;panY=mid.y-worldPY*newZoom;
-    zoom=newZoom;scheduleAnim();
-  }
-},{passive:false});
-
-wrap.addEventListener('touchend',e=>{
-  if(e.touches.length<2)pinchDist=null;
-  if(e.touches.length===0){
-    panning=false;
-    if(touchPaintTouch){touchPaintTouch=null;canvas.dispatchEvent(new MouseEvent('mouseup',{button:0}));}
-  }
-},{passive:false});
-
-document.addEventListener('keydown',e=>{
-  if(e.code==='Space'&&!e.repeat){spaceDown=true;canvas.style.cursor='grab';}
-  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();undo();}
-  if(e.key==='Escape'){wallAnchor=null;hideFogToast();scheduleAnim();}
+  if((e.ctrlKey||e.metaKey)&&e.code==="KeyZ"&&!e.shiftKey){ e.preventDefault(); undo(); }
+  if((e.ctrlKey||e.metaKey)&&(e.code==="KeyY"||(e.code==="KeyZ"&&e.shiftKey))){ e.preventDefault(); redo(); }
 });
-document.addEventListener('keyup',e=>{
-  if(e.code==='Space'){spaceDown=false;canvas.style.cursor=mode==='token'||mode==='sym'?'cell':'crosshair';}
+window.addEventListener("keyup",e=>{ if(e.code==="Space"){spaceDown=false;canvas.style.cursor="crosshair";} });
+
+canvas.addEventListener("wheel",e=>{
+  e.preventDefault();
+  const factor=e.deltaY<0?1.1:0.9;
+  const[sx,sy]=screenPos(e);
+  camX=sx-(sx-camX)*factor; camY=sy-(sy-camY)*factor;
+  zoom=Math.min(Math.max(zoom*factor,0.1),4);
+},{passive:false});
+
+canvas.addEventListener("contextmenu",e=>{
+  e.preventDefault();
+  const[sx,sy]=screenPos(e);
+  const[wx,wy]=toWorld(sx,sy);
+  const[tx,ty]=worldToTile(wx,wy);
+  // Right-click token = delete it
+  const tokId=tokenAtTile(tx,ty);
+  if(tokId){ deleteToken(tokId); return; }
+  // Right-click fog = reveal (delete group)
+  const gid=fogGroupAtTile(tx,ty);
+  if(gid){ deleteFogGroup(gid); return; }
 });
 
-// ── Mouse ──
-canvas.addEventListener('mousedown',e=>{
-  if(e.button===2)return;
-  closePopups();
-  const{sx,sy}=getSXY(e);
+canvas.addEventListener("pointermove",e=>{
+  const[sx,sy]=screenPos(e);
+  if(panning){camX=camStartX+(sx-panStartX);camY=camStartY+(sy-panStartY);return;}
+  const[wx,wy]=toWorld(sx,sy);
+  hoverTileX=Math.floor(wx/TILE); hoverTileY=Math.floor(wy/TILE);
+  coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
 
-  // Middle mouse or space+drag = pan
+  if(draggingToken){
+    const newTX=Math.floor(wx/TILE)-draggingToken.offsetTX;
+    const newTY=Math.floor(wy/TILE)-draggingToken.offsetTY;
+    tokens[draggingToken.id].x=newTX;
+    tokens[draggingToken.id].y=newTY;
+    return;
+  }
+  if(currentShape==="select"&&selectPhase==="moving"){
+    moveOffX=Math.round((wx-moveStartWorldX)/TILE);
+    moveOffY=Math.round((wy-moveStartWorldY)/TILE);
+    canvas.style.cursor="grabbing"; return;
+  }
+  if(dragging&&fogMode){curX=wx;curY=wy;return;}
+  if(dragging){curX=wx;curY=wy;}
+  if(currentShape==="select"&&selectPhase==="selected"&&inSelection(wx,wy)) canvas.style.cursor="move";
+  else if(currentShape==="select") canvas.style.cursor="crosshair";
+});
+
+canvas.addEventListener("pointerdown",e=>{
+  const[sx,sy]=screenPos(e);
   if(e.button===1||spaceDown){
-    panning=true;panStart={x:sx,y:sy};panOrigin={x:panX,y:panY};
-    canvas.style.cursor='grabbing';return;
+    canvas.setPointerCapture(e.pointerId);
+    panning=true;panStartX=sx;panStartY=sy;camStartX=camX;camStartY=camY;
+    canvas.style.cursor="grabbing";return;
   }
+  if(e.button!==0)return;
+  const[wx,wy]=toWorld(sx,sy);
+  const[tx,ty]=worldToTile(wx,wy);
 
-  // Ping click — works for both GM (when pingMode) and players always
-  const wp0=toWorld(sx,sy);
-  if(pingMode||!IS_GM){
-    const color=IS_GM?'#c0392b':'#2980b9';
-    sendPing(wp0.x,wp0.y,color);
-    if(pingMode){pingMode=false;document.getElementById('btn-ping-gm').classList.remove('active');canvas.style.cursor='crosshair';}
+  // Ping mode
+  if(pingMode){
+    sendPing(sx,sy);
+    pingMode=false;
+    document.getElementById("pingBtn").classList.remove("active");
     return;
   }
 
-  if(!IS_GM)return;
-
-  if(mode==='token'){const pos=cellOfScreen(sx,sy);if(pos.col<0||pos.col>=COLS||pos.row<0||pos.row>=ROWS)return;pendingPos=pos;showPopup('tok-pop',e);return;}
-  if(mode==='sym'){const pos=cellOfScreen(sx,sy);if(pos.col<0||pos.col>=COLS||pos.row<0||pos.row>=ROWS)return;pendingPos=pos;showPopup('sym-pop',e);return;}
-
-  if(mode==='wall-seg'){
-    const gp=gridPointOfScreen(sx,sy);
-    if(!wallAnchor){wallAnchor=gp;}
-    else{
-      let ex=gp.gx,ey=gp.gy;
-      if(Math.abs(ex-wallAnchor.gx)>=Math.abs(ey-wallAnchor.gy))ey=wallAnchor.gy;else ex=wallAnchor.gx;
-      if(ex!==wallAnchor.gx||ey!==wallAnchor.gy){snapshot();wallSegs.push({x1:wallAnchor.gx,y1:wallAnchor.gy,x2:ex,y2:ey});pushState();}
-      wallAnchor=null;
-    }
-    scheduleAnim();return;
-  }
-  if(mode==='door'){
-    const edge=edgeOfScreen(sx,sy);if(!edge)return;
-    const idx=doors.findIndex(d=>d.edge===edge.edge&&d.r===edge.r&&d.c===edge.c);
-    snapshot();if(idx!==-1)doors.splice(idx,1);else doors.push(edge);
-    pushState();scheduleAnim();return;
+  // Stamp click
+  if(currentStamp){
+    const k=key(tx,ty);
+    pushUndo();
+    if(currentStamp==="erase"){ deleteStamp(k); }
+    else{ stamps[k]=currentStamp; saveStamp(k,currentStamp); }
+    return;
   }
 
-  // Fog X handle
-  const wp=toWorld(sx,sy);
-  const hitFog=fogHandles.find(h=>Math.sqrt((wp.x-h.wx)**2+(wp.y-h.wy)**2)<=h.R*1.5);
-  if(hitFog){snapshot();fogPatches=fogPatches.filter(f=>f.id!==hitFog.id);pushState();scheduleAnim();return;}
+  // Place token click
+  if(placingToken){
+    placingToken.x=tx; placingToken.y=ty;
+    tokens[placingToken.id]={...placingToken};
+    saveToken(placingToken.id,placingToken);
+    placingToken=null;
+    toast("Token placed");
+    return;
+  }
 
-  // Delete handles (tokens, syms, wall segs, doors)
-  const hitDel=deleteHandles.find(h=>Math.sqrt((wp.x-h.wx)**2+(wp.y-h.wy)**2)<=h.R*1.5);
-  if(hitDel){hitDel.onDelete();return;}
+  // Fog X button or drag-paint
+  if(fogMode){
+    const hitGid=fogGroupXHit(wx,wy);
+    if(hitGid){ deleteFogGroup(hitGid); return; }
+    canvas.setPointerCapture(e.pointerId);
+    dragging=true; startX=wx;startY=wy;curX=wx;curY=wy;
+    return;
+  }
 
   // Token drag
-  const hit=tokens.find(t=>{const dx=wp.x-(t.x+CELL/2),dy=wp.y-(t.y+CELL/2);return Math.sqrt(dx*dx+dy*dy)<CELL*0.42;});
-  if(hit){moveTok=hit;moveOff={x:wp.x-hit.x,y:wp.y-hit.y};return;}
-
-  painting=true;dragStart=dragEnd=cellOfScreen(sx,sy);scheduleAnim();
-});
-
-canvas.addEventListener('mousemove',e=>{
-  const{sx,sy}=getSXY(e);
-  if(panning){panX=panOrigin.x+(sx-panStart.x);panY=panOrigin.y+(sy-panStart.y);scheduleAnim();return;}
-  hoverWP=toWorld(sx,sy);
-  if(!IS_GM){scheduleAnim();return;}
-  if(mode==='wall-seg'){cursorGP=gridPointOfScreen(sx,sy);scheduleAnim();return;}
-  if(mode==='door'){cursorEdge=edgeOfScreen(sx,sy);scheduleAnim();return;}
-  if(moveTok){moveTok.x=hoverWP.x-moveOff.x;moveTok.y=hoverWP.y-moveOff.y;scheduleAnim();return;}
-  if(!painting)return;
-  dragEnd=cellOfScreen(sx,sy);scheduleAnim();
-});
-
-function finishDrag(){
-  if(panning){panning=false;canvas.style.cursor=spaceDown?'grab':(mode==='token'||mode==='sym'?'cell':'crosshair');return;}
-  if(!IS_GM)return;
-  if(moveTok){snapshot();checkPcFog();pushState();moveTok=null;return;}
-  if(!painting)return;
-  painting=false;snapshot();applyDrag();dragStart=dragEnd=null;scheduleAnim();pushState();
-}
-canvas.addEventListener('mouseup',finishDrag);
-canvas.addEventListener('mouseleave',e=>{cursorGP=null;cursorEdge=null;finishDrag();});
-
-canvas.addEventListener('contextmenu',e=>{
-  e.preventDefault();
-  if(!IS_GM)return;
-  const{sx,sy}=getSXY(e);
-  const pos=cellOfScreen(sx,sy);
-  // Right-click fog patch = toggle reveal/hide
-  const fi=fogPatches.findIndex(f=>pos.col>=f.c1&&pos.col<=f.c2&&pos.row>=f.r1&&pos.row<=f.r2);
-  if(fi!==-1){snapshot();fogPatches[fi].hidden=!fogPatches[fi].hidden;pushState();scheduleAnim();}
-  if(mode==='wall-seg'&&wallAnchor){wallAnchor=null;scheduleAnim();}
-});
-
-function applyDrag(){
-  if(!dragStart||!dragEnd)return;
-  const c1=clamp(Math.min(dragStart.col,dragEnd.col),0,COLS-1);
-  const c2=clamp(Math.max(dragStart.col,dragEnd.col),0,COLS-1);
-  const r1=clamp(Math.min(dragStart.row,dragEnd.row),0,ROWS-1);
-  const r2=clamp(Math.max(dragStart.row,dragEnd.row),0,ROWS-1);
-  if(mode==='fog'){fogPatches.push({id:'fog_'+Date.now(),r1,c1,r2,c2,hidden:true});return;}
-  if(mode==='erase'){
-    for(let r=r1;r<=r2;r++)for(let c=c1;c<=c2;c++)tileGrid[r][c]=null;
-    tokens=tokens.filter(t=>{const tc=Math.floor(t.x/CELL),tr=Math.floor(t.y/CELL);return!(tc>=c1&&tc<=c2&&tr>=r1&&tr<=r2);});
-    syms=syms.filter(s=>!(s.col>=c1&&s.col<=c2&&s.row>=r1&&s.row<=r2));
-    wallSegs=wallSegs.filter(w=>!(w.x1>=c1&&w.x1<=c2+1&&w.y1>=r1&&w.y1<=r2+1&&w.x2>=c1&&w.x2<=c2+1&&w.y2>=r1&&w.y2<=r2+1));
-    doors=doors.filter(d=>!(d.c>=c1&&d.c<=c2&&d.r>=r1&&d.r<=r2));
-    fogPatches=fogPatches.filter(f=>!(f.c1>=c1&&f.c2<=c2&&f.r1>=r1&&f.r2<=r2));
+  const tokId=tokenAtTile(tx,ty);
+  if(tokId){
+    canvas.setPointerCapture(e.pointerId);
+    draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y};
     return;
   }
-  if(mode==='room'){
-    for(let r=r1;r<=r2;r++)for(let c=c1;c<=c2;c++)
-      tileGrid[r][c]={floor:brush.floor,fx:brush.fx};
-  }
-}
 
-// ── Sub-bar (floor picker) ──
-const subBar=document.getElementById('sub-bar');
-function buildSubBar(){
-  subBar.innerHTML='';
-  // Floor label
-  const fl=document.createElement('span');fl.className='sub-label';fl.textContent='Floor';subBar.appendChild(fl);
-  FLOOR_TYPES.forEach(ft=>{
-    const b=document.createElement('button');b.className='sub'+(ft.id===brush.floor?' active':'');
-    const dot=document.createElement('span');dot.className='sub-dot';dot.style.background=ft.color;
-    b.appendChild(dot);b.appendChild(document.createTextNode(ft.label));
-    b.addEventListener('click',()=>{
-      brush.floor=ft.id;
-      subBar.querySelectorAll('button.sub[data-group="floor"]').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
-    });
-    b.dataset.group='floor';subBar.appendChild(b);
-  });
-  // Separator
-  const sep=document.createElement('div');sep.className='sub-sep';subBar.appendChild(sep);
-  // FX label
-  const xl=document.createElement('span');xl.className='sub-label';xl.textContent='FX';subBar.appendChild(xl);
-  FX_TYPES.forEach(fx=>{
-    const b=document.createElement('button');b.className='sub'+(fx.id===brush.fx?' active':'');
-    b.textContent=fx.label;
-    b.addEventListener('click',()=>{
-      brush.fx=fx.id;
-      subBar.querySelectorAll('button.sub[data-group="fx"]').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
-    });
-    b.dataset.group='fx';subBar.appendChild(b);
-  });
-}
-buildSubBar();
-
-// ── GM UI ──
-if(IS_GM){
-  document.getElementById('tok-ok').addEventListener('click',()=>{
-    if(!pendingPos)return;
-    const name=document.getElementById('tok-name').value.trim()||'?';
-    snapshot();tokens.push({x:pendingPos.col*CELL,y:pendingPos.row*CELL,color:tokColor,name});
-    checkPcFog();closePopups();pushState();scheduleAnim();
-  });
-  document.getElementById('tok-cancel').addEventListener('click',closePopups);
-  document.getElementById('tok-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('tok-ok').click();});
-  document.getElementById('sym-cancel').addEventListener('click',closePopups);
-
-  const symGrid=document.getElementById('sym-grid');
-  SYMBOLS.forEach(g=>{
-    const b=document.createElement('button');b.textContent=g;
-    b.addEventListener('click',()=>{
-      if(!pendingPos)return;
-      snapshot();syms=syms.filter(s=>!(s.col===pendingPos.col&&s.row===pendingPos.row));
-      syms.push({col:pendingPos.col,row:pendingPos.row,g});closePopups();pushState();scheduleAnim();
-    });
-    symGrid.appendChild(b);
-  });
-
-  const tokColWrap=document.getElementById('tok-colors');
-  TOK_COLORS.forEach((c,i)=>{
-    const wrap2=document.createElement('div');wrap2.style.cssText='display:flex;flex-direction:column;align-items:center;gap:2px';
-    const b=document.createElement('div');b.className='tc'+(i===0?' sel':'');b.style.background=c;
-    b.title=i===0?'PC (auto-reveals fog)':'NPC/Monster';
-    b.addEventListener('click',()=>{document.querySelectorAll('.tc').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');tokColor=c;});
-    wrap2.appendChild(b);
-    if(i===0){const lbl=document.createElement('div');lbl.textContent='PC';lbl.style.cssText='font-size:9px;color:#8a7a60';wrap2.appendChild(lbl);}
-    tokColWrap.appendChild(wrap2);
-  });
-
-  function setMode(m){
-    mode=m;wallAnchor=null;cursorGP=null;cursorEdge=null;
-    document.querySelectorAll('button.tool').forEach(b=>b.classList.remove('active'));
-    const map={room:'btn-room','wall-seg':'btn-wall-seg',door:'btn-door',fog:'btn-fog',erase:'btn-erase',token:'btn-token',sym:'btn-sym'};
-    if(map[m])document.getElementById(map[m]).classList.add('active');
-    canvas.style.cursor=(m==='token'||m==='sym')?'cell':'crosshair';
-    subBar.classList.toggle('visible',m==='room');
-    scheduleAnim();
-  }
-  document.getElementById('btn-room').addEventListener('click',()=>setMode('room'));
-  document.getElementById('btn-wall-seg').addEventListener('click',()=>setMode('wall-seg'));
-  document.getElementById('btn-door').addEventListener('click',()=>setMode('door'));
-  document.getElementById('btn-fog').addEventListener('click',()=>setMode('fog'));
-  document.getElementById('btn-erase').addEventListener('click',()=>setMode('erase'));
-  document.getElementById('btn-token').addEventListener('click',()=>setMode('token'));
-  document.getElementById('btn-sym').addEventListener('click',()=>setMode('sym'));
-  document.getElementById('btn-undo').addEventListener('click',undo);
-  document.getElementById('btn-ping-gm').addEventListener('click',()=>{
-    pingMode=!pingMode;
-    document.getElementById('btn-ping-gm').classList.toggle('active',pingMode);
-    canvas.style.cursor=pingMode?'crosshair':'crosshair';
-  });
-  document.getElementById('btn-clear').addEventListener('click',()=>{
-    if(confirm('Clear the whole map?')){
-      snapshot();tileGrid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
-      tokens=[];syms=[];wallSegs=[];doors=[];fogPatches=[];wallAnchor=null;
-      hideFogToast();pushState();scheduleAnim();
+  // Select tool
+  if(currentShape==="select"){
+    if((selectPhase==="selected"||selectPhase==="moving")&&inSelection(wx,wy)){
+      selectPhase="moving";
+      moveStartWorldX=wx-moveOffX*TILE; moveStartWorldY=wy-moveOffY*TILE;
+      canvas.style.cursor="grabbing"; return;
     }
-  });
-  document.getElementById('btn-save').addEventListener('click',()=>{
-    const a=document.createElement('a');a.download='dungeon.png';a.href=canvas.toDataURL();a.click();
-  });
+    if(selectPhase==="selected"||selectPhase==="moving")commitSelection();
+    selectPhase="marquee"; dragging=true;
+    canvas.setPointerCapture(e.pointerId);
+    startX=wx;startY=wy;curX=wx;curY=wy;
+    return;
+  }
 
-  // Show sub-bar on load since default mode is 'room'
-  subBar.classList.add('visible');
-}
+  dragging=true;
+  canvas.setPointerCapture(e.pointerId);
+  startX=wx;startY=wy;curX=wx;curY=wy;
+});
 
-// Player ping button — toggles ping mode for next click
-if(!IS_GM){
-  document.getElementById('btn-ping-player').addEventListener('click',()=>{
-    pingMode=!pingMode;
-    document.getElementById('btn-ping-player').classList.toggle('active',pingMode);
-    canvas.style.cursor=pingMode?'crosshair':'default';
-  });
-}
+canvas.addEventListener("pointerup",e=>{
+  if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":"crosshair";return;}
 
-function showPopup(id,e){
-  const pop=document.getElementById(id);
-  let left=e.clientX+10,top=e.clientY+10;
-  if(left+220>window.innerWidth)left=e.clientX-225;
-  if(top+220>window.innerHeight)top=e.clientY-225;
-  pop.style.left=left+'px';pop.style.top=top+'px';pop.style.display='block';
-  if(id==='tok-pop'){document.getElementById('tok-name').value='';setTimeout(()=>document.getElementById('tok-name').focus(),10);}
-}
-function closePopups(){
-  document.getElementById('tok-pop').style.display='none';
-  document.getElementById('sym-pop').style.display='none';
-  pendingPos=null;
-}
+  // Finish token drag
+  if(draggingToken){
+    saveToken(draggingToken.id,tokens[draggingToken.id]);
+    draggingToken=null;
+    return;
+  }
 
-window.addEventListener('resize',resize);
-resize();
+  // Fog paint — save as a new named group
+  if(fogMode&&dragging){
+    dragging=false;
+    const minX=Math.floor(Math.min(startX,curX)/TILE);
+    const maxX=Math.floor(Math.max(startX,curX)/TILE);
+    const minY=Math.floor(Math.min(startY,curY)/TILE);
+    const maxY=Math.floor(Math.max(startY,curY)/TILE);
+    const cells={};
+    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) cells[key(x,y)]=true;
+    const gid="fog_"+Date.now();
+    fogGroups[gid]={cells};
+    saveFog();
+    return;
+  }
+
+  if(currentShape==="select"&&selectPhase==="moving"){selectPhase="selected";canvas.style.cursor="move";return;}
+  if(currentShape==="select"&&selectPhase==="marquee"&&dragging){
+    dragging=false;
+    const minX=Math.floor(Math.min(startX,curX)/TILE);
+    const maxX=Math.floor(Math.max(startX,curX)/TILE);
+    const minY=Math.floor(Math.min(startY,curY)/TILE);
+    const maxY=Math.floor(Math.max(startY,curY)/TILE);
+    pushUndo();
+    liftSelection(minX,minY,maxX,maxY);
+    selectPhase=Object.keys(selectTiles).length>0?"selected":null;
+    canvas.style.cursor=selectPhase?"move":"crosshair";
+    return;
+  }
+
+  if(!dragging)return;
+  dragging=false;
+
+  pushUndo();
+  const minX=Math.floor(Math.min(startX,curX)/TILE);
+  const maxX=Math.floor(Math.max(startX,curX)/TILE);
+  const minY=Math.floor(Math.min(startY,curY)/TILE);
+  const maxY=Math.floor(Math.max(startY,curY)/TILE);
+
+  if(currentShape==="rect"){
+    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) applyTile(x,y);
+  }else if(currentShape==="circle"){
+    const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
+    const rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;
+    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++){
+      const dx=(x-cx)/rx,dy=(y-cy)/ry;
+      if(dx*dx+dy*dy<=1)applyTile(x,y);
+    }
+  }else if(currentShape==="line"){
+    let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE);
+    let x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);
+    const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0);
+    const sx=x0<x1?1:-1,sy=y0<y1?1:-1;
+    let err=dx-dy;
+    while(true){
+      applyTile(x0,y0);
+      if(x0===x1&&y0===y1)break;
+      const e2=2*err;
+      if(e2>-dy){err-=dy;x0+=sx;}
+      if(e2<dx){err+=dx;y0+=sy;}
+    }
+  }
+  scheduleSave();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  if(!playerName) showNameModal();
+  else nameDisplay.textContent=playerName;
+  await loadTextures();
+  buildTerrainDropdown();
+  buildStampDropdown();
+  selectTerrain("grass");
+  subscribeLive();
+  render();
+})();
 </script>
 </body>
 </html>
