@@ -3,181 +3,107 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dungeon Editor</title>
+<title>Dungeon Renderer</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=IM+Fell+English&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0d0b08;--panel:#1a1510;--border:#3d2e1a;
-  --gold:#c8a84b;--gold-dim:#7a6228;
-  --red:#8b2020;--red-bright:#e04040;
-  --text:#d4c49a;--text-dim:#6b5a38;
-  --fog:#1a2a3a;
-}
+:root{--bg:#0d0b08;--panel:#1a1510;--border:#3d2e1a;--gold:#c8a84b;--gold-dim:#7a6228;--text:#d4c49a;--dim:#6b5a38}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
-#app{display:flex;flex-direction:column;width:100vw;height:100vh}
 
-/* toolbar */
-#toolbar{flex-shrink:0;height:56px;background:var(--panel);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;overflow-x:auto;overflow-y:hidden}
-#toolbar::-webkit-scrollbar{height:4px}
-#toolbar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
-.sep{width:1px;height:30px;background:var(--border);flex-shrink:0;margin:0 4px}
-.tool-label{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;flex-shrink:0}
-button{flex-shrink:0;height:36px;padding:0 14px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.05em;cursor:pointer;transition:all .15s;white-space:nowrap}
+/* ── HUD ── */
+#hud{position:fixed;top:0;left:0;right:0;height:48px;background:rgba(13,11,8,.92);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;z-index:20;backdrop-filter:blur(6px)}
+#hud h1{font-family:'Cinzel',serif;font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.12em;white-space:nowrap}
+.sep{width:1px;height:22px;background:var(--border);flex-shrink:0}
+#map-input{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;width:110px;padding:2px 4px;outline:none}
+#map-input:focus{border-bottom-color:var(--gold)}
+button{height:30px;padding:0 11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--dim);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.05em;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
 button:hover{border-color:var(--gold-dim);color:var(--text)}
 button.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
-button.fog-active{border-color:#4a8aaa;color:#7ac0e0;background:rgba(74,138,170,.1)}
+#status{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;color:var(--dim);flex-shrink:0}
+#status.live{color:#5a9a5a}
+#status.error{color:#e04040}
+#player-name-display{font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);margin-left:auto;flex-shrink:0;cursor:pointer}
+#player-name-display:hover{color:var(--gold)}
 
-/* dropdown pickers */
-.picker-wrap{position:relative;flex-shrink:0}
-.picker-btn{display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;cursor:pointer}
-.picker-swatch{width:18px;height:18px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.15)}
-.picker-dropdown{position:fixed;top:56px;z-index:200;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px;display:none;grid-template-columns:repeat(4,1fr);gap:6px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
-.picker-dropdown.open{display:grid}
-.pd-item{width:40px;height:40px;border-radius:4px;border:2px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:border-color .12s}
-.pd-item:hover{border-color:var(--gold-dim)}
-.pd-item.active{border-color:var(--gold);box-shadow:0 0 6px rgba(200,168,75,.4)}
-.pd-item-inner{width:100%;height:100%;background-size:cover;background-position:center}
-.pd-item-label{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.65);font-size:6px;font-family:'Cinzel',serif;text-align:center;padding:1px 0;color:#fff;letter-spacing:.04em}
-/* stamp picker items are emoji, no swatch */
-.pd-stamp{font-size:20px;background:transparent;border:2px solid var(--border)}
-.pd-stamp:hover{border-color:var(--gold-dim);background:rgba(255,255,255,.05)}
-.pd-stamp.active{border-color:var(--gold)}
+/* ── Viewport ── */
+#viewport{position:fixed;top:48px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab}
+#viewport.grabbing{cursor:grabbing}
+#viewport.pinging{cursor:crosshair}
+canvas{display:block}
+/* weather */
+#weather-indicator{position:fixed;bottom:10px;left:14px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;pointer-events:none}
 
-/* status */
-#status{margin-left:auto;flex-shrink:0;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;padding:4px 10px;border-radius:3px;border:1px solid var(--border);color:var(--text-dim);transition:all .3s}
-#status.saving{color:var(--gold);border-color:var(--gold-dim)}
-#status.saved{color:#5a9a5a;border-color:#2a5a2a}
-#status.live{color:#5a9a5a;border-color:#2a5a2a}
-#status.error{color:var(--red-bright);border-color:var(--red)}
+/* ── Dice panel ── */
+#dice-panel{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:rgba(13,11,8,.95);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:30;min-width:320px;backdrop-filter:blur(8px);transition:opacity .3s,transform .3s}
+#dice-panel.hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(16px)}
+#dice-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.die-btn{width:44px;height:44px;padding:0;font-family:'Cinzel',serif;font-size:11px;border-radius:6px;display:flex;align-items:center;justify-content:center}
+#dice-result{font-family:'Cinzel',serif;font-size:36px;color:var(--gold);min-height:48px;text-align:center;letter-spacing:.05em;transition:color .2s}
+#dice-result.rolling{color:var(--dim)}
+#dice-log{font-family:'Cinzel',serif;font-size:10px;color:var(--dim);text-align:center;min-height:16px}
 
-/* canvas */
-#canvas-wrap{flex:1;overflow:hidden;position:relative}
-canvas{display:block;cursor:crosshair}
+/* ── Overlay / modals ── */
+#overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50;transition:opacity .6s}
+#overlay.hidden{opacity:0;pointer-events:none}
+#overlay h2{font-family:'Cinzel',serif;font-size:22px;color:var(--gold);letter-spacing:.15em}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#overlay p{font-size:12px;color:var(--dim);letter-spacing:.06em}
 
-/* map name */
-#map-name{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--gold);font-family:'Cinzel',serif;font-size:12px;width:120px;padding:2px 4px;outline:none}
-#map-name:focus{border-bottom-color:var(--gold)}
-#map-name::placeholder{color:var(--text-dim)}
-
-/* coords */
-#coords{position:absolute;bottom:8px;left:8px;font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);pointer-events:none;background:rgba(13,11,8,.7);padding:3px 8px;border-radius:3px;border:1px solid var(--border)}
-
-/* toast */
-#toast{position:absolute;bottom:36px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;padding:6px 16px;border-radius:4px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-/* ping cursor */
-canvas.pinging{cursor:crosshair!important}
-
-/* ping toast */
-#ping-toast{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
-#ping-toast.show{opacity:1}
-
-/* name modal */
-#name-modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:200}
+/* Name prompt modal */
+#name-modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:60}
 #name-modal.hidden{display:none}
 #name-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:28px;min-width:300px;text-align:center;display:flex;flex-direction:column;gap:16px}
 #name-box h2{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);letter-spacing:.1em}
-#name-box p{font-size:12px;color:var(--text-dim)}
+#name-box p{font-size:12px;color:var(--dim)}
 #name-input{background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:15px;padding:8px 12px;border-radius:4px;outline:none;text-align:center;width:100%}
 #name-input:focus{border-color:var(--gold-dim)}
 #name-confirm{width:100%;height:36px;border-color:var(--gold);color:var(--gold)}
-#token-modal{display:none;position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.7);align-items:center;justify-content:center}
-#token-modal.open{display:flex}
-#token-modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px;min-width:340px;max-width:420px;width:90%}
-#token-modal-box h2{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);margin-bottom:16px;letter-spacing:.1em}
-.modal-section{margin-bottom:14px}
-.modal-section label{display:block;font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px}
-.modal-section select,.modal-section input{width:100%;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:13px;padding:6px 8px;border-radius:4px;outline:none}
-.modal-section select:focus,.modal-section input:focus{border-color:var(--gold-dim)}
-.modal-row{display:flex;gap:8px}
-.modal-row .modal-section{flex:1}
-#token-modal-btns{display:flex;gap:8px;margin-top:18px}
-#token-modal-btns button{flex:1;height:36px}
-#token-modal-btns button.primary{border-color:var(--gold);color:var(--gold)}
 
-/* dice panel */
-#dice-panel{position:fixed;bottom:0;left:50%;transform:translateX(-50%);background:rgba(13,11,8,.95);border:1px solid var(--border);border-top-left-radius:8px;border-top-right-radius:8px;padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:30;min-width:320px;backdrop-filter:blur(8px);transition:opacity .3s,transform .3s}
-#dice-panel.hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(16px)}
-#dice-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.die-btn{width:44px;height:44px;padding:0;font-family:'Cinzel',serif;font-size:11px;border-radius:6px}
-#dice-result{font-family:'Cinzel',serif;font-size:36px;color:var(--gold);min-height:48px;text-align:center;letter-spacing:.05em}
-#dice-result.rolling{color:var(--text-dim)}
-#dice-log{font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);text-align:center;min-height:16px}
-#weather-panel{position:fixed;top:56px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
-#weather-panel.open{display:flex}
-.wx-row{display:flex;align-items:center;gap:10px}
-.wx-label{font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);width:52px;flex-shrink:0}
-.wx-slider{flex:1;accent-color:var(--gold);cursor:pointer}
-.wx-sub{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);margin-top:-6px}
-.wx-check{appearance:none;-webkit-appearance:none;width:36px;height:20px;border-radius:10px;border:1px solid var(--border);background:#111;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;outline:none}
-.wx-check:checked{background:rgba(200,168,75,.3);border-color:var(--gold)}
-.wx-check::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text-dim);transition:left .2s,background .2s}
-.wx-check:checked::after{left:18px;background:var(--gold)}
+/* Ping toast */
+#ping-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
+#ping-toast.show{opacity:1}
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="toolbar">
-    <span class="tool-label">Map</span>
-    <input id="map-name" type="text" placeholder="map-name" value="dungeon-1" spellcheck="false">
 
-    <div class="sep"></div>
-    <span class="tool-label">Shape</span>
-    <button class="shape active" data-shape="rect">▭ Rect</button>
-    <button class="shape" data-shape="circle">◯ Ellipse</button>
-    <button class="shape" data-shape="line">╱ Line</button>
-    <button class="shape" data-shape="select">⬚ Select</button>
-
-    <div class="sep"></div>
-    <span class="tool-label">Terrain</span>
-    <div class="picker-wrap" id="terrain-picker-wrap">
-      <button class="picker-btn" id="terrain-picker-btn">
-        <div class="picker-swatch" id="terrain-preview-swatch"></div>
-        <span id="terrain-preview-label">Grass</span> ▾
-      </button>
-      <div class="picker-dropdown" id="terrain-dropdown"></div>
-    </div>
-
-    <div class="sep"></div>
-    <span class="tool-label">Walls</span>
-    <button id="wallBtn" class="active">On</button>
-
-    <div class="sep"></div>
-    <span class="tool-label">Fog</span>
-    <button id="fogBtn">🌫 Fog</button>
-
-    <div class="sep"></div>
-    <span class="tool-label">Tokens</span>
-    <button id="tokenBtn">⚔ Token</button>
-
-    <div class="sep"></div>
-    <span class="tool-label">Stamps</span>
-    <div class="picker-wrap" id="stamp-picker-wrap">
-      <button class="picker-btn" id="stamp-picker-btn">
-        <span id="stamp-preview-label">None</span> ▾
-      </button>
-      <div class="picker-dropdown" id="stamp-dropdown"></div>
-    </div>
-
-    <div class="sep"></div>
-    <button id="pingBtn">📍 Ping</button>
-    <button id="weatherBtn">🌦 Weather</button>
-    <button id="diceBtn">🎲 Dice</button>
-    <div class="sep"></div>
-    <button id="clearBtn">Clear</button>
-    <div id="status">Connecting…</div>
-    <span id="player-name-display" style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);cursor:pointer;flex-shrink:0" title="Click to change name"></span>
-  </div>
-
-  <div id="canvas-wrap">
-    <canvas id="canvas"></canvas>
-    <div id="coords">0, 0</div>
-    <div id="toast"></div>
-    <div id="ping-toast"></div>
+<!-- Name prompt -->
+<div id="name-modal">
+  <div id="name-box">
+    <h2>Who Are You?</h2>
+    <p>Enter your name to join the session</p>
+    <input id="name-input" type="text" placeholder="Your name…" maxlength="30" spellcheck="false">
+    <button id="name-confirm">Enter the Dungeon</button>
   </div>
 </div>
+
+<!-- Loading overlay -->
+<div id="overlay">
+  <h2>Dungeon Renderer</h2>
+  <div class="spinner"></div>
+  <p id="overlay-msg">Loading…</p>
+</div>
+
+<div id="hud">
+  <h1>⚔ DUNGEON</h1>
+  <div class="sep"></div>
+  <input id="map-input" type="text" placeholder="dungeon-1" value="dungeon-1" spellcheck="false">
+  <button id="loadBtn">Load</button>
+  <button id="fitBtn">Fit</button>
+  <div class="sep"></div>
+  <button id="pingBtn">📍 Ping</button>
+  <button id="diceBtn">🎲 Dice</button>
+  <button id="sheetsBtn">📋 Sheets</button>
+  <div class="sep"></div>
+  <span id="status">—</span>
+  <span id="player-name-display" title="Click to change name"></span>
+</div>
+
+<div id="viewport">
+  <canvas id="canvas"></canvas>
+</div>
+<div id="scale-label">100%</div>
+<div id="weather-indicator"></div>
 
 <!-- Dice panel -->
 <div id="dice-panel" class="hidden">
@@ -194,353 +120,150 @@ canvas.pinging{cursor:crosshair!important}
   <div id="dice-log"></div>
 </div>
 
-<!-- Weather panel -->
-<div id="weather-panel">
-  <div class="wx-row">
-    <input class="wx-check" type="checkbox" id="wx-rain-toggle">
-    <span class="wx-label">Rain</span>
-    <input class="wx-slider" type="range" id="wx-rain-intensity" min="0" max="1" step="0.05" value="0.5">
-  </div>
-  <div class="wx-row">
-    <input class="wx-check" type="checkbox" id="wx-snow-toggle">
-    <span class="wx-label">Snow</span>
-    <input class="wx-slider" type="range" id="wx-snow-intensity" min="0" max="1" step="0.05" value="0.3">
-  </div>
-  <div class="wx-row">
-    <input class="wx-check" type="checkbox" id="wx-mist-toggle">
-    <span class="wx-label">Mist</span>
-    <input class="wx-slider" type="range" id="wx-mist-intensity" min="0" max="1" step="0.05" value="0.4">
-  </div>
-  <div class="wx-row">
-    <input class="wx-check" type="checkbox" id="wx-storm-toggle">
-    <span class="wx-label">Storm</span>
-    <input class="wx-slider" type="range" id="wx-storm-intensity" min="0" max="1" step="0.05" value="0.5">
-  </div>
-  <div class="wx-sub">Storm adds lightning — works best with rain</div>
-</div>
-
-<!-- Name modal -->
-<div id="name-modal" class="hidden">
-  <div id="name-box">
-    <h2>Who Are You?</h2>
-    <p>Enter your name to join the session</p>
-    <input id="name-input" type="text" placeholder="Your name…" maxlength="30" spellcheck="false">
-    <button id="name-confirm">Enter the Dungeon</button>
-  </div>
-</div>
-
-<!-- Token modal -->
-<div id="token-modal">
-  <div id="token-modal-box">
-    <h2>Place Token</h2>
-    <div class="modal-section">
-      <label>Character</label>
-      <select id="tok-char"></select>
-    </div>
-    <div class="modal-row">
-      <div class="modal-section">
-        <label>Name (override)</label>
-        <input id="tok-name" type="text" placeholder="auto">
-      </div>
-      <div class="modal-section">
-        <label>Type</label>
-        <select id="tok-type">
-          <option value="pc">PC</option>
-          <option value="npc">NPC</option>
-        </select>
-      </div>
-    </div>
-    <div class="modal-row" id="tok-hp-row" style="display:none">
-      <div class="modal-section">
-        <label>HP</label>
-        <input id="tok-hp" type="number" placeholder="10" min="0">
-      </div>
-      <div class="modal-section">
-        <label>Max HP</label>
-        <input id="tok-maxhp" type="number" placeholder="10" min="1">
-      </div>
-    </div>
-    <div id="token-modal-btns">
-      <button id="tok-cancel">Cancel</button>
-      <button id="tok-place" class="primary">Place on Map</button>
-    </div>
-  </div>
-</div>
+<div id="ping-toast"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, set, get, child, onValue, remove, update, push }
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, remove }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-const firebaseConfig = {
+const firebaseConfig={
   apiKey:"AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",
   authDomain:"sheets-e5838.firebaseapp.com",
   databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",
   projectId:"sheets-e5838",
   storageBucket:"sheets-e5838.firebasestorage.app",
 };
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const TILE = 32;
-const FALLBACK = {
-  grass:"#3a6b3a", stone:"#6b6b6b", wood:"#7a5c3a",
-  water:"#2a5a8a", cobble:"#9a9a8a", sand:"#b8a86a",
-  lava:"#8b2a0a",  dirt:"#6b4a2a",  gravel:"#555a50",
-  ice:"#a8d0e0",   void:"#080808",  carpet:"#6b2a5a",
-  marble:"#d0ccc0",mud:"#4a3520",
+// ── Constants ────────────────────────────────────────────────────────────────
+const TILE=32;
+const TEXTURE_PATH="./textures/";
+const TERRAINS=["grass","stone","wood","water","cobble","sand","lava","dirt","gravel","ice","void","carpet","marble","mud"];
+const FALLBACK={
+  grass:"#3a6b3a",stone:"#6b6b6b",wood:"#7a5c3a",water:"#2a5a8a",cobble:"#9a9a8a",
+  sand:"#b8a86a",lava:"#8b2a0a",dirt:"#6b4a2a",gravel:"#555a50",ice:"#a8d0e0",
+  void:"#080808",carpet:"#6b2a5a",marble:"#d0ccc0",mud:"#4a3520",
 };
-const TERRAINS = Object.keys(FALLBACK);
-const TEXTURE_PATH = "./textures/";
-
-// ── State ─────────────────────────────────────────────────────────────────────
-const tiles    = {};
-const textures = {};
-const fogGroups = {};  // { "fogId": { cells: {"x,y": true} } }  — one entry per stroke
-const tokens   = {};     // { id: { x,y,name,type,hp,maxHp,characterId } }
-
-let currentShape   = "rect";
-let currentTerrain = "grass";
-let wallsEnabled   = true;
-let fogMode        = false;   // when true, left-drag paints fog
-
-let dragging   = false;
-let startX = 0, startY = 0, curX = 0, curY = 0;
-let hoverTileX = 0, hoverTileY = 0;
-
-// Camera
-let camX = 0, camY = 0, zoom = 1;
-
-// Selection
-let selectPhase = null;
-let selectTiles = {};
-let selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
-let moveOffX=0,moveOffY=0;
-let moveStartWorldX=0,moveStartWorldY=0;
-
-// Token dragging
-let draggingToken = null;
-let placingToken  = null;
-
-// Stamps
-const stamps = {};
-let currentStamp = null;
-
-// Player name
-let playerName = localStorage.getItem("vtt_player_name")||"";
-
-// Ping
-let pingMode = false;
-const activePings = {};
+const DICE=[4,6,8,10,12,20,100];
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
-const canvas   = document.getElementById("canvas");
-const ctx      = canvas.getContext("2d");
-const statusEl = document.getElementById("status");
-const coordsEl = document.getElementById("coords");
-const toastEl  = document.getElementById("toast");
-const mapInput = document.getElementById("map-name");
-const wallBtn  = document.getElementById("wallBtn");
-const fogBtn   = document.getElementById("fogBtn");
-const tokenBtn = document.getElementById("tokenBtn");
-const clearBtn = document.getElementById("clearBtn");
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function key(x,y){ return `${x},${y}`; }
-function toWorld(sx,sy){ return [(sx-camX)/zoom,(sy-camY)/zoom]; }
-function worldToTile(wx,wy){ return [Math.floor(wx/TILE),Math.floor(wy/TILE)]; }
-function screenPos(e){ const r=canvas.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; }
-function hasWall(x,y){ const t=tiles[key(x,y)]; return t&&t.walls; }
-
-function applyTile(x,y){
-  const k=key(x,y);
-  if(currentTerrain==="erase"){ delete tiles[k]; return; }
-  tiles[k]={terrain:currentTerrain,walls:wallsEnabled};
-}
-
-// ── Toast / status ────────────────────────────────────────────────────────────
-let toastTimer;
-function toast(msg){ toastEl.textContent=msg; toastEl.classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove("show"),2200); }
-function setStatus(s,text){ statusEl.className=s; statusEl.textContent=text; }
-
-// ── Textures ──────────────────────────────────────────────────────────────────
-function loadTextures(){
-  return Promise.all(TERRAINS.map(t=>new Promise(resolve=>{
-    const img=new Image();
-    img.onload=()=>{textures[t]=img;resolve()};
-    img.onerror=()=>resolve();
-    img.src=`${TEXTURE_PATH}${t}.png`;
-  })));
-}
-
-// ── Particles (declared early so resize can call initParticles) ───────────────
-const rainDrops=[], snowFlakes=[], mistClouds=[];
-let lastLightning=0, lightningAlpha=0;
-
-function initParticles(){
-  const W=canvas.width||window.innerWidth, H=canvas.height||window.innerHeight;
-  rainDrops.length=0; snowFlakes.length=0; mistClouds.length=0;
-  for(let i=0;i<400;i++) rainDrops.push({x:Math.random()*W,y:Math.random()*H,len:Math.random()*14+8,speed:Math.random()*6+14});
-  for(let i=0;i<300;i++) snowFlakes.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*2+1,speed:Math.random()*1.2+0.4,drift:Math.random()*0.6-0.3});
-  for(let i=0;i<12;i++) mistClouds.push({x:Math.random()*W,y:Math.random()*H,rx:Math.random()*W*0.3+100,ry:Math.random()*100+50,speed:Math.random()*0.3+0.1,phase:Math.random()*Math.PI*2});
-}
-
-// ── Resize ────────────────────────────────────────────────────────────────────
-function resize(){
-  const w=document.getElementById("canvas-wrap");
-  canvas.width=w.clientWidth; canvas.height=w.clientHeight;
-  initParticles();
-}
-resize();
-window.addEventListener("resize",resize);
+const canvas      = document.getElementById("canvas");
+const ctx         = canvas.getContext("2d");
+const viewport    = document.getElementById("viewport");
+const statusEl    = document.getElementById("status");
+const overlayEl   = document.getElementById("overlay");
+const overlayMsg  = document.getElementById("overlay-msg");
+const mapInput    = document.getElementById("map-input");
+const scaleLabel  = document.getElementById("scale-label");
+const dicePanel   = document.getElementById("dice-panel");
+const diceResult  = document.getElementById("dice-result");
+const diceLog     = document.getElementById("dice-log");
+const pingToast   = document.getElementById("ping-toast");
+const nameModal   = document.getElementById("name-modal");
+const nameInput   = document.getElementById("name-input");
+const nameDisplay = document.getElementById("player-name-display");
 
 // ── Player name ───────────────────────────────────────────────────────────────
-const nameModal   = document.getElementById("name-modal");
-const nameInputEl = document.getElementById("name-input");
-const nameDisplay = document.getElementById("player-name-display");
-const pingToastEl = document.getElementById("ping-toast");
+let playerName = localStorage.getItem("vtt_player_name")||"";
 
 function showNameModal(){
-  nameInputEl.value=playerName;
+  nameInput.value=playerName;
   nameModal.classList.remove("hidden");
-  setTimeout(()=>nameInputEl.focus(),50);
+  setTimeout(()=>nameInput.focus(),50);
 }
+
 function confirmName(){
-  const n=nameInputEl.value.trim();
+  const n=nameInput.value.trim();
   if(!n)return;
   playerName=n;
   localStorage.setItem("vtt_player_name",n);
   nameModal.classList.add("hidden");
   nameDisplay.textContent=playerName;
 }
+
 document.getElementById("name-confirm").onclick=confirmName;
-nameInputEl.addEventListener("keydown",e=>{if(e.key==="Enter")confirmName();});
+nameInput.addEventListener("keydown",e=>{ if(e.key==="Enter")confirmName(); });
 nameDisplay.onclick=showNameModal;
 
-function showPingToast(msg){
-  pingToastEl.textContent=msg;
-  pingToastEl.classList.add("show");
-  setTimeout(()=>pingToastEl.classList.remove("show"),2000);
+// ── State ─────────────────────────────────────────────────────────────────────
+let tiles={},textures={},fog={},tokens={},stamps={};
+let camX=0,camY=0,zoom=1;
+let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0;
+let liveUnsub=null,firstLoad=true;
+
+// Weather
+const weather={rain:{enabled:false,intensity:0.5},snow:{enabled:false,intensity:0.3},mist:{enabled:false,intensity:0.4},storm:{enabled:false,intensity:0.5}};
+const rainDrops=[],snowFlakes=[],mistClouds=[];
+let lastLightning=0,lightningAlpha=0;
+
+function initParticles(){
+  const W=window.innerWidth,H=window.innerHeight;
+  rainDrops.length=0;snowFlakes.length=0;mistClouds.length=0;
+  for(let i=0;i<400;i++)rainDrops.push({x:Math.random()*W,y:Math.random()*H,len:Math.random()*14+8,speed:Math.random()*6+14});
+  for(let i=0;i<300;i++)snowFlakes.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*2+1,speed:Math.random()*1.2+0.4,drift:Math.random()*0.6-0.3});
+  for(let i=0;i<12;i++)mistClouds.push({x:Math.random()*W,y:Math.random()*H,rx:W*0.2+100,ry:Math.random()*100+50,speed:Math.random()*0.3+0.1,phase:Math.random()*Math.PI*2});
 }
-
-// Listen for pings
-onValue(ref(db,"pings"),snap=>{
-  const data=snap.val()||{};
-  const now=Date.now();
-  for(const[id,ping]of Object.entries(data)){
-    if(!activePings[id]&&now-ping.t<4000){
-      activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};
-      if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);
-    }
-  }
-});
-
-async function sendPing(sx,sy){
-  const[wx,wy]=toWorld(sx,sy);
-  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
-  const pingRef=push(ref(db,"pings"));
-  await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});
-  setTimeout(()=>remove(pingRef),4000);
-}
-
-// ── Weather ───────────────────────────────────────────────────────────────────
-const weather = { rain:{enabled:false,intensity:0.5}, snow:{enabled:false,intensity:0.3}, mist:{enabled:false,intensity:0.4}, storm:{enabled:false,intensity:0.5} };
 initParticles();
 
-async function saveWeather(){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  try{ await set(ref(db,"weather"), weather); }
-  catch(e){ toast("Weather save failed"); }
-}
-
-function buildWeatherPanel(){
-  const types=["rain","snow","mist","storm"];
-  types.forEach(t=>{
-    const toggle=document.getElementById(`wx-${t}-toggle`);
-    const slider=document.getElementById(`wx-${t}-intensity`);
-    toggle.checked=weather[t].enabled;
-    slider.value=weather[t].intensity;
-    toggle.onchange=()=>{ weather[t].enabled=toggle.checked; saveWeather(); };
-    slider.oninput=()=>{ weather[t].intensity=parseFloat(slider.value); saveWeather(); };
-  });
-}
-
-const weatherPanel=document.getElementById("weather-panel");
-const weatherBtn=document.getElementById("weatherBtn");
-weatherBtn.onclick=(e)=>{
-  e.stopPropagation();
-  const r=weatherBtn.getBoundingClientRect();
-  weatherPanel.style.left=r.left+"px";
-  weatherPanel.classList.toggle("open");
-};
-document.addEventListener("click",()=>weatherPanel.classList.remove("open"));
-weatherPanel.addEventListener("click",e=>e.stopPropagation());
-weatherPanel.addEventListener("pointerdown",e=>e.stopPropagation());
-weatherPanel.addEventListener("pointerup",e=>e.stopPropagation());
+onValue(ref(db,"weather"),snap=>{
+  const data=snap.val();
+  if(!data)return;
+  ["rain","snow","mist","storm"].forEach(t=>{if(data[t])Object.assign(weather[t],data[t]);});
+  const active=["rain","snow","mist","storm"].filter(t=>weather[t].enabled).map(t=>t[0].toUpperCase()+t.slice(1));
+  document.getElementById("weather-indicator").textContent=active.length?active.join(" · "):"";
+});
 
 function drawWeather(W,H){
   const now=Date.now();
-
-  // ── Mist ──
   if(weather.mist.enabled){
     const intensity=weather.mist.intensity;
     mistClouds.forEach(c=>{
-      c.x+=c.speed;
-      if(c.x-c.rx>W) c.x=-c.rx;
+      c.x+=c.speed;if(c.x-c.rx>W)c.x=-c.rx;
       const pulse=0.5+0.5*Math.sin(now/3000+c.phase);
       const alpha=intensity*0.18*pulse;
       const grad=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,c.rx);
       grad.addColorStop(0,`rgba(180,190,210,${alpha})`);
       grad.addColorStop(1,"rgba(180,190,210,0)");
-      ctx.save(); ctx.scale(1,c.ry/c.rx);
-      ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(c.x,c.y*(c.rx/c.ry),c.rx,0,Math.PI*2); ctx.fill();
+      ctx.save();ctx.scale(1,c.ry/c.rx);
+      ctx.fillStyle=grad;ctx.beginPath();ctx.arc(c.x,c.y*(c.rx/c.ry),c.rx,0,Math.PI*2);ctx.fill();
       ctx.restore();
     });
   }
-
-  // ── Rain ──
   if(weather.rain.enabled){
     const intensity=weather.rain.intensity;
     const count=Math.floor(intensity*rainDrops.length);
-    ctx.strokeStyle=`rgba(174,194,220,${0.25+intensity*0.35})`;
-    ctx.lineWidth=1;
+    ctx.strokeStyle=`rgba(174,194,220,${0.25+intensity*0.35})`;ctx.lineWidth=1;
     for(let i=0;i<count;i++){
       const d=rainDrops[i];
-      d.y+=d.speed; d.x+=d.speed*0.22;
+      d.y+=d.speed;d.x+=d.speed*0.22;
       if(d.y>H){d.y=-20;d.x=Math.random()*W;}
-      if(d.x>W){d.x=0;}
-      ctx.beginPath(); ctx.moveTo(d.x,d.y); ctx.lineTo(d.x+d.len*0.22,d.y+d.len); ctx.stroke();
+      if(d.x>W)d.x=0;
+      ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+d.len*0.22,d.y+d.len);ctx.stroke();
     }
   }
-
-  // ── Snow ──
   if(weather.snow.enabled){
     const intensity=weather.snow.intensity;
     const count=Math.floor(intensity*snowFlakes.length);
     ctx.fillStyle=`rgba(220,230,255,${0.5+intensity*0.3})`;
     for(let i=0;i<count;i++){
       const f=snowFlakes[i];
-      f.y+=f.speed; f.x+=f.drift+Math.sin(now/1200+i)*0.3;
+      f.y+=f.speed;f.x+=f.drift+Math.sin(now/1200+i)*0.3;
       if(f.y>H){f.y=-10;f.x=Math.random()*W;}
-      if(f.x>W)f.x=0; if(f.x<0)f.x=W;
-      ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2); ctx.fill();
+      if(f.x>W)f.x=0;if(f.x<0)f.x=W;
+      ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();
     }
   }
-
-  // ── Storm / Lightning ──
   if(weather.storm.enabled){
     const interval=8000-weather.storm.intensity*6000;
     if(now-lastLightning>interval&&Math.random()<0.02){
-      lastLightning=now; lightningAlpha=1;
-      // Draw jagged bolt
-      ctx.save();
-      ctx.strokeStyle=`rgba(200,210,255,0.9)`; ctx.lineWidth=2;
-      let bx=W*0.2+Math.random()*W*0.6, by=0;
-      ctx.beginPath(); ctx.moveTo(bx,by);
-      while(by<H*0.7){ bx+=Math.random()*80-40; by+=Math.random()*60+30; ctx.lineTo(bx,by); }
-      ctx.stroke();
-      ctx.restore();
+      lastLightning=now;lightningAlpha=1;
+      ctx.save();ctx.strokeStyle="rgba(200,210,255,0.9)";ctx.lineWidth=2;
+      let bx=W*0.2+Math.random()*W*0.6,by=0;
+      ctx.beginPath();ctx.moveTo(bx,by);
+      while(by<H*0.7){bx+=Math.random()*80-40;by+=Math.random()*60+30;ctx.lineTo(bx,by);}
+      ctx.stroke();ctx.restore();
     }
     if(lightningAlpha>0){
       ctx.fillStyle=`rgba(180,190,255,${lightningAlpha*0.12})`;
@@ -550,37 +273,131 @@ function drawWeather(W,H){
   }
 }
 
-// ── Dice ──────────────────────────────────────────────────────────────────────
-const dicePanelEl = document.getElementById("dice-panel");
-const diceResultEl = document.getElementById("dice-result");
-const diceLogEl = document.getElementById("dice-log");
-let diceVisible = false;
-let shuffleTimer = null;
+// Pings: { id: {wx,wy,name,startTime} } — world pixel coords, local only
+const activePings={};
 
+// Dice
+let diceVisible=false;
+let currentRoll=null; // { sides, result, roller }
+let shuffleTimer=null;
+
+// Ping mode
+let pingMode=false;
+
+// ── Textures ──────────────────────────────────────────────────────────────────
+async function loadTextures(){
+  await Promise.all(TERRAINS.map(t=>new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{textures[t]=img;resolve()};
+    img.onerror=()=>resolve();
+    img.src=`${TEXTURE_PATH}${t}.png`;
+  })));
+}
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;initParticles();}
+resize();
+window.addEventListener("resize",resize);
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+function fitCamera(){
+  const coords=Object.keys(tiles).map(k=>k.split(",").map(Number));
+  if(!coords.length)return;
+  const xs=coords.map(([x])=>x),ys=coords.map(([,y])=>y);
+  const minX=Math.min(...xs),maxX=Math.max(...xs);
+  const minY=Math.min(...ys),maxY=Math.max(...ys);
+  const mapW=(maxX-minX+1)*TILE,mapH=(maxY-minY+1)*TILE;
+  zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);
+  camX=canvas.width/2-(minX*TILE+mapW/2)*zoom;
+  camY=canvas.height/2-(minY*TILE+mapH/2)*zoom;
+  scaleLabel.textContent=`${Math.round(zoom*100)}%`;
+}
+
+function toWorld(sx,sy){return[(sx-camX)/zoom,(sy-camY)/zoom];}
+
+// ── Status ────────────────────────────────────────────────────────────────────
+function setStatus(cls,text){statusEl.className=cls;statusEl.textContent=text;}
+
+// ── Firebase map listener ─────────────────────────────────────────────────────
+function subscribeLive(){
+  if(liveUnsub){liveUnsub();liveUnsub=null;}
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  setStatus("","Connecting…");
+  liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
+    const data=snap.val();
+    for(const k in tiles)delete tiles[k];
+    for(const k in fog)delete fog[k];
+    for(const k in tokens)delete tokens[k];
+    for(const k in stamps)delete stamps[k];
+    if(data){
+      if(data.tiles)Object.assign(tiles,data.tiles);
+      if(data.fog)Object.assign(fog,data.fog);
+      if(data.tokens)Object.assign(tokens,data.tokens);
+      if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
+    }
+    setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
+    if(firstLoad){firstLoad=false;fitCamera();overlayEl.classList.add("hidden");}
+  },()=>{setStatus("error","RTDB error");overlayEl.classList.add("hidden");});
+}
+
+// ── Ping system ───────────────────────────────────────────────────────────────
+function showPingToast(msg){
+  pingToast.textContent=msg;
+  pingToast.classList.add("show");
+  setTimeout(()=>pingToast.classList.remove("show"),2000);
+}
+
+// Listen for incoming pings
+onValue(ref(db,"pings"),snap=>{
+  const data=snap.val()||{};
+  const now=Date.now();
+  for(const[id,ping]of Object.entries(data)){
+    if(!activePings[id]&&now-ping.t<4000){
+      // Convert tile coords back to world px
+      activePings[id]={
+        wx:ping.x*TILE+TILE/2,
+        wy:ping.y*TILE+TILE/2,
+        name:ping.name,
+        startTime:now,
+        id,
+      };
+      if(ping.name!==playerName) showPingToast(`📍 ${ping.name} pinged!`);
+    }
+  }
+});
+
+async function sendPing(sx,sy){
+  const[wx,wy]=toWorld(sx,sy);
+  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
+  const pingRef=push(ref(db,"pings"));
+  await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});
+  // Auto-delete after 4s
+  setTimeout(()=>remove(pingRef),4000);
+}
+
+// ── Dice system ───────────────────────────────────────────────────────────────
+// Listen for dice rolls from anyone
 onValue(ref(db,"dice/last"),snap=>{
   const data=snap.val();
   if(!data)return;
-  // Ignore rolls older than 10s (catches stale data on page load)
-  if(Date.now()-data.t>30000)return;
-  // Always show panel when anyone rolls
-  dicePanelEl.classList.remove("hidden");
+  if(Date.now()-data.t>10000)return;
+  dicePanel.classList.remove("hidden");
   document.getElementById("diceBtn").classList.add("active");
   diceVisible=true;
-  diceResultEl.classList.add("rolling");
-  diceLogEl.textContent=`${data.roller} rolled d${data.sides}…`;
-  let ticks=0;
+  diceResult.classList.add("rolling");
+  diceLog.textContent=`${data.roller} rolled d${data.sides}…`;
+  let ticks=0, total=18;
   clearInterval(shuffleTimer);
   shuffleTimer=setInterval(()=>{
     ticks++;
-    diceResultEl.textContent=Math.ceil(Math.random()*data.sides);
-    if(ticks>=18){
+    diceResult.textContent=Math.ceil(Math.random()*data.sides);
+    if(ticks>=total){
       clearInterval(shuffleTimer);
-      diceResultEl.textContent=data.result;
-      diceResultEl.classList.remove("rolling");
-      diceLogEl.textContent=`${data.roller} rolled d${data.sides} → ${data.result}`;
-      // Auto-hide after 5s
+      diceResult.textContent=data.result;
+      diceResult.classList.remove("rolling");
+      diceLog.textContent=`${data.roller} rolled d${data.sides} → ${data.result}`;
       setTimeout(()=>{
-        dicePanelEl.classList.add("hidden");
+        dicePanel.classList.add("hidden");
         document.getElementById("diceBtn").classList.remove("active");
         diceVisible=false;
       },5000);
@@ -594,604 +411,54 @@ async function rollDie(sides){
   await set(ref(db,"dice/last"),{sides,result,roller:playerName,t:Date.now()});
 }
 
-document.getElementById("diceBtn").onclick=()=>{
-  diceVisible=!diceVisible;
-  dicePanelEl.classList.toggle("hidden",!diceVisible);
-  document.getElementById("diceBtn").classList.toggle("active",diceVisible);
-};
-
-document.querySelectorAll(".die-btn").forEach(btn=>{
-  btn.onclick=()=>rollDie(parseInt(btn.dataset.sides));
-});
-
-// prevent dice panel clicks from hitting canvas
-dicePanelEl.addEventListener("pointerdown",e=>e.stopPropagation());
-dicePanelEl.addEventListener("pointerup",e=>e.stopPropagation());
-let saveTimer=null, pendingSaves=0;
-
-function scheduleSave(){
-  clearTimeout(saveTimer);
-  setStatus("saving","Saving…");
-  saveTimer=setTimeout(async()=>{
-    const mapName=mapInput.value.trim()||"dungeon-1";
-    try{
-      pendingSaves++;
-      await set(ref(db,`maps/${mapName}/tiles`), Object.keys(tiles).length ? tiles : null);
-      await set(ref(db,`maps/${mapName}/updatedAt`), Date.now());
-      setStatus("live","Live ✓");
-    }catch(e){ setStatus("error","Error"); toast("Save failed: "+e.message); }
-  },600);
-}
-
-async function saveFog(){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  try{ await set(ref(db,`maps/${mapName}/fog`), Object.keys(fogGroups).length?fogGroups:null); }
-  catch(e){ toast("Fog save failed"); }
-}
-
-async function deleteFogGroup(id){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  try{ await remove(ref(db,`maps/${mapName}/fog/${id}`)); delete fogGroups[id]; }
-  catch(e){ toast("Fog delete failed"); }
-}
-
-async function saveToken(id, data){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  try{ await set(ref(db,`maps/${mapName}/tokens/${id}`), data); }
-  catch(e){ toast("Token save failed"); }
-}
-
-async function deleteToken(id){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  try{ await remove(ref(db,`maps/${mapName}/tokens/${id}`)); delete tokens[id]; }
-  catch(e){ toast("Delete failed"); }
-}
-
-async function saveStamp(k, emoji){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  try{ await set(ref(db,`maps/${mapName}/stamps/${k.replace(",","_")}`), emoji||null); }
-  catch(e){ toast("Stamp save failed"); }
-}
-
-async function deleteStamp(k){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  try{ await remove(ref(db,`maps/${mapName}/stamps/${k.replace(",","_")}`)); delete stamps[k]; }
-  catch(e){ toast("Stamp delete failed"); }
-}
-
-// ── Undo / Redo ───────────────────────────────────────────────────────────────
-const UNDO_MAX = 50;
-const undoStack = [];
-const redoStack = [];
-
-function snapshotTiles(){
-  return JSON.stringify(tiles);
-}
-
-function pushUndo(){
-  undoStack.push(snapshotTiles());
-  if(undoStack.length > UNDO_MAX) undoStack.shift();
-  redoStack.length = 0; // new action clears redo
-}
-
-function restoreTiles(snapshot){
-  for(const k in tiles) delete tiles[k];
-  Object.assign(tiles, JSON.parse(snapshot));
-}
-
-function undo(){
-  if(!undoStack.length){ toast("Nothing to undo"); return; }
-  redoStack.push(snapshotTiles());
-  restoreTiles(undoStack.pop());
-  scheduleSave();
-}
-
-function redo(){
-  if(!redoStack.length){ toast("Nothing to redo"); return; }
-  undoStack.push(snapshotTiles());
-  restoreTiles(redoStack.pop());
-  scheduleSave();
-}
-let liveUnsub=null;
-
-function subscribeLive(){
-  if(liveUnsub){liveUnsub();liveUnsub=null;}
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
-    if(pendingSaves>0){pendingSaves--;return;}
-    const data=snap.val();
-    for(const k in tiles)delete tiles[k];
-    for(const k in fogGroups)delete fogGroups[k];
-    for(const k in tokens)delete tokens[k];
-    for(const k in stamps)delete stamps[k];
-    if(data){
-      if(data.tiles)Object.assign(tiles,data.tiles);
-      if(data.fog)Object.assign(fogGroups,data.fog);
-      if(data.tokens)Object.assign(tokens,data.tokens);
-      if(data.stamps){
-        // stamps stored with _ separator, convert back to ,
-        for(const[k,v]of Object.entries(data.stamps))
-          stamps[k.replace("_",",")]=v;
-      }
-    }
-    setStatus("live","Live ✓");
-  },()=>setStatus("error","RTDB error"));
-}
-
-// Listen for weather from RTDB
-onValue(ref(db,"weather"),snap=>{
-  const data=snap.val();
-  if(!data)return;
-  ["rain","snow","mist","storm"].forEach(t=>{ if(data[t])Object.assign(weather[t],data[t]); });
-  buildWeatherPanel();
-});
-
-// ── Toolbar ───────────────────────────────────────────────────────────────────
-// ── Terrain dropdown ──────────────────────────────────────────────────────────
-const TERRAIN_NAMES = {
-  grass:"Grass", stone:"Stone", wood:"Wood", water:"Water",
-  cobble:"Cobble", sand:"Sand", lava:"Lava", dirt:"Dirt",
-  gravel:"Gravel", ice:"Ice", void:"Void", carpet:"Carpet",
-  marble:"Marble", mud:"Mud", erase:"Erase",
-};
-
-const terrainDropdown   = document.getElementById("terrain-dropdown");
-const terrainPickerBtn  = document.getElementById("terrain-picker-btn");
-const terrainSwatchPrev = document.getElementById("terrain-preview-swatch");
-const terrainLabelPrev  = document.getElementById("terrain-preview-label");
-
-function buildTerrainDropdown(){
-  terrainDropdown.innerHTML="";
-  const allTerrains=[...Object.keys(FALLBACK),"erase"];
-  allTerrains.forEach(t=>{
-    const el=document.createElement("div");
-    el.className="pd-item"+(t===currentTerrain?" active":"");
-    el.dataset.terrain=t;
-    if(t==="erase"){
-      el.innerHTML=`<div style="font-size:16px;line-height:40px">✕</div><div class="pd-item-label">Erase</div>`;
-      el.style.background="#1a1510";
-    }else{
-      el.innerHTML=`<div class="pd-item-inner"></div><div class="pd-item-label">${TERRAIN_NAMES[t]||t}</div>`;
-      const inner=el.querySelector(".pd-item-inner");
-      if(textures[t]) inner.style.backgroundImage=`url(${textures[t].src})`;
-      else inner.style.backgroundColor=FALLBACK[t];
-    }
-    el.onclick=()=>{ selectTerrain(t); terrainDropdown.classList.remove("open"); };
-    terrainDropdown.appendChild(el);
-  });
-}
-
-function selectTerrain(t){
-  currentTerrain=t;
-  terrainLabelPrev.textContent=TERRAIN_NAMES[t]||t;
-  if(t==="erase"){ terrainSwatchPrev.style.background="#1a1510"; terrainSwatchPrev.textContent="✕"; }
-  else{ terrainSwatchPrev.style.background=FALLBACK[t]; terrainSwatchPrev.textContent=""; if(textures[t]) terrainSwatchPrev.style.backgroundImage=`url(${textures[t].src})`; else terrainSwatchPrev.style.backgroundImage="none"; }
-  buildTerrainDropdown();
-}
-
-terrainPickerBtn.onclick=(e)=>{
-  e.stopPropagation();
-  const r=terrainPickerBtn.getBoundingClientRect();
-  terrainDropdown.style.left=r.left+"px";
-  terrainDropdown.classList.toggle("open");
-  stampDropdown.classList.remove("open");
-};
-
-// ── Stamp dropdown ────────────────────────────────────────────────────────────
-const STAMPS_LIST = ["⭐","❗","🔒","💀","🔥","💎","🚪","👁","🗡","🛡","💰","📜","🧪","⚡","❄","🌿","🕯","🗝","🎭","🐉"];
-
-const stampDropdown  = document.getElementById("stamp-dropdown");
-const stampPickerBtn = document.getElementById("stamp-picker-btn");
-const stampLabelPrev = document.getElementById("stamp-preview-label");
-
-function buildStampDropdown(){
-  stampDropdown.innerHTML="";
-  // Erase option first
-  const eraseEl=document.createElement("div");
-  eraseEl.className="pd-item pd-stamp"+(currentStamp==="erase"?" active":"");
-  eraseEl.textContent="✕";
-  eraseEl.style.fontSize="16px";
-  eraseEl.onclick=()=>{ selectStamp("erase"); stampDropdown.classList.remove("open"); };
-  stampDropdown.appendChild(eraseEl);
-
-  STAMPS_LIST.forEach(s=>{
-    const el=document.createElement("div");
-    el.className="pd-item pd-stamp"+(s===currentStamp?" active":"");
-    el.textContent=s;
-    el.onclick=()=>{ selectStamp(s); stampDropdown.classList.remove("open"); };
-    stampDropdown.appendChild(el);
-  });
-}
-
-function selectStamp(s){
-  currentStamp=s;
-  stampLabelPrev.textContent=s==="erase"?"Erase ✕":s||"None";
-  fogMode=false; fogBtn.classList.remove("fog-active");
-  buildStampDropdown();
-}
-
-stampPickerBtn.onclick=(e)=>{
-  e.stopPropagation();
-  const r=stampPickerBtn.getBoundingClientRect();
-  stampDropdown.style.left=r.left+"px";
-  stampDropdown.classList.toggle("open");
-  terrainDropdown.classList.remove("open");
-};
-
-// Close dropdowns on outside click
-document.addEventListener("click",()=>{ terrainDropdown.classList.remove("open"); stampDropdown.classList.remove("open"); });
-
-document.querySelectorAll(".shape").forEach(btn=>{
-  btn.onclick=()=>{
-    if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();
-    fogMode=false; fogBtn.classList.remove("fog-active");
-    currentStamp=null; stampLabelPrev.textContent="None"; buildStampDropdown();
-    currentShape=btn.dataset.shape;
-    document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-  };
-});
-
-document.getElementById("pingBtn").onclick=()=>{
-  if(!playerName){showNameModal();return;}
-  pingMode=!pingMode;
-  document.getElementById("pingBtn").classList.toggle("active",pingMode);
-  if(pingMode)showPingToast("Click the map to ping");
-};
-
-wallBtn.onclick=()=>{
-  wallsEnabled=!wallsEnabled;
-  wallBtn.textContent=wallsEnabled?"On":"Off";
-  wallBtn.classList.toggle("active",wallsEnabled);
-};
-
-fogBtn.onclick=()=>{
-  fogMode=!fogMode;
-  fogBtn.classList.toggle("fog-active",fogMode);
-  if(fogMode){
-    currentStamp=null;
-    stampLabelPrev.textContent="None"; buildStampDropdown();
-    document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));
-    if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();
-  }
-};
-
-clearBtn.onclick=()=>{
-  if(!confirm("Clear the entire map?"))return;
-  pushUndo();
-  for(const k in tiles)delete tiles[k];
-  toast("Map cleared");
-  scheduleSave();
-};
-
-// ── Token modal ───────────────────────────────────────────────────────────────
-const tokenModal   = document.getElementById("token-modal");
-const tokCharSel   = document.getElementById("tok-char");
-const tokNameInput = document.getElementById("tok-name");
-const tokTypeInput = document.getElementById("tok-type");
-const tokHpInput   = document.getElementById("tok-hp");
-const tokMaxHpInput= document.getElementById("tok-maxhp");
-
-tokenBtn.onclick=async()=>{
-  // Load characters from RTDB
-  tokCharSel.innerHTML='<option value="">Loading…</option>';
-  try{
-    const snap=await get(child(ref(db),"characters/pcs"));
-    tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';
-    if(snap.exists()){
-      const chars=snap.val();
-      for(const [id,c] of Object.entries(chars)){
-        const opt=document.createElement("option");
-        opt.value=id;
-        opt.textContent=c.name||(c.charName)||id;
-        opt.dataset.hp   = c.hp    ?? c.currentHp ?? 10;
-        opt.dataset.maxhp= c.maxHp ?? c.hp        ?? 10;
-        opt.dataset.type = "pc";
-        tokCharSel.appendChild(opt);
-      }
-    }
-  }catch(e){
-    tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';
-  }
-  tokNameInput.value="";
-  tokHpInput.value="";
-  tokMaxHpInput.value="";
-  tokTypeInput.value="pc";
-  document.getElementById("tok-hp-row").style.display="none";
-  tokenModal.classList.add("open");
-};
-
-tokCharSel.addEventListener("change",()=>{
-  const opt=tokCharSel.selectedOptions[0];
-  const isNpc=!opt||opt.value==="__npc__";
-  document.getElementById("tok-hp-row").style.display=isNpc?"flex":"none";
-  if(!isNpc&&opt.dataset.hp){
-    tokHpInput.value=opt.dataset.hp;
-    tokMaxHpInput.value=opt.dataset.maxhp;
-    tokTypeInput.value=opt.dataset.type||"pc";
-    tokNameInput.placeholder=opt.textContent;
-  }else{
-    tokHpInput.value="";tokMaxHpInput.value="";
-    tokTypeInput.value="npc";
-    tokNameInput.placeholder="NPC Name";
-  }
-});
-
-document.getElementById("tok-cancel").onclick=()=>{
-  tokenModal.classList.remove("open");
-  placingToken=null;
-};
-
-document.getElementById("tok-place").onclick=()=>{
-  const charId=tokCharSel.value;
-  const opt=tokCharSel.selectedOptions[0];
-  const name=tokNameInput.value.trim()||opt?.textContent||"Token";
-  const type=tokTypeInput.value;
-  const hp=parseInt(tokHpInput.value)||10;
-  const maxHp=parseInt(tokMaxHpInput.value)||hp;
-  placingToken={ id:"tok_"+Date.now(), characterId:charId, name, type, hp, maxHp, x:0, y:0 };
-  tokenModal.classList.remove("open");
-  toast("Click the map to place token");
-};
-
 // ── Draw ──────────────────────────────────────────────────────────────────────
-function drawTile(x,y,terrain){
-  const px=x*TILE,py=y*TILE;
-  if(textures[terrain]){ctx.drawImage(textures[terrain],px,py,TILE,TILE);}
-  else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}
-}
+function hasWall(x,y){const t=tiles[`${x},${y}`];return t&&t.walls;}
 
-function drawTiles(){
-  for(const k in tiles){
-    const[x,y]=k.split(",").map(Number);
-    drawTile(x,y,tiles[k].terrain);
-  }
-}
-
-function drawWalls(){
-  ctx.strokeStyle="#c0392b"; ctx.lineWidth=2.5/zoom; ctx.lineCap="round";
-  for(const k in tiles){
-    if(!tiles[k].walls)continue;
-    const[x,y]=k.split(",").map(Number);
-    const px=x*TILE,py=y*TILE;
-    const checks=[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]];
-    for(const[dx,dy,x1,y1,x2,y2]of checks){
-      if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
-    }
-  }
-}
-
-function drawGrid(){
-  ctx.strokeStyle="rgba(255,255,255,0.04)"; ctx.lineWidth=1/zoom;
-  const l=-camX/zoom,t=-camY/zoom,r=(canvas.width-camX)/zoom,b=(canvas.height-camY)/zoom;
-  for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
-  for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
-}
-
-// Tokens: draw below fog (NPC) or above fog (PC) — editor draws all dimly above fog for GM
-function drawToken(id, tok, alpha){
-  ctx.save();
-  ctx.globalAlpha=alpha??1;
-  const px=tok.x*TILE, py=tok.y*TILE;
-  const r=TILE*0.42;
-  const cx2=px+TILE/2, cy2=py+TILE/2;
-
-  // Circle body
-  ctx.beginPath();
-  ctx.arc(cx2,cy2,r,0,Math.PI*2);
-  ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";
-  ctx.fill();
-  ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";
-  ctx.lineWidth=2/zoom;
-  ctx.stroke();
-
-  // Initial letter
+function drawToken(tok){
+  const px=tok.x*TILE,py=tok.y*TILE;
+  const r=TILE*0.42,cx=px+TILE/2,cy=py+TILE/2;
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+  ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();
+  ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();
   ctx.fillStyle="#fff";
   ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  ctx.fillText((tok.name||"?")[0].toUpperCase(),cx2,cy2);
-
-  // Name below
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText((tok.name||"?")[0].toUpperCase(),cx,cy);
   ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;
   ctx.fillStyle="#ddd";
-  ctx.fillText(tok.name||"",cx2,py+TILE+10/zoom);
-
-  // HP bar
-  const bw=TILE*0.85, bh=5/zoom;
-  const bx=px+(TILE-bw)/2, by=py+TILE+1/zoom;
+  ctx.fillText(tok.name||"",cx,py+TILE+10/zoom);
+  const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+1/zoom;
   const pct=Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1)));
-  ctx.fillStyle="rgba(0,0,0,0.5)"; ctx.fillRect(bx,by,bw,bh);
-  ctx.fillStyle=pct>0.5?"#4a9a4a":pct>0.25?"#aaaa30":"#aa3030";
+  ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(bx,by,bw,bh);
+  ctx.fillStyle=pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#aa3030";
   ctx.fillRect(bx,by,bw*pct,bh);
-
-  ctx.restore();
 }
 
-function drawTokens(){
-  // NPC tokens first (below fog layer)
-  for(const[id,tok]of Object.entries(tokens)){
-    if(tok.type==="npc") drawToken(id,tok,1);
-  }
-}
-
-function drawPCTokens(){
-  // PC tokens on top of fog
-  for(const[id,tok]of Object.entries(tokens)){
-    if(tok.type==="pc") drawToken(id,tok,1);
-  }
-}
-
-function drawFog(){
-  // Draw all fog cells across all groups
-  ctx.fillStyle="rgba(10,20,40,0.6)";
-  for(const gid in fogGroups){
-    const cells=fogGroups[gid].cells||{};
-    for(const k in cells){
-      const[x,y]=k.split(",").map(Number);
-      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-    }
-  }
-
-  // One X button per group (top-right of the group's bounding box), only in fog mode
-  if(fogMode){
-    ctx.save();
-    ctx.font=`bold ${Math.round(11/zoom)}px sans-serif`;
-    ctx.textAlign="center"; ctx.textBaseline="middle";
-    for(const gid in fogGroups){
-      const cells=fogGroups[gid].cells||{};
-      const coords=Object.keys(cells).map(k=>k.split(",").map(Number));
-      if(!coords.length)continue;
-      const maxX=Math.max(...coords.map(([x])=>x));
-      const minY=Math.min(...coords.map(([,y])=>y));
-      // X button at top-right of bounding box
-      const bx=(maxX+1)*TILE-14/zoom, by=minY*TILE;
-      const bs=14/zoom;
-      ctx.fillStyle="rgba(200,50,50,0.92)";
-      ctx.fillRect(bx,by,bs,bs);
-      ctx.fillStyle="#fff";
-      ctx.fillText("×",bx+bs/2,by+bs/2);
-    }
-    ctx.restore();
-  }
-}
-
-function drawFogPreview(){
-  if(!fogMode||!dragging)return;
-  const minX=Math.floor(Math.min(startX,curX)/TILE);
-  const maxX=Math.floor(Math.max(startX,curX)/TILE);
-  const minY=Math.floor(Math.min(startY,curY)/TILE);
-  const maxY=Math.floor(Math.max(startY,curY)/TILE);
-  ctx.fillStyle="rgba(10,20,40,0.35)";
-  for(let x=minX;x<=maxX;x++)
-    for(let y=minY;y<=maxY;y++)
-      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-}
-
-function drawStamps(){
-  ctx.save();
-  ctx.textAlign="center"; ctx.textBaseline="middle";
-  const fontSize=Math.round(TILE*0.65);
-  ctx.font=`${fontSize}px serif`;
-  for(const[k,emoji]of Object.entries(stamps)){
-    const[x,y]=k.split(",").map(Number);
-    ctx.fillText(emoji, x*TILE+TILE/2, y*TILE+TILE/2);
-  }
-  // Hover preview when placing a stamp
-  if(currentStamp&&currentStamp!=="erase"){
-    ctx.globalAlpha=0.5;
-    ctx.fillText(currentStamp, hoverTileX*TILE+TILE/2, hoverTileY*TILE+TILE/2);
-    ctx.globalAlpha=1;
-  }
-  ctx.restore();
-}
-
-function drawPlacingTokenPreview(){
-  if(!placingToken)return;
-  const alpha=0.6+0.2*Math.sin(Date.now()/300);
-  drawToken("preview",{...placingToken,x:hoverTileX,y:hoverTileY},alpha);
-}
-
-// ── Terrain preview ───────────────────────────────────────────────────────────
-function getPreviewTiles(){
-  if(!dragging)return null;
-  const minX=Math.floor(Math.min(startX,curX)/TILE);
-  const maxX=Math.floor(Math.max(startX,curX)/TILE);
-  const minY=Math.floor(Math.min(startY,curY)/TILE);
-  const maxY=Math.floor(Math.max(startY,curY)/TILE);
-  const cells=[];
-  if(currentShape==="rect"){
-    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) cells.push([x,y]);
-  }else if(currentShape==="circle"){
-    const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
-    const rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;
-    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++){
-      const dx=(x-cx)/rx,dy=(y-cy)/ry;
-      if(dx*dx+dy*dy<=1)cells.push([x,y]);
-    }
-  }else if(currentShape==="line"){
-    let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE);
-    let x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);
-    const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0);
-    const sx=x0<x1?1:-1,sy=y0<y1?1:-1;
-    let err=dx-dy;
-    while(true){
-      cells.push([x0,y0]);
-      if(x0===x1&&y0===y1)break;
-      const e2=2*err;
-      if(e2>-dy){err-=dy;x0+=sx;}
-      if(e2<dx){err+=dx;y0+=sy;}
-    }
-  }
-  return cells;
-}
-
-function drawPreview(){
-  if(fogMode)return;
-  if(!dragging){
-    ctx.fillStyle="rgba(200,168,75,0.15)";
-    ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);
-    return;
-  }
-  const cells=getPreviewTiles();
-  if(!cells)return;
-  const isErase=currentTerrain==="erase";
-  ctx.fillStyle=isErase?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";
-  for(const[x,y]of cells) ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-  ctx.strokeStyle=isErase?"rgba(220,60,60,0.9)":"rgba(200,168,75,0.9)";
-  ctx.lineWidth=1.5/zoom; ctx.setLineDash([]);
-  for(const[x,y]of cells) ctx.strokeRect(x*TILE+.5/zoom,y*TILE+.5/zoom,TILE-1/zoom,TILE-1/zoom);
-}
-
-// ── Selection draw ────────────────────────────────────────────────────────────
-function drawSelection(){
-  if(currentShape!=="select")return;
-  if(selectPhase==="marquee"&&dragging){
-    const minX=Math.floor(Math.min(startX,curX)/TILE);
-    const maxX=Math.floor(Math.max(startX,curX)/TILE);
-    const minY=Math.floor(Math.min(startY,curY)/TILE);
-    const maxY=Math.floor(Math.max(startY,curY)/TILE);
-    ctx.fillStyle="rgba(100,160,255,0.15)";
-    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-    ctx.strokeStyle="rgba(100,160,255,0.9)"; ctx.lineWidth=1.5/zoom;
-    ctx.setLineDash([5/zoom,3/zoom]);
-    ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);
-    ctx.setLineDash([]);
-    return;
-  }
-  if(selectPhase==="selected"||selectPhase==="moving"){
-    const ox=moveOffX,oy=moveOffY;
-    for(const k in selectTiles){
-      const[tx,ty]=k.split(",").map(Number);
-      const{terrain}=selectTiles[k];
-      const px=(tx+ox)*TILE,py=(ty+oy)*TILE;
-      if(textures[terrain]){ctx.drawImage(textures[terrain],px,py,TILE,TILE);}
-      else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}
-    }
-    const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE;
-    const pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;
-    ctx.fillStyle="rgba(100,160,255,0.18)"; ctx.fillRect(px,py,pw,ph);
-    ctx.strokeStyle="rgba(100,160,255,0.95)"; ctx.lineWidth=2/zoom;
-    ctx.setLineDash([5/zoom,3/zoom]); ctx.strokeRect(px,py,pw,ph); ctx.setLineDash([]);
-  }
-}
-
-// ── Render loop ───────────────────────────────────────────────────────────────
 function drawPings(){
   const now=Date.now();
   for(const[id,ping]of Object.entries(activePings)){
-    const age=(now-ping.startTime)/1000;
+    const age=(now-ping.startTime)/1000; // 0→3s
     if(age>3){delete activePings[id];continue;}
     const alpha=1-age/3;
+    // Convert world px to screen
     const sx=ping.wx*zoom+camX, sy=ping.wy*zoom+camY;
+
+    // Three expanding rings
     for(let i=0;i<3;i++){
       const phase=(age+i*0.4)%1.2;
-      ctx.beginPath();ctx.arc(sx,sy,20+phase*60,0,Math.PI*2);
+      const r=(20+phase*60);
+      ctx.beginPath();
+      ctx.arc(sx,sy,r,0,Math.PI*2);
       ctx.strokeStyle=`rgba(255,200,50,${alpha*(1-phase/1.2)*0.8})`;
-      ctx.lineWidth=2.5;ctx.stroke();
+      ctx.lineWidth=2.5;
+      ctx.stroke();
     }
+
+    // Center dot
     ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);
     ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fill();
+
+    // Name label
     ctx.font="bold 11px Cinzel,serif";
     ctx.textAlign="center";ctx.textBaseline="bottom";
     ctx.fillStyle=`rgba(255,220,80,${alpha})`;
@@ -1199,310 +466,149 @@ function drawPings(){
   }
 }
 
-function render(){
+function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle="#0d0b08"; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();
-  ctx.translate(camX,camY); ctx.scale(zoom,zoom);
+  ctx.translate(camX,camY);ctx.scale(zoom,zoom);
 
-  drawTiles();
-  drawWalls();
-  drawStamps();          // POI stamps above tiles, below tokens and fog
-  drawTokens();          // NPCs below fog
-  drawFog();             // fog (GM semi-transparent)
-  drawFogPreview();
-  drawPCTokens();        // PCs above fog
-  drawPlacingTokenPreview();
-  drawGrid();
-  if(currentShape==="select") drawSelection();
-  else drawPreview();
+  // Tiles
+  for(const k in tiles){
+    const[x,y]=k.split(",").map(Number);
+    const terrain=tiles[k].terrain;
+    const px=x*TILE,py=y*TILE;
+    if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);
+    else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}
+  }
+
+  // Walls
+  ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/zoom;ctx.lineCap="round";
+  for(const k in tiles){
+    if(!tiles[k].walls)continue;
+    const[x,y]=k.split(",").map(Number);
+    const px=x*TILE,py=y*TILE;
+    const edges=[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]];
+    for(const[dx,dy,x1,y1,x2,y2]of edges)
+      if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+  }
+
+  // Stamps
+  ctx.save();
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.font=`${Math.round(TILE*.65)}px serif`;
+  for(const[k,emoji]of Object.entries(stamps)){
+    const[x,y]=k.split(",").map(Number);
+    ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);
+  }
+  ctx.restore();
+
+  // NPC tokens (below fog)
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(tok);
+
+  // Fog
+  ctx.fillStyle="rgba(0,0,0,1)";
+  for(const gid in fog){
+    const cells=(fog[gid]&&fog[gid].cells)||{};
+    for(const k in cells){
+      const[x,y]=k.split(",").map(Number);
+      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    }
+  }
+
+  // PC tokens (above fog)
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(tok);
+
+  // Grid
+  ctx.strokeStyle="rgba(255,255,255,.03)";ctx.lineWidth=1/zoom;
+  const l=-camX/zoom,t=-camY/zoom,r=(canvas.width-camX)/zoom,b=(canvas.height-camY)/zoom;
+  for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
+  for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
 
   ctx.restore();
+
+  // Screen-space effects (weather + pings on top of everything)
+  drawWeather(canvas.width,canvas.height);
   drawPings();
-  drawWeather(canvas.width, canvas.height);
-  requestAnimationFrame(render);
+
+  requestAnimationFrame(draw);
 }
 
-// ── Selection helpers ─────────────────────────────────────────────────────────
-function liftSelection(minX,minY,maxX,maxY){
-  selectTiles={}; selMinX=minX;selMinY=minY;selMaxX=maxX;selMaxY=maxY;
-  for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++){
-    const k=key(x,y);
-    if(tiles[k]) selectTiles[k]={...tiles[k]};
-    if(currentTerrain!=="erase") tiles[k]={terrain:currentTerrain,walls:wallsEnabled};
-    else delete tiles[k];
-  }
-  moveOffX=0;moveOffY=0;
-  // Save immediately so the fill-void is persisted even if user refreshes before committing
-  scheduleSave();
-}
+// ── Controls ──────────────────────────────────────────────────────────────────
+document.getElementById("loadBtn").onclick=()=>{firstLoad=true;subscribeLive();};
+document.getElementById("fitBtn").onclick=fitCamera;
+document.getElementById("sheetsBtn").onclick=()=>window.open("https://geezjonny.github.io/GeezSheets","_blank");
+mapInput.addEventListener("keydown",e=>{if(e.key==="Enter"){firstLoad=true;subscribeLive();}});
 
-function commitSelection(){
-  pushUndo();
-  for(const k in selectTiles){
-    const[tx,ty]=k.split(",").map(Number);
-    tiles[key(tx+moveOffX,ty+moveOffY)]={...selectTiles[k]};
-  }
-  selectTiles={}; selectPhase=null; moveOffX=0;moveOffY=0;
-  scheduleSave();
-}
+// Ping button
+document.getElementById("pingBtn").onclick=()=>{
+  if(!playerName){showNameModal();return;}
+  pingMode=!pingMode;
+  document.getElementById("pingBtn").classList.toggle("active",pingMode);
+  viewport.classList.toggle("pinging",pingMode);
+  if(pingMode)showPingToast("Click the map to ping");
+};
 
-function inSelection(wx,wy){
-  if(!selectPhase||selectPhase==="marquee")return false;
-  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
-  return tx>=selMinX+moveOffX&&tx<=selMaxX+moveOffX&&ty>=selMinY+moveOffY&&ty<=selMaxY+moveOffY;
-}
+// Dice toggle
+document.getElementById("diceBtn").onclick=()=>{
+  diceVisible=!diceVisible;
+  dicePanel.classList.toggle("hidden",!diceVisible);
+  document.getElementById("diceBtn").classList.toggle("active",diceVisible);
+};
 
-// ── Token hit test ────────────────────────────────────────────────────────────
-function tokenAtTile(tx,ty){
-  for(const[id,tok]of Object.entries(tokens)){
-    if(tok.x===tx&&tok.y===ty)return id;
-  }
-  return null;
-}
-
-// Hit test: returns the fog group ID if the X button was clicked
-function fogGroupXHit(wx,wy){
-  for(const gid in fogGroups){
-    const cells=fogGroups[gid].cells||{};
-    const coords=Object.keys(cells).map(k=>k.split(",").map(Number));
-    if(!coords.length)continue;
-    const maxX=Math.max(...coords.map(([x])=>x));
-    const minY=Math.min(...coords.map(([,y])=>y));
-    const bx=(maxX+1)*TILE-14/zoom, by=minY*TILE, bs=14/zoom;
-    if(wx>=bx&&wx<=bx+bs&&wy>=by&&wy<=by+bs) return gid;
-  }
-  return null;
-}
-
-// Right-click: reveal (delete) whichever fog group contains that tile
-function fogGroupAtTile(tx,ty){
-  const k=key(tx,ty);
-  for(const gid in fogGroups){
-    if(fogGroups[gid].cells&&fogGroups[gid].cells[k]) return gid;
-  }
-  return null;
-}
-
-// ── Pointer events ────────────────────────────────────────────────────────────
-let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0;
-let spaceDown=false;
-
-window.addEventListener("keydown",e=>{
-  if(e.code==="Space"){spaceDown=true;canvas.style.cursor="grab";}
-  if(e.code==="Escape"){
-    if(placingToken){placingToken=null;toast("Placement cancelled.");}
-    if(selectPhase&&selectPhase!=="marquee")commitSelection();
-  }
-  if((e.ctrlKey||e.metaKey)&&e.code==="KeyZ"&&!e.shiftKey){ e.preventDefault(); undo(); }
-  if((e.ctrlKey||e.metaKey)&&(e.code==="KeyY"||(e.code==="KeyZ"&&e.shiftKey))){ e.preventDefault(); redo(); }
-});
-window.addEventListener("keyup",e=>{ if(e.code==="Space"){spaceDown=false;canvas.style.cursor="crosshair";} });
-
-canvas.addEventListener("wheel",e=>{
-  e.preventDefault();
-  const factor=e.deltaY<0?1.1:0.9;
-  const[sx,sy]=screenPos(e);
-  camX=sx-(sx-camX)*factor; camY=sy-(sy-camY)*factor;
-  zoom=Math.min(Math.max(zoom*factor,0.1),4);
-},{passive:false});
-
-canvas.addEventListener("contextmenu",e=>{
-  e.preventDefault();
-  const[sx,sy]=screenPos(e);
-  const[wx,wy]=toWorld(sx,sy);
-  const[tx,ty]=worldToTile(wx,wy);
-  // Right-click token = delete it
-  const tokId=tokenAtTile(tx,ty);
-  if(tokId){ deleteToken(tokId); return; }
-  // Right-click fog = reveal (delete group)
-  const gid=fogGroupAtTile(tx,ty);
-  if(gid){ deleteFogGroup(gid); return; }
+// Die buttons
+document.querySelectorAll(".die-btn").forEach(btn=>{
+  btn.onclick=()=>rollDie(parseInt(btn.dataset.sides));
 });
 
-canvas.addEventListener("pointermove",e=>{
-  const[sx,sy]=screenPos(e);
-  if(panning){camX=camStartX+(sx-panStartX);camY=camStartY+(sy-panStartY);return;}
-  const[wx,wy]=toWorld(sx,sy);
-  hoverTileX=Math.floor(wx/TILE); hoverTileY=Math.floor(wy/TILE);
-  coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
-
-  if(draggingToken){
-    const newTX=Math.floor(wx/TILE)-draggingToken.offsetTX;
-    const newTY=Math.floor(wy/TILE)-draggingToken.offsetTY;
-    tokens[draggingToken.id].x=newTX;
-    tokens[draggingToken.id].y=newTY;
-    return;
-  }
-  if(currentShape==="select"&&selectPhase==="moving"){
-    moveOffX=Math.round((wx-moveStartWorldX)/TILE);
-    moveOffY=Math.round((wy-moveStartWorldY)/TILE);
-    canvas.style.cursor="grabbing"; return;
-  }
-  if(dragging&&fogMode){curX=wx;curY=wy;return;}
-  if(dragging){curX=wx;curY=wy;}
-  if(currentShape==="select"&&selectPhase==="selected"&&inSelection(wx,wy)) canvas.style.cursor="move";
-  else if(currentShape==="select") canvas.style.cursor="crosshair";
+// Pan & ping
+let pointerMoved=false;
+viewport.addEventListener("pointerdown",e=>{
+  pointerMoved=false;
+  if(pingMode)return; // don't pan while pinging
+  panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camX;camStartY=camY;
+  viewport.classList.add("grabbing");viewport.setPointerCapture(e.pointerId);
 });
-
-canvas.addEventListener("pointerdown",e=>{
-  const[sx,sy]=screenPos(e);
-  if(e.button===1||spaceDown){
-    canvas.setPointerCapture(e.pointerId);
-    panning=true;panStartX=sx;panStartY=sy;camStartX=camX;camStartY=camY;
-    canvas.style.cursor="grabbing";return;
-  }
-  if(e.button!==0)return;
-  const[wx,wy]=toWorld(sx,sy);
-  const[tx,ty]=worldToTile(wx,wy);
-
-  // Ping mode
+viewport.addEventListener("pointermove",e=>{
+  if(!panning)return;
+  pointerMoved=true;
+  camX=camStartX+(e.clientX-panStartX);camY=camStartY+(e.clientY-panStartY);
+});
+viewport.addEventListener("pointerup",e=>{
   if(pingMode){
-    sendPing(sx,sy);
+    sendPing(e.clientX-viewport.getBoundingClientRect().left, e.clientY-viewport.getBoundingClientRect().top);
     pingMode=false;
     document.getElementById("pingBtn").classList.remove("active");
+    viewport.classList.remove("pinging");
     return;
   }
-
-  // Stamp click
-  if(currentStamp){
-    const k=key(tx,ty);
-    pushUndo();
-    if(currentStamp==="erase"){ deleteStamp(k); }
-    else{ stamps[k]=currentStamp; saveStamp(k,currentStamp); }
-    return;
-  }
-
-  // Place token click
-  if(placingToken){
-    placingToken.x=tx; placingToken.y=ty;
-    tokens[placingToken.id]={...placingToken};
-    saveToken(placingToken.id,placingToken);
-    placingToken=null;
-    toast("Token placed");
-    return;
-  }
-
-  // Fog X button or drag-paint
-  if(fogMode){
-    const hitGid=fogGroupXHit(wx,wy);
-    if(hitGid){ deleteFogGroup(hitGid); return; }
-    canvas.setPointerCapture(e.pointerId);
-    dragging=true; startX=wx;startY=wy;curX=wx;curY=wy;
-    return;
-  }
-
-  // Token drag
-  const tokId=tokenAtTile(tx,ty);
-  if(tokId){
-    canvas.setPointerCapture(e.pointerId);
-    draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y};
-    return;
-  }
-
-  // Select tool
-  if(currentShape==="select"){
-    if((selectPhase==="selected"||selectPhase==="moving")&&inSelection(wx,wy)){
-      selectPhase="moving";
-      moveStartWorldX=wx-moveOffX*TILE; moveStartWorldY=wy-moveOffY*TILE;
-      canvas.style.cursor="grabbing"; return;
-    }
-    if(selectPhase==="selected"||selectPhase==="moving")commitSelection();
-    selectPhase="marquee"; dragging=true;
-    canvas.setPointerCapture(e.pointerId);
-    startX=wx;startY=wy;curX=wx;curY=wy;
-    return;
-  }
-
-  dragging=true;
-  canvas.setPointerCapture(e.pointerId);
-  startX=wx;startY=wy;curX=wx;curY=wy;
+  panning=false;viewport.classList.remove("grabbing");
 });
-
-canvas.addEventListener("pointerup",e=>{
-  if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":"crosshair";return;}
-
-  // Finish token drag
-  if(draggingToken){
-    saveToken(draggingToken.id,tokens[draggingToken.id]);
-    draggingToken=null;
-    return;
-  }
-
-  // Fog paint — save as a new named group
-  if(fogMode&&dragging){
-    dragging=false;
-    const minX=Math.floor(Math.min(startX,curX)/TILE);
-    const maxX=Math.floor(Math.max(startX,curX)/TILE);
-    const minY=Math.floor(Math.min(startY,curY)/TILE);
-    const maxY=Math.floor(Math.max(startY,curY)/TILE);
-    const cells={};
-    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) cells[key(x,y)]=true;
-    const gid="fog_"+Date.now();
-    fogGroups[gid]={cells};
-    saveFog();
-    return;
-  }
-
-  if(currentShape==="select"&&selectPhase==="moving"){selectPhase="selected";canvas.style.cursor="move";return;}
-  if(currentShape==="select"&&selectPhase==="marquee"&&dragging){
-    dragging=false;
-    const minX=Math.floor(Math.min(startX,curX)/TILE);
-    const maxX=Math.floor(Math.max(startX,curX)/TILE);
-    const minY=Math.floor(Math.min(startY,curY)/TILE);
-    const maxY=Math.floor(Math.max(startY,curY)/TILE);
-    pushUndo();
-    liftSelection(minX,minY,maxX,maxY);
-    selectPhase=Object.keys(selectTiles).length>0?"selected":null;
-    canvas.style.cursor=selectPhase?"move":"crosshair";
-    return;
-  }
-
-  if(!dragging)return;
-  dragging=false;
-
-  pushUndo();
-  const minX=Math.floor(Math.min(startX,curX)/TILE);
-  const maxX=Math.floor(Math.max(startX,curX)/TILE);
-  const minY=Math.floor(Math.min(startY,curY)/TILE);
-  const maxY=Math.floor(Math.max(startY,curY)/TILE);
-
-  if(currentShape==="rect"){
-    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++) applyTile(x,y);
-  }else if(currentShape==="circle"){
-    const cx=(minX+maxX)/2,cy=(minY+maxY)/2;
-    const rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;
-    for(let x=minX;x<=maxX;x++) for(let y=minY;y<=maxY;y++){
-      const dx=(x-cx)/rx,dy=(y-cy)/ry;
-      if(dx*dx+dy*dy<=1)applyTile(x,y);
-    }
-  }else if(currentShape==="line"){
-    let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE);
-    let x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);
-    const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0);
-    const sx=x0<x1?1:-1,sy=y0<y1?1:-1;
-    let err=dx-dy;
-    while(true){
-      applyTile(x0,y0);
-      if(x0===x1&&y0===y1)break;
-      const e2=2*err;
-      if(e2>-dy){err-=dy;x0+=sx;}
-      if(e2<dx){err+=dx;y0+=sy;}
-    }
-  }
-  scheduleSave();
-});
+viewport.addEventListener("wheel",e=>{
+  e.preventDefault();
+  const factor=e.deltaY<0?1.1:.9;
+  const rect=viewport.getBoundingClientRect();
+  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  camX=mx-(mx-camX)*factor;camY=my-(my-camY)*factor;
+  zoom=Math.min(Math.max(zoom*factor,.1),4);
+  scaleLabel.textContent=`${Math.round(zoom*100)}%`;
+},{passive:false});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
+  if(location.protocol==="file:"){
+    overlayMsg.innerHTML=`<span style="color:#e04040;font-family:'Cinzel',serif;font-size:13px;">Must be served over http://</span><br><br><span style="font-size:11px;color:#6b5a38;line-height:1.8;">Run: <code style="color:#c8a84b;">python -m http.server 8080</code></span>`;
+    return;
+  }
+
+  // Name prompt
   if(!playerName) showNameModal();
   else nameDisplay.textContent=playerName;
+
+  overlayMsg.textContent="Loading textures…";
   await loadTextures();
-  buildTerrainDropdown();
-  buildStampDropdown();
-  selectTerrain("grass");
+  overlayMsg.textContent="Connecting to RTDB…";
   subscribeLive();
-  render();
+  draw();
 })();
 </script>
 </body>
