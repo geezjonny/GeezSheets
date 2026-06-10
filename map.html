@@ -9,8 +9,6 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#0d0b08;--panel:#1a1510;--border:#3d2e1a;--gold:#c8a84b;--gold-dim:#7a6228;--text:#d4c49a;--dim:#6b5a38}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
-
-/* ── HUD ── */
 #hud{position:fixed;top:0;left:0;right:0;height:48px;background:rgba(13,11,8,.92);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;z-index:20;backdrop-filter:blur(6px)}
 #hud h1{font-family:'Cinzel',serif;font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.12em;white-space:nowrap}
 .sep{width:1px;height:22px;background:var(--border);flex-shrink:0}
@@ -24,65 +22,48 @@ button.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168
 #status.error{color:#e04040}
 #player-name-display{font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);margin-left:auto;flex-shrink:0;cursor:pointer}
 #player-name-display:hover{color:var(--gold)}
-
-/* ── Viewport ── */
 #viewport{position:fixed;top:48px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab}
 #viewport.grabbing{cursor:grabbing}
 #viewport.pinging{cursor:crosshair}
 canvas{display:block}
-/* weather */
+#scale-label{position:fixed;bottom:10px;right:14px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.08em;pointer-events:none}
 #weather-indicator{position:fixed;bottom:10px;left:14px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;pointer-events:none}
-
-/* ── Dice panel ── */
-#dice-panel{position:fixed;bottom:48px;left:50%;transform:translateX(-50%);background:rgba(13,11,8,.95);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:30;min-width:320px;backdrop-filter:blur(8px);transition:opacity .3s,transform .3s}
+#dice-panel{position:fixed;bottom:0;left:50%;transform:translateX(-50%);background:rgba(13,11,8,.95);border:1px solid var(--border);border-top-left-radius:8px;border-top-right-radius:8px;padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:30;min-width:320px;backdrop-filter:blur(8px);transition:opacity .3s,transform .3s}
 #dice-panel.hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(16px)}
 #dice-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.die-btn{width:44px;height:44px;padding:0;font-family:'Cinzel',serif;font-size:11px;border-radius:6px;display:flex;align-items:center;justify-content:center}
-#dice-result{font-family:'Cinzel',serif;font-size:36px;color:var(--gold);min-height:48px;text-align:center;letter-spacing:.05em;transition:color .2s}
+.die-btn{width:44px;height:44px;padding:0;font-family:'Cinzel',serif;font-size:11px;border-radius:6px}
+#dice-result{font-family:'Cinzel',serif;font-size:36px;color:var(--gold);min-height:48px;text-align:center;letter-spacing:.05em}
 #dice-result.rolling{color:var(--dim)}
 #dice-log{font-family:'Cinzel',serif;font-size:10px;color:var(--dim);text-align:center;min-height:16px}
-
-/* ── Overlay / modals ── */
-#overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50;transition:opacity .6s}
-#overlay.hidden{opacity:0;pointer-events:none}
-#overlay h2{font-family:'Cinzel',serif;font-size:22px;color:var(--gold);letter-spacing:.15em}
-.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-#overlay p{font-size:12px;color:var(--dim);letter-spacing:.06em}
-
-/* Name prompt modal */
-#name-modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:60}
-#name-modal.hidden{display:none}
-#name-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:28px;min-width:300px;text-align:center;display:flex;flex-direction:column;gap:16px}
-#name-box h2{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);letter-spacing:.1em}
-#name-box p{font-size:12px;color:var(--dim)}
-#name-input{background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:15px;padding:8px 12px;border-radius:4px;outline:none;text-align:center;width:100%}
-#name-input:focus{border-color:var(--gold-dim)}
-#name-confirm{width:100%;height:36px;border-color:var(--gold);color:var(--gold)}
-
-/* Ping toast */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:60}
+.modal-overlay.hidden{display:none}
+.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:28px;min-width:300px;text-align:center;display:flex;flex-direction:column;gap:16px}
+.modal-box h2{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);letter-spacing:.1em}
+.modal-box p{font-size:12px;color:var(--dim)}
+.modal-box input{background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:15px;padding:8px 12px;border-radius:4px;outline:none;text-align:center;width:100%}
+.modal-box input:focus{border-color:var(--gold-dim)}
+.modal-box button.primary{border-color:var(--gold);color:var(--gold);width:100%;height:36px}
 #ping-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
 #ping-toast.show{opacity:1}
 </style>
 </head>
 <body>
-
-<!-- Name prompt -->
-<div id="name-modal">
-  <div id="name-box">
+<div id="name-modal" class="modal-overlay">
+  <div class="modal-box">
     <h2>Who Are You?</h2>
     <p>Enter your name to join the session</p>
     <input id="name-input" type="text" placeholder="Your name…" maxlength="30" spellcheck="false">
-    <button id="name-confirm">Enter the Dungeon</button>
+    <button id="name-confirm" class="primary">Enter the Dungeon</button>
   </div>
 </div>
-
-<!-- Loading overlay -->
-<div id="overlay">
-  <h2>Dungeon Renderer</h2>
-  <div class="spinner"></div>
-  <p id="overlay-msg">Loading…</p>
+<div id="overlay" class="modal-overlay">
+  <div class="modal-box" style="text-align:center">
+    <h2>Dungeon Renderer</h2>
+    <div style="width:36px;height:36px;border:3px solid #3d2e1a;border-top-color:#c8a84b;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto"></div>
+    <p id="overlay-msg">Loading…</p>
+  </div>
 </div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
 <div id="hud">
   <h1>⚔ DUNGEON</h1>
@@ -99,13 +80,10 @@ canvas{display:block}
   <span id="player-name-display" title="Click to change name"></span>
 </div>
 
-<div id="viewport">
-  <canvas id="canvas"></canvas>
-</div>
+<div id="viewport"><canvas id="canvas"></canvas></div>
 <div id="scale-label">100%</div>
 <div id="weather-indicator"></div>
 
-<!-- Dice panel -->
 <div id="dice-panel" class="hidden">
   <div id="dice-btns">
     <button class="die-btn" data-sides="4">d4</button>
@@ -119,7 +97,6 @@ canvas{display:block}
   <div id="dice-result">—</div>
   <div id="dice-log"></div>
 </div>
-
 <div id="ping-toast"></div>
 
 <script type="module">
@@ -137,66 +114,50 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
 
-// ── Constants ────────────────────────────────────────────────────────────────
 const TILE=32;
 const TEXTURE_PATH="./textures/";
+const PROP_PATH="./props/";
+const TOKEN_PATH="./tokens/";
 const TERRAINS=["grass","stone","wood","water","cobble","sand","lava","dirt","gravel","ice","void","carpet","marble","mud"];
-const FALLBACK={
-  grass:"#3a6b3a",stone:"#6b6b6b",wood:"#7a5c3a",water:"#2a5a8a",cobble:"#9a9a8a",
-  sand:"#b8a86a",lava:"#8b2a0a",dirt:"#6b4a2a",gravel:"#555a50",ice:"#a8d0e0",
-  void:"#080808",carpet:"#6b2a5a",marble:"#d0ccc0",mud:"#4a3520",
-};
-const DICE=[4,6,8,10,12,20,100];
+const FALLBACK={grass:"#3a6b3a",stone:"#6b6b6b",wood:"#7a5c3a",water:"#2a5a8a",cobble:"#9a9a8a",sand:"#b8a86a",lava:"#8b2a0a",dirt:"#6b4a2a",gravel:"#555a50",ice:"#a8d0e0",void:"#080808",carpet:"#6b2a5a",marble:"#d0ccc0",mud:"#4a3520"};
 
-// ── DOM ───────────────────────────────────────────────────────────────────────
-const canvas      = document.getElementById("canvas");
-const ctx         = canvas.getContext("2d");
-const viewport    = document.getElementById("viewport");
-const statusEl    = document.getElementById("status");
-const overlayEl   = document.getElementById("overlay");
-const overlayMsg  = document.getElementById("overlay-msg");
-const mapInput    = document.getElementById("map-input");
-const scaleLabel  = document.getElementById("scale-label");
-const dicePanel   = document.getElementById("dice-panel");
-const diceResult  = document.getElementById("dice-result");
-const diceLog     = document.getElementById("dice-log");
-const pingToast   = document.getElementById("ping-toast");
-const nameModal   = document.getElementById("name-modal");
-const nameInput   = document.getElementById("name-input");
-const nameDisplay = document.getElementById("player-name-display");
+const canvas=document.getElementById("canvas");
+const ctx=canvas.getContext("2d");
+const viewport=document.getElementById("viewport");
+const statusEl=document.getElementById("status");
+const overlayEl=document.getElementById("overlay");
+const overlayMsg=document.getElementById("overlay-msg");
+const mapInput=document.getElementById("map-input");
+const scaleLabel=document.getElementById("scale-label");
+const dicePanel=document.getElementById("dice-panel");
+const diceResult=document.getElementById("dice-result");
+const diceLog=document.getElementById("dice-log");
+const pingToast=document.getElementById("ping-toast");
+const nameModal=document.getElementById("name-modal");
+const nameInput=document.getElementById("name-input");
+const nameDisplay=document.getElementById("player-name-display");
 
-// ── Player name ───────────────────────────────────────────────────────────────
-let playerName = localStorage.getItem("vtt_player_name")||"";
-
-function showNameModal(){
-  nameInput.value=playerName;
-  nameModal.classList.remove("hidden");
-  setTimeout(()=>nameInput.focus(),50);
-}
-
-function confirmName(){
-  const n=nameInput.value.trim();
-  if(!n)return;
-  playerName=n;
-  localStorage.setItem("vtt_player_name",n);
-  nameModal.classList.add("hidden");
-  nameDisplay.textContent=playerName;
-}
-
+let playerName=localStorage.getItem("vtt_player_name")||"";
+function showNameModal(){nameInput.value=playerName;nameModal.classList.remove("hidden");setTimeout(()=>nameInput.focus(),50);}
+function confirmName(){const n=nameInput.value.trim();if(!n)return;playerName=n;localStorage.setItem("vtt_player_name",n);nameModal.classList.add("hidden");nameDisplay.textContent=playerName;}
 document.getElementById("name-confirm").onclick=confirmName;
-nameInput.addEventListener("keydown",e=>{ if(e.key==="Enter")confirmName(); });
+nameInput.addEventListener("keydown",e=>{if(e.key==="Enter")confirmName();});
 nameDisplay.onclick=showNameModal;
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let tiles={},textures={},fog={},tokens={},stamps={};
+let tiles={},textures={},fog={},tokens={},stamps={},roofs={},props={};
+let propTextures={},tokenTextures={};
+let propDefs={};
 let camX=0,camY=0,zoom=1;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0;
 let liveUnsub=null,firstLoad=true;
+let pingMode=false;
+const activePings={};
 
 // Weather
 const weather={rain:{enabled:false,intensity:0.5},snow:{enabled:false,intensity:0.3},mist:{enabled:false,intensity:0.4},storm:{enabled:false,intensity:0.5}};
 const rainDrops=[],snowFlakes=[],mistClouds=[];
 let lastLightning=0,lightningAlpha=0;
+let diceVisible=false,shuffleTimer=null;
 
 function initParticles(){
   const W=window.innerWidth,H=window.innerHeight;
@@ -207,316 +168,198 @@ function initParticles(){
 }
 initParticles();
 
-onValue(ref(db,"weather"),snap=>{
-  const data=snap.val();
-  if(!data)return;
-  ["rain","snow","mist","storm"].forEach(t=>{if(data[t])Object.assign(weather[t],data[t]);});
-  const active=["rain","snow","mist","storm"].filter(t=>weather[t].enabled).map(t=>t[0].toUpperCase()+t.slice(1));
-  document.getElementById("weather-indicator").textContent=active.length?active.join(" · "):"";
-});
-
-function drawWeather(W,H){
-  const now=Date.now();
-  if(weather.mist.enabled){
-    const intensity=weather.mist.intensity;
-    mistClouds.forEach(c=>{
-      c.x+=c.speed;if(c.x-c.rx>W)c.x=-c.rx;
-      const pulse=0.5+0.5*Math.sin(now/3000+c.phase);
-      const alpha=intensity*0.18*pulse;
-      const grad=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,c.rx);
-      grad.addColorStop(0,`rgba(180,190,210,${alpha})`);
-      grad.addColorStop(1,"rgba(180,190,210,0)");
-      ctx.save();ctx.scale(1,c.ry/c.rx);
-      ctx.fillStyle=grad;ctx.beginPath();ctx.arc(c.x,c.y*(c.rx/c.ry),c.rx,0,Math.PI*2);ctx.fill();
-      ctx.restore();
-    });
-  }
-  if(weather.rain.enabled){
-    const intensity=weather.rain.intensity;
-    const count=Math.floor(intensity*rainDrops.length);
-    ctx.strokeStyle=`rgba(174,194,220,${0.25+intensity*0.35})`;ctx.lineWidth=1;
-    for(let i=0;i<count;i++){
-      const d=rainDrops[i];
-      d.y+=d.speed;d.x+=d.speed*0.22;
-      if(d.y>H){d.y=-20;d.x=Math.random()*W;}
-      if(d.x>W)d.x=0;
-      ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+d.len*0.22,d.y+d.len);ctx.stroke();
-    }
-  }
-  if(weather.snow.enabled){
-    const intensity=weather.snow.intensity;
-    const count=Math.floor(intensity*snowFlakes.length);
-    ctx.fillStyle=`rgba(220,230,255,${0.5+intensity*0.3})`;
-    for(let i=0;i<count;i++){
-      const f=snowFlakes[i];
-      f.y+=f.speed;f.x+=f.drift+Math.sin(now/1200+i)*0.3;
-      if(f.y>H){f.y=-10;f.x=Math.random()*W;}
-      if(f.x>W)f.x=0;if(f.x<0)f.x=W;
-      ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();
-    }
-  }
-  if(weather.storm.enabled){
-    const interval=8000-weather.storm.intensity*6000;
-    if(now-lastLightning>interval&&Math.random()<0.02){
-      lastLightning=now;lightningAlpha=1;
-      ctx.save();ctx.strokeStyle="rgba(200,210,255,0.9)";ctx.lineWidth=2;
-      let bx=W*0.2+Math.random()*W*0.6,by=0;
-      ctx.beginPath();ctx.moveTo(bx,by);
-      while(by<H*0.7){bx+=Math.random()*80-40;by+=Math.random()*60+30;ctx.lineTo(bx,by);}
-      ctx.stroke();ctx.restore();
-    }
-    if(lightningAlpha>0){
-      ctx.fillStyle=`rgba(180,190,255,${lightningAlpha*0.12})`;
-      ctx.fillRect(0,0,W,H);
-      lightningAlpha=Math.max(0,lightningAlpha-0.06);
-    }
-  }
-}
-
-// Pings: { id: {wx,wy,name,startTime} } — world pixel coords, local only
-const activePings={};
-
-// Dice
-let diceVisible=false;
-let currentRoll=null; // { sides, result, roller }
-let shuffleTimer=null;
-
-// Ping mode
-let pingMode=false;
-
-// ── Textures ──────────────────────────────────────────────────────────────────
 async function loadTextures(){
   await Promise.all(TERRAINS.map(t=>new Promise(resolve=>{
-    const img=new Image();
-    img.onload=()=>{textures[t]=img;resolve()};
-    img.onerror=()=>resolve();
-    img.src=`${TEXTURE_PATH}${t}.png`;
+    const img=new Image();img.onload=()=>{textures[t]=img;resolve()};img.onerror=()=>resolve();img.src=`${TEXTURE_PATH}${t}.png`;
   })));
 }
 
-// ── Resize ────────────────────────────────────────────────────────────────────
+function tryLoadPropTexture(id){
+  if(propTextures[id]!==undefined)return;
+  propTextures[id]=null;
+  const img=new Image();
+  img.onload=()=>{propTextures[id]=img;};
+  img.onerror=()=>{propTextures[id]=null;};
+  img.src=`${PROP_PATH}${id}.png`;
+}
+
+function tryLoadTokenTexture(characterId,name){
+  if(tokenTextures[characterId]!==undefined)return;
+  tokenTextures[characterId]=null;
+  const img=new Image();
+  const fname=(name||characterId).toLowerCase().replace(/\s+/g,"_");
+  img.onload=()=>{tokenTextures[characterId]=img;};
+  img.onerror=()=>{tokenTextures[characterId]=null;};
+  img.src=`${TOKEN_PATH}${fname}.png`;
+}
+
 function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;initParticles();}
 resize();
 window.addEventListener("resize",resize);
 
-// ── Camera ────────────────────────────────────────────────────────────────────
 function fitCamera(){
-  const coords=Object.keys(tiles).map(k=>k.split(",").map(Number));
-  if(!coords.length)return;
+  const coords=Object.keys(tiles).map(k=>k.split(",").map(Number));if(!coords.length)return;
   const xs=coords.map(([x])=>x),ys=coords.map(([,y])=>y);
-  const minX=Math.min(...xs),maxX=Math.max(...xs);
-  const minY=Math.min(...ys),maxY=Math.max(...ys);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
   const mapW=(maxX-minX+1)*TILE,mapH=(maxY-minY+1)*TILE;
   zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);
-  camX=canvas.width/2-(minX*TILE+mapW/2)*zoom;
-  camY=canvas.height/2-(minY*TILE+mapH/2)*zoom;
+  camX=canvas.width/2-(minX*TILE+mapW/2)*zoom;camY=canvas.height/2-(minY*TILE+mapH/2)*zoom;
   scaleLabel.textContent=`${Math.round(zoom*100)}%`;
 }
 
 function toWorld(sx,sy){return[(sx-camX)/zoom,(sy-camY)/zoom];}
-
-// ── Status ────────────────────────────────────────────────────────────────────
 function setStatus(cls,text){statusEl.className=cls;statusEl.textContent=text;}
 
-// ── Firebase map listener ─────────────────────────────────────────────────────
+// Load prop definitions
+onValue(ref(db,"propDefs"),snap=>{
+  const data=snap.val();if(!data)return;
+  for(const[id,p]of Object.entries(data)){propDefs[id]=p;tryLoadPropTexture(id);}
+});
+
 function subscribeLive(){
   if(liveUnsub){liveUnsub();liveUnsub=null;}
   const mapName=mapInput.value.trim()||"dungeon-1";
   setStatus("","Connecting…");
   liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
     const data=snap.val();
-    for(const k in tiles)delete tiles[k];
-    for(const k in fog)delete fog[k];
-    for(const k in tokens)delete tokens[k];
-    for(const k in stamps)delete stamps[k];
+    for(const k in tiles)delete tiles[k];for(const k in fog)delete fog[k];for(const k in tokens)delete tokens[k];
+    for(const k in stamps)delete stamps[k];for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fog,data.fog);
-      if(data.tokens)Object.assign(tokens,data.tokens);
+      if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
+      if(data.roofs)Object.assign(roofs,data.roofs);
+      if(data.props)Object.assign(props,data.props);
     }
     setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
     if(firstLoad){firstLoad=false;fitCamera();overlayEl.classList.add("hidden");}
   },()=>{setStatus("error","RTDB error");overlayEl.classList.add("hidden");});
 }
 
-// ── Ping system ───────────────────────────────────────────────────────────────
-function showPingToast(msg){
-  pingToast.textContent=msg;
-  pingToast.classList.add("show");
-  setTimeout(()=>pingToast.classList.remove("show"),2000);
-}
+onValue(ref(db,"weather"),snap=>{
+  const data=snap.val();if(!data)return;
+  ["rain","snow","mist","storm"].forEach(t=>{if(data[t])Object.assign(weather[t],data[t]);});
+  const active=["rain","snow","mist","storm"].filter(t=>weather[t].enabled).map(t=>t[0].toUpperCase()+t.slice(1));
+  document.getElementById("weather-indicator").textContent=active.length?active.join(" · "):"";
+});
 
-// Listen for incoming pings
+function showPingToast(msg){pingToast.textContent=msg;pingToast.classList.add("show");setTimeout(()=>pingToast.classList.remove("show"),2000);}
 onValue(ref(db,"pings"),snap=>{
-  const data=snap.val()||{};
-  const now=Date.now();
+  const data=snap.val()||{};const now=Date.now();
   for(const[id,ping]of Object.entries(data)){
-    if(!activePings[id]&&now-ping.t<4000){
-      // Convert tile coords back to world px
-      activePings[id]={
-        wx:ping.x*TILE+TILE/2,
-        wy:ping.y*TILE+TILE/2,
-        name:ping.name,
-        startTime:now,
-        id,
-      };
-      if(ping.name!==playerName) showPingToast(`📍 ${ping.name} pinged!`);
-    }
+    if(!activePings[id]&&now-ping.t<4000){activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);}
   }
 });
-
 async function sendPing(sx,sy){
-  const[wx,wy]=toWorld(sx,sy);
-  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
-  const pingRef=push(ref(db,"pings"));
-  await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});
-  // Auto-delete after 4s
-  setTimeout(()=>remove(pingRef),4000);
+  const[wx,wy]=toWorld(sx,sy);const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
+  const pingRef=push(ref(db,"pings"));await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});setTimeout(()=>remove(pingRef),4000);
 }
 
-// ── Dice system ───────────────────────────────────────────────────────────────
-// Listen for dice rolls from anyone
+// Dice
 onValue(ref(db,"dice/last"),snap=>{
-  const data=snap.val();
-  if(!data)return;
-  if(Date.now()-data.t>10000)return;
-  dicePanel.classList.remove("hidden");
-  document.getElementById("diceBtn").classList.add("active");
-  diceVisible=true;
-  diceResult.classList.add("rolling");
-  diceLog.textContent=`${data.roller} rolled d${data.sides}…`;
-  let ticks=0, total=18;
-  clearInterval(shuffleTimer);
-  shuffleTimer=setInterval(()=>{
-    ticks++;
-    diceResult.textContent=Math.ceil(Math.random()*data.sides);
-    if(ticks>=total){
-      clearInterval(shuffleTimer);
-      diceResult.textContent=data.result;
-      diceResult.classList.remove("rolling");
-      diceLog.textContent=`${data.roller} rolled d${data.sides} → ${data.result}`;
-      setTimeout(()=>{
-        dicePanel.classList.add("hidden");
-        document.getElementById("diceBtn").classList.remove("active");
-        diceVisible=false;
-      },5000);
-    }
-  },60);
+  const data=snap.val();if(!data)return;if(Date.now()-data.t>10000)return;
+  dicePanel.classList.remove("hidden");document.getElementById("diceBtn").classList.add("active");diceVisible=true;
+  diceResult.classList.add("rolling");diceLog.textContent=`${data.roller} rolled d${data.sides}…`;
+  let ticks=0;clearInterval(shuffleTimer);
+  shuffleTimer=setInterval(()=>{ticks++;diceResult.textContent=Math.ceil(Math.random()*data.sides);if(ticks>=18){clearInterval(shuffleTimer);diceResult.textContent=data.result;diceResult.classList.remove("rolling");diceLog.textContent=`${data.roller} rolled d${data.sides} → ${data.result}`;setTimeout(()=>{dicePanel.classList.add("hidden");document.getElementById("diceBtn").classList.remove("active");diceVisible=false;},5000);}},60);
 });
-
-async function rollDie(sides){
-  if(!playerName){showNameModal();return;}
-  const result=Math.ceil(Math.random()*sides);
-  await set(ref(db,"dice/last"),{sides,result,roller:playerName,t:Date.now()});
-}
+async function rollDie(sides){if(!playerName){showNameModal();return;}const result=Math.ceil(Math.random()*sides);await set(ref(db,"dice/last"),{sides,result,roller:playerName,t:Date.now()});}
+document.getElementById("diceBtn").onclick=()=>{diceVisible=!diceVisible;dicePanel.classList.toggle("hidden",!diceVisible);document.getElementById("diceBtn").classList.toggle("active",diceVisible);};
+document.querySelectorAll(".die-btn").forEach(btn=>{btn.onclick=()=>rollDie(parseInt(btn.dataset.sides));});
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
 function hasWall(x,y){const t=tiles[`${x},${y}`];return t&&t.walls;}
 
+function drawTileAt(x,y,terrain){
+  const px=x*TILE,py=y*TILE;
+  if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);
+  else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}
+}
+
 function drawToken(tok){
-  const px=tok.x*TILE,py=tok.y*TILE;
-  const r=TILE*0.42,cx=px+TILE/2,cy=py+TILE/2;
-  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
-  ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();
-  ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();
-  ctx.fillStyle="#fff";
-  ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;
-  ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.fillText((tok.name||"?")[0].toUpperCase(),cx,cy);
-  ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;
-  ctx.fillStyle="#ddd";
-  ctx.fillText(tok.name||"",cx,py+TILE+10/zoom);
-  const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+1/zoom;
+  const px=tok.x*TILE,py=tok.y*TILE,r=TILE*0.42,cx=px+TILE/2,cy=py+TILE/2;
+  const img=tokenTextures[tok.characterId];
+  if(img){
+    ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();
+    ctx.drawImage(img,px,py,TILE,TILE);ctx.restore();
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();
+  }else{
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();
+    ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();
+    ctx.fillStyle="#fff";ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText((tok.name||"?")[0].toUpperCase(),cx,cy);
+  }
+  ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.fillStyle="#ddd";ctx.textAlign="center";ctx.textBaseline="top";
+  ctx.fillText(tok.name||"",cx,py+TILE+2/zoom);
+  const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+12/zoom;
   const pct=Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1)));
   ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(bx,by,bw,bh);
-  ctx.fillStyle=pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#aa3030";
-  ctx.fillRect(bx,by,bw*pct,bh);
+  ctx.fillStyle=pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#aa3030";ctx.fillRect(bx,by,bw*pct,bh);
+}
+
+function drawWeather(W,H){
+  const now=Date.now();
+  if(weather.mist.enabled){const intensity=weather.mist.intensity;mistClouds.forEach(c=>{c.x+=c.speed;if(c.x-c.rx>W)c.x=-c.rx;const pulse=0.5+0.5*Math.sin(now/3000+c.phase);const alpha=intensity*0.18*pulse;const grad=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,c.rx);grad.addColorStop(0,`rgba(180,190,210,${alpha})`);grad.addColorStop(1,"rgba(180,190,210,0)");ctx.save();ctx.scale(1,c.ry/c.rx);ctx.fillStyle=grad;ctx.beginPath();ctx.arc(c.x,c.y*(c.rx/c.ry),c.rx,0,Math.PI*2);ctx.fill();ctx.restore();});}
+  if(weather.rain.enabled){const intensity=weather.rain.intensity;const count=Math.floor(intensity*rainDrops.length);ctx.strokeStyle=`rgba(174,194,220,${0.25+intensity*0.35})`;ctx.lineWidth=1;for(let i=0;i<count;i++){const d=rainDrops[i];d.y+=d.speed;d.x+=d.speed*0.22;if(d.y>H){d.y=-20;d.x=Math.random()*W;}if(d.x>W)d.x=0;ctx.beginPath();ctx.moveTo(d.x,d.y);ctx.lineTo(d.x+d.len*0.22,d.y+d.len);ctx.stroke();}}
+  if(weather.snow.enabled){const intensity=weather.snow.intensity;const count=Math.floor(intensity*snowFlakes.length);ctx.fillStyle=`rgba(220,230,255,${0.5+intensity*0.3})`;for(let i=0;i<count;i++){const f=snowFlakes[i];f.y+=f.speed;f.x+=f.drift+Math.sin(now/1200+i)*0.3;if(f.y>H){f.y=-10;f.x=Math.random()*W;}if(f.x>W)f.x=0;if(f.x<0)f.x=W;ctx.beginPath();ctx.arc(f.x,f.y,f.r,0,Math.PI*2);ctx.fill();}}
+  if(weather.storm.enabled){const interval=8000-weather.storm.intensity*6000;if(now-lastLightning>interval&&Math.random()<0.02){lastLightning=now;lightningAlpha=1;ctx.save();ctx.strokeStyle="rgba(200,210,255,0.9)";ctx.lineWidth=2;let bx=W*0.2+Math.random()*W*0.6,by=0;ctx.beginPath();ctx.moveTo(bx,by);while(by<H*0.7){bx+=Math.random()*80-40;by+=Math.random()*60+30;ctx.lineTo(bx,by);}ctx.stroke();ctx.restore();}if(lightningAlpha>0){ctx.fillStyle=`rgba(180,190,255,${lightningAlpha*0.12})`;ctx.fillRect(0,0,W,H);lightningAlpha=Math.max(0,lightningAlpha-0.06);}}
 }
 
 function drawPings(){
   const now=Date.now();
   for(const[id,ping]of Object.entries(activePings)){
-    const age=(now-ping.startTime)/1000; // 0→3s
-    if(age>3){delete activePings[id];continue;}
-    const alpha=1-age/3;
-    // Convert world px to screen
-    const sx=ping.wx*zoom+camX, sy=ping.wy*zoom+camY;
-
-    // Three expanding rings
-    for(let i=0;i<3;i++){
-      const phase=(age+i*0.4)%1.2;
-      const r=(20+phase*60);
-      ctx.beginPath();
-      ctx.arc(sx,sy,r,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(255,200,50,${alpha*(1-phase/1.2)*0.8})`;
-      ctx.lineWidth=2.5;
-      ctx.stroke();
-    }
-
-    // Center dot
-    ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);
-    ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fill();
-
-    // Name label
-    ctx.font="bold 11px Cinzel,serif";
-    ctx.textAlign="center";ctx.textBaseline="bottom";
-    ctx.fillStyle=`rgba(255,220,80,${alpha})`;
-    ctx.fillText(ping.name,sx,sy-10);
+    const age=(now-ping.startTime)/1000;if(age>3){delete activePings[id];continue;}
+    const alpha=1-age/3,sx=ping.wx*zoom+camX,sy=ping.wy*zoom+camY;
+    for(let i=0;i<3;i++){const phase=(age+i*0.4)%1.2;ctx.beginPath();ctx.arc(sx,sy,20+phase*60,0,Math.PI*2);ctx.strokeStyle=`rgba(255,200,50,${alpha*(1-phase/1.2)*0.8})`;ctx.lineWidth=2.5;ctx.stroke();}
+    ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fill();
+    ctx.font="bold 11px Cinzel,serif";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fillText(ping.name,sx,sy-10);
   }
 }
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.save();
-  ctx.translate(camX,camY);ctx.scale(zoom,zoom);
+  ctx.save();ctx.translate(camX,camY);ctx.scale(zoom,zoom);
 
   // Tiles
-  for(const k in tiles){
-    const[x,y]=k.split(",").map(Number);
-    const terrain=tiles[k].terrain;
-    const px=x*TILE,py=y*TILE;
-    if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);
-    else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}
-  }
+  for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
 
   // Walls
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/zoom;ctx.lineCap="round";
-  for(const k in tiles){
-    if(!tiles[k].walls)continue;
-    const[x,y]=k.split(",").map(Number);
-    const px=x*TILE,py=y*TILE;
-    const edges=[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]];
-    for(const[dx,dy,x1,y1,x2,y2]of edges)
-      if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
-  }
+  for(const k in tiles){if(!tiles[k].walls)continue;const[x,y]=k.split(",").map(Number);const px=x*TILE,py=y*TILE;[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}});}
 
   // Stamps
-  ctx.save();
-  ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.font=`${Math.round(TILE*.65)}px serif`;
-  for(const[k,emoji]of Object.entries(stamps)){
-    const[x,y]=k.split(",").map(Number);
-    ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);
-  }
+  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
+  for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
   ctx.restore();
+
+  // Props
+  for(const[k,p]of Object.entries(props)){
+    const[x,y]=k.split(",").map(Number);
+    const def=propDefs[p.propId]||{emoji:"📦",w:1,h:1};
+    const px=x*TILE,py=y*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
+    const img=propTextures[p.propId];
+    if(img)ctx.drawImage(img,px,py,pw,ph);
+    else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
+  }
 
   // NPC tokens (below fog)
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(tok);
 
-  // Fog
+  // Fog — solid black for players
   ctx.fillStyle="rgba(0,0,0,1)";
-  for(const gid in fog){
-    const cells=(fog[gid]&&fog[gid].cells)||{};
-    for(const k in cells){
-      const[x,y]=k.split(",").map(Number);
-      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-    }
-  }
+  for(const gid in fog){const cells=(fog[gid]&&fog[gid].cells)||{};for(const k in cells){const[x,y]=k.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}
 
   // PC tokens (above fog)
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(tok);
+
+  // Roofs (above fog AND tokens — players can't see under)
+  ctx.save();ctx.globalAlpha=1;
+  for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}
+  ctx.restore();
 
   // Grid
   ctx.strokeStyle="rgba(255,255,255,.03)";ctx.lineWidth=1/zoom;
@@ -525,11 +368,8 @@ function draw(){
   for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
 
   ctx.restore();
-
-  // Screen-space effects (weather + pings on top of everything)
   drawWeather(canvas.width,canvas.height);
   drawPings();
-
   requestAnimationFrame(draw);
 }
 
@@ -539,74 +379,39 @@ document.getElementById("fitBtn").onclick=fitCamera;
 document.getElementById("sheetsBtn").onclick=()=>window.open("https://geezjonny.github.io/GeezSheets","_blank");
 mapInput.addEventListener("keydown",e=>{if(e.key==="Enter"){firstLoad=true;subscribeLive();}});
 
-// Ping button
 document.getElementById("pingBtn").onclick=()=>{
   if(!playerName){showNameModal();return;}
-  pingMode=!pingMode;
-  document.getElementById("pingBtn").classList.toggle("active",pingMode);
-  viewport.classList.toggle("pinging",pingMode);
-  if(pingMode)showPingToast("Click the map to ping");
+  pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);viewport.classList.toggle("pinging",pingMode);
+  if(pingMode){pingToast.textContent="Click the map to ping";pingToast.classList.add("show");setTimeout(()=>pingToast.classList.remove("show"),2000);}
 };
 
-// Dice toggle
-document.getElementById("diceBtn").onclick=()=>{
-  diceVisible=!diceVisible;
-  dicePanel.classList.toggle("hidden",!diceVisible);
-  document.getElementById("diceBtn").classList.toggle("active",diceVisible);
-};
-
-// Die buttons
-document.querySelectorAll(".die-btn").forEach(btn=>{
-  btn.onclick=()=>rollDie(parseInt(btn.dataset.sides));
-});
-
-// Pan & ping
-let pointerMoved=false;
 viewport.addEventListener("pointerdown",e=>{
-  pointerMoved=false;
-  if(pingMode)return; // don't pan while pinging
+  if(pingMode){
+    const rect=viewport.getBoundingClientRect();
+    sendPing(e.clientX-rect.left,e.clientY-rect.top);
+    pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;
+  }
   panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camX;camStartY=camY;
   viewport.classList.add("grabbing");viewport.setPointerCapture(e.pointerId);
 });
-viewport.addEventListener("pointermove",e=>{
-  if(!panning)return;
-  pointerMoved=true;
-  camX=camStartX+(e.clientX-panStartX);camY=camStartY+(e.clientY-panStartY);
-});
-viewport.addEventListener("pointerup",e=>{
-  if(pingMode){
-    sendPing(e.clientX-viewport.getBoundingClientRect().left, e.clientY-viewport.getBoundingClientRect().top);
-    pingMode=false;
-    document.getElementById("pingBtn").classList.remove("active");
-    viewport.classList.remove("pinging");
-    return;
-  }
-  panning=false;viewport.classList.remove("grabbing");
-});
+viewport.addEventListener("pointermove",e=>{if(!panning)return;camX=camStartX+(e.clientX-panStartX);camY=camStartY+(e.clientY-panStartY);});
+viewport.addEventListener("pointerup",()=>{panning=false;viewport.classList.remove("grabbing");});
 viewport.addEventListener("wheel",e=>{
-  e.preventDefault();
-  const factor=e.deltaY<0?1.1:.9;
-  const rect=viewport.getBoundingClientRect();
-  const mx=e.clientX-rect.left,my=e.clientY-rect.top;
-  camX=mx-(mx-camX)*factor;camY=my-(my-camY)*factor;
-  zoom=Math.min(Math.max(zoom*factor,.1),4);
+  e.preventDefault();const factor=e.deltaY<0?1.1:.9;
+  const rect=viewport.getBoundingClientRect();const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  camX=mx-(mx-camX)*factor;camY=my-(my-camY)*factor;zoom=Math.min(Math.max(zoom*factor,.1),4);
   scaleLabel.textContent=`${Math.round(zoom*100)}%`;
 },{passive:false});
 
-// ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
   if(location.protocol==="file:"){
-    overlayMsg.innerHTML=`<span style="color:#e04040;font-family:'Cinzel',serif;font-size:13px;">Must be served over http://</span><br><br><span style="font-size:11px;color:#6b5a38;line-height:1.8;">Run: <code style="color:#c8a84b;">python -m http.server 8080</code></span>`;
+    overlayMsg.innerHTML=`<span style="color:#e04040;font-family:'Cinzel',serif">Must be served over http://</span><br><br><span style="font-size:11px;color:#6b5a38">python -m http.server 8080</span>`;
     return;
   }
-
-  // Name prompt
-  if(!playerName) showNameModal();
-  else nameDisplay.textContent=playerName;
-
+  if(!playerName)showNameModal();else nameDisplay.textContent=playerName;
   overlayMsg.textContent="Loading textures…";
   await loadTextures();
-  overlayMsg.textContent="Connecting to RTDB…";
+  overlayMsg.textContent="Connecting…";
   subscribeLive();
   draw();
 })();
