@@ -7,9 +7,19 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=IM+Fell+English&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d0b08;--panel:#1a1510;--border:#3d2e1a;--gold:#c8a84b;--gold-dim:#7a6228;--text:#d4c49a;--dim:#6b5a38}
+:root{
+  --bg:#0d0b08;--panel:#1a1510;--panel2:#151208;--border:#3d2e1a;
+  --gold:#c8a84b;--gold-dim:#7a6228;--text:#d4c49a;--dim:#6b5a38;
+  --red:#e04040;--green:#5a9a5a;
+  --sidebar:280px;--hud:48px;--initiative:56px;
+}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
-#hud{position:fixed;top:0;left:0;right:0;height:48px;background:rgba(13,11,8,.92);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;z-index:20;backdrop-filter:blur(6px)}
+
+/* ── Layout ── */
+#app{display:grid;grid-template-columns:1fr var(--sidebar);grid-template-rows:var(--hud) 1fr var(--initiative);width:100vw;height:100vh}
+
+/* ── HUD ── */
+#hud{grid-column:1/3;grid-row:1;background:rgba(13,11,8,.95);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;z-index:20;backdrop-filter:blur(6px)}
 #hud h1{font-family:'Cinzel',serif;font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.12em;white-space:nowrap}
 .sep{width:1px;height:22px;background:var(--border);flex-shrink:0}
 #map-input{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;width:110px;padding:2px 4px;outline:none}
@@ -18,90 +28,202 @@ button{height:30px;padding:0 11px;border:1px solid var(--border);border-radius:4
 button:hover{border-color:var(--gold-dim);color:var(--text)}
 button.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
 #status{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;color:var(--dim);flex-shrink:0}
-#status.live{color:#5a9a5a}
-#status.error{color:#e04040}
-#player-name-display{font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);margin-left:auto;flex-shrink:0;cursor:pointer}
+#status.live{color:var(--green)}
+#status.error{color:var(--red)}
+#player-name-display{font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);margin-left:auto;flex-shrink:0;cursor:pointer;padding:0 4px}
 #player-name-display:hover{color:var(--gold)}
-#viewport{position:fixed;top:48px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab}
+
+/* ── Viewport ── */
+#viewport{grid-column:1;grid-row:2;position:relative;overflow:hidden;cursor:grab}
 #viewport.grabbing{cursor:grabbing}
 #viewport.pinging{cursor:crosshair}
-canvas{display:block}
-#scale-label{position:fixed;bottom:10px;right:14px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.08em;pointer-events:none}
-#weather-indicator{position:fixed;bottom:10px;left:14px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;pointer-events:none}
-#dice-panel{position:fixed;bottom:0;left:50%;transform:translateX(-50%);background:rgba(13,11,8,.95);border:1px solid var(--border);border-top-left-radius:8px;border-top-right-radius:8px;padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:30;min-width:320px;backdrop-filter:blur(8px);transition:opacity .3s,transform .3s}
-#dice-panel.hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(16px)}
-#dice-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.die-btn{width:44px;height:44px;padding:0;font-family:'Cinzel',serif;font-size:11px;border-radius:6px}
-#dice-result{font-family:'Cinzel',serif;font-size:36px;color:var(--gold);min-height:48px;text-align:center;letter-spacing:.05em}
-#dice-result.rolling{color:var(--dim)}
-#dice-log{font-family:'Cinzel',serif;font-size:10px;color:var(--dim);text-align:center;min-height:16px}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:60}
+canvas{display:block;width:100%;height:100%}
+#scale-label{position:absolute;bottom:8px;left:8px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);pointer-events:none}
+#weather-indicator{position:absolute;bottom:8px;left:60px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);pointer-events:none}
+
+/* ── Session sidebar ── */
+#session{grid-column:2;grid-row:2;display:flex;flex-direction:column;background:var(--panel2);border-left:1px solid var(--border);overflow:hidden}
+#session-header{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+
+/* Chat */
+#chat-log{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px}
+#chat-log::-webkit-scrollbar{width:4px}
+#chat-log::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.chat-msg{font-size:12px;line-height:1.4;word-break:break-word}
+.chat-msg .who{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);margin-right:6px}
+.chat-msg .who.system{color:var(--dim)}
+.chat-msg .who.dice{color:#7ab0e0}
+.chat-msg.mine .who{color:#e0b070}
+
+/* Dice in sidebar */
+#dice-section{border-top:1px solid var(--border);padding:8px;flex-shrink:0}
+#dice-section-label{font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.08em;margin-bottom:6px}
+#dice-btns{display:flex;gap:4px;flex-wrap:wrap}
+.die-btn{width:36px;height:36px;padding:0;font-family:'Cinzel',serif;font-size:10px;border-radius:4px}
+#dice-result-inline{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-top:6px;min-height:18px;text-align:center}
+
+/* Chat input */
+#chat-input-row{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);flex-shrink:0}
+#chat-input{flex:1;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:12px;padding:5px 8px;border-radius:4px;outline:none;min-width:0}
+#chat-input:focus{border-color:var(--gold-dim)}
+#chat-send{padding:0 10px;height:28px;font-size:10px}
+
+/* ── Initiative bar ── */
+#initiative-bar{grid-column:1/3;grid-row:3;background:rgba(13,11,8,.95);border-top:1px solid var(--border);display:flex;align-items:center;gap:0;overflow:hidden;position:relative}
+#init-label{font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.1em;padding:0 10px;flex-shrink:0;text-transform:uppercase}
+#init-controls{display:flex;flex-direction:column;gap:4px;padding:4px 8px;border-right:1px solid var(--border);flex-shrink:0}
+#init-controls button{height:22px;font-size:9px;padding:0 8px}
+#init-track{flex:1;display:flex;align-items:center;gap:6px;padding:0 8px;overflow-x:auto}
+#init-track::-webkit-scrollbar{height:3px}
+#init-track::-webkit-scrollbar-thumb{background:var(--border)}
+.init-card{flex-shrink:0;height:44px;min-width:80px;border:1px solid var(--border);border-radius:4px;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;padding:0 8px;position:relative}
+.init-card:hover{border-color:var(--gold-dim)}
+.init-card.active-turn{border-color:var(--gold);background:rgba(200,168,75,.1);box-shadow:0 0 8px rgba(200,168,75,.3)}
+.init-card.active-turn::before{content:'▶';position:absolute;left:-14px;font-size:10px;color:var(--gold)}
+.init-card .init-name{font-family:'Cinzel',serif;font-size:10px;color:var(--text);letter-spacing:.04em;text-align:center}
+.init-card .init-num{font-family:'Cinzel',serif;font-size:9px;color:var(--dim)}
+.init-card .init-hp{font-size:9px;font-family:'Cinzel',serif;color:var(--green)}
+
+/* ── Modals ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:100}
 .modal-overlay.hidden{display:none}
-.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:28px;min-width:300px;text-align:center;display:flex;flex-direction:column;gap:16px}
-.modal-box h2{font-family:'Cinzel',serif;font-size:16px;color:var(--gold);letter-spacing:.1em}
+.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px;min-width:300px;display:flex;flex-direction:column;gap:14px}
+.modal-box h2{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);letter-spacing:.1em}
 .modal-box p{font-size:12px;color:var(--dim)}
-.modal-box input{background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:15px;padding:8px 12px;border-radius:4px;outline:none;text-align:center;width:100%}
+.modal-box input{background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:14px;padding:7px 10px;border-radius:4px;outline:none;width:100%;text-align:center}
 .modal-box input:focus{border-color:var(--gold-dim)}
 .modal-box button.primary{border-color:var(--gold);color:var(--gold);width:100%;height:36px}
+
+/* ── Context menu ── */
+#ctx-menu{position:fixed;z-index:200;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:4px 0;display:none;min-width:160px;box-shadow:0 6px 24px rgba(0,0,0,.6)}
+#ctx-menu.open{display:block}
+.ctx-item{padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.05em;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text-dim);transition:background .1s}
+.ctx-item:hover{background:rgba(200,168,75,.08);color:var(--text)}
+.ctx-item .ctx-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:2px solid currentColor}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0}
+.ctx-label{padding:4px 14px;font-family:'Cinzel',serif;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+
+/* ── Ping toast ── */
 #ping-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
 #ping-toast.show{opacity:1}
+
+/* ── Init roll prompt ── */
+#init-roll-modal .roll-result{font-family:'Cinzel',serif;font-size:48px;color:var(--gold);text-align:center;min-height:60px}
+#init-roll-modal .rolling{color:var(--dim)}
 </style>
 </head>
 <body>
+
+<!-- Name modal -->
 <div id="name-modal" class="modal-overlay">
-  <div class="modal-box">
+  <div class="modal-box" style="text-align:center">
     <h2>Who Are You?</h2>
     <p>Enter your name to join the session</p>
     <input id="name-input" type="text" placeholder="Your name…" maxlength="30" spellcheck="false">
     <button id="name-confirm" class="primary">Enter the Dungeon</button>
   </div>
 </div>
+
+<!-- Loading overlay -->
 <div id="overlay" class="modal-overlay">
-  <div class="modal-box" style="text-align:center">
+  <div class="modal-box" style="text-align:center;gap:16px">
     <h2>Dungeon Renderer</h2>
-    <div style="width:36px;height:36px;border:3px solid #3d2e1a;border-top-color:#c8a84b;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto"></div>
+    <div style="width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto"></div>
     <p id="overlay-msg">Loading…</p>
   </div>
 </div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 
-<div id="hud">
-  <h1>⚔ DUNGEON</h1>
-  <div class="sep"></div>
-  <input id="map-input" type="text" placeholder="dungeon-1" value="dungeon-1" spellcheck="false">
-  <button id="loadBtn">Load</button>
-  <button id="fitBtn">Fit</button>
-  <div class="sep"></div>
-  <button id="pingBtn">📍 Ping</button>
-  <button id="diceBtn">🎲 Dice</button>
-  <button id="sheetsBtn">📋 Sheets</button>
-  <div class="sep"></div>
-  <span id="status">—</span>
-  <span id="player-name-display" title="Click to change name"></span>
-</div>
-
-<div id="viewport"><canvas id="canvas"></canvas></div>
-<div id="scale-label">100%</div>
-<div id="weather-indicator"></div>
-
-<div id="dice-panel" class="hidden">
-  <div id="dice-btns">
-    <button class="die-btn" data-sides="4">d4</button>
-    <button class="die-btn" data-sides="6">d6</button>
-    <button class="die-btn" data-sides="8">d8</button>
-    <button class="die-btn" data-sides="10">d10</button>
-    <button class="die-btn" data-sides="12">d12</button>
-    <button class="die-btn" data-sides="20">d20</button>
-    <button class="die-btn" data-sides="100">d100</button>
+<!-- Initiative roll prompt (shown to players when GM calls roll) -->
+<div id="init-roll-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="text-align:center;min-width:260px">
+    <h2>Roll Initiative!</h2>
+    <div class="roll-result" id="init-roll-result">—</div>
+    <button id="init-roll-btn" class="primary">Roll d20</button>
   </div>
-  <div id="dice-result">—</div>
-  <div id="dice-log"></div>
 </div>
+
+<!-- Condition context menu -->
+<div id="ctx-menu">
+  <div class="ctx-label">Conditions</div>
+  <div class="ctx-item" data-condition="poisoned"  data-color="#5aaa5a"><div class="ctx-dot" style="color:#5aaa5a"></div>Poisoned</div>
+  <div class="ctx-item" data-condition="stunned"   data-color="#aaaa30"><div class="ctx-dot" style="color:#aaaa30"></div>Stunned</div>
+  <div class="ctx-item" data-condition="prone"     data-color="#888888"><div class="ctx-dot" style="color:#888888"></div>Prone</div>
+  <div class="ctx-item" data-condition="burning"   data-color="#e07030"><div class="ctx-dot" style="color:#e07030"></div>Burning</div>
+  <div class="ctx-item" data-condition="frozen"    data-color="#50c0e0"><div class="ctx-dot" style="color:#50c0e0"></div>Frozen</div>
+  <div class="ctx-item" data-condition="blinded"   data-color="#dddddd"><div class="ctx-dot" style="color:#dddddd"></div>Blinded</div>
+  <div class="ctx-item" data-condition="charmed"   data-color="#e070c0"><div class="ctx-dot" style="color:#e070c0"></div>Charmed</div>
+  <div class="ctx-item" data-condition="frightened"data-color="#9060d0"><div class="ctx-dot" style="color:#9060d0"></div>Frightened</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" data-condition="clear" style="color:var(--red)">✕ Clear all conditions</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-label">Token</div>
+  <div class="ctx-item" data-action="delete" style="color:var(--red)">✕ Delete token</div>
+</div>
+
+<div id="app">
+  <!-- HUD -->
+  <div id="hud">
+    <h1>⚔ DUNGEON</h1>
+    <div class="sep"></div>
+    <input id="map-input" type="text" placeholder="dungeon-1" value="dungeon-1" spellcheck="false">
+    <button id="loadBtn">Load</button>
+    <button id="fitBtn">Fit</button>
+    <div class="sep"></div>
+    <button id="pingBtn">📍 Ping</button>
+    <button id="sheetsBtn">📋 Sheets</button>
+    <div class="sep"></div>
+    <span id="status">—</span>
+    <span id="player-name-display" title="Click to change name"></span>
+  </div>
+
+  <!-- Map viewport -->
+  <div id="viewport">
+    <canvas id="canvas"></canvas>
+    <div id="scale-label">100%</div>
+    <div id="weather-indicator"></div>
+  </div>
+
+  <!-- Session sidebar: chat + dice -->
+  <div id="session">
+    <div id="session-header">⚔ SESSION</div>
+    <div id="chat-log"></div>
+    <div id="dice-section">
+      <div id="dice-section-label">DICE ROLLER</div>
+      <div id="dice-btns">
+        <button class="die-btn" data-sides="4">d4</button>
+        <button class="die-btn" data-sides="6">d6</button>
+        <button class="die-btn" data-sides="8">d8</button>
+        <button class="die-btn" data-sides="10">d10</button>
+        <button class="die-btn" data-sides="12">d12</button>
+        <button class="die-btn" data-sides="20">d20</button>
+        <button class="die-btn" data-sides="100">d100</button>
+      </div>
+      <div id="dice-result-inline"></div>
+    </div>
+    <div id="chat-input-row">
+      <input id="chat-input" type="text" placeholder="Message…" maxlength="300" spellcheck="false">
+      <button id="chat-send">Send</button>
+    </div>
+  </div>
+
+  <!-- Initiative bar -->
+  <div id="initiative-bar">
+    <div id="init-label">Initiative</div>
+    <div id="init-controls">
+      <button id="init-roll-call-btn" title="Ask all players to roll initiative">⚄ Roll</button>
+      <button id="init-next-btn" title="Next turn">▶ Next</button>
+    </div>
+    <div id="init-track"></div>
+  </div>
+</div>
+
 <div id="ping-toast"></div>
+<div id="init-roll-modal" class="modal-overlay hidden" id="init-roll-modal"></div>
 
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, push, remove }
+import { getDatabase, ref, onValue, set, push, remove, update, get }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
 const firebaseConfig={
@@ -114,13 +236,17 @@ const firebaseConfig={
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
 
+// ── Constants ─────────────────────────────────────────────────────────────────
 const TILE=32;
 const TEXTURE_PATH="./textures/";
 const PROP_PATH="./props/";
 const TOKEN_PATH="./tokens/";
 const TERRAINS=["grass","stone","wood","water","cobble","sand","lava","dirt","gravel","ice","void","carpet","marble","mud"];
 const FALLBACK={grass:"#3a6b3a",stone:"#6b6b6b",wood:"#7a5c3a",water:"#2a5a8a",cobble:"#9a9a8a",sand:"#b8a86a",lava:"#8b2a0a",dirt:"#6b4a2a",gravel:"#555a50",ice:"#a8d0e0",void:"#080808",carpet:"#6b2a5a",marble:"#d0ccc0",mud:"#4a3520"};
+const FEET_PER_TILE=5;
+const CONDITIONS={poisoned:"#5aaa5a",stunned:"#aaaa30",prone:"#888888",burning:"#e07030",frozen:"#50c0e0",blinded:"#dddddd",charmed:"#e070c0",frightened:"#9060d0"};
 
+// ── DOM ───────────────────────────────────────────────────────────────────────
 const canvas=document.getElementById("canvas");
 const ctx=canvas.getContext("2d");
 const viewport=document.getElementById("viewport");
@@ -129,14 +255,17 @@ const overlayEl=document.getElementById("overlay");
 const overlayMsg=document.getElementById("overlay-msg");
 const mapInput=document.getElementById("map-input");
 const scaleLabel=document.getElementById("scale-label");
-const dicePanel=document.getElementById("dice-panel");
-const diceResult=document.getElementById("dice-result");
-const diceLog=document.getElementById("dice-log");
 const pingToast=document.getElementById("ping-toast");
 const nameModal=document.getElementById("name-modal");
 const nameInput=document.getElementById("name-input");
 const nameDisplay=document.getElementById("player-name-display");
+const chatLog=document.getElementById("chat-log");
+const chatInput=document.getElementById("chat-input");
+const initTrack=document.getElementById("init-track");
+const ctxMenu=document.getElementById("ctx-menu");
+const initRollModal=document.getElementById("init-roll-modal");
 
+// ── Player name ───────────────────────────────────────────────────────────────
 let playerName=localStorage.getItem("vtt_player_name")||"";
 function showNameModal(){nameInput.value=playerName;nameModal.classList.remove("hidden");setTimeout(()=>nameInput.focus(),50);}
 function confirmName(){const n=nameInput.value.trim();if(!n)return;playerName=n;localStorage.setItem("vtt_player_name",n);nameModal.classList.add("hidden");nameDisplay.textContent=playerName;}
@@ -144,21 +273,47 @@ document.getElementById("name-confirm").onclick=confirmName;
 nameInput.addEventListener("keydown",e=>{if(e.key==="Enter")confirmName();});
 nameDisplay.onclick=showNameModal;
 
+// ── State ─────────────────────────────────────────────────────────────────────
 let tiles={},textures={},fog={},tokens={},stamps={},roofs={},props={};
-let propTextures={},tokenTextures={};
-let propDefs={};
+let propTextures={},tokenTextures={},propDefs={};
 let camX=0,camY=0,zoom=1;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0;
 let liveUnsub=null,firstLoad=true;
 let pingMode=false;
 const activePings={};
+const activeLasers={};  // { playerName: {wx,wy} }
+let myLaserRef=null;
+let pingHoldTimer=null;
+let isHolding=false;
+
+// Ruler
+let rulerActive=false,rulerStart=null,rulerEnd=null;
+
+// Initiative
+let initiative={order:[],active:null,rolls:{}};
+
+// Context menu target
+let ctxTokenId=null;
 
 // Weather
 const weather={rain:{enabled:false,intensity:0.5},snow:{enabled:false,intensity:0.3},mist:{enabled:false,intensity:0.4},storm:{enabled:false,intensity:0.5}};
 const rainDrops=[],snowFlakes=[],mistClouds=[];
 let lastLightning=0,lightningAlpha=0;
-let diceVisible=false,shuffleTimer=null;
 
+// ── Asset loading ─────────────────────────────────────────────────────────────
+async function loadTextures(){
+  await Promise.all(TERRAINS.map(t=>new Promise(resolve=>{
+    const img=new Image();img.onload=()=>{textures[t]=img;resolve()};img.onerror=()=>resolve();img.src=`${TEXTURE_PATH}${t}.png`;
+  })));
+}
+function tryLoadPropTexture(id){if(propTextures[id]!==undefined)return;propTextures[id]=null;const img=new Image();img.onload=()=>{propTextures[id]=img;};img.onerror=()=>{propTextures[id]=null;};img.src=`${PROP_PATH}${id}.png`;}
+function tryLoadTokenTexture(characterId,name){if(tokenTextures[characterId]!==undefined)return;tokenTextures[characterId]=null;const img=new Image();const fname=(name||characterId).toLowerCase().replace(/\s+/g,"_");img.onload=()=>{tokenTextures[characterId]=img;};img.onerror=()=>{tokenTextures[characterId]=null;};img.src=`${TOKEN_PATH}${fname}.png`;}
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;initParticles();}
+resize();window.addEventListener("resize",resize);
+
+// ── Particles ─────────────────────────────────────────────────────────────────
 function initParticles(){
   const W=window.innerWidth,H=window.innerHeight;
   rainDrops.length=0;snowFlakes.length=0;mistClouds.length=0;
@@ -168,35 +323,7 @@ function initParticles(){
 }
 initParticles();
 
-async function loadTextures(){
-  await Promise.all(TERRAINS.map(t=>new Promise(resolve=>{
-    const img=new Image();img.onload=()=>{textures[t]=img;resolve()};img.onerror=()=>resolve();img.src=`${TEXTURE_PATH}${t}.png`;
-  })));
-}
-
-function tryLoadPropTexture(id){
-  if(propTextures[id]!==undefined)return;
-  propTextures[id]=null;
-  const img=new Image();
-  img.onload=()=>{propTextures[id]=img;};
-  img.onerror=()=>{propTextures[id]=null;};
-  img.src=`${PROP_PATH}${id}.png`;
-}
-
-function tryLoadTokenTexture(characterId,name){
-  if(tokenTextures[characterId]!==undefined)return;
-  tokenTextures[characterId]=null;
-  const img=new Image();
-  const fname=(name||characterId).toLowerCase().replace(/\s+/g,"_");
-  img.onload=()=>{tokenTextures[characterId]=img;};
-  img.onerror=()=>{tokenTextures[characterId]=null;};
-  img.src=`${TOKEN_PATH}${fname}.png`;
-}
-
-function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;initParticles();}
-resize();
-window.addEventListener("resize",resize);
-
+// ── Camera ────────────────────────────────────────────────────────────────────
 function fitCamera(){
   const coords=Object.keys(tiles).map(k=>k.split(",").map(Number));if(!coords.length)return;
   const xs=coords.map(([x])=>x),ys=coords.map(([,y])=>y);
@@ -206,24 +333,20 @@ function fitCamera(){
   camX=canvas.width/2-(minX*TILE+mapW/2)*zoom;camY=canvas.height/2-(minY*TILE+mapH/2)*zoom;
   scaleLabel.textContent=`${Math.round(zoom*100)}%`;
 }
-
 function toWorld(sx,sy){return[(sx-camX)/zoom,(sy-camY)/zoom];}
+function toScreen(wx,wy){return[wx*zoom+camX,wy*zoom+camY];}
 function setStatus(cls,text){statusEl.className=cls;statusEl.textContent=text;}
 
-// Load prop definitions
-onValue(ref(db,"propDefs"),snap=>{
-  const data=snap.val();if(!data)return;
-  for(const[id,p]of Object.entries(data)){propDefs[id]=p;tryLoadPropTexture(id);}
-});
-
+// ── Firebase listeners ────────────────────────────────────────────────────────
 function subscribeLive(){
   if(liveUnsub){liveUnsub();liveUnsub=null;}
   const mapName=mapInput.value.trim()||"dungeon-1";
   setStatus("","Connecting…");
   liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
     const data=snap.val();
-    for(const k in tiles)delete tiles[k];for(const k in fog)delete fog[k];for(const k in tokens)delete tokens[k];
-    for(const k in stamps)delete stamps[k];for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
+    for(const k in tiles)delete tiles[k];for(const k in fog)delete fog[k];
+    for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
+    for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fog,data.fog);
@@ -237,6 +360,13 @@ function subscribeLive(){
   },()=>{setStatus("error","RTDB error");overlayEl.classList.add("hidden");});
 }
 
+// Prop definitions
+onValue(ref(db,"propDefs"),snap=>{
+  const data=snap.val();if(!data)return;
+  for(const[id,p]of Object.entries(data)){propDefs[id]=p;tryLoadPropTexture(id);}
+});
+
+// Weather
 onValue(ref(db,"weather"),snap=>{
   const data=snap.val();if(!data)return;
   ["rain","snow","mist","storm"].forEach(t=>{if(data[t])Object.assign(weather[t],data[t]);});
@@ -244,29 +374,276 @@ onValue(ref(db,"weather"),snap=>{
   document.getElementById("weather-indicator").textContent=active.length?active.join(" · "):"";
 });
 
-function showPingToast(msg){pingToast.textContent=msg;pingToast.classList.add("show");setTimeout(()=>pingToast.classList.remove("show"),2000);}
+// Pings
 onValue(ref(db,"pings"),snap=>{
   const data=snap.val()||{};const now=Date.now();
   for(const[id,ping]of Object.entries(data)){
-    if(!activePings[id]&&now-ping.t<4000){activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);}
+    if(!activePings[id]&&now-ping.t<4000){
+      activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};
+      if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);
+    }
   }
 });
-async function sendPing(sx,sy){
-  const[wx,wy]=toWorld(sx,sy);const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
-  const pingRef=push(ref(db,"pings"));await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});setTimeout(()=>remove(pingRef),4000);
+
+// Lasers (live cursor positions)
+onValue(ref(db,"lasers"),snap=>{
+  const data=snap.val()||{};
+  for(const k in activeLasers)delete activeLasers[k];
+  for(const[name,pos]of Object.entries(data)){
+    if(name!==playerName.replace(/\./g,"_"))activeLasers[name]={wx:pos.wx,wy:pos.wy,color:pos.color};
+  }
+});
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+onValue(ref(db,"chat"),snap=>{
+  const data=snap.val();
+  chatLog.innerHTML="";
+  if(!data)return;
+  const msgs=Object.entries(data).sort(([,a],[,b])=>a.t-b.t);
+  msgs.forEach(([id,msg])=>{
+    const div=document.createElement("div");
+    div.className="chat-msg"+(msg.sender===playerName?" mine":"");
+    const type=msg.type||"chat";
+    div.innerHTML=`<span class="who ${type}">${msg.sender}:</span>${msg.text}`;
+    chatLog.appendChild(div);
+  });
+  chatLog.scrollTop=chatLog.scrollHeight;
+});
+
+async function sendChat(text,type="chat"){
+  if(!text.trim())return;
+  await push(ref(db,"chat"),{sender:playerName,text,type,t:Date.now()});
 }
 
-// Dice
+document.getElementById("chat-send").onclick=()=>{
+  if(!playerName){showNameModal();return;}
+  sendChat(chatInput.value);chatInput.value="";
+};
+chatInput.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&!e.shiftKey){
+    e.preventDefault();
+    if(!playerName){showNameModal();return;}
+    sendChat(chatInput.value);chatInput.value="";
+  }
+});
+
+// ── Dice ──────────────────────────────────────────────────────────────────────
 onValue(ref(db,"dice/last"),snap=>{
   const data=snap.val();if(!data)return;if(Date.now()-data.t>10000)return;
-  dicePanel.classList.remove("hidden");document.getElementById("diceBtn").classList.add("active");diceVisible=true;
-  diceResult.classList.add("rolling");diceLog.textContent=`${data.roller} rolled d${data.sides}…`;
-  let ticks=0;clearInterval(shuffleTimer);
-  shuffleTimer=setInterval(()=>{ticks++;diceResult.textContent=Math.ceil(Math.random()*data.sides);if(ticks>=18){clearInterval(shuffleTimer);diceResult.textContent=data.result;diceResult.classList.remove("rolling");diceLog.textContent=`${data.roller} rolled d${data.sides} → ${data.result}`;setTimeout(()=>{dicePanel.classList.add("hidden");document.getElementById("diceBtn").classList.remove("active");diceVisible=false;},5000);}},60);
+  const resultEl=document.getElementById("dice-result-inline");
+  resultEl.textContent="Rolling…";
+  let ticks=0;
+  const t=setInterval(()=>{
+    ticks++;
+    resultEl.textContent=Math.ceil(Math.random()*data.sides);
+    if(ticks>=18){
+      clearInterval(t);
+      resultEl.textContent=`${data.roller}: ${data.result}`;
+      sendChat(`rolled d${data.sides} → **${data.result}**`,"dice");
+    }
+  },60);
 });
-async function rollDie(sides){if(!playerName){showNameModal();return;}const result=Math.ceil(Math.random()*sides);await set(ref(db,"dice/last"),{sides,result,roller:playerName,t:Date.now()});}
-document.getElementById("diceBtn").onclick=()=>{diceVisible=!diceVisible;dicePanel.classList.toggle("hidden",!diceVisible);document.getElementById("diceBtn").classList.toggle("active",diceVisible);};
-document.querySelectorAll(".die-btn").forEach(btn=>{btn.onclick=()=>rollDie(parseInt(btn.dataset.sides));});
+
+async function rollDie(sides){
+  if(!playerName){showNameModal();return;}
+  const result=Math.ceil(Math.random()*sides);
+  await set(ref(db,"dice/last"),{sides,result,roller:playerName,t:Date.now()});
+}
+document.querySelectorAll(".die-btn").forEach(btn=>btn.onclick=()=>rollDie(parseInt(btn.dataset.sides)));
+
+// ── Initiative ────────────────────────────────────────────────────────────────
+onValue(ref(db,"initiative"),snap=>{
+  const data=snap.val()||{};
+  initiative.order=data.order||[];
+  initiative.active=data.active||null;
+  initiative.rolls=data.rolls||{};
+  renderInitTrack();
+
+  // Show roll prompt to players if GM called for rolls and we haven't rolled yet
+  if(data.rolling&&playerName){
+    const myKey=playerName.replace(/\./g,"_");
+    if(!data.rolls?.[myKey]) showInitRollPrompt();
+    else initRollModal.classList.add("hidden");
+  } else {
+    initRollModal.classList.add("hidden");
+  }
+});
+
+function renderInitTrack(){
+  initTrack.innerHTML="";
+  if(!initiative.order.length){
+    initTrack.innerHTML=`<span style="font-family:'Cinzel',serif;font-size:10px;color:var(--dim);padding:0 8px">No initiative set</span>`;
+    return;
+  }
+  initiative.order.forEach(tokId=>{
+    const tok=tokens[tokId];
+    const card=document.createElement("div");
+    card.className="init-card"+(initiative.active===tokId?" active-turn":"");
+    const roll=initiative.rolls?.[tokId]||"?";
+    const hpPct=tok?Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1))):1;
+    const hpColor=hpPct>.5?"#5a9a5a":hpPct>.25?"#aaaa30":"#e04040";
+    card.innerHTML=`
+      <div class="init-name">${tok?.name||tokId}</div>
+      <div class="init-num">Roll: ${roll}</div>
+      ${tok?`<div class="init-hp" style="color:${hpColor}">${tok.hp??'?'}/${tok.maxHp??'?'} HP</div>`:""}
+    `;
+    card.onclick=()=>{
+      // Highlight token on map
+      const t=tokens[tokId];
+      if(t){
+        const[sx,sy]=toScreen(t.x*TILE+TILE/2,t.y*TILE+TILE/2);
+        activePings[`init_${tokId}`]={wx:t.x*TILE+TILE/2,wy:t.y*TILE+TILE/2,name:tok?.name||"",startTime:Date.now(),id:`init_${tokId}`};
+      }
+    };
+    initTrack.appendChild(card);
+  });
+}
+
+document.getElementById("init-roll-call-btn").onclick=async()=>{
+  if(!playerName){showNameModal();return;}
+  // Roll NPCs automatically, ask PCs to roll
+  const rolls={};
+  const order=[];
+  // NPCs roll automatically
+  for(const[id,tok]of Object.entries(tokens)){
+    if(tok.type==="npc"){
+      const r=Math.ceil(Math.random()*20);
+      rolls[id]=r;
+    }
+  }
+  await set(ref(db,"initiative"),{rolling:true,order:[],active:null,rolls,requestedAt:Date.now()});
+  sendChat("called for Initiative rolls!","system");
+};
+
+document.getElementById("init-next-btn").onclick=async()=>{
+  if(!initiative.order.length)return;
+  const idx=initiative.order.indexOf(initiative.active);
+  const next=initiative.order[(idx+1)%initiative.order.length];
+  const tok=tokens[next];
+  await update(ref(db,"initiative"),{active:next});
+  sendChat(`It's ${tok?.name||next}'s turn`,"system");
+};
+
+// Player initiative roll prompt
+function showInitRollPrompt(){
+  initRollModal.classList.remove("hidden");
+  document.getElementById("init-roll-result").textContent="—";
+  document.getElementById("init-roll-result").className="roll-result";
+}
+
+document.getElementById("init-roll-btn").onclick=async()=>{
+  const result=Math.ceil(Math.random()*20);
+  const el=document.getElementById("init-roll-result");
+  el.className="roll-result rolling";
+  let ticks=0;
+  const t=setInterval(async()=>{
+    ticks++;
+    el.textContent=Math.ceil(Math.random()*20);
+    if(ticks>=15){
+      clearInterval(t);
+      el.textContent=result;
+      el.className="roll-result";
+      // Save roll and check if all have rolled
+      const myKey=playerName.replace(/\./g,"_");
+      await update(ref(db,`initiative/rolls`),{[myKey]:result});
+      // Find my token
+      const myTok=Object.entries(tokens).find(([,t])=>t.name?.toLowerCase()===playerName.toLowerCase()&&t.type==="pc");
+      if(myTok) await update(ref(db,`initiative/rolls`),{[myTok[0]]:result});
+      sendChat(`rolled initiative: ${result}`,"system");
+      setTimeout(()=>initRollModal.classList.add("hidden"),1500);
+      // Check if all PCs have rolled, then sort
+      const snap=await get(ref(db,"initiative"));
+      const data=snap.val()||{};
+      const allRolls=data.rolls||{};
+      const allTokens=tokens;
+      const pcTokens=Object.entries(allTokens).filter(([,t])=>t.type==="pc");
+      const allPCsRolled=pcTokens.every(([id,t])=>{
+        const k=t.name?.toLowerCase().replace(/\s+/g,"_")||id;
+        return allRolls[id]!==undefined||allRolls[k]!==undefined;
+      });
+      if(allPCsRolled||Object.keys(allTokens).length===0){
+        // Sort and finalize
+        const sorted=Object.entries(allTokens).sort(([aid],[bid])=>{
+          const ar=allRolls[aid]??0,br=allRolls[bid]??0;return br-ar;
+        }).map(([id])=>id);
+        await update(ref(db,"initiative"),{order:sorted,active:sorted[0]||null,rolling:false});
+      }
+    }
+  },60);
+};
+
+// ── Conditions ────────────────────────────────────────────────────────────────
+async function applyCondition(tokId,condition){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  if(condition==="clear"){
+    await update(ref(db,`maps/${mapName}/tokens/${tokId}`),{conditions:[]});
+  } else {
+    const tok=tokens[tokId];
+    const conds=tok?.conditions||[];
+    const newConds=conds.includes(condition)?conds.filter(c=>c!==condition):[...conds,condition];
+    await update(ref(db,`maps/${mapName}/tokens/${tokId}`),{conditions:newConds});
+  }
+}
+
+async function deleteRendererToken(tokId){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  await remove(ref(db,`maps/${mapName}/tokens/${tokId}`));
+}
+
+// ── Context menu ──────────────────────────────────────────────────────────────
+document.querySelectorAll(".ctx-item").forEach(item=>{
+  item.onclick=()=>{
+    if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
+    const cond=item.dataset.condition;
+    const action=item.dataset.action;
+    if(cond)applyCondition(ctxTokenId,cond);
+    if(action==="delete")deleteRendererToken(ctxTokenId);
+    ctxMenu.classList.remove("open");ctxTokenId=null;
+  };
+});
+document.addEventListener("click",()=>{ctxMenu.classList.remove("open");});
+
+// ── Ping / laser ──────────────────────────────────────────────────────────────
+function showPingToast(msg){pingToast.textContent=msg;pingToast.classList.add("show");setTimeout(()=>pingToast.classList.remove("show"),2000);}
+
+async function sendPing(sx,sy){
+  const[wx,wy]=toWorld(sx,sy);const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
+  const pingRef=push(ref(db,"pings"));
+  await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});
+  setTimeout(()=>remove(pingRef),4000);
+}
+
+function startLaser(sx,sy){
+  const[wx,wy]=toWorld(sx,sy);
+  const safeKey=playerName.replace(/\./g,"_");
+  const color=`hsl(${(playerName.split("").reduce((a,c)=>a+c.charCodeAt(0),0)*47)%360},70%,65%)`;
+  myLaserRef=ref(db,`lasers/${safeKey}`);
+  set(myLaserRef,{wx,wy,color,name:playerName});
+}
+function moveLaser(sx,sy){
+  if(!myLaserRef)return;
+  const[wx,wy]=toWorld(sx,sy);
+  set(myLaserRef,{wx,wy,color:Object.values(activeLasers)[0]?.color||"#fff",name:playerName});
+}
+function stopLaser(){
+  if(myLaserRef){remove(myLaserRef);myLaserRef=null;}
+}
+
+// ── Ruler ─────────────────────────────────────────────────────────────────────
+let rulerStartScreen=null;
+
+// ── Token hit test ─────────────────────────────────────────────────────────────
+function tokenAtScreen(sx,sy){
+  const[wx,wy]=toWorld(sx,sy);
+  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
+  for(const[id,tok]of Object.entries(tokens)){if(tok.x===tx&&tok.y===ty)return id;}
+  return null;
+}
+
+function isMyToken(tokId){
+  const tok=tokens[tokId];
+  return tok&&tok.type==="pc"&&tok.name?.toLowerCase()===playerName.toLowerCase();
+}
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
 function hasWall(x,y){const t=tiles[`${x},${y}`];return t&&t.walls;}
@@ -280,16 +657,23 @@ function drawTileAt(x,y,terrain){
 function drawToken(tok){
   const px=tok.x*TILE,py=tok.y*TILE,r=TILE*0.42,cx=px+TILE/2,cy=py+TILE/2;
   const img=tokenTextures[tok.characterId];
+  // Condition rings (outermost first)
+  const conds=tok.conditions||[];
+  conds.forEach((c,i)=>{
+    ctx.beginPath();ctx.arc(cx,cy,r+4+i*4,0,Math.PI*2);
+    ctx.strokeStyle=CONDITIONS[c]||"#fff";ctx.lineWidth=2.5/zoom;ctx.stroke();
+  });
   if(img){
     ctx.save();ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.clip();
     ctx.drawImage(img,px,py,TILE,TILE);ctx.restore();
     ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
     ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();
-  }else{
+  } else {
     ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
     ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();
     ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();
-    ctx.fillStyle="#fff";ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillStyle="#fff";ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;
+    ctx.textAlign="center";ctx.textBaseline="middle";
     ctx.fillText((tok.name||"?")[0].toUpperCase(),cx,cy);
   }
   ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.fillStyle="#ddd";ctx.textAlign="center";ctx.textBaseline="top";
@@ -300,6 +684,53 @@ function drawToken(tok){
   ctx.fillStyle=pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#aa3030";ctx.fillRect(bx,by,bw*pct,bh);
 }
 
+function drawPings(){
+  const now=Date.now();
+  for(const[id,ping]of Object.entries(activePings)){
+    const age=(now-ping.startTime)/1000;if(age>3){delete activePings[id];continue;}
+    const alpha=1-age/3;
+    const[sx,sy]=toScreen(ping.wx,ping.wy);
+    for(let i=0;i<3;i++){const phase=(age+i*0.4)%1.2;ctx.beginPath();ctx.arc(sx,sy,20+phase*60,0,Math.PI*2);ctx.strokeStyle=`rgba(255,200,50,${alpha*(1-phase/1.2)*0.8})`;ctx.lineWidth=2.5;ctx.stroke();}
+    ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fill();
+    ctx.font="bold 11px Cinzel,serif";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fillText(ping.name,sx,sy-10);
+  }
+}
+
+function drawLasers(){
+  for(const[name,laser]of Object.entries(activeLasers)){
+    const[sx,sy]=toScreen(laser.wx,laser.wy);
+    ctx.save();
+    ctx.beginPath();ctx.arc(sx,sy,8,0,Math.PI*2);
+    ctx.fillStyle=laser.color||"#fff";ctx.globalAlpha=0.85;ctx.fill();
+    ctx.font="bold 10px Cinzel,serif";ctx.fillStyle="#fff";ctx.textAlign="center";ctx.textBaseline="bottom";
+    ctx.fillText(name.replace(/_/g," "),sx,sy-10);
+    ctx.restore();
+  }
+}
+
+function drawRuler(){
+  if(!rulerStartScreen||!rulerEnd)return;
+  const[sx,sy]=rulerStartScreen;
+  const[ex,ey]=rulerEnd;
+  const[wx,wy]=toWorld(sx,sy);
+  const[wx2,wy2]=toWorld(ex,ey);
+  const dtiles=Math.sqrt((wx2/TILE-wx/TILE)**2+(wy2/TILE-wy/TILE)**2);
+  const dfeet=Math.round(dtiles*FEET_PER_TILE);
+  ctx.save();
+  ctx.strokeStyle="rgba(200,168,75,0.9)";ctx.lineWidth=2;ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle="rgba(200,168,75,1)";ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(ex,ey,4,0,Math.PI*2);ctx.fill();
+  const label=`${Math.round(dtiles*10)/10} tiles · ${dfeet}ft`;
+  const mx=(sx+ex)/2,my=(sy+ey)/2;
+  ctx.font="bold 12px Cinzel,serif";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillStyle="rgba(13,11,8,0.75)";const tw=ctx.measureText(label).width;
+  ctx.fillRect(mx-tw/2-4,my-9,tw+8,18);
+  ctx.fillStyle="#c8a84b";ctx.fillText(label,mx,my);
+  ctx.restore();
+}
+
 function drawWeather(W,H){
   const now=Date.now();
   if(weather.mist.enabled){const intensity=weather.mist.intensity;mistClouds.forEach(c=>{c.x+=c.speed;if(c.x-c.rx>W)c.x=-c.rx;const pulse=0.5+0.5*Math.sin(now/3000+c.phase);const alpha=intensity*0.18*pulse;const grad=ctx.createRadialGradient(c.x,c.y,0,c.x,c.y,c.rx);grad.addColorStop(0,`rgba(180,190,210,${alpha})`);grad.addColorStop(1,"rgba(180,190,210,0)");ctx.save();ctx.scale(1,c.ry/c.rx);ctx.fillStyle=grad;ctx.beginPath();ctx.arc(c.x,c.y*(c.rx/c.ry),c.rx,0,Math.PI*2);ctx.fill();ctx.restore();});}
@@ -308,35 +739,21 @@ function drawWeather(W,H){
   if(weather.storm.enabled){const interval=8000-weather.storm.intensity*6000;if(now-lastLightning>interval&&Math.random()<0.02){lastLightning=now;lightningAlpha=1;ctx.save();ctx.strokeStyle="rgba(200,210,255,0.9)";ctx.lineWidth=2;let bx=W*0.2+Math.random()*W*0.6,by=0;ctx.beginPath();ctx.moveTo(bx,by);while(by<H*0.7){bx+=Math.random()*80-40;by+=Math.random()*60+30;ctx.lineTo(bx,by);}ctx.stroke();ctx.restore();}if(lightningAlpha>0){ctx.fillStyle=`rgba(180,190,255,${lightningAlpha*0.12})`;ctx.fillRect(0,0,W,H);lightningAlpha=Math.max(0,lightningAlpha-0.06);}}
 }
 
-function drawPings(){
-  const now=Date.now();
-  for(const[id,ping]of Object.entries(activePings)){
-    const age=(now-ping.startTime)/1000;if(age>3){delete activePings[id];continue;}
-    const alpha=1-age/3,sx=ping.wx*zoom+camX,sy=ping.wy*zoom+camY;
-    for(let i=0;i<3;i++){const phase=(age+i*0.4)%1.2;ctx.beginPath();ctx.arc(sx,sy,20+phase*60,0,Math.PI*2);ctx.strokeStyle=`rgba(255,200,50,${alpha*(1-phase/1.2)*0.8})`;ctx.lineWidth=2.5;ctx.stroke();}
-    ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fill();
-    ctx.font="bold 11px Cinzel,serif";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fillText(ping.name,sx,sy-10);
-  }
-}
-
+// ── Main draw loop ────────────────────────────────────────────────────────────
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camX,camY);ctx.scale(zoom,zoom);
 
-  // Tiles
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
 
-  // Walls
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/zoom;ctx.lineCap="round";
   for(const k in tiles){if(!tiles[k].walls)continue;const[x,y]=k.split(",").map(Number);const px=x*TILE,py=y*TILE;[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}});}
 
-  // Stamps
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
   for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
   ctx.restore();
 
-  // Props
   for(const[k,p]of Object.entries(props)){
     const[x,y]=k.split(",").map(Number);
     const def=propDefs[p.propId]||{emoji:"📦",w:1,h:1};
@@ -346,34 +763,36 @@ function draw(){
     else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
   }
 
-  // NPC tokens (below fog)
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(tok);
 
-  // Fog — solid black for players
   ctx.fillStyle="rgba(0,0,0,1)";
   for(const gid in fog){const cells=(fog[gid]&&fog[gid].cells)||{};for(const k in cells){const[x,y]=k.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}
 
-  // PC tokens (above fog)
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(tok);
 
-  // Roofs (above fog AND tokens — players can't see under)
   ctx.save();ctx.globalAlpha=1;
   for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}
   ctx.restore();
 
-  // Grid
   ctx.strokeStyle="rgba(255,255,255,.03)";ctx.lineWidth=1/zoom;
   const l=-camX/zoom,t=-camY/zoom,r=(canvas.width-camX)/zoom,b=(canvas.height-camY)/zoom;
   for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
   for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
 
   ctx.restore();
+
+  // Screen-space overlays
   drawWeather(canvas.width,canvas.height);
   drawPings();
+  drawLasers();
+  drawRuler();
+
   requestAnimationFrame(draw);
 }
 
-// ── Controls ──────────────────────────────────────────────────────────────────
+// ── Pointer events ────────────────────────────────────────────────────────────
+let draggingToken=null;
+
 document.getElementById("loadBtn").onclick=()=>{firstLoad=true;subscribeLive();};
 document.getElementById("fitBtn").onclick=fitCamera;
 document.getElementById("sheetsBtn").onclick=()=>window.open("https://geezjonny.github.io/GeezSheets","_blank");
@@ -381,21 +800,96 @@ mapInput.addEventListener("keydown",e=>{if(e.key==="Enter"){firstLoad=true;subsc
 
 document.getElementById("pingBtn").onclick=()=>{
   if(!playerName){showNameModal();return;}
-  pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);viewport.classList.toggle("pinging",pingMode);
-  if(pingMode){pingToast.textContent="Click the map to ping";pingToast.classList.add("show");setTimeout(()=>pingToast.classList.remove("show"),2000);}
+  pingMode=!pingMode;
+  document.getElementById("pingBtn").classList.toggle("active",pingMode);
+  viewport.classList.toggle("pinging",pingMode);
 };
 
-viewport.addEventListener("pointerdown",e=>{
-  if(pingMode){
-    const rect=viewport.getBoundingClientRect();
-    sendPing(e.clientX-rect.left,e.clientY-rect.top);
-    pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;
+viewport.addEventListener("contextmenu",e=>{
+  e.preventDefault();
+  const rect=viewport.getBoundingClientRect();
+  const sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+  const tokId=tokenAtScreen(sx,sy);
+  if(tokId){
+    ctxTokenId=tokId;
+    ctxMenu.style.left=e.clientX+"px";
+    ctxMenu.style.top=e.clientY+"px";
+    ctxMenu.classList.add("open");
   }
-  panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camX;camStartY=camY;
-  viewport.classList.add("grabbing");viewport.setPointerCapture(e.pointerId);
 });
-viewport.addEventListener("pointermove",e=>{if(!panning)return;camX=camStartX+(e.clientX-panStartX);camY=camStartY+(e.clientY-panStartY);});
-viewport.addEventListener("pointerup",()=>{panning=false;viewport.classList.remove("grabbing");});
+
+viewport.addEventListener("pointerdown",e=>{
+  const rect=viewport.getBoundingClientRect();
+  const sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+
+  // Ping mode: single click
+  if(pingMode){
+    sendPing(sx,sy);
+    pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");
+    return;
+  }
+
+  // Ruler: alt+drag
+  if(e.altKey){
+    rulerStartScreen=[sx,sy];rulerEnd=[sx,sy];
+    viewport.setPointerCapture(e.pointerId);return;
+  }
+
+  // Token drag (own PC tokens only for players)
+  const tokId=tokenAtScreen(sx,sy);
+  if(tokId&&isMyToken(tokId)){
+    const[wx,wy]=toWorld(sx,sy);const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
+    draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y};
+    viewport.setPointerCapture(e.pointerId);return;
+  }
+
+  // Hold for laser, click for ping (handled via hold timer)
+  isHolding=false;
+  pingHoldTimer=setTimeout(()=>{
+    isHolding=true;
+    startLaser(sx,sy);
+    viewport.classList.add("grabbing");
+  },300);
+
+  panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camX;camStartY=camY;
+  viewport.setPointerCapture(e.pointerId);
+});
+
+viewport.addEventListener("pointermove",e=>{
+  const rect=viewport.getBoundingClientRect();
+  const sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+
+  if(rulerStartScreen){rulerEnd=[sx,sy];return;}
+
+  if(draggingToken){
+    const[wx,wy]=toWorld(sx,sy);
+    const newTX=Math.floor(wx/TILE)-draggingToken.offsetTX;
+    const newTY=Math.floor(wy/TILE)-draggingToken.offsetTY;
+    tokens[draggingToken.id].x=newTX;tokens[draggingToken.id].y=newTY;return;
+  }
+
+  if(isHolding&&myLaserRef){moveLaser(sx,sy);return;}
+
+  if(panning){camX=camStartX+(e.clientX-panStartX);camY=camStartY+(e.clientY-panStartY);}
+});
+
+viewport.addEventListener("pointerup",e=>{
+  const rect=viewport.getBoundingClientRect();
+  const sx=e.clientX-rect.left,sy=e.clientY-rect.top;
+
+  if(rulerStartScreen){rulerEnd=[sx,sy];setTimeout(()=>{rulerStartScreen=null;rulerEnd=null;},3000);return;}
+
+  if(draggingToken){
+    const mapName=mapInput.value.trim()||"dungeon-1";
+    update(ref(db,`maps/${mapName}/tokens/${draggingToken.id}`),{x:tokens[draggingToken.id].x,y:tokens[draggingToken.id].y});
+    draggingToken=null;return;
+  }
+
+  clearTimeout(pingHoldTimer);
+  if(isHolding){stopLaser();viewport.classList.remove("grabbing");}
+  isHolding=false;panning=false;
+});
+
 viewport.addEventListener("wheel",e=>{
   e.preventDefault();const factor=e.deltaY<0?1.1:.9;
   const rect=viewport.getBoundingClientRect();const mx=e.clientX-rect.left,my=e.clientY-rect.top;
@@ -403,12 +897,14 @@ viewport.addEventListener("wheel",e=>{
   scaleLabel.textContent=`${Math.round(zoom*100)}%`;
 },{passive:false});
 
+// ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
   if(location.protocol==="file:"){
-    overlayMsg.innerHTML=`<span style="color:#e04040;font-family:'Cinzel',serif">Must be served over http://</span><br><br><span style="font-size:11px;color:#6b5a38">python -m http.server 8080</span>`;
+    overlayMsg.innerHTML=`<span style="color:#e04040;font-family:'Cinzel',serif">Must be served over http://</span>`;
     return;
   }
-  if(!playerName)showNameModal();else nameDisplay.textContent=playerName;
+  if(!playerName)showNameModal();
+  else nameDisplay.textContent=playerName;
   overlayMsg.textContent="Loading textures…";
   await loadTextures();
   overlayMsg.textContent="Connecting…";
