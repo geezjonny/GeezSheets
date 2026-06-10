@@ -774,7 +774,7 @@ function draw(){
   for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}
   ctx.restore();
 
-  ctx.strokeStyle="rgba(255,255,255,.03)";ctx.lineWidth=1/zoom;
+  ctx.strokeStyle="rgba(255,255,255,.1)";ctx.lineWidth=1/zoom;
   const l=-camX/zoom,t=-camY/zoom,r=(canvas.width-camX)/zoom,b=(canvas.height-camY)/zoom;
   for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
   for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
