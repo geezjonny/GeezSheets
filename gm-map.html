@@ -7,10 +7,17 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=IM+Fell+English&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0d0b08;--panel:#1a1510;--border:#3d2e1a;--gold:#c8a84b;--gold-dim:#7a6228;--red:#8b2020;--red-bright:#e04040;--text:#d4c49a;--text-dim:#6b5a38}
+:root{
+  --bg:#0d0b08;--panel:#1a1510;--panel2:#151208;--border:#3d2e1a;
+  --gold:#c8a84b;--gold-dim:#7a6228;--red:#8b2020;--red-bright:#e04040;
+  --text:#d4c49a;--text-dim:#6b5a38;--green:#5a9a5a;
+  --sidebar:280px;--toolbar:56px;--initiative:56px;
+}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
-#app{display:flex;flex-direction:column;width:100vw;height:100vh}
-#toolbar{flex-shrink:0;height:56px;background:var(--panel);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;overflow-x:auto;overflow-y:hidden}
+#app{display:grid;grid-template-columns:1fr var(--sidebar);grid-template-rows:var(--toolbar) 1fr var(--initiative);width:100vw;height:100vh}
+
+/* ── Toolbar ── */
+#toolbar{grid-column:1/3;grid-row:1;background:var(--panel);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;overflow-x:auto;overflow-y:hidden;z-index:10}
 #toolbar::-webkit-scrollbar{height:4px}
 #toolbar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 .sep{width:1px;height:30px;background:var(--border);flex-shrink:0;margin:0 4px}
@@ -33,21 +40,62 @@ button.roof-active{border-color:#aa7a4a;color:#e0b070;background:rgba(170,122,74
 .pd-stamp{font-size:20px;background:transparent;border:2px solid var(--border)}
 .pd-stamp:hover{border-color:var(--gold-dim);background:rgba(255,255,255,.05)}
 .pd-stamp.active{border-color:var(--gold)}
-#status{margin-left:auto;flex-shrink:0;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;padding:4px 10px;border-radius:3px;border:1px solid var(--border);color:var(--text-dim);transition:all .3s}
+#status{flex-shrink:0;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;padding:4px 10px;border-radius:3px;border:1px solid var(--border);color:var(--text-dim);transition:all .3s}
 #status.saving{color:var(--gold);border-color:var(--gold-dim)}
-#status.live{color:#5a9a5a;border-color:#2a5a2a}
+#status.live{color:var(--green);border-color:#2a5a2a}
 #status.error{color:var(--red-bright);border-color:var(--red)}
-#canvas-wrap{flex:1;overflow:hidden;position:relative}
-canvas{display:block;cursor:crosshair}
 #map-name{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--gold);font-family:'Cinzel',serif;font-size:12px;width:120px;padding:2px 4px;outline:none}
 #map-name:focus{border-bottom-color:var(--gold)}
 #map-name::placeholder{color:var(--text-dim)}
+#roof-opacity-btn{font-size:10px;padding:0 8px}
+
+/* ── Canvas area ── */
+#canvas-wrap{grid-column:1;grid-row:2;position:relative;overflow:hidden}
+canvas{display:block;cursor:crosshair}
 #coords{position:absolute;bottom:8px;left:8px;font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);pointer-events:none;background:rgba(13,11,8,.7);padding:3px 8px;border-radius:3px;border:1px solid var(--border)}
 #toast{position:absolute;bottom:36px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;padding:6px 16px;border-radius:4px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #ping-toast{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
 #ping-toast.show{opacity:1}
-/* modals */
+
+/* ── Session sidebar ── */
+#session{grid-column:2;grid-row:2;display:flex;flex-direction:column;background:var(--panel2);border-left:1px solid var(--border);overflow:hidden}
+#session-header{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+#chat-log{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px}
+#chat-log::-webkit-scrollbar{width:4px}
+#chat-log::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.chat-msg{font-size:12px;line-height:1.4;word-break:break-word}
+.chat-msg .who{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);margin-right:6px}
+.chat-msg .who.system{color:var(--text-dim)}
+.chat-msg .who.dice{color:#7ab0e0}
+.chat-msg.mine .who{color:#e0b070}
+#dice-section{border-top:1px solid var(--border);padding:8px;flex-shrink:0}
+#dice-section-label{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);letter-spacing:.08em;margin-bottom:6px}
+#dice-btns{display:flex;gap:4px;flex-wrap:wrap}
+.die-btn{width:36px;height:36px;padding:0;font-family:'Cinzel',serif;font-size:10px;border-radius:4px}
+#dice-result-inline{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-top:6px;min-height:18px;text-align:center}
+#chat-input-row{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);flex-shrink:0}
+#chat-input{flex:1;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:12px;padding:5px 8px;border-radius:4px;outline:none;min-width:0}
+#chat-input:focus{border-color:var(--gold-dim)}
+#chat-send{padding:0 10px;height:28px;font-size:10px}
+
+/* ── Initiative bar ── */
+#initiative-bar{grid-column:1/3;grid-row:3;background:rgba(13,11,8,.95);border-top:1px solid var(--border);display:flex;align-items:center;overflow:hidden}
+#init-label{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);letter-spacing:.1em;padding:0 10px;flex-shrink:0;text-transform:uppercase}
+#init-controls{display:flex;flex-direction:column;gap:4px;padding:4px 8px;border-right:1px solid var(--border);flex-shrink:0}
+#init-controls button{height:22px;font-size:9px;padding:0 8px}
+#init-track{flex:1;display:flex;align-items:center;gap:6px;padding:0 8px;overflow-x:auto}
+#init-track::-webkit-scrollbar{height:3px}
+#init-track::-webkit-scrollbar-thumb{background:var(--border)}
+.init-card{flex-shrink:0;height:44px;min-width:80px;border:1px solid var(--border);border-radius:4px;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;padding:0 8px;position:relative}
+.init-card:hover{border-color:var(--gold-dim)}
+.init-card.active-turn{border-color:var(--gold);background:rgba(200,168,75,.1);box-shadow:0 0 8px rgba(200,168,75,.3)}
+.init-card.active-turn::before{content:'▶';position:absolute;left:-14px;font-size:10px;color:var(--gold)}
+.init-card .init-name{font-family:'Cinzel',serif;font-size:10px;color:var(--text);letter-spacing:.04em;text-align:center}
+.init-card .init-num{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim)}
+.init-card .init-hp{font-size:9px;font-family:'Cinzel',serif}
+
+/* ── Modals ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:300}
 .modal-overlay.hidden{display:none}
 .modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px;min-width:300px;max-width:420px;width:90%;display:flex;flex-direction:column;gap:14px}
@@ -61,15 +109,8 @@ canvas{display:block;cursor:crosshair}
 .modal-btns{display:flex;gap:8px}
 .modal-btns button{flex:1;height:36px}
 .modal-btns button.primary{border-color:var(--gold);color:var(--gold)}
-/* dice */
-#dice-panel{position:fixed;bottom:0;left:50%;transform:translateX(-50%);background:rgba(13,11,8,.95);border:1px solid var(--border);border-top-left-radius:8px;border-top-right-radius:8px;padding:12px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:30;min-width:320px;backdrop-filter:blur(8px);transition:opacity .3s,transform .3s}
-#dice-panel.hidden{opacity:0;pointer-events:none;transform:translateX(-50%) translateY(16px)}
-#dice-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.die-btn{width:44px;height:44px;padding:0;font-family:'Cinzel',serif;font-size:11px;border-radius:6px}
-#dice-result{font-family:'Cinzel',serif;font-size:36px;color:var(--gold);min-height:48px;text-align:center}
-#dice-result.rolling{color:var(--text-dim)}
-#dice-log{font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);text-align:center;min-height:16px}
-/* weather */
+
+/* ── Weather panel ── */
 #weather-panel{position:fixed;top:56px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
 #weather-panel.open{display:flex}
 .wx-row{display:flex;align-items:center;gap:10px}
@@ -80,12 +121,20 @@ canvas{display:block;cursor:crosshair}
 .wx-check:checked{background:rgba(200,168,75,.3);border-color:var(--gold)}
 .wx-check::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--text-dim);transition:left .2s,background .2s}
 .wx-check:checked::after{left:18px;background:var(--gold)}
-/* roof opacity toggle */
-#roof-opacity-btn{font-size:10px;padding:0 8px}
+
+/* ── Context menu ── */
+#ctx-menu{position:fixed;z-index:600;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:4px 0;display:none;min-width:160px;box-shadow:0 6px 24px rgba(0,0,0,.6)}
+#ctx-menu.open{display:block}
+.ctx-item{padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.05em;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text-dim);transition:background .1s}
+.ctx-item:hover{background:rgba(200,168,75,.08);color:var(--text)}
+.ctx-item .ctx-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0}
+.ctx-label{padding:4px 14px;font-family:'Cinzel',serif;font-size:8px;color:var(--text-dim);letter-spacing:.1em;text-transform:uppercase}
 </style>
 </head>
 <body>
 <div id="app">
+  <!-- Toolbar -->
   <div id="toolbar">
     <span class="tool-label">Map</span>
     <input id="map-name" type="text" placeholder="map-name" value="dungeon-1" spellcheck="false">
@@ -98,10 +147,7 @@ canvas{display:block;cursor:crosshair}
     <div class="sep"></div>
     <span class="tool-label">Terrain</span>
     <div class="picker-wrap">
-      <button class="picker-btn" id="terrain-picker-btn">
-        <div class="picker-swatch" id="terrain-preview-swatch"></div>
-        <span id="terrain-preview-label">Grass</span> ▾
-      </button>
+      <button class="picker-btn" id="terrain-picker-btn"><div class="picker-swatch" id="terrain-preview-swatch"></div><span id="terrain-preview-label">Grass</span> ▾</button>
       <div class="picker-dropdown" id="terrain-dropdown"></div>
     </div>
     <div class="sep"></div>
@@ -110,7 +156,7 @@ canvas{display:block;cursor:crosshair}
     <div class="sep"></div>
     <span class="tool-label">Roof</span>
     <button id="roofBtn">🏠 Roof</button>
-    <button id="roof-opacity-btn" title="Toggle roof visibility for GM">👁 50%</button>
+    <button id="roof-opacity-btn" title="Toggle roof visibility">👁 50%</button>
     <div class="sep"></div>
     <span class="tool-label">Fog</span>
     <button id="fogBtn">🌫 Fog</button>
@@ -120,51 +166,66 @@ canvas{display:block;cursor:crosshair}
     <div class="sep"></div>
     <span class="tool-label">Props</span>
     <div class="picker-wrap">
-      <button class="picker-btn" id="prop-picker-btn">
-        <span id="prop-preview-label">None</span> ▾
-      </button>
+      <button class="picker-btn" id="prop-picker-btn"><span id="prop-preview-label">None</span> ▾</button>
       <div class="picker-dropdown" id="prop-dropdown"></div>
     </div>
     <div class="sep"></div>
     <span class="tool-label">Stamps</span>
     <div class="picker-wrap">
-      <button class="picker-btn" id="stamp-picker-btn">
-        <span id="stamp-preview-label">None</span> ▾
-      </button>
+      <button class="picker-btn" id="stamp-picker-btn"><span id="stamp-preview-label">None</span> ▾</button>
       <div class="picker-dropdown" id="stamp-dropdown"></div>
     </div>
     <div class="sep"></div>
     <button id="pingBtn">📍 Ping</button>
     <button id="weatherBtn">🌦 Weather</button>
-    <button id="diceBtn">🎲 Dice</button>
     <div class="sep"></div>
     <button id="clearBtn">Clear</button>
-    <button id="loadJsonBtn">⬆ Import JSON</button>
+    <button id="loadJsonBtn">⬆ Import</button>
     <input type="file" id="jsonFileInput" accept=".json" hidden>
     <div id="status">Connecting…</div>
     <span id="player-name-display" style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);cursor:pointer;flex-shrink:0;padding:0 8px" title="Click to change name"></span>
   </div>
+
+  <!-- Canvas -->
   <div id="canvas-wrap">
     <canvas id="canvas"></canvas>
     <div id="coords">0, 0</div>
     <div id="toast"></div>
     <div id="ping-toast"></div>
   </div>
-</div>
 
-<!-- Dice panel -->
-<div id="dice-panel" class="hidden">
-  <div id="dice-btns">
-    <button class="die-btn" data-sides="4">d4</button>
-    <button class="die-btn" data-sides="6">d6</button>
-    <button class="die-btn" data-sides="8">d8</button>
-    <button class="die-btn" data-sides="10">d10</button>
-    <button class="die-btn" data-sides="12">d12</button>
-    <button class="die-btn" data-sides="20">d20</button>
-    <button class="die-btn" data-sides="100">d100</button>
+  <!-- Session sidebar -->
+  <div id="session">
+    <div id="session-header">⚔ SESSION</div>
+    <div id="chat-log"></div>
+    <div id="dice-section">
+      <div id="dice-section-label">DICE ROLLER</div>
+      <div id="dice-btns">
+        <button class="die-btn" data-sides="4">d4</button>
+        <button class="die-btn" data-sides="6">d6</button>
+        <button class="die-btn" data-sides="8">d8</button>
+        <button class="die-btn" data-sides="10">d10</button>
+        <button class="die-btn" data-sides="12">d12</button>
+        <button class="die-btn" data-sides="20">d20</button>
+        <button class="die-btn" data-sides="100">d100</button>
+      </div>
+      <div id="dice-result-inline"></div>
+    </div>
+    <div id="chat-input-row">
+      <input id="chat-input" type="text" placeholder="Message…" maxlength="300" spellcheck="false">
+      <button id="chat-send">Send</button>
+    </div>
   </div>
-  <div id="dice-result">—</div>
-  <div id="dice-log"></div>
+
+  <!-- Initiative bar -->
+  <div id="initiative-bar">
+    <div id="init-label">Initiative</div>
+    <div id="init-controls">
+      <button id="init-roll-call-btn">⚄ Roll Init</button>
+      <button id="init-next-btn">▶ Next</button>
+    </div>
+    <div id="init-track"></div>
+  </div>
 </div>
 
 <!-- Weather panel -->
@@ -174,6 +235,24 @@ canvas{display:block;cursor:crosshair}
   <div class="wx-row"><input class="wx-check" type="checkbox" id="wx-mist-toggle"><span class="wx-label">Mist</span><input class="wx-slider" type="range" id="wx-mist-intensity" min="0" max="1" step="0.05" value="0.4"></div>
   <div class="wx-row"><input class="wx-check" type="checkbox" id="wx-storm-toggle"><span class="wx-label">Storm</span><input class="wx-slider" type="range" id="wx-storm-intensity" min="0" max="1" step="0.05" value="0.5"></div>
   <div class="wx-sub">Storm adds lightning — works best with rain</div>
+</div>
+
+<!-- Context menu (conditions + token actions) -->
+<div id="ctx-menu">
+  <div class="ctx-label">Conditions</div>
+  <div class="ctx-item" data-condition="poisoned"  ><div class="ctx-dot" style="background:#5aaa5a"></div>Poisoned</div>
+  <div class="ctx-item" data-condition="stunned"   ><div class="ctx-dot" style="background:#aaaa30"></div>Stunned</div>
+  <div class="ctx-item" data-condition="prone"     ><div class="ctx-dot" style="background:#888888"></div>Prone</div>
+  <div class="ctx-item" data-condition="burning"   ><div class="ctx-dot" style="background:#e07030"></div>Burning</div>
+  <div class="ctx-item" data-condition="frozen"    ><div class="ctx-dot" style="background:#50c0e0"></div>Frozen</div>
+  <div class="ctx-item" data-condition="blinded"   ><div class="ctx-dot" style="background:#dddddd"></div>Blinded</div>
+  <div class="ctx-item" data-condition="charmed"   ><div class="ctx-dot" style="background:#e070c0"></div>Charmed</div>
+  <div class="ctx-item" data-condition="frightened"><div class="ctx-dot" style="background:#9060d0"></div>Frightened</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" data-condition="clear" style="color:var(--red-bright)">✕ Clear conditions</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-label">Token</div>
+  <div class="ctx-item" data-action="delete" style="color:var(--red-bright)">✕ Delete token</div>
 </div>
 
 <!-- Name modal -->
@@ -229,7 +308,7 @@ canvas{display:block;cursor:crosshair}
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, set, get, child, onValue, remove, push }
+import { getDatabase, ref, set, get, child, onValue, remove, push, update }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
 const firebaseConfig={
@@ -247,51 +326,37 @@ const TILE=32;
 const FALLBACK={grass:"#3a6b3a",stone:"#6b6b6b",wood:"#7a5c3a",water:"#2a5a8a",cobble:"#9a9a8a",sand:"#b8a86a",lava:"#8b2a0a",dirt:"#6b4a2a",gravel:"#555a50",ice:"#a8d0e0",void:"#080808",carpet:"#6b2a5a",marble:"#d0ccc0",mud:"#4a3520"};
 const TERRAINS=Object.keys(FALLBACK);
 const TERRAIN_NAMES={grass:"Grass",stone:"Stone",wood:"Wood",water:"Water",cobble:"Cobble",sand:"Sand",lava:"Lava",dirt:"Dirt",gravel:"Gravel",ice:"Ice",void:"Void",carpet:"Carpet",marble:"Marble",mud:"Mud",erase:"Erase"};
-const TEXTURE_PATH="./textures/";
-const PROP_PATH="./props/";
-const TOKEN_PATH="./tokens/";
+const TEXTURE_PATH="./textures/",PROP_PATH="./props/",TOKEN_PATH="./tokens/";
 const STAMPS_LIST=["⭐","❗","🔒","💀","🔥","💎","🚪","👁","🗡","🛡","💰","📜","🧪","⚡","❄","🌿","🕯","🗝","🎭","🐉"];
-
-// Built-in props list — add more here or via the + button
+const FEET_PER_TILE=5;
+const CONDITIONS={poisoned:"#5aaa5a",stunned:"#aaaa30",prone:"#888888",burning:"#e07030",frozen:"#50c0e0",blinded:"#dddddd",charmed:"#e070c0",frightened:"#9060d0"};
 const PROPS_LIST=[
-  {id:"barrel",    label:"Barrel",    emoji:"🛢", w:1,h:1},
-  {id:"chest",     label:"Chest",     emoji:"📦", w:1,h:1},
-  {id:"table",     label:"Table",     emoji:"🪵", w:2,h:1},
-  {id:"bookshelf", label:"Bookshelf", emoji:"📚", w:1,h:2},
-  {id:"cauldron",  label:"Cauldron",  emoji:"🫕", w:1,h:1},
-  {id:"throne",    label:"Throne",    emoji:"💺", w:1,h:1},
-  {id:"campfire",  label:"Campfire",  emoji:"🔥", w:1,h:1},
-  {id:"well",      label:"Well",      emoji:"⭕", w:1,h:1},
-  {id:"altar",     label:"Altar",     emoji:"🗿", w:2,h:1},
-  {id:"pillar",    label:"Pillar",    emoji:"🏛", w:1,h:1},
-  {id:"crate",     label:"Crate",     emoji:"📫", w:1,h:1},
-  {id:"bed",       label:"Bed",       emoji:"🛏", w:1,h:2},
+  {id:"barrel",label:"Barrel",emoji:"🛢",w:1,h:1},{id:"chest",label:"Chest",emoji:"📦",w:1,h:1},
+  {id:"table",label:"Table",emoji:"🪵",w:2,h:1},{id:"bookshelf",label:"Bookshelf",emoji:"📚",w:1,h:2},
+  {id:"cauldron",label:"Cauldron",emoji:"🫕",w:1,h:1},{id:"throne",label:"Throne",emoji:"💺",w:1,h:1},
+  {id:"campfire",label:"Campfire",emoji:"🔥",w:1,h:1},{id:"well",label:"Well",emoji:"⭕",w:1,h:1},
+  {id:"altar",label:"Altar",emoji:"🗿",w:2,h:1},{id:"pillar",label:"Pillar",emoji:"🏛",w:1,h:1},
+  {id:"crate",label:"Crate",emoji:"📫",w:1,h:1},{id:"bed",label:"Bed",emoji:"🛏",w:1,h:2},
 ];
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={}, textures={}, fogGroups={}, tokens={}, stamps={};
-const roofs={};      // { "x,y": { terrain } } — same structure as tiles
-const props={};      // { "x,y": { propId, w, h } }
-const propTextures={}; // { propId: HTMLImageElement }
-const tokenTextures={}; // { characterId: HTMLImageElement }
-const customProps=[...PROPS_LIST]; // mutable, saved to RTDB
-
-let currentShape="rect", currentTerrain="grass", wallsEnabled=true;
-let fogMode=false, roofMode=false;
-let currentStamp=null, currentProp=null;
-let dragging=false, startX=0,startY=0,curX=0,curY=0;
-let hoverTileX=0, hoverTileY=0;
-let camX=0,camY=0,zoom=1;
-let selectPhase=null,selectTiles={};
-let selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
+const tiles={},textures={},fogGroups={},tokens={},stamps={},roofs={},props={};
+const propTextures={},tokenTextures={},customProps=[...PROPS_LIST];
+let currentShape="rect",currentTerrain="grass",wallsEnabled=true;
+let fogMode=false,roofMode=false,currentStamp=null,currentProp=null;
+let dragging=false,startX=0,startY=0,curX=0,curY=0;
+let hoverTileX=0,hoverTileY=0,camX=0,camY=0,zoom=1;
+let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
 let moveOffX=0,moveOffY=0,moveStartWorldX=0,moveStartWorldY=0;
-let draggingToken=null, placingToken=null;
+let draggingToken=null,placingToken=null;
 let playerName=localStorage.getItem("vtt_player_name")||"";
 let pingMode=false;
-const activePings={};
-let roofOpacity=0.5; // GM sees roofs at this opacity
-
-// Particles
+const activePings={},activeLasers={};
+let myLaserRef=null,pingHoldTimer=null,isHolding=false;
+let roofOpacity=0.5;
+let rulerStartPos=null,rulerEndPos=null;
+let ctxTokenId=null;
+let initiative={order:[],active:null,rolls:{}};
 const rainDrops=[],snowFlakes=[],mistClouds=[];
 let lastLightning=0,lightningAlpha=0;
 const weather={rain:{enabled:false,intensity:0.5},snow:{enabled:false,intensity:0.3},mist:{enabled:false,intensity:0.4},storm:{enabled:false,intensity:0.5}};
@@ -308,59 +373,33 @@ const fogBtn=document.getElementById("fogBtn");
 const roofBtn=document.getElementById("roofBtn");
 const tokenBtn=document.getElementById("tokenBtn");
 const clearBtn=document.getElementById("clearBtn");
+const pingToastEl=document.getElementById("ping-toast");
+const chatLog=document.getElementById("chat-log");
+const chatInput=document.getElementById("chat-input");
+const initTrack=document.getElementById("init-track");
+const ctxMenu=document.getElementById("ctx-menu");
+const nameModal=document.getElementById("name-modal");
+const nameInputEl=document.getElementById("name-input");
+const nameDisplay=document.getElementById("player-name-display");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function key(x,y){return `${x},${y}`;}
+function key(x,y){return`${x},${y}`;}
 function toWorld(sx,sy){return[(sx-camX)/zoom,(sy-camY)/zoom];}
+function toScreen(wx,wy){return[wx*zoom+camX,wy*zoom+camY];}
 function worldToTile(wx,wy){return[Math.floor(wx/TILE),Math.floor(wy/TILE)];}
 function screenPos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
 function hasWall(x,y){const t=tiles[key(x,y)];return t&&t.walls;}
 function applyTile(x,y){const k=key(x,y);if(currentTerrain==="erase"){delete tiles[k];return;}tiles[k]={terrain:currentTerrain,walls:wallsEnabled};}
 function applyRoof(x,y){const k=key(x,y);if(currentTerrain==="erase"){delete roofs[k];return;}roofs[k]={terrain:currentTerrain};}
-
 let toastTimer;
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove("show"),2200);}
 function setStatus(s,text){statusEl.className=s;statusEl.textContent=text;}
 
 // ── Asset loading ─────────────────────────────────────────────────────────────
-function loadTextures(){
-  return Promise.all(TERRAINS.map(t=>new Promise(resolve=>{
-    const img=new Image();
-    img.onload=()=>{textures[t]=img;resolve()};
-    img.onerror=()=>resolve();
-    img.src=`${TEXTURE_PATH}${t}.png`;
-  })));
-}
-
-function tryLoadPropTexture(propId){
-  if(propTextures[propId]!==undefined)return; // already tried
-  propTextures[propId]=null; // mark as attempted
-  const img=new Image();
-  img.onload=()=>{
-    propTextures[propId]=img;
-    // Save resolved URL to RTDB assets
-    set(ref(db,`assets/props/${propId}`),"found");
-  };
-  img.onerror=()=>{ propTextures[propId]=null; set(ref(db,`assets/props/${propId}`),null); };
-  img.src=`${PROP_PATH}${propId}.png`;
-}
-
-function tryLoadTokenTexture(characterId,name){
-  if(tokenTextures[characterId]!==undefined)return;
-  tokenTextures[characterId]=null;
-  const img=new Image();
-  const fname=(name||characterId).toLowerCase().replace(/\s+/g,"_");
-  img.onload=()=>{
-    tokenTextures[characterId]=img;
-    set(ref(db,`assets/tokens/${characterId}`),"found");
-  };
-  img.onerror=()=>{ tokenTextures[characterId]=null; };
-  img.src=`${TOKEN_PATH}${fname}.png`;
-}
-
-function loadAllPropTextures(){
-  customProps.forEach(p=>tryLoadPropTexture(p.id));
-}
+function loadTextures(){return Promise.all(TERRAINS.map(t=>new Promise(resolve=>{const img=new Image();img.onload=()=>{textures[t]=img;resolve()};img.onerror=()=>resolve();img.src=`${TEXTURE_PATH}${t}.png`;})));}
+function tryLoadPropTexture(id){if(propTextures[id]!==undefined)return;propTextures[id]=null;const img=new Image();img.onload=()=>{propTextures[id]=img;set(ref(db,`assets/props/${id}`),"found");};img.onerror=()=>{propTextures[id]=null;};img.src=`${PROP_PATH}${id}.png`;}
+function tryLoadTokenTexture(characterId,name){if(tokenTextures[characterId]!==undefined)return;tokenTextures[characterId]=null;const img=new Image();const fname=(name||characterId).toLowerCase().replace(/\s+/g,"_");img.onload=()=>{tokenTextures[characterId]=img;};img.onerror=()=>{};img.src=`${TOKEN_PATH}${fname}.png`;}
+function loadAllPropTextures(){customProps.forEach(p=>tryLoadPropTexture(p.id));}
 
 // ── Particles ─────────────────────────────────────────────────────────────────
 function initParticles(){
@@ -372,65 +411,117 @@ function initParticles(){
 }
 
 // ── Resize ────────────────────────────────────────────────────────────────────
-function resize(){
-  const w=document.getElementById("canvas-wrap");
-  canvas.width=w.clientWidth;canvas.height=w.clientHeight;
-  initParticles();
-}
-resize();
-window.addEventListener("resize",resize);
+function resize(){const w=document.getElementById("canvas-wrap");canvas.width=w.clientWidth;canvas.height=w.clientHeight;initParticles();}
+resize();window.addEventListener("resize",resize);
 
-// ── Player name ───────────────────────────────────────────────────────────────
-const nameModal=document.getElementById("name-modal");
-const nameInputEl=document.getElementById("name-input");
-const nameDisplay=document.getElementById("player-name-display");
-const pingToastEl=document.getElementById("ping-toast");
-
+// ── Name ─────────────────────────────────────────────────────────────────────
 function showNameModal(){nameInputEl.value=playerName;nameModal.classList.remove("hidden");setTimeout(()=>nameInputEl.focus(),50);}
 function confirmName(){const n=nameInputEl.value.trim();if(!n)return;playerName=n;localStorage.setItem("vtt_player_name",n);nameModal.classList.add("hidden");nameDisplay.textContent=playerName;}
 document.getElementById("name-confirm").onclick=confirmName;
 nameInputEl.addEventListener("keydown",e=>{if(e.key==="Enter")confirmName();});
 nameDisplay.onclick=showNameModal;
 
+// ── Ping / laser ──────────────────────────────────────────────────────────────
 function showPingToast(msg){pingToastEl.textContent=msg;pingToastEl.classList.add("show");setTimeout(()=>pingToastEl.classList.remove("show"),2000);}
 
 onValue(ref(db,"pings"),snap=>{
-  const data=snap.val()||{};
-  const now=Date.now();
+  const data=snap.val()||{};const now=Date.now();
   for(const[id,ping]of Object.entries(data)){
-    if(!activePings[id]&&now-ping.t<4000){
-      activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};
-      if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);
-    }
+    if(!activePings[id]&&now-ping.t<4000){activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);}
   }
 });
+onValue(ref(db,"lasers"),snap=>{
+  const data=snap.val()||{};
+  for(const k in activeLasers)delete activeLasers[k];
+  for(const[name,pos]of Object.entries(data)){if(name!==playerName.replace(/\./g,"_"))activeLasers[name]={wx:pos.wx,wy:pos.wy,color:pos.color};}
+});
+async function sendPing(sx,sy){const[wx,wy]=toWorld(sx,sy);const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);const pingRef=push(ref(db,"pings"));await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});setTimeout(()=>remove(pingRef),4000);}
+function startLaser(sx,sy){const[wx,wy]=toWorld(sx,sy);const safeKey=playerName.replace(/\./g,"_");const color=`hsl(${(playerName.split("").reduce((a,c)=>a+c.charCodeAt(0),0)*47)%360},70%,65%)`;myLaserRef=ref(db,`lasers/${safeKey}`);set(myLaserRef,{wx,wy,color,name:playerName});}
+function moveLaser(sx,sy){if(!myLaserRef)return;const[wx,wy]=toWorld(sx,sy);set(myLaserRef,{wx,wy,color:"#fff",name:playerName});}
+function stopLaser(){if(myLaserRef){remove(myLaserRef);myLaserRef=null;}}
 
-async function sendPing(sx,sy){
-  const[wx,wy]=toWorld(sx,sy);
-  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
-  const pingRef=push(ref(db,"pings"));
-  await set(pingRef,{x:tx,y:ty,name:playerName,t:Date.now()});
-  setTimeout(()=>remove(pingRef),4000);
-}
+// ── Chat ──────────────────────────────────────────────────────────────────────
+onValue(ref(db,"chat"),snap=>{
+  const data=snap.val();chatLog.innerHTML="";if(!data)return;
+  const msgs=Object.entries(data).sort(([,a],[,b])=>a.t-b.t);
+  msgs.forEach(([id,msg])=>{
+    const div=document.createElement("div");div.className="chat-msg"+(msg.sender===playerName?" mine":"");
+    div.innerHTML=`<span class="who ${msg.type||"chat"}">${msg.sender}:</span>${msg.text}`;chatLog.appendChild(div);
+  });chatLog.scrollTop=chatLog.scrollHeight;
+});
+async function sendChat(text,type="chat"){if(!text.trim())return;await push(ref(db,"chat"),{sender:playerName,text,type,t:Date.now()});}
+document.getElementById("chat-send").onclick=()=>{if(!playerName){showNameModal();return;}sendChat(chatInput.value);chatInput.value="";};
+chatInput.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!playerName){showNameModal();return;}sendChat(chatInput.value);chatInput.value="";}});
 
-// ── Weather ───────────────────────────────────────────────────────────────────
-async function saveWeather(){
-  try{await set(ref(db,"weather"),weather);}catch(e){toast("Weather save failed");}
-}
-function buildWeatherPanel(){
-  ["rain","snow","mist","storm"].forEach(t=>{
-    const toggle=document.getElementById(`wx-${t}-toggle`);
-    const slider=document.getElementById(`wx-${t}-intensity`);
-    toggle.checked=weather[t].enabled;
-    slider.value=weather[t].intensity;
-    toggle.onchange=()=>{weather[t].enabled=toggle.checked;saveWeather();};
-    slider.oninput=()=>{weather[t].intensity=parseFloat(slider.value);saveWeather();};
+// ── Dice ──────────────────────────────────────────────────────────────────────
+onValue(ref(db,"dice/last"),snap=>{
+  const data=snap.val();if(!data)return;if(Date.now()-data.t>10000)return;
+  const resultEl=document.getElementById("dice-result-inline");resultEl.textContent="Rolling…";
+  let ticks=0;const t=setInterval(()=>{ticks++;resultEl.textContent=Math.ceil(Math.random()*data.sides);if(ticks>=18){clearInterval(t);resultEl.textContent=`${data.roller}: ${data.result}`;sendChat(`rolled d${data.sides} → ${data.result}`,"dice");}},60);
+});
+async function rollDie(sides){if(!playerName){showNameModal();return;}const result=Math.ceil(Math.random()*sides);await set(ref(db,"dice/last"),{sides,result,roller:playerName,t:Date.now()});}
+document.querySelectorAll(".die-btn").forEach(btn=>btn.onclick=()=>rollDie(parseInt(btn.dataset.sides)));
+
+// ── Initiative ────────────────────────────────────────────────────────────────
+onValue(ref(db,"initiative"),snap=>{
+  const data=snap.val()||{};
+  initiative.order=data.order||[];initiative.active=data.active||null;initiative.rolls=data.rolls||{};
+  renderInitTrack();
+});
+function renderInitTrack(){
+  initTrack.innerHTML="";
+  if(!initiative.order.length){initTrack.innerHTML=`<span style="font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);padding:0 8px">No initiative — click ⚄ Roll Init</span>`;return;}
+  initiative.order.forEach(tokId=>{
+    const tok=tokens[tokId];
+    const card=document.createElement("div");card.className="init-card"+(initiative.active===tokId?" active-turn":"");
+    const roll=initiative.rolls?.[tokId]||"?";
+    const hpPct=tok?Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1))):1;
+    const hpColor=hpPct>.5?"#5a9a5a":hpPct>.25?"#aaaa30":"#e04040";
+    card.innerHTML=`<div class="init-name">${tok?.name||tokId}</div><div class="init-num">Roll: ${roll}</div>${tok?`<div class="init-hp" style="color:${hpColor}">${tok.hp??'?'}/${tok.maxHp??'?'} HP</div>`:""}`;
+    card.onclick=()=>{const t=tokens[tokId];if(t)activePings[`init_${tokId}`]={wx:t.x*TILE+TILE/2,wy:t.y*TILE+TILE/2,name:tok?.name||"",startTime:Date.now(),id:`init_${tokId}`};};
+    initTrack.appendChild(card);
   });
 }
+document.getElementById("init-roll-call-btn").onclick=async()=>{
+  if(!playerName){showNameModal();return;}
+  const rolls={};
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc"){const r=Math.ceil(Math.random()*20);rolls[id]=r;}
+  await set(ref(db,"initiative"),{rolling:true,order:[],active:null,rolls,requestedAt:Date.now()});
+  sendChat("called for Initiative rolls!","system");
+};
+document.getElementById("init-next-btn").onclick=async()=>{
+  if(!initiative.order.length)return;
+  const idx=initiative.order.indexOf(initiative.active);
+  const next=initiative.order[(idx+1)%initiative.order.length];
+  await update(ref(db,"initiative"),{active:next});
+  sendChat(`It's ${tokens[next]?.name||next}'s turn`,"system");
+};
+
+// ── Conditions ────────────────────────────────────────────────────────────────
+async function applyCondition(tokId,condition){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  if(condition==="clear"){await update(ref(db,`maps/${mapName}/tokens/${tokId}`),{conditions:[]});}
+  else{const tok=tokens[tokId];const conds=tok?.conditions||[];const newConds=conds.includes(condition)?conds.filter(c=>c!==condition):[...conds,condition];await update(ref(db,`maps/${mapName}/tokens/${tokId}`),{conditions:newConds});}
+}
+
+// Context menu
+document.querySelectorAll(".ctx-item").forEach(item=>{
+  item.onclick=()=>{
+    if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
+    const cond=item.dataset.condition,action=item.dataset.action;
+    if(cond)applyCondition(ctxTokenId,cond);
+    if(action==="delete")deleteToken(ctxTokenId);
+    ctxMenu.classList.remove("open");ctxTokenId=null;
+  };
+});
+document.addEventListener("click",()=>{ctxMenu.classList.remove("open");weatherPanel.classList.remove("open");});
+
+// ── Weather ───────────────────────────────────────────────────────────────────
+async function saveWeather(){try{await set(ref(db,"weather"),weather);}catch(e){toast("Weather save failed");}}
+function buildWeatherPanel(){["rain","snow","mist","storm"].forEach(t=>{const toggle=document.getElementById(`wx-${t}-toggle`);const slider=document.getElementById(`wx-${t}-intensity`);toggle.checked=weather[t].enabled;slider.value=weather[t].intensity;toggle.onchange=()=>{weather[t].enabled=toggle.checked;saveWeather();};slider.oninput=()=>{weather[t].intensity=parseFloat(slider.value);saveWeather();};});}
 const weatherPanel=document.getElementById("weather-panel");
 const weatherBtn=document.getElementById("weatherBtn");
 weatherBtn.onclick=(e)=>{e.stopPropagation();const r=weatherBtn.getBoundingClientRect();weatherPanel.style.left=r.left+"px";weatherPanel.classList.toggle("open");};
-document.addEventListener("click",()=>weatherPanel.classList.remove("open"));
 weatherPanel.addEventListener("click",e=>e.stopPropagation());
 weatherPanel.addEventListener("pointerdown",e=>e.stopPropagation());
 weatherPanel.addEventListener("pointerup",e=>e.stopPropagation());
@@ -444,35 +535,9 @@ function drawWeather(W,H){
   if(weather.storm.enabled){const interval=8000-weather.storm.intensity*6000;if(now-lastLightning>interval&&Math.random()<0.02){lastLightning=now;lightningAlpha=1;ctx.save();ctx.strokeStyle="rgba(200,210,255,0.9)";ctx.lineWidth=2;let bx=W*0.2+Math.random()*W*0.6,by=0;ctx.beginPath();ctx.moveTo(bx,by);while(by<H*0.7){bx+=Math.random()*80-40;by+=Math.random()*60+30;ctx.lineTo(bx,by);}ctx.stroke();ctx.restore();}if(lightningAlpha>0){ctx.fillStyle=`rgba(180,190,255,${lightningAlpha*0.12})`;ctx.fillRect(0,0,W,H);lightningAlpha=Math.max(0,lightningAlpha-0.06);}}
 }
 
-// ── Dice ──────────────────────────────────────────────────────────────────────
-const dicePanelEl=document.getElementById("dice-panel");
-const diceResultEl=document.getElementById("dice-result");
-const diceLogEl=document.getElementById("dice-log");
-let diceVisible=false,shuffleTimer=null;
-onValue(ref(db,"dice/last"),snap=>{
-  const data=snap.val();if(!data)return;
-  if(Date.now()-data.t>30000)return;
-  dicePanelEl.classList.remove("hidden");document.getElementById("diceBtn").classList.add("active");diceVisible=true;
-  diceResultEl.classList.add("rolling");diceLogEl.textContent=`${data.roller} rolled d${data.sides}…`;
-  let ticks=0;clearInterval(shuffleTimer);
-  shuffleTimer=setInterval(()=>{ticks++;diceResultEl.textContent=Math.ceil(Math.random()*data.sides);if(ticks>=18){clearInterval(shuffleTimer);diceResultEl.textContent=data.result;diceResultEl.classList.remove("rolling");diceLogEl.textContent=`${data.roller} rolled d${data.sides} → ${data.result}`;setTimeout(()=>{dicePanelEl.classList.add("hidden");document.getElementById("diceBtn").classList.remove("active");diceVisible=false;},5000);}},60);
-});
-async function rollDie(sides){if(!playerName){showNameModal();return;}const result=Math.ceil(Math.random()*sides);await set(ref(db,"dice/last"),{sides,result,roller:playerName,t:Date.now()});}
-document.getElementById("diceBtn").onclick=()=>{diceVisible=!diceVisible;dicePanelEl.classList.toggle("hidden",!diceVisible);document.getElementById("diceBtn").classList.toggle("active",diceVisible);};
-document.querySelectorAll(".die-btn").forEach(btn=>{btn.onclick=()=>rollDie(parseInt(btn.dataset.sides));});
-dicePanelEl.addEventListener("pointerdown",e=>e.stopPropagation());
-dicePanelEl.addEventListener("pointerup",e=>e.stopPropagation());
-
 // ── Firebase save helpers ─────────────────────────────────────────────────────
 let saveTimer=null,pendingSaves=0;
-function scheduleSave(){
-  clearTimeout(saveTimer);setStatus("saving","Saving…");
-  saveTimer=setTimeout(async()=>{
-    const mapName=mapInput.value.trim()||"dungeon-1";
-    try{pendingSaves++;await set(ref(db,`maps/${mapName}/tiles`),Object.keys(tiles).length?tiles:null);await set(ref(db,`maps/${mapName}/updatedAt`),Date.now());setStatus("live","Live ✓");}
-    catch(e){setStatus("error","Error");toast("Save failed: "+e.message);}
-  },600);
-}
+function scheduleSave(){clearTimeout(saveTimer);setStatus("saving","Saving…");saveTimer=setTimeout(async()=>{const mapName=mapInput.value.trim()||"dungeon-1";try{pendingSaves++;await set(ref(db,`maps/${mapName}/tiles`),Object.keys(tiles).length?tiles:null);await set(ref(db,`maps/${mapName}/updatedAt`),Date.now());setStatus("live","Live ✓");}catch(e){setStatus("error","Error");toast("Save failed: "+e.message);}},600);}
 async function saveRoofs(){const mapName=mapInput.value.trim()||"dungeon-1";try{await set(ref(db,`maps/${mapName}/roofs`),Object.keys(roofs).length?roofs:null);}catch(e){toast("Roof save failed");}}
 async function saveFog(){const mapName=mapInput.value.trim()||"dungeon-1";try{await set(ref(db,`maps/${mapName}/fog`),Object.keys(fogGroups).length?fogGroups:null);}catch(e){toast("Fog save failed");}}
 async function deleteFogGroup(id){const mapName=mapInput.value.trim()||"dungeon-1";try{await remove(ref(db,`maps/${mapName}/fog/${id}`));delete fogGroups[id];}catch(e){toast("Fog delete failed");}}
@@ -499,12 +564,7 @@ function subscribeLive(){
   liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
     if(pendingSaves>0){pendingSaves--;return;}
     const data=snap.val();
-    for(const k in tiles)delete tiles[k];
-    for(const k in fogGroups)delete fogGroups[k];
-    for(const k in tokens)delete tokens[k];
-    for(const k in stamps)delete stamps[k];
-    for(const k in roofs)delete roofs[k];
-    for(const k in props)delete props[k];
+    for(const k in tiles)delete tiles[k];for(const k in fogGroups)delete fogGroups[k];for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fogGroups,data.fog);
@@ -516,18 +576,7 @@ function subscribeLive(){
     setStatus("live","Live ✓");
   },()=>setStatus("error","RTDB error"));
 }
-
-// Load custom prop definitions from RTDB
-onValue(ref(db,"propDefs"),snap=>{
-  const data=snap.val();
-  if(!data)return;
-  for(const[id,p]of Object.entries(data)){
-    if(!customProps.find(x=>x.id===id))customProps.push(p);
-  }
-  buildPropDropdown();
-  loadAllPropTextures();
-});
-
+onValue(ref(db,"propDefs"),snap=>{const data=snap.val();if(!data)return;for(const[id,p]of Object.entries(data)){if(!customProps.find(x=>x.id===id))customProps.push(p);}buildPropDropdown();loadAllPropTextures();});
 mapInput.addEventListener("change",subscribeLive);
 
 // ── Toolbar dropdowns ─────────────────────────────────────────────────────────
@@ -535,455 +584,114 @@ const terrainDropdown=document.getElementById("terrain-dropdown");
 const terrainPickerBtn=document.getElementById("terrain-picker-btn");
 const terrainSwatchPrev=document.getElementById("terrain-preview-swatch");
 const terrainLabelPrev=document.getElementById("terrain-preview-label");
+function buildTerrainDropdown(){terrainDropdown.innerHTML="";[...TERRAINS,"erase"].forEach(t=>{const el=document.createElement("div");el.className="pd-item"+(t===currentTerrain?" active":"");if(t==="erase"){el.innerHTML=`<div style="font-size:16px;line-height:40px">✕</div><div class="pd-item-label">Erase</div>`;el.style.background="#1a1510";}else{el.innerHTML=`<div class="pd-item-inner"></div><div class="pd-item-label">${TERRAIN_NAMES[t]||t}</div>`;const inner=el.querySelector(".pd-item-inner");if(textures[t])inner.style.backgroundImage=`url(${textures[t].src})`;else inner.style.backgroundColor=FALLBACK[t];}el.onclick=()=>{selectTerrain(t);terrainDropdown.classList.remove("open");};terrainDropdown.appendChild(el);});}
+function selectTerrain(t){currentTerrain=t;terrainLabelPrev.textContent=TERRAIN_NAMES[t]||t;if(t==="erase"){terrainSwatchPrev.style.background="#1a1510";terrainSwatchPrev.textContent="✕";}else{terrainSwatchPrev.style.background=FALLBACK[t]||"#333";terrainSwatchPrev.textContent="";terrainSwatchPrev.style.backgroundImage=textures[t]?`url(${textures[t].src})`:"none";}buildTerrainDropdown();}
+terrainPickerBtn.onclick=(e)=>{e.stopPropagation();const r=terrainPickerBtn.getBoundingClientRect();terrainDropdown.style.left=r.left+"px";terrainDropdown.classList.toggle("open");};
 
-function buildTerrainDropdown(){
-  terrainDropdown.innerHTML="";
-  [...TERRAINS,"erase"].forEach(t=>{
-    const el=document.createElement("div");
-    el.className="pd-item"+(t===currentTerrain?" active":"");
-    if(t==="erase"){el.innerHTML=`<div style="font-size:16px;line-height:40px">✕</div><div class="pd-item-label">Erase</div>`;el.style.background="#1a1510";}
-    else{el.innerHTML=`<div class="pd-item-inner"></div><div class="pd-item-label">${TERRAIN_NAMES[t]||t}</div>`;const inner=el.querySelector(".pd-item-inner");if(textures[t])inner.style.backgroundImage=`url(${textures[t].src})`;else inner.style.backgroundColor=FALLBACK[t];}
-    el.onclick=()=>{selectTerrain(t);terrainDropdown.classList.remove("open");};
-    terrainDropdown.appendChild(el);
-  });
-}
-function selectTerrain(t){
-  currentTerrain=t;terrainLabelPrev.textContent=TERRAIN_NAMES[t]||t;
-  if(t==="erase"){terrainSwatchPrev.style.background="#1a1510";terrainSwatchPrev.textContent="✕";}
-  else{terrainSwatchPrev.style.background=FALLBACK[t]||"#333";terrainSwatchPrev.textContent="";terrainSwatchPrev.style.backgroundImage=textures[t]?`url(${textures[t].src})`:"none";}
-  buildTerrainDropdown();
-}
-terrainPickerBtn.onclick=(e)=>{e.stopPropagation();const r=terrainPickerBtn.getBoundingClientRect();terrainDropdown.style.left=r.left+"px";terrainDropdown.classList.toggle("open");propDropdown.classList.remove("open");stampDropdown.classList.remove("open");};
-
-// Stamp dropdown
 const stampDropdown=document.getElementById("stamp-dropdown");
 const stampPickerBtn=document.getElementById("stamp-picker-btn");
 const stampLabelPrev=document.getElementById("stamp-preview-label");
-function buildStampDropdown(){
-  stampDropdown.innerHTML="";
-  const eraseEl=document.createElement("div");eraseEl.className="pd-item pd-stamp"+(currentStamp==="erase"?" active":"");eraseEl.textContent="✕";eraseEl.style.fontSize="16px";eraseEl.onclick=()=>{selectStamp("erase");stampDropdown.classList.remove("open");};stampDropdown.appendChild(eraseEl);
-  STAMPS_LIST.forEach(s=>{const el=document.createElement("div");el.className="pd-item pd-stamp"+(s===currentStamp?" active":"");el.textContent=s;el.onclick=()=>{selectStamp(s);stampDropdown.classList.remove("open");};stampDropdown.appendChild(el);});
-}
+function buildStampDropdown(){stampDropdown.innerHTML="";const eraseEl=document.createElement("div");eraseEl.className="pd-item pd-stamp"+(currentStamp==="erase"?" active":"");eraseEl.textContent="✕";eraseEl.style.fontSize="16px";eraseEl.onclick=()=>{selectStamp("erase");stampDropdown.classList.remove("open");};stampDropdown.appendChild(eraseEl);STAMPS_LIST.forEach(s=>{const el=document.createElement("div");el.className="pd-item pd-stamp"+(s===currentStamp?" active":"");el.textContent=s;el.onclick=()=>{selectStamp(s);stampDropdown.classList.remove("open");};stampDropdown.appendChild(el);});}
 function selectStamp(s){currentStamp=s;currentProp=null;stampLabelPrev.textContent=s==="erase"?"Erase ✕":s||"None";buildStampDropdown();buildPropDropdown();fogMode=false;fogBtn.classList.remove("fog-active");roofMode=false;roofBtn.classList.remove("roof-active");}
-stampPickerBtn.onclick=(e)=>{e.stopPropagation();const r=stampPickerBtn.getBoundingClientRect();stampDropdown.style.left=r.left+"px";stampDropdown.classList.toggle("open");terrainDropdown.classList.remove("open");propDropdown.classList.remove("open");};
+stampPickerBtn.onclick=(e)=>{e.stopPropagation();const r=stampPickerBtn.getBoundingClientRect();stampDropdown.style.left=r.left+"px";stampDropdown.classList.toggle("open");};
 
-// Prop dropdown
 const propDropdown=document.getElementById("prop-dropdown");
 const propPickerBtn=document.getElementById("prop-picker-btn");
 const propLabelPrev=document.getElementById("prop-preview-label");
-function buildPropDropdown(){
-  propDropdown.innerHTML="";
-  // Erase
-  const eraseEl=document.createElement("div");eraseEl.className="pd-item pd-stamp"+(currentProp==="erase"?" active":"");eraseEl.textContent="✕";eraseEl.style.fontSize="16px";eraseEl.onclick=()=>{selectProp("erase");propDropdown.classList.remove("open");};propDropdown.appendChild(eraseEl);
-  // Add new prop button
-  const addEl=document.createElement("div");addEl.className="pd-item pd-stamp";addEl.textContent="➕";addEl.title="New prop";addEl.onclick=()=>{propDropdown.classList.remove("open");openPropModal();};propDropdown.appendChild(addEl);
-  // Props
-  customProps.forEach(p=>{
-    const el=document.createElement("div");
-    el.className="pd-item"+(currentProp&&currentProp.id===p.id?" active":"");
-    const hasImg=propTextures[p.id];
-    if(hasImg){el.innerHTML=`<div class="pd-item-inner" style="background-image:url(${hasImg.src})"></div><div class="pd-item-label">${p.label}</div>`;}
-    else{el.innerHTML=`<div style="font-size:18px;line-height:36px">${p.emoji}</div><div class="pd-item-label">${p.label}</div>`;}
-    el.onclick=()=>{selectProp(p);propDropdown.classList.remove("open");};
-    propDropdown.appendChild(el);
-  });
-}
+function buildPropDropdown(){propDropdown.innerHTML="";const eraseEl=document.createElement("div");eraseEl.className="pd-item pd-stamp"+(currentProp==="erase"?" active":"");eraseEl.textContent="✕";eraseEl.style.fontSize="16px";eraseEl.onclick=()=>{selectProp("erase");propDropdown.classList.remove("open");};propDropdown.appendChild(eraseEl);const addEl=document.createElement("div");addEl.className="pd-item pd-stamp";addEl.textContent="➕";addEl.onclick=()=>{propDropdown.classList.remove("open");openPropModal();};propDropdown.appendChild(addEl);customProps.forEach(p=>{const el=document.createElement("div");el.className="pd-item"+(currentProp&&currentProp.id===p.id?" active":"");const hasImg=propTextures[p.id];if(hasImg){el.innerHTML=`<div class="pd-item-inner" style="background-image:url(${hasImg.src})"></div><div class="pd-item-label">${p.label}</div>`;}else{el.innerHTML=`<div style="font-size:18px;line-height:36px">${p.emoji}</div><div class="pd-item-label">${p.label}</div>`;}el.onclick=()=>{selectProp(p);propDropdown.classList.remove("open");};propDropdown.appendChild(el);});}
 function selectProp(p){currentProp=p;currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();propLabelPrev.textContent=p==="erase"?"Erase ✕":(p.label||"None");buildPropDropdown();fogMode=false;fogBtn.classList.remove("fog-active");roofMode=false;roofBtn.classList.remove("roof-active");}
-propPickerBtn.onclick=(e)=>{e.stopPropagation();const r=propPickerBtn.getBoundingClientRect();propDropdown.style.left=r.left+"px";propDropdown.classList.toggle("open");terrainDropdown.classList.remove("open");stampDropdown.classList.remove("open");};
-
-document.addEventListener("click",()=>{terrainDropdown.classList.remove("open");stampDropdown.classList.remove("open");propDropdown.classList.remove("open");});
+propPickerBtn.onclick=(e)=>{e.stopPropagation();const r=propPickerBtn.getBoundingClientRect();propDropdown.style.left=r.left+"px";propDropdown.classList.toggle("open");};
 
 // Prop modal
 const propModal=document.getElementById("prop-modal");
 function openPropModal(){propModal.classList.remove("hidden");}
 document.getElementById("prop-cancel").onclick=()=>propModal.classList.add("hidden");
-document.getElementById("prop-confirm").onclick=()=>{
-  const id=document.getElementById("prop-id-input").value.trim().toLowerCase().replace(/\s+/g,"_");
-  const label=document.getElementById("prop-label-input").value.trim()||id;
-  const w=parseInt(document.getElementById("prop-w-input").value)||1;
-  const h=parseInt(document.getElementById("prop-h-input").value)||1;
-  const emoji=document.getElementById("prop-emoji-input").value||"📦";
-  if(!id){toast("Enter a prop ID");return;}
-  if(customProps.find(p=>p.id===id)){toast("Prop ID already exists");return;}
-  const newProp={id,label,emoji,w,h};
-  customProps.push(newProp);
-  tryLoadPropTexture(id);
-  savePropDef(newProp);
-  buildPropDropdown();
-  selectProp(newProp);
-  propModal.classList.add("hidden");
-};
+document.getElementById("prop-confirm").onclick=()=>{const id=document.getElementById("prop-id-input").value.trim().toLowerCase().replace(/\s+/g,"_");const label=document.getElementById("prop-label-input").value.trim()||id;const w=parseInt(document.getElementById("prop-w-input").value)||1;const h=parseInt(document.getElementById("prop-h-input").value)||1;const emoji=document.getElementById("prop-emoji-input").value||"📦";if(!id){toast("Enter a prop ID");return;}if(customProps.find(p=>p.id===id)){toast("Prop ID already exists");return;}const newProp={id,label,emoji,w,h};customProps.push(newProp);tryLoadPropTexture(id);savePropDef(newProp);buildPropDropdown();selectProp(newProp);propModal.classList.add("hidden");};
 
 // Shape / mode buttons
-document.querySelectorAll(".shape").forEach(btn=>{
-  btn.onclick=()=>{
-    if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();
-    fogMode=false;fogBtn.classList.remove("fog-active");
-    roofMode=false;roofBtn.classList.remove("roof-active");
-    currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();
-    currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();
-    currentShape=btn.dataset.shape;
-    document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-  };
-});
-
+document.querySelectorAll(".shape").forEach(btn=>{btn.onclick=()=>{if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();fogMode=false;fogBtn.classList.remove("fog-active");roofMode=false;roofBtn.classList.remove("roof-active");currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();currentShape=btn.dataset.shape;document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));btn.classList.add("active");};});
 wallBtn.onclick=()=>{wallsEnabled=!wallsEnabled;wallBtn.textContent=wallsEnabled?"On":"Off";wallBtn.classList.toggle("active",wallsEnabled);};
-
-roofBtn.onclick=()=>{
-  roofMode=!roofMode;roofBtn.classList.toggle("roof-active",roofMode);
-  if(roofMode){
-    fogMode=false;fogBtn.classList.remove("fog-active");
-    currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();
-    currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();
-    document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));
-    if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();
-  }
-};
-
-document.getElementById("roof-opacity-btn").onclick=()=>{
-  roofOpacity=roofOpacity<0.9?roofOpacity+0.25:0.25;
-  document.getElementById("roof-opacity-btn").textContent=`👁 ${Math.round(roofOpacity*100)}%`;
-};
-
-fogBtn.onclick=()=>{
-  fogMode=!fogMode;fogBtn.classList.toggle("fog-active",fogMode);
-  if(fogMode){
-    roofMode=false;roofBtn.classList.remove("roof-active");
-    currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();
-    currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();
-    document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));
-    if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();
-  }
-};
-
+roofBtn.onclick=()=>{roofMode=!roofMode;roofBtn.classList.toggle("roof-active",roofMode);if(roofMode){fogMode=false;fogBtn.classList.remove("fog-active");currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();}};
+document.getElementById("roof-opacity-btn").onclick=()=>{roofOpacity=roofOpacity<0.9?roofOpacity+0.25:0.25;document.getElementById("roof-opacity-btn").textContent=`👁 ${Math.round(roofOpacity*100)}%`;};
+fogBtn.onclick=()=>{fogMode=!fogMode;fogBtn.classList.toggle("fog-active",fogMode);if(fogMode){roofMode=false;roofBtn.classList.remove("roof-active");currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();}};
 clearBtn.onclick=()=>{if(!confirm("Clear the entire map?"))return;pushUndo();for(const k in tiles)delete tiles[k];toast("Map cleared");scheduleSave();};
+document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
 
-// ── JSON Import ───────────────────────────────────────────────────────────────
+// JSON import
 document.getElementById("loadJsonBtn").onclick=()=>document.getElementById("jsonFileInput").click();
+document.getElementById("jsonFileInput").addEventListener("change",async e=>{const file=e.target.files[0];if(!file)return;e.target.value="";let data;try{data=JSON.parse(await file.text());}catch(err){toast("Invalid JSON");return;}const suggestedName=data.mapName||file.name.replace(".json","").toLowerCase().replace(/\s+/g,"-");const mapName=prompt("Import as map name:",suggestedName);if(!mapName)return;mapInput.value=mapName;setStatus("saving","Importing…");try{const base=ref(db,`maps/${mapName}`);await set(child(base,"tiles"),data.tiles||null);await set(child(base,"fog"),data.fog||null);await set(child(base,"tokens"),data.tokens||null);await set(child(base,"props"),data.props||null);await set(child(base,"roofs"),data.roofs||null);if(data.stamps){const normStamps={};for(const[k,v]of Object.entries(data.stamps))normStamps[k.replace(",","_")]=v;await set(child(base,"stamps"),normStamps);}else await set(child(base,"stamps"),null);await set(child(base,"updatedAt"),Date.now());toast(`Imported ${Object.keys(data.tiles||{}).length} tiles → maps/${mapName}`);subscribeLive();}catch(err){setStatus("error","Import failed");toast("Import failed: "+err.message);}});
 
-document.getElementById("jsonFileInput").addEventListener("change",async e=>{
-  const file=e.target.files[0];
-  if(!file)return;
-  e.target.value=""; // reset so same file can be re-imported
-  let data;
-  try{ data=JSON.parse(await file.text()); }
-  catch(err){ toast("Invalid JSON file"); return; }
-
-  // Optionally rename the map
-  const suggestedName=data.mapName||file.name.replace(".json","").toLowerCase().replace(/\s+/g,"-");
-  const mapName=prompt("Import as map name:",suggestedName);
-  if(!mapName)return;
-
-  mapInput.value=mapName;
-  setStatus("saving","Importing…");
-
-  try{
-    const base=ref(db,`maps/${mapName}`);
-    await set(child(base,"tiles"),   data.tiles   ||null);
-    await set(child(base,"fog"),     data.fog     ||null);
-    await set(child(base,"tokens"),  data.tokens  ||null);
-    await set(child(base,"props"),   data.props   ||null);
-    await set(child(base,"roofs"),   data.roofs   ||null);
-    // Normalise stamp keys — generator may use "x_y", editor uses "x_y" in RTDB
-    // but coordinate lookups use "x,y" — normalise to underscore for storage
-    if(data.stamps){
-      const normStamps={};
-      for(const[k,v]of Object.entries(data.stamps)){
-        // Accept "x,y" or "x_y" — store as "x_y" (RTDB key format)
-        normStamps[k.replace(",","_")]=v;
-      }
-      await set(child(base,"stamps"), normStamps);
-    }else{
-      await set(child(base,"stamps"), null);
-    }
-    await set(child(base,"updatedAt"),Date.now());
-    toast(`Imported ${Object.keys(data.tiles||{}).length} tiles → maps/${mapName}`);
-    subscribeLive(); // reconnect listener to new map name
-  }catch(err){
-    setStatus("error","Import failed");
-    toast("Import failed: "+err.message);
-  }
-});
-
-document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click the map to ping");};
-
-// ── Token modal ───────────────────────────────────────────────────────────────
+// Token modal
 const tokenModal=document.getElementById("token-modal");
 const tokCharSel=document.getElementById("tok-char");
 const tokNameInput=document.getElementById("tok-name");
 const tokTypeInput=document.getElementById("tok-type");
 const tokHpInput=document.getElementById("tok-hp");
 const tokMaxHpInput=document.getElementById("tok-maxhp");
-tokenBtn.onclick=async()=>{
-  tokCharSel.innerHTML='<option value="">Loading…</option>';
-  try{
-    const snap=await get(child(ref(db),"characters/pcs"));
-    tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';
-    if(snap.exists()){
-      const chars=snap.val();
-      for(const[id,c]of Object.entries(chars)){
-        const opt=document.createElement("option");
-        opt.value=id;opt.textContent=c.name||(c.charName)||id;
-        opt.dataset.hp=c.hp??c.currentHp??10;opt.dataset.maxhp=c.maxHp??c.hp??10;opt.dataset.type="pc";
-        tokCharSel.appendChild(opt);
-      }
-    }
-  }catch(e){tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';}
-  tokNameInput.value="";tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="pc";
-  document.getElementById("tok-hp-row").style.display="none";
-  tokenModal.classList.remove("hidden");
-};
-tokCharSel.addEventListener("change",()=>{
-  const opt=tokCharSel.selectedOptions[0];
-  const isNpc=!opt||opt.value==="__npc__";
-  document.getElementById("tok-hp-row").style.display=isNpc?"flex":"none";
-  if(!isNpc&&opt.dataset.hp){tokHpInput.value=opt.dataset.hp;tokMaxHpInput.value=opt.dataset.maxhp;tokTypeInput.value=opt.dataset.type||"pc";tokNameInput.placeholder=opt.textContent;}
-  else{tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="npc";tokNameInput.placeholder="NPC Name";}
-});
+tokenBtn.onclick=async()=>{tokCharSel.innerHTML='<option value="">Loading…</option>';try{const snap=await get(child(ref(db),"characters/pcs"));tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';if(snap.exists()){const chars=snap.val();for(const[id,c]of Object.entries(chars)){const opt=document.createElement("option");opt.value=id;opt.textContent=c.name||(c.charName)||id;opt.dataset.hp=c.hp??c.currentHp??10;opt.dataset.maxhp=c.maxHp??c.hp??10;opt.dataset.type="pc";tokCharSel.appendChild(opt);}}}catch(e){tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';}tokNameInput.value="";tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="pc";document.getElementById("tok-hp-row").style.display="none";tokenModal.classList.remove("hidden");};
+tokCharSel.addEventListener("change",()=>{const opt=tokCharSel.selectedOptions[0];const isNpc=!opt||opt.value==="__npc__";document.getElementById("tok-hp-row").style.display=isNpc?"flex":"none";if(!isNpc&&opt.dataset.hp){tokHpInput.value=opt.dataset.hp;tokMaxHpInput.value=opt.dataset.maxhp;tokTypeInput.value=opt.dataset.type||"pc";tokNameInput.placeholder=opt.textContent;}else{tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="npc";tokNameInput.placeholder="NPC Name";}});
 document.getElementById("tok-cancel").onclick=()=>{tokenModal.classList.add("hidden");placingToken=null;};
-document.getElementById("tok-place").onclick=()=>{
-  const charId=tokCharSel.value;
-  const opt=tokCharSel.selectedOptions[0];
-  const name=tokNameInput.value.trim()||opt?.textContent||"Token";
-  const type=tokTypeInput.value;
-  const hp=parseInt(tokHpInput.value)||10;
-  const maxHp=parseInt(tokMaxHpInput.value)||hp;
-  placingToken={id:"tok_"+Date.now(),characterId:charId,name,type,hp,maxHp,x:0,y:0};
-  tryLoadTokenTexture(charId,name);
-  tokenModal.classList.add("hidden");
-  toast("Click the map to place token");
-};
+document.getElementById("tok-place").onclick=()=>{const charId=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];const name=tokNameInput.value.trim()||opt?.textContent||"Token";const type=tokTypeInput.value;const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;placingToken={id:"tok_"+Date.now(),characterId:charId,name,type,hp,maxHp,x:0,y:0};tryLoadTokenTexture(charId,name);tokenModal.classList.add("hidden");toast("Click the map to place token");};
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
-function drawTileAt(x,y,terrain){
-  const px=x*TILE,py=y*TILE;
-  if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);
-  else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}
-}
-
+function drawTileAt(x,y,terrain){const px=x*TILE,py=y*TILE;if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}}
 function drawTiles(){for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}}
-
-function drawWalls(){
-  ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/zoom;ctx.lineCap="round";
-  for(const k in tiles){
-    if(!tiles[k].walls)continue;
-    const[x,y]=k.split(",").map(Number);const px=x*TILE,py=y*TILE;
-    [[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}});
-  }
-}
-
-function drawGrid(){
-  ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/zoom;
-  const l=-camX/zoom,t=-camY/zoom,r=(canvas.width-camX)/zoom,b=(canvas.height-camY)/zoom;
-  for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
-  for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
-}
-
-function drawProps(){
-  for(const[k,p]of Object.entries(props)){
-    const[x,y]=k.split(",").map(Number);
-    const def=customProps.find(d=>d.id===p.propId)||{emoji:"📦",w:1,h:1};
-    const px=x*TILE,py=y*TILE;
-    const pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
-    const img=propTextures[p.propId];
-    if(img){ctx.drawImage(img,px,py,pw,ph);}
-    else{
-      ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;
-      ctx.textAlign="center";ctx.textBaseline="middle";
-      ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();
-    }
-  }
-  // Hover preview for prop placement
-  if(currentProp&&currentProp!=="erase"){
-    ctx.save();ctx.globalAlpha=0.5;
-    const def=currentProp;
-    const pw=(def.w||1)*TILE,ph=(def.h||1)*TILE;
-    const img=propTextures[def.id];
-    if(img)ctx.drawImage(img,hoverTileX*TILE,hoverTileY*TILE,pw,ph);
-    else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,hoverTileX*TILE+pw/2,hoverTileY*TILE+ph/2);}
-    ctx.restore();
-  }
-}
+function drawWalls(){ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/zoom;ctx.lineCap="round";for(const k in tiles){if(!tiles[k].walls)continue;const[x,y]=k.split(",").map(Number);const px=x*TILE,py=y*TILE;[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}});}}
+function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/zoom;const l=-camX/zoom,t=-camY/zoom,r=(canvas.width-camX)/zoom,b=(canvas.height-camY)/zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
 function drawToken(id,tok,alpha){
   ctx.save();ctx.globalAlpha=alpha??1;
-  const px=tok.x*TILE,py=tok.y*TILE;
-  const r=TILE*0.42,cx2=px+TILE/2,cy2=py+TILE/2;
+  const px=tok.x*TILE,py=tok.y*TILE,r=TILE*0.42,cx2=px+TILE/2,cy2=py+TILE/2;
+  // Condition rings
+  const conds=tok.conditions||[];
+  conds.forEach((c,i)=>{ctx.beginPath();ctx.arc(cx2,cy2,r+4+i*4,0,Math.PI*2);ctx.strokeStyle=CONDITIONS[c]||"#fff";ctx.lineWidth=2.5/zoom;ctx.stroke();});
   const img=tokenTextures[tok.characterId];
-  if(img){
-    ctx.save();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.clip();
-    ctx.drawImage(img,px,py,TILE,TILE);ctx.restore();
-    ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);
-    ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();
-  }else{
-    ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);
-    ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();
-    ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();
-    ctx.fillStyle="#fff";ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;
-    ctx.textAlign="center";ctx.textBaseline="middle";
-    ctx.fillText((tok.name||"?")[0].toUpperCase(),cx2,cy2);
-  }
-  ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.fillStyle="#ddd";ctx.textAlign="center";ctx.textBaseline="top";
-  ctx.fillText(tok.name||"",cx2,py+TILE+2/zoom);
-  const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+12/zoom;
-  const pct=Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1)));
-  ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(bx,by,bw,bh);
-  ctx.fillStyle=pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#aa3030";ctx.fillRect(bx,by,bw*pct,bh);
+  if(img){ctx.save();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.clip();ctx.drawImage(img,px,py,TILE,TILE);ctx.restore();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();}
+  else{ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();ctx.fillStyle="#fff";ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText((tok.name||"?")[0].toUpperCase(),cx2,cy2);}
+  ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.fillStyle="#ddd";ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText(tok.name||"",cx2,py+TILE+2/zoom);
+  const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+12/zoom;const pct=Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1)));
+  ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(bx,by,bw,bh);ctx.fillStyle=pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#aa3030";ctx.fillRect(bx,by,bw*pct,bh);
   ctx.restore();
 }
-
 function drawTokenLayer(type){for(const[id,tok]of Object.entries(tokens))if(tok.type===type)drawToken(id,tok,1);}
 
-function drawFog(){
-  ctx.fillStyle="rgba(10,20,40,0.6)";
-  for(const gid in fogGroups){const cells=fogGroups[gid].cells||{};for(const k in cells){const[x,y]=k.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}
-  if(fogMode){
-    ctx.save();ctx.font=`bold ${Math.round(11/zoom)}px sans-serif`;ctx.textAlign="center";ctx.textBaseline="middle";
-    for(const gid in fogGroups){
-      const cells=fogGroups[gid].cells||{};const coords=Object.keys(cells).map(k=>k.split(",").map(Number));if(!coords.length)continue;
-      const maxX=Math.max(...coords.map(([x])=>x));const minY=Math.min(...coords.map(([,y])=>y));
-      const bx=(maxX+1)*TILE-14/zoom,by=minY*TILE,bs=14/zoom;
-      ctx.fillStyle="rgba(200,50,50,0.92)";ctx.fillRect(bx,by,bs,bs);ctx.fillStyle="#fff";ctx.fillText("×",bx+bs/2,by+bs/2);
-    }
-    ctx.restore();
-  }
-}
+function drawFog(){ctx.fillStyle="rgba(10,20,40,0.6)";for(const gid in fogGroups){const cells=fogGroups[gid].cells||{};for(const k in cells){const[x,y]=k.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}if(fogMode){ctx.save();ctx.font=`bold ${Math.round(11/zoom)}px sans-serif`;ctx.textAlign="center";ctx.textBaseline="middle";for(const gid in fogGroups){const cells=fogGroups[gid].cells||{};const coords=Object.keys(cells).map(k=>k.split(",").map(Number));if(!coords.length)continue;const maxX=Math.max(...coords.map(([x])=>x));const minY=Math.min(...coords.map(([,y])=>y));const bx=(maxX+1)*TILE-14/zoom,by=minY*TILE,bs=14/zoom;ctx.fillStyle="rgba(200,50,50,0.92)";ctx.fillRect(bx,by,bs,bs);ctx.fillStyle="#fff";ctx.fillText("×",bx+bs/2,by+bs/2);}ctx.restore();}}
+function drawFogPreview(){if(!fogMode||!dragging)return;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(10,20,40,0.35)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+function drawRoofs(){ctx.save();ctx.globalAlpha=roofOpacity;for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}ctx.restore();if(roofMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.save();ctx.globalAlpha=roofOpacity*0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)drawTileAt(x,y,currentTerrain==="erase"?"stone":currentTerrain);ctx.restore();ctx.strokeStyle="rgba(255,180,80,0.8)";ctx.lineWidth=1.5/zoom;ctx.setLineDash([4/zoom,3/zoom]);ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);}}
+function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}if(currentStamp&&currentStamp!=="erase"){ctx.globalAlpha=0.5;ctx.fillText(currentStamp,hoverTileX*TILE+TILE/2,hoverTileY*TILE+TILE/2);ctx.globalAlpha=1;}ctx.restore();}
+function drawProps(){for(const[k,p]of Object.entries(props)){const[x,y]=k.split(",").map(Number);const def=customProps.find(d=>d.id===p.propId)||{emoji:"📦",w:1,h:1};const px=x*TILE,py=y*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;const img=propTextures[p.propId];if(img){ctx.drawImage(img,px,py,pw,ph);}else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}}if(currentProp&&currentProp!=="erase"){ctx.save();ctx.globalAlpha=0.5;const def=currentProp;const pw=(def.w||1)*TILE,ph=(def.h||1)*TILE;const img=propTextures[def.id];if(img)ctx.drawImage(img,hoverTileX*TILE,hoverTileY*TILE,pw,ph);else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,hoverTileX*TILE+pw/2,hoverTileY*TILE+ph/2);}ctx.restore();}}
+function drawPlacingTokenPreview(){if(!placingToken)return;const alpha=0.6+0.2*Math.sin(Date.now()/300);drawToken("preview",{...placingToken,x:hoverTileX,y:hoverTileY},alpha);}
 
-function drawFogPreview(){
-  if(!fogMode||!dragging)return;
-  const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);
-  const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
-  ctx.fillStyle="rgba(10,20,40,0.35)";
-  for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-}
+function getPreviewTiles(){if(!dragging)return null;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells=[];if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells.push([x,y]);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)cells.push([x,y]);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){cells.push([x0,y0]);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}return cells;}
+function drawPreview(){if(fogMode||roofMode)return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const cells=getPreviewTiles();if(!cells)return;const isErase=currentTerrain==="erase";ctx.fillStyle=isErase?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";for(const[x,y]of cells)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);ctx.strokeStyle=isErase?"rgba(220,60,60,0.9)":"rgba(200,168,75,0.9)";ctx.lineWidth=1.5/zoom;ctx.setLineDash([]);for(const[x,y]of cells)ctx.strokeRect(x*TILE+.5/zoom,y*TILE+.5/zoom,TILE-1/zoom,TILE-1/zoom);}
+function drawSelection(){if(currentShape!=="select")return;if(selectPhase==="marquee"&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(100,160,255,0.15)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=1.5/zoom;ctx.setLineDash([5/zoom,3/zoom]);ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);return;}if(selectPhase==="selected"||selectPhase==="moving"){const ox=moveOffX,oy=moveOffY;for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);const{terrain}=selectTiles[k];const px=(tx+ox)*TILE,py=(ty+oy)*TILE;if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}}const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE,pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;ctx.fillStyle="rgba(100,160,255,0.18)";ctx.fillRect(px,py,pw,ph);ctx.strokeStyle="rgba(100,160,255,0.95)";ctx.lineWidth=2/zoom;ctx.setLineDash([5/zoom,3/zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);}}
 
-function drawRoofs(){
-  ctx.save();ctx.globalAlpha=roofOpacity;
-  for(const[k,r]of Object.entries(roofs)){
-    const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);
-  }
-  ctx.restore();
-  if(roofMode&&dragging){
-    const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);
-    const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
-    ctx.save();ctx.globalAlpha=roofOpacity*0.5;
-    for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)drawTileAt(x,y,currentTerrain==="erase"?"stone":currentTerrain);
-    ctx.restore();
-    // Outline
-    ctx.strokeStyle="rgba(255,180,80,0.8)";ctx.lineWidth=1.5/zoom;ctx.setLineDash([4/zoom,3/zoom]);
-    ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);
-  }
-}
-
-function drawStamps(){
-  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
-  for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
-  if(currentStamp&&currentStamp!=="erase"){ctx.globalAlpha=0.5;ctx.fillText(currentStamp,hoverTileX*TILE+TILE/2,hoverTileY*TILE+TILE/2);ctx.globalAlpha=1;}
-  ctx.restore();
-}
-
-function drawPlacingTokenPreview(){
-  if(!placingToken)return;
-  const alpha=0.6+0.2*Math.sin(Date.now()/300);
-  drawToken("preview",{...placingToken,x:hoverTileX,y:hoverTileY},alpha);
-}
-
-function getPreviewTiles(){
-  if(!dragging)return null;
-  const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);
-  const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
-  const cells=[];
-  if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells.push([x,y]);}
-  else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)cells.push([x,y]);}}
-  else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){cells.push([x0,y0]);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}
-  return cells;
-}
-
-function drawPreview(){
-  if(fogMode||roofMode)return;
-  if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}
-  const cells=getPreviewTiles();if(!cells)return;
-  const isErase=currentTerrain==="erase";
-  ctx.fillStyle=isErase?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";
-  for(const[x,y]of cells)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-  ctx.strokeStyle=isErase?"rgba(220,60,60,0.9)":"rgba(200,168,75,0.9)";ctx.lineWidth=1.5/zoom;ctx.setLineDash([]);
-  for(const[x,y]of cells)ctx.strokeRect(x*TILE+.5/zoom,y*TILE+.5/zoom,TILE-1/zoom,TILE-1/zoom);
-}
-
-function drawSelection(){
-  if(currentShape!=="select")return;
-  if(selectPhase==="marquee"&&dragging){
-    const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);
-    const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
-    ctx.fillStyle="rgba(100,160,255,0.15)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
-    ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=1.5/zoom;ctx.setLineDash([5/zoom,3/zoom]);ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);return;
-  }
-  if(selectPhase==="selected"||selectPhase==="moving"){
-    const ox=moveOffX,oy=moveOffY;
-    for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);const{terrain}=selectTiles[k];const px=(tx+ox)*TILE,py=(ty+oy)*TILE;if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}}
-    const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE,pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;
-    ctx.fillStyle="rgba(100,160,255,0.18)";ctx.fillRect(px,py,pw,ph);ctx.strokeStyle="rgba(100,160,255,0.95)";ctx.lineWidth=2/zoom;ctx.setLineDash([5/zoom,3/zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);
-  }
-}
-
-function drawPings(){
-  const now=Date.now();
-  for(const[id,ping]of Object.entries(activePings)){
-    const age=(now-ping.startTime)/1000;if(age>3){delete activePings[id];continue;}
-    const alpha=1-age/3,sx=ping.wx*zoom+camX,sy=ping.wy*zoom+camY;
-    for(let i=0;i<3;i++){const phase=(age+i*0.4)%1.2;ctx.beginPath();ctx.arc(sx,sy,20+phase*60,0,Math.PI*2);ctx.strokeStyle=`rgba(255,200,50,${alpha*(1-phase/1.2)*0.8})`;ctx.lineWidth=2.5;ctx.stroke();}
-    ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fill();
-    ctx.font="bold 11px Cinzel,serif";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fillText(ping.name,sx,sy-10);
-  }
-}
+function drawPings(){const now=Date.now();for(const[id,ping]of Object.entries(activePings)){const age=(now-ping.startTime)/1000;if(age>3){delete activePings[id];continue;}const alpha=1-age/3;const[sx,sy]=toScreen(ping.wx,ping.wy);for(let i=0;i<3;i++){const phase=(age+i*0.4)%1.2;ctx.beginPath();ctx.arc(sx,sy,20+phase*60,0,Math.PI*2);ctx.strokeStyle=`rgba(255,200,50,${alpha*(1-phase/1.2)*0.8})`;ctx.lineWidth=2.5;ctx.stroke();}ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fill();ctx.font="bold 11px Cinzel,serif";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillStyle=`rgba(255,220,80,${alpha})`;ctx.fillText(ping.name,sx,sy-10);}}
+function drawLasers(){for(const[name,laser]of Object.entries(activeLasers)){const[sx,sy]=toScreen(laser.wx,laser.wy);ctx.save();ctx.beginPath();ctx.arc(sx,sy,8,0,Math.PI*2);ctx.fillStyle=laser.color||"#fff";ctx.globalAlpha=0.85;ctx.fill();ctx.font="bold 10px Cinzel,serif";ctx.fillStyle="#fff";ctx.textAlign="center";ctx.textBaseline="bottom";ctx.fillText(name.replace(/_/g," "),sx,sy-10);ctx.restore();}}
+function drawRuler(){if(!rulerStartPos||!rulerEndPos)return;const[sx,sy]=rulerStartPos;const[ex,ey]=rulerEndPos;const[wx,wy]=toWorld(sx,sy);const[wx2,wy2]=toWorld(ex,ey);const dtiles=Math.sqrt((wx2/TILE-wx/TILE)**2+(wy2/TILE-wy/TILE)**2);const dfeet=Math.round(dtiles*FEET_PER_TILE);ctx.save();ctx.strokeStyle="rgba(200,168,75,0.9)";ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="rgba(200,168,75,1)";ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(ex,ey,4,0,Math.PI*2);ctx.fill();const label=`${Math.round(dtiles*10)/10} tiles · ${dfeet}ft`;const mx=(sx+ex)/2,my=(sy+ey)/2;ctx.font="bold 12px Cinzel,serif";ctx.textAlign="center";ctx.textBaseline="middle";const tw=ctx.measureText(label).width;ctx.fillStyle="rgba(13,11,8,0.75)";ctx.fillRect(mx-tw/2-4,my-9,tw+8,18);ctx.fillStyle="#c8a84b";ctx.fillText(label,mx,my);ctx.restore();}
 
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camX,camY);ctx.scale(zoom,zoom);
-  drawTiles();
-  drawWalls();
-  drawStamps();
-  drawProps();
-  drawTokenLayer("npc");
-  drawFog();
-  drawFogPreview();
-  drawTokenLayer("pc");
-  drawPlacingTokenPreview();
-  drawRoofs();       // Roofs above everything including fog
-  drawGrid();
-  if(currentShape==="select")drawSelection();
-  else drawPreview();
+  drawTiles();drawWalls();drawStamps();drawProps();
+  drawTokenLayer("npc");drawFog();drawFogPreview();
+  drawTokenLayer("pc");drawPlacingTokenPreview();
+  drawRoofs();drawGrid();
+  if(currentShape==="select")drawSelection();else drawPreview();
   ctx.restore();
-  drawPings();
+  drawPings();drawLasers();drawRuler();
   drawWeather(canvas.width,canvas.height);
   requestAnimationFrame(render);
 }
 
 // ── Selection helpers ─────────────────────────────────────────────────────────
-function liftSelection(minX,minY,maxX,maxY){
-  selectTiles={};selMinX=minX;selMinY=minY;selMaxX=maxX;selMaxY=maxY;
-  for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){
-    const k=key(x,y);if(tiles[k])selectTiles[k]={...tiles[k]};
-    if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain,walls:wallsEnabled};else delete tiles[k];
-  }
-  moveOffX=0;moveOffY=0;scheduleSave();
-}
-function commitSelection(){
-  pushUndo();
-  for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);tiles[key(tx+moveOffX,ty+moveOffY)]={...selectTiles[k]};}
-  selectTiles={};selectPhase=null;moveOffX=0;moveOffY=0;scheduleSave();
-}
-function inSelection(wx,wy){
-  if(!selectPhase||selectPhase==="marquee")return false;
-  const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);
-  return tx>=selMinX+moveOffX&&tx<=selMaxX+moveOffX&&ty>=selMinY+moveOffY&&ty<=selMaxY+moveOffY;
-}
+let selStamps={},selProps={},selTokenIds=[];
+function liftSelection(minX,minY,maxX,maxY){selectTiles={};selMinX=minX;selMinY=minY;selMaxX=maxX;selMaxY=maxY;selStamps={};selProps={};selTokenIds=[];for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);if(tiles[k])selectTiles[k]={...tiles[k]};if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain,walls:wallsEnabled};else delete tiles[k];if(stamps[k]){selStamps[k]=stamps[k];delete stamps[k];}if(props[k]){selProps[k]={...props[k]};delete props[k];}}for(const[id,tok]of Object.entries(tokens)){if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY)selTokenIds.push(id);}moveOffX=0;moveOffY=0;scheduleSave();}
+function commitSelection(){pushUndo();const ox=moveOffX,oy=moveOffY;for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);tiles[key(tx+ox,ty+oy)]={...selectTiles[k]};}for(const k in selStamps){const[tx,ty]=k.split(",").map(Number);const nk=key(tx+ox,ty+oy);stamps[nk]=selStamps[k];saveStamp(nk,selStamps[k]);}for(const k in selProps){const[tx,ty]=k.split(",").map(Number);props[key(tx+ox,ty+oy)]={...selProps[k]};}for(const id of selTokenIds){if(tokens[id]){tokens[id].x+=ox;tokens[id].y+=oy;saveToken(id,tokens[id]);}}selectTiles={};selStamps={};selProps={};selTokenIds=[];selectPhase=null;moveOffX=0;moveOffY=0;scheduleSave();saveProps();}
+function inSelection(wx,wy){if(!selectPhase||selectPhase==="marquee")return false;const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);return tx>=selMinX+moveOffX&&tx<=selMaxX+moveOffX&&ty>=selMinY+moveOffY&&ty<=selMaxY+moveOffY;}
 function tokenAtTile(tx,ty){for(const[id,tok]of Object.entries(tokens))if(tok.x===tx&&tok.y===ty)return id;return null;}
-function fogGroupXHit(wx,wy){
-  for(const gid in fogGroups){const cells=fogGroups[gid].cells||{};const coords=Object.keys(cells).map(k=>k.split(",").map(Number));if(!coords.length)continue;const maxX=Math.max(...coords.map(([x])=>x));const minY=Math.min(...coords.map(([,y])=>y));const bx=(maxX+1)*TILE-14/zoom,by=minY*TILE,bs=14/zoom;if(wx>=bx&&wx<=bx+bs&&wy>=by&&wy<=by+bs)return gid;}return null;
-}
+function fogGroupXHit(wx,wy){for(const gid in fogGroups){const cells=fogGroups[gid].cells||{};const coords=Object.keys(cells).map(k=>k.split(",").map(Number));if(!coords.length)continue;const maxX=Math.max(...coords.map(([x])=>x));const minY=Math.min(...coords.map(([,y])=>y));const bx=(maxX+1)*TILE-14/zoom,by=minY*TILE,bs=14/zoom;if(wx>=bx&&wx<=bx+bs&&wy>=by&&wy<=by+bs)return gid;}return null;}
 function fogGroupAtTile(tx,ty){const k=key(tx,ty);for(const gid in fogGroups){if(fogGroups[gid].cells&&fogGroups[gid].cells[k])return gid;}return null;}
 
 // ── Pointer events ────────────────────────────────────────────────────────────
@@ -996,14 +704,14 @@ window.addEventListener("keydown",e=>{
   if((e.ctrlKey||e.metaKey)&&(e.code==="KeyY"||(e.code==="KeyZ"&&e.shiftKey))){e.preventDefault();redo();}
 });
 window.addEventListener("keyup",e=>{if(e.code==="Space"){spaceDown=false;canvas.style.cursor="crosshair";}});
-
 canvas.addEventListener("wheel",e=>{e.preventDefault();const factor=e.deltaY<0?1.1:.9;const[sx,sy]=screenPos(e);camX=sx-(sx-camX)*factor;camY=sy-(sy-camY)*factor;zoom=Math.min(Math.max(zoom*factor,.1),4);},{passive:false});
 
+// Context menu — right-click token shows condition menu, else legacy behavior
 canvas.addEventListener("contextmenu",e=>{
   e.preventDefault();const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy);
-  const tokId=tokenAtTile(tx,ty);if(tokId){deleteToken(tokId);return;}
+  const tokId=tokenAtTile(tx,ty);
+  if(tokId){ctxTokenId=tokId;ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");return;}
   const gid=fogGroupAtTile(tx,ty);if(gid){deleteFogGroup(gid);return;}
-  // Right-click prop = erase it
   if(props[key(tx,ty)]){delete props[key(tx,ty)];saveProps();}
 });
 
@@ -1013,7 +721,9 @@ canvas.addEventListener("pointermove",e=>{
   const[wx,wy]=toWorld(sx,sy);
   hoverTileX=Math.floor(wx/TILE);hoverTileY=Math.floor(wy/TILE);
   coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
+  if(rulerStartPos){rulerEndPos=[sx,sy];return;}
   if(draggingToken){const newTX=Math.floor(wx/TILE)-draggingToken.offsetTX;const newTY=Math.floor(wy/TILE)-draggingToken.offsetTY;tokens[draggingToken.id].x=newTX;tokens[draggingToken.id].y=newTY;return;}
+  if(isHolding&&myLaserRef){moveLaser(sx,sy);return;}
   if(currentShape==="select"&&selectPhase==="moving"){moveOffX=Math.round((wx-moveStartWorldX)/TILE);moveOffY=Math.round((wy-moveStartWorldY)/TILE);canvas.style.cursor="grabbing";return;}
   if(dragging){curX=wx;curY=wy;}
   if(currentShape==="select"&&selectPhase==="selected"&&inSelection(wx,wy))canvas.style.cursor="move";
@@ -1026,74 +736,51 @@ canvas.addEventListener("pointerdown",e=>{
   if(e.button!==0)return;
   const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy);
 
-  if(pingMode){sendPing(sx,sy);pingMode=false;document.getElementById("pingBtn").classList.remove("active");return;}
+  // Alt = ruler
+  if(e.altKey){canvas.setPointerCapture(e.pointerId);rulerStartPos=[sx,sy];rulerEndPos=[sx,sy];return;}
 
-  // Prop placement
-  if(currentProp){
-    if(currentProp==="erase"){const k=key(tx,ty);if(props[k]){delete props[k];saveProps();}return;}
-    const k=key(tx,ty);
-    props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h};
-    saveProps();return;
+  if(pingMode){
+    // Hold timer: short click = ping, hold = laser
+    isHolding=false;
+    pingHoldTimer=setTimeout(()=>{isHolding=true;startLaser(sx,sy);},300);
+    canvas.setPointerCapture(e.pointerId);return;
   }
 
-  // Stamp
+  if(currentProp){if(currentProp==="erase"){const k=key(tx,ty);if(props[k]){delete props[k];saveProps();}return;}const k=key(tx,ty);props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h};saveProps();return;}
   if(currentStamp){const k=key(tx,ty);pushUndo();if(currentStamp==="erase")deleteStamp(k);else{stamps[k]=currentStamp;saveStamp(k,currentStamp);}return;}
-
-  // Place token
   if(placingToken){placingToken.x=tx;placingToken.y=ty;tokens[placingToken.id]={...placingToken};saveToken(placingToken.id,placingToken);placingToken=null;toast("Token placed");return;}
-
-  // Fog
   if(fogMode){const hitGid=fogGroupXHit(wx,wy);if(hitGid){deleteFogGroup(hitGid);return;}canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
-
-  // Roof
   if(roofMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
-
-  // Token drag
   const tokId=tokenAtTile(tx,ty);if(tokId){canvas.setPointerCapture(e.pointerId);draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y};return;}
-
-  // Select
-  if(currentShape==="select"){
-    if((selectPhase==="selected"||selectPhase==="moving")&&inSelection(wx,wy)){selectPhase="moving";moveStartWorldX=wx-moveOffX*TILE;moveStartWorldY=wy-moveOffY*TILE;canvas.style.cursor="grabbing";return;}
-    if(selectPhase==="selected"||selectPhase==="moving")commitSelection();
-    selectPhase="marquee";dragging=true;canvas.setPointerCapture(e.pointerId);startX=wx;startY=wy;curX=wx;curY=wy;return;
-  }
-
+  if(currentShape==="select"){if((selectPhase==="selected"||selectPhase==="moving")&&inSelection(wx,wy)){selectPhase="moving";moveStartWorldX=wx-moveOffX*TILE;moveStartWorldY=wy-moveOffY*TILE;canvas.style.cursor="grabbing";return;}if(selectPhase==="selected"||selectPhase==="moving")commitSelection();selectPhase="marquee";dragging=true;canvas.setPointerCapture(e.pointerId);startX=wx;startY=wy;curX=wx;curY=wy;return;}
   dragging=true;canvas.setPointerCapture(e.pointerId);startX=wx;startY=wy;curX=wx;curY=wy;
 });
 
 canvas.addEventListener("pointerup",e=>{
+  const[sx,sy]=screenPos(e);
+
+  // Ruler
+  if(rulerStartPos){rulerEndPos=[sx,sy];setTimeout(()=>{rulerStartPos=null;rulerEndPos=null;},3000);return;}
+
   if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":"crosshair";return;}
+
+  // Ping / laser
+  if(pingMode){
+    clearTimeout(pingHoldTimer);
+    if(isHolding){stopLaser();canvas.style.cursor="crosshair";}
+    else sendPing(sx,sy);
+    isHolding=false;
+    pingMode=false;document.getElementById("pingBtn").classList.remove("active");
+    return;
+  }
+
   if(draggingToken){saveToken(draggingToken.id,tokens[draggingToken.id]);draggingToken=null;return;}
-
-  // Fog paint
-  if(fogMode&&dragging){
-    dragging=false;
-    const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);
-    const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
-    const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;
-    const gid="fog_"+Date.now();fogGroups[gid]={cells};saveFog();return;
-  }
-
-  // Roof paint
-  if(roofMode&&dragging){
-    dragging=false;
-    const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);
-    const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
-    for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyRoof(x,y);
-    saveRoofs();return;
-  }
-
+  if(fogMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="fog_"+Date.now();fogGroups[gid]={cells};saveFog();return;}
+  if(roofMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyRoof(x,y);saveRoofs();return;}
   if(currentShape==="select"&&selectPhase==="moving"){selectPhase="selected";canvas.style.cursor="move";return;}
-  if(currentShape==="select"&&selectPhase==="marquee"&&dragging){
-    dragging=false;
-    const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);
-    const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
-    pushUndo();liftSelection(minX,minY,maxX,maxY);
-    selectPhase=Object.keys(selectTiles).length>0?"selected":null;canvas.style.cursor=selectPhase?"move":"crosshair";return;
-  }
+  if(currentShape==="select"&&selectPhase==="marquee"&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);pushUndo();liftSelection(minX,minY,maxX,maxY);selectPhase=Object.keys(selectTiles).length>0?"selected":null;canvas.style.cursor=selectPhase?"move":"crosshair";return;}
   if(!dragging)return;dragging=false;pushUndo();
-  const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);
-  const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
+  const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
   if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyTile(x,y);}
   else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)applyTile(x,y);}}
   else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){applyTile(x0,y0);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}
