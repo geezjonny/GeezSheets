@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RAG — D&D Random Generator</title>
+<title>R.A.G. + Oracle — D&D Session Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -18,7 +18,9 @@
     --navy-light: #253a6a;
     --gold: #c9a227;
     --gold-light: #e8c84a;
-    --shadow: rgba(44,24,16,0.4);
+    --forest: #1a3020;
+    --forest-light: #2a5030;
+    --shadow: rgba(44,24,16,0.45);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -29,9 +31,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem 1rem 4rem;
+    padding: 2rem 1rem 5rem;
     font-family: 'Crimson Text', Georgia, serif;
-    position: relative;
     overflow-x: hidden;
   }
 
@@ -40,9 +41,9 @@
     position: fixed;
     inset: 0;
     background-image:
-      radial-gradient(ellipse at 15% 10%, #2d1a0e55 0%, transparent 50%),
-      radial-gradient(ellipse at 85% 90%, #0d1a2d55 0%, transparent 50%),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+      radial-gradient(ellipse at 15% 10%, #2d1a0e44 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 90%, #0d1a2d44 0%, transparent 55%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.07'/%3E%3C/svg%3E");
     z-index: -1;
   }
 
@@ -55,17 +56,13 @@
     animation: flicker 4s ease-in-out infinite;
     z-index: 10;
   }
-
   @keyframes flicker { 0%,100%{opacity:0.5} 50%{opacity:1} }
 
   /* ─── HEADER ─── */
-  .header {
-    text-align: center;
-    margin-bottom: 1.8rem;
-  }
+  .header { text-align: center; margin-bottom: 1.6rem; }
   .header h1 {
     font-family: 'Cinzel', serif;
-    font-size: clamp(2.2rem, 6vw, 4rem);
+    font-size: clamp(2rem, 6vw, 3.6rem);
     font-weight: 900;
     color: var(--gold);
     text-shadow: 0 0 40px rgba(201,162,39,0.45), 2px 2px 0 #3d0a0a;
@@ -75,21 +72,19 @@
   .header .subtitle {
     font-style: italic;
     color: var(--parchment-dark);
-    font-size: 1.05rem;
-    margin-top: 0.35rem;
-    opacity: 0.75;
+    font-size: 1rem;
+    margin-top: 0.3rem;
+    opacity: 0.7;
   }
   .divider {
-    width: 300px;
-    height: 1px;
+    width: 300px; height: 1px;
     background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    margin: 0.9rem auto;
+    margin: 0.8rem auto;
     position: relative;
   }
   .divider::before {
     content: attr(data-icon);
-    position: absolute;
-    left: 50%; top: 50%;
+    position: absolute; left: 50%; top: 50%;
     transform: translate(-50%,-50%);
     background: #120c08;
     color: var(--gold);
@@ -97,564 +92,1205 @@
     font-size: 1rem;
   }
 
-  /* ─── TABS ─── */
-  .tabs {
-    display: flex;
-    gap: 0;
+  /* ─── SECTION LABELS ─── */
+  .section-eyebrow {
+    font-family: 'Cinzel', serif;
+    font-size: 0.58rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0.6;
+    text-align: center;
+    margin-bottom: 0.4rem;
+  }
+
+  /* ─── TAB GROUPS ─── */
+  .tab-group {
     max-width: 820px;
     width: 100%;
     margin-bottom: 0;
   }
 
-  .tab-btn {
+  /* RAG tabs */
+  .tabs-rag {
+    display: flex;
+    gap: 0;
+  }
+  .tab-btn-rag {
     flex: 1;
     font-family: 'Cinzel', serif;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     font-weight: 700;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     border: none;
     cursor: pointer;
-    padding: 0.75rem 1rem;
-    transition: all 0.25s;
-    position: relative;
-    z-index: 2;
+    padding: 0.7rem 1rem;
+    transition: all 0.22s;
   }
-
-  .tab-btn.creature {
+  .tab-btn-rag.creature {
     background: linear-gradient(135deg, #3d0a0a, var(--blood));
     color: var(--parchment-dark);
     border-radius: 4px 0 0 0;
     border-top: 2px solid var(--blood-light);
-    border-left: 2px solid #5a1010;
   }
-  .tab-btn.character {
+  .tab-btn-rag.character {
     background: linear-gradient(135deg, #0d1a2d, var(--navy));
     color: #8aa8d4;
     border-radius: 0 4px 0 0;
     border-top: 2px solid #2a4a8a;
-    border-right: 2px solid #1a2a4a;
   }
+  .tab-btn-rag.active.creature { background: linear-gradient(135deg, var(--blood), var(--blood-light)); color: var(--parchment); }
+  .tab-btn-rag.active.character { background: linear-gradient(135deg, var(--navy), var(--navy-light)); color: #c8daf4; }
 
-  .tab-btn.active.creature {
-    background: linear-gradient(135deg, var(--blood), var(--blood-light));
-    color: var(--parchment);
-    box-shadow: 0 -2px 10px rgba(139,26,26,0.4);
+  /* Oracle tabs */
+  .tabs-oracle {
+    display: flex;
+    gap: 0;
+    margin-top: 1.8rem;
   }
-  .tab-btn.active.character {
-    background: linear-gradient(135deg, var(--navy), var(--navy-light));
-    color: #c8daf4;
-    box-shadow: 0 -2px 10px rgba(37,58,106,0.5);
+  .tab-btn-oracle {
+    flex: 1;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.55rem, 1.8vw, 0.72rem);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    padding: 0.65rem 0.3rem;
+    transition: all 0.22s;
+    background: linear-gradient(135deg, #1a1208, #2a1e0a);
+    color: var(--parchment-deep);
+    border-top: 2px solid rgba(201,162,39,0.25);
+    border-right: 1px solid rgba(201,162,39,0.12);
   }
+  .tab-btn-oracle:first-child { border-radius: 4px 0 0 0; }
+  .tab-btn-oracle:last-child  { border-radius: 0 4px 0 0; border-right: none; }
+  .tab-btn-oracle.active {
+    background: linear-gradient(135deg, #2a1e08, #3d2c0e);
+    color: var(--gold-light);
+    border-top-color: var(--gold);
+  }
+  .tab-btn-oracle:hover:not(.active) { background: rgba(201,162,39,0.1); color: var(--parchment); }
 
-  .tab-btn .tab-icon { margin-right: 0.4rem; }
-
-  /* ─── SCROLL ─── */
+  /* ─── SCROLL (shared card) ─── */
   .scroll {
     background: var(--parchment);
     border-radius: 0 0 4px 4px;
-    padding: 2rem 2rem 2.5rem;
+    padding: 1.8rem 2rem 2.2rem;
     max-width: 820px;
     width: 100%;
     position: relative;
-    box-shadow:
-      0 0 0 2px var(--gold),
-      0 0 0 5px #1a0f0a,
-      0 0 50px rgba(0,0,0,0.85),
-      inset 0 0 40px rgba(44,24,16,0.12);
+    box-shadow: 0 0 0 2px var(--gold), 0 0 0 5px #1a0f0a, 0 0 50px rgba(0,0,0,0.85), inset 0 0 40px rgba(44,24,16,0.1);
   }
-
   .scroll::before, .scroll::after {
     position: absolute;
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     color: var(--gold);
-    opacity: 0.6;
+    opacity: 0.5;
   }
-  .scroll::before { content: '❧'; top: 0.6rem; left: 0.8rem; }
-  .scroll::after  { content: '❧'; bottom: 0.6rem; right: 0.8rem; transform: rotate(180deg); }
+  .scroll::before { content: '❧'; top: 0.5rem; left: 0.7rem; }
+  .scroll::after  { content: '❧'; bottom: 0.5rem; right: 0.7rem; transform: rotate(180deg); }
 
-  /* mode accent bar */
   .scroll.mode-creature { border-top: 3px solid var(--blood); }
   .scroll.mode-character { border-top: 3px solid var(--navy); }
+  .scroll.mode-oracle { border-top: 3px solid var(--gold); }
 
   /* ─── PANEL ─── */
   .panel { display: none; }
   .panel.active { display: block; }
 
-  /* ─── GRID ─── */
+  /* ─── RAG GRID ─── */
   .parts-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
-    gap: 1.1rem;
-    margin-bottom: 1.8rem;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.6rem;
   }
-
   .part-card {
     border: 1px solid var(--gold);
     border-radius: 3px;
     background: rgba(244,232,193,0.45);
     overflow: hidden;
-    box-shadow: 2px 2px 0 rgba(44,24,16,0.25);
+    box-shadow: 2px 2px 0 rgba(44,24,16,0.22);
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
   }
   .part-card:hover { transform: translateY(-2px); box-shadow: 3px 4px 0 rgba(44,24,16,0.3); }
-
   .part-label {
     font-family: 'Cinzel', serif;
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     letter-spacing: 0.13em;
     text-transform: uppercase;
-    padding: 0.28rem 0.65rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    padding: 0.26rem 0.6rem;
+    display: flex; align-items: center; justify-content: space-between;
     color: var(--parchment);
   }
   .mode-creature .part-label { background: var(--blood); }
   .mode-character .part-label { background: var(--navy); }
-
-  .part-label .die { opacity: 0.65; font-size: 0.82rem; }
-
+  .part-label .die { opacity: 0.65; font-size: 0.8rem; }
   .part-value {
-    padding: 0.55rem 0.75rem 0.65rem;
-    font-size: 1rem;
+    padding: 0.5rem 0.7rem 0.6rem;
+    font-size: 0.97rem;
     color: var(--ink);
-    min-height: 2.9rem;
-    display: flex;
-    align-items: center;
+    min-height: 2.8rem;
+    display: flex; align-items: center;
     font-style: italic;
     line-height: 1.3;
   }
-  .part-value.rolling {
-    animation: blink 0.35s steps(4) infinite;
-    color: var(--blood);
-    font-style: normal;
-    font-size: 0.9rem;
-  }
+  .part-value.rolling { animation: blink 0.35s steps(4) infinite; color: var(--blood); font-style: normal; font-size: 0.88rem; }
   .mode-character .part-value.rolling { color: var(--navy); }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .part-value.revealed { animation: inkIn 0.4s ease forwards; }
+  @keyframes inkIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 
-  .part-value.revealed { animation: inkIn 0.45s ease forwards; }
-  @keyframes inkIn {
-    from { opacity:0; transform:translateY(5px); }
-    to   { opacity:1; transform:translateY(0); }
-  }
-
-  /* ─── BUTTONS ─── */
+  /* ─── RAG BUTTONS ─── */
   .btn-row {
-    display: flex;
-    gap: 0.8rem;
-    justify-content: center;
-    flex-wrap: wrap;
-    margin-bottom: 1.4rem;
+    display: flex; gap: 0.7rem;
+    justify-content: center; flex-wrap: wrap;
+    margin-bottom: 1.3rem;
   }
-
   .btn {
     font-family: 'Cinzel', serif;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     letter-spacing: 0.1em;
     font-weight: 700;
-    border: none;
-    cursor: pointer;
-    padding: 0.65rem 1.6rem;
+    border: none; cursor: pointer;
+    padding: 0.62rem 1.5rem;
     border-radius: 2px;
     transition: all 0.18s;
   }
-
-  .btn-primary {
-    color: var(--parchment);
-    box-shadow: 3px 3px 0 var(--ink);
-  }
-  .mode-creature .btn-primary {
-    background: linear-gradient(135deg, var(--blood) 0%, #6b1414 100%);
-    box-shadow: 3px 3px 0 #1a0505, 0 0 12px rgba(139,26,26,0.35);
-  }
-  .mode-character .btn-primary {
-    background: linear-gradient(135deg, var(--navy) 0%, #0d1a2d 100%);
-    box-shadow: 3px 3px 0 #060e1a, 0 0 12px rgba(26,42,74,0.4);
-  }
-  .btn-primary:hover { transform: translate(-1px,-1px); filter: brightness(1.15); box-shadow: 4px 4px 0 var(--ink); }
-  .btn-primary:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--ink); }
-
-  .btn-secondary {
-    background: transparent;
-    color: var(--ink);
-    border: 1px solid var(--ink-fade);
-    box-shadow: 2px 2px 0 rgba(44,24,16,0.18);
-    font-size: 0.75rem;
-  }
+  .btn-primary { color: var(--parchment); }
+  .mode-creature .btn-primary { background: linear-gradient(135deg, var(--blood), #6b1414); box-shadow: 3px 3px 0 #1a0505; }
+  .mode-character .btn-primary { background: linear-gradient(135deg, var(--navy), #0d1a2d); box-shadow: 3px 3px 0 #060e1a; }
+  .btn-primary:hover { transform: translate(-1px,-1px); filter: brightness(1.15); }
+  .btn-primary:active { transform: translate(2px,2px); }
+  .btn-secondary { background: transparent; color: var(--ink); border: 1px solid var(--ink-fade); box-shadow: 2px 2px 0 rgba(44,24,16,0.15); font-size: 0.72rem; }
   .btn-secondary:hover { background: var(--parchment-dark); transform: translate(-1px,-1px); }
 
   /* ─── SUMMARY ─── */
-  .summary-label {
-    font-family: 'Cinzel', serif;
-    font-size: 0.72rem;
-    letter-spacing: 0.1em;
-    color: var(--ink-fade);
-    text-transform: uppercase;
-    margin-bottom: 0.45rem;
-  }
-  .summary-box {
-    border: 1px dashed var(--ink-fade);
-    border-radius: 2px;
-    padding: 0.9rem 1.1rem;
-    background: rgba(44,24,16,0.05);
-    min-height: 3.8rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-  }
-  .summary-box p { font-size: 1rem; color: var(--ink); line-height: 1.65; }
-  .summary-box p.empty { font-style: italic; color: var(--ink-fade); opacity: 0.65; font-size: 0.92rem; }
-
-  /* ─── INDICATOR ─── */
-  .dice-indicator {
-    text-align: center;
-    margin-bottom: 0.9rem;
-    font-family: 'Cinzel', serif;
-    font-size: 0.78rem;
-    letter-spacing: 0.08em;
-    min-height: 1.1rem;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
+  .summary-label { font-family: 'Cinzel', serif; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--ink-fade); text-transform: uppercase; margin-bottom: 0.4rem; }
+  .summary-box { border: 1px dashed var(--ink-fade); border-radius: 2px; padding: 0.85rem 1rem; background: rgba(44,24,16,0.05); min-height: 3.6rem; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .summary-box p { font-size: 0.97rem; color: var(--ink); line-height: 1.65; }
+  .summary-box p.empty { font-style: italic; color: var(--ink-fade); opacity: 0.6; font-size: 0.9rem; }
+  .dice-indicator { text-align: center; margin-bottom: 0.8rem; font-family: 'Cinzel', serif; font-size: 0.75rem; letter-spacing: 0.08em; min-height: 1.1rem; opacity: 0; transition: opacity 0.3s; }
   .mode-creature .dice-indicator { color: var(--blood); }
   .mode-character .dice-indicator { color: var(--navy); }
   .dice-indicator.show { opacity: 1; }
 
-  /* ─── FOOTER ─── */
-  .footer-note {
-    margin-top: 1.5rem;
-    text-align: center;
-    font-style: italic;
-    font-size: 0.82rem;
-    color: var(--parchment-dark);
-    opacity: 0.45;
+  /* ─── ORACLE PANEL ─── */
+  .oracle-controls {
+    display: flex; flex-wrap: wrap; gap: 0.6rem;
+    margin-bottom: 1.3rem; align-items: center;
+  }
+  .oracle-roll-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: none; border-radius: 2px;
+    padding: 0.58rem 1.1rem;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+  }
+  .oracle-roll-btn:active { transform: scale(0.97); }
+  .oracle-roll-btn.primary { background: var(--blood); color: var(--parchment); flex: 1; min-width: 120px; }
+  .oracle-roll-btn.primary:hover { filter: brightness(1.15); }
+  .oracle-roll-btn.gold { background: linear-gradient(135deg, #3d2c08, #5a4010); color: var(--gold-light); border: 1px solid rgba(201,162,39,0.3); }
+  .oracle-roll-btn.gold:hover { filter: brightness(1.2); }
+  .oracle-roll-btn.secondary { background: var(--ink); color: var(--parchment-dark); font-size: 0.65rem; }
+  .oracle-roll-btn.secondary:hover { filter: brightness(1.3); }
+
+  .oracle-result-area { min-height: 140px; display: flex; flex-direction: column; gap: 0.85rem; }
+  .oracle-result-empty { display: flex; align-items: center; justify-content: center; height: 140px; color: var(--ink-fade); font-style: italic; font-size: 0.97rem; opacity: 0.5; text-align: center; }
+
+  .result-block { display: flex; flex-direction: column; gap: 0.45rem; animation: inkIn 0.3s ease; }
+  .result-row { display: grid; grid-template-columns: 125px 1fr; gap: 0.35rem 0.7rem; align-items: baseline; border-bottom: 1px solid rgba(44,24,16,0.1); padding-bottom: 0.4rem; }
+  .result-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .result-label { font-family: 'Cinzel', serif; font-size: 0.58rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-fade); }
+  .result-value { font-size: 1.02rem; color: var(--ink); line-height: 1.4; }
+  .result-value.big { font-size: 1.25rem; font-weight: 600; color: var(--blood); }
+  .result-value.flavor { font-style: italic; color: var(--ink-fade); font-size: 0.93rem; }
+
+  /* oracle yes/no */
+  .oracle-q-bar { display: flex; gap: 0.5rem; margin-bottom: 1.1rem; flex-wrap: wrap; }
+  .oracle-input {
+    flex: 1; min-width: 180px;
+    font-family: 'Crimson Text', serif; font-size: 1rem;
+    background: rgba(44,24,16,0.07);
+    border: 1px solid rgba(44,24,16,0.25); border-radius: 2px;
+    padding: 0.48rem 0.75rem; color: var(--ink);
+  }
+  .oracle-input::placeholder { color: var(--ink-fade); opacity: 0.5; }
+  .oracle-input:focus { outline: none; border-color: var(--gold); }
+  .oracle-answer { margin-top: 0.7rem; padding: 0.85rem 1rem; background: rgba(44,24,16,0.06); border-left: 3px solid var(--gold); border-radius: 0 2px 2px 0; animation: inkIn 0.25s ease; }
+  .oracle-answer-main { font-family: 'Cinzel', serif; font-size: 1.35rem; color: var(--blood); font-weight: 700; }
+  .oracle-answer-twist { font-style: italic; color: var(--ink-fade); font-size: 0.93rem; margin-top: 0.22rem; }
+
+  /* section divider */
+  .sec-div { display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0 0.7rem; }
+  .sec-div::before,.sec-div::after { content:''; flex:1; height:1px; background:rgba(44,24,16,0.18); }
+  .sec-div span { font-family:'Cinzel',serif; font-size:0.52rem; letter-spacing:0.2em; text-transform:uppercase; color:var(--ink-fade); opacity:0.55; }
+
+  .history-list { display: flex; flex-direction: column; gap: 0.28rem; }
+  .history-item { font-size: 0.87rem; color: var(--ink-fade); font-style: italic; opacity: 0.55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .footer-note { margin-top: 1.4rem; text-align: center; font-style: italic; font-size: 0.8rem; color: var(--parchment-dark); opacity: 0.4; }
+
+  @media(max-width:480px){
+    .scroll { padding: 1.3rem 1.1rem 1.5rem; }
+    .result-row { grid-template-columns: 100px 1fr; }
   }
 
-  /* copy btn */
-  .btn-copy {
+  /* ─── DUNGEON GENERATOR ─── */
+  .dgen-wrap {
+    max-width: 820px; width: 100%; margin-top: 0;
+  }
+  .dgen-header-tab {
+    display: flex; align-items: center;
+    background: linear-gradient(135deg, #1a1208, #2a1e0a);
+    border-top: 2px solid rgba(201,162,39,0.4);
+    border-radius: 4px 4px 0 0;
+    padding: 0 0 0 0;
+    overflow: hidden;
+  }
+  .dgen-tab-label {
+    font-family: 'Cinzel', serif;
     font-size: 0.72rem;
-    padding: 0.5rem 1.1rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold-light);
+    padding: 0.7rem 1.2rem;
+    border-right: 1px solid rgba(201,162,39,0.15);
+  }
+  .dgen-scroll {
+    background: var(--parchment);
+    border-radius: 0 0 4px 4px;
+    padding: 1.6rem 1.8rem 2rem;
+    box-shadow: 0 0 0 2px var(--gold), 0 0 0 5px #1a0f0a, 0 0 50px rgba(0,0,0,0.85), inset 0 0 40px rgba(44,24,16,0.1);
+    border-top: 3px solid #5a4010;
+    position: relative;
+  }
+  .dgen-scroll::before { content:'❧'; position:absolute; top:0.5rem; left:0.7rem; color:var(--gold); opacity:0.5; font-size:1.2rem; }
+  .dgen-scroll::after  { content:'❧'; position:absolute; bottom:0.5rem; right:0.7rem; color:var(--gold); opacity:0.5; font-size:1.2rem; transform:rotate(180deg); }
+
+  .dgen-controls {
+    display: flex; flex-wrap: wrap; gap: 0.7rem;
+    align-items: center; margin-bottom: 1.2rem;
+  }
+  .dgen-select {
+    font-family: 'Cinzel', serif; font-size: 0.7rem;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    background: rgba(44,24,16,0.08);
+    border: 1px solid rgba(44,24,16,0.3); border-radius: 2px;
+    color: var(--ink); padding: 0.5rem 0.7rem; cursor: pointer;
+  }
+  .dgen-select:focus { outline: none; border-color: var(--gold); }
+  .dgen-btn {
+    font-family: 'Cinzel', serif; font-size: 0.72rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border: none; border-radius: 2px; cursor: pointer;
+    padding: 0.58rem 1.1rem; transition: filter 0.15s, transform 0.1s;
+  }
+  .dgen-btn:active { transform: scale(0.97); }
+  .dgen-btn.gen  { background: linear-gradient(135deg, #3d2c08, #6b4e14); color: var(--gold-light); border: 1px solid rgba(201,162,39,0.35); }
+  .dgen-btn.gen:hover { filter: brightness(1.18); }
+  .dgen-btn.exp  { background: var(--ink); color: var(--parchment-dark); font-size: 0.65rem; }
+  .dgen-btn.exp:hover { filter: brightness(1.3); }
+
+  .dgen-canvas-wrap {
+    position: relative; width: 100%;
+    background: #1a1208;
+    border: 1px solid rgba(201,162,39,0.25);
+    border-radius: 2px; overflow: hidden;
+    margin-bottom: 1.1rem;
+  }
+  #dungeonCanvas {
+    display: block; width: 100%; height: auto;
+    image-rendering: pixelated;
+  }
+
+  .dgen-legend {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem;
+    margin-bottom: 0.9rem;
+  }
+  .dgen-legend-item {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.82rem; color: var(--ink-fade); font-style: italic;
+  }
+  .dgen-swatch {
+    width: 14px; height: 14px; border-radius: 2px;
+    border: 1px solid rgba(44,24,16,0.25);
+    flex-shrink: 0;
+  }
+
+  .dgen-stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr));
+    gap: 0.5rem; margin-bottom: 0.8rem;
+  }
+  .dgen-stat {
+    background: rgba(44,24,16,0.06);
+    border: 1px solid rgba(44,24,16,0.12);
+    border-radius: 2px; padding: 0.5rem 0.7rem;
+  }
+  .dgen-stat-label { font-family:'Cinzel',serif; font-size:0.55rem; letter-spacing:0.15em; text-transform:uppercase; color:var(--ink-fade); opacity:0.7; }
+  .dgen-stat-value { font-size:1rem; color:var(--ink); margin-top:0.1rem; }
+
+  .dgen-export-box {
+    background: rgba(44,24,16,0.05);
+    border: 1px dashed rgba(44,24,16,0.3);
+    border-radius: 2px; padding: 0.7rem 0.9rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem; color: var(--ink-fade);
+    max-height: 140px; overflow-y: auto;
+    white-space: pre; display: none;
+    line-height: 1.5;
   }
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>⚔ R.A.G. ⚔</h1>
-  <p class="subtitle">Random Generator — Dungeons &amp; Dragons Edition</p>
+  <h1>⚔ R.A.G. + Oracle ⚔</h1>
+  <p class="subtitle">Random Generator &amp; Session Oracle — D&amp;D Edition</p>
   <div class="divider" data-icon="🎲"></div>
 </div>
 
-<div class="tabs">
-  <button class="tab-btn creature active" onclick="switchTab('creature')">
-    <span class="tab-icon">🐉</span> Creature
-  </button>
-  <button class="tab-btn character" onclick="switchTab('character')">
-    <span class="tab-icon">🧙</span> PC / NPC
-  </button>
+<!-- RAG SECTION -->
+<div class="tab-group">
+  <p class="section-eyebrow">Creature &amp; Character Generator</p>
+  <div class="tabs-rag">
+    <button class="tab-btn-rag creature active" onclick="switchRag('creature',this)">🐉 Creature</button>
+    <button class="tab-btn-rag character" onclick="switchRag('character',this)">🧙 PC / NPC</button>
+  </div>
+  <div class="scroll mode-creature" id="ragScroll">
+
+    <!-- CREATURE -->
+    <div class="panel active" id="panel-creature">
+      <div class="parts-grid" id="grid-creature"></div>
+      <div class="dice-indicator" id="ind-creature">🎲 Rolling...</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="rollAll('creature')">🎲 Roll All</button>
+        <button class="btn btn-secondary" onclick="rollOne('creature')">Roll One</button>
+        <button class="btn btn-secondary" onclick="copySummary('creature')">📋 Copy</button>
+        <button class="btn btn-secondary" onclick="resetAll('creature')">✦ Reset</button>
+      </div>
+      <div class="summary-label">Creature Description</div>
+      <div class="summary-box"><p id="sum-creature" class="empty">Roll the dice to conjure your creature...</p></div>
+    </div>
+
+    <!-- CHARACTER -->
+    <div class="panel" id="panel-character">
+      <div class="parts-grid" id="grid-character"></div>
+      <div class="dice-indicator" id="ind-character">🎲 Rolling...</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="rollAll('character')">🎲 Roll All</button>
+        <button class="btn btn-secondary" onclick="rollOne('character')">Roll One</button>
+        <button class="btn btn-secondary" onclick="copySummary('character')">📋 Copy</button>
+        <button class="btn btn-secondary" onclick="resetAll('character')">✦ Reset</button>
+      </div>
+      <div class="summary-label">Character Description</div>
+      <div class="summary-box"><p id="sum-character" class="empty">Roll the dice to generate your character...</p></div>
+    </div>
+
+  </div>
 </div>
 
-<div class="scroll mode-creature" id="mainScroll">
-
-  <!-- CREATURE PANEL -->
-  <div class="panel active" id="panel-creature">
-    <div class="parts-grid" id="grid-creature"></div>
-    <div class="dice-indicator" id="ind-creature">🎲 Rolling the dice...</div>
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="rollAll('creature')">🎲 Roll All</button>
-      <button class="btn btn-secondary" onclick="rollOne('creature')">Roll One</button>
-      <button class="btn btn-secondary btn-copy" onclick="copySummary('creature')">📋 Copy</button>
-      <button class="btn btn-secondary" onclick="resetAll('creature')">✦ Reset</button>
-    </div>
-    <div class="summary-label">Creature Description</div>
-    <div class="summary-box">
-      <p id="sum-creature" class="empty">Roll the dice to conjure your creature...</p>
-    </div>
+<!-- ORACLE SECTION -->
+<div class="tab-group" style="margin-top:0;">
+  <p class="section-eyebrow" style="margin-top:0.5rem;">Session Oracle</p>
+  <div class="tabs-oracle">
+    <button class="tab-btn-oracle active" onclick="switchOracle('npc',this)">NPC</button>
+    <button class="tab-btn-oracle" onclick="switchOracle('location',this)">Location</button>
+    <button class="tab-btn-oracle" onclick="switchOracle('loot',this)">Loot</button>
+    <button class="tab-btn-oracle" onclick="switchOracle('monster',this)">Encounter</button>
+    <button class="tab-btn-oracle" onclick="switchOracle('yesno',this)">Oracle</button>
   </div>
+  <div class="scroll mode-oracle" id="oracleScroll">
 
-  <!-- CHARACTER PANEL -->
-  <div class="panel" id="panel-character">
-    <div class="parts-grid" id="grid-character"></div>
-    <div class="dice-indicator" id="ind-character">🎲 Rolling the dice...</div>
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="rollAll('character')">🎲 Roll All</button>
-      <button class="btn btn-secondary" onclick="rollOne('character')">Roll One</button>
-      <button class="btn btn-secondary btn-copy" onclick="copySummary('character')">📋 Copy</button>
-      <button class="btn btn-secondary" onclick="resetAll('character')">✦ Reset</button>
+    <!-- NPC ORACLE -->
+    <div class="panel active" id="opanel-npc">
+      <div class="oracle-controls">
+        <button class="oracle-roll-btn primary" onclick="rollNPC()">Roll NPC</button>
+        <button class="oracle-roll-btn secondary" onclick="rollNPC('commoner')">Commoner</button>
+        <button class="oracle-roll-btn secondary" onclick="rollNPC('merchant')">Merchant</button>
+        <button class="oracle-roll-btn secondary" onclick="rollNPC('guard')">Guard</button>
+        <button class="oracle-roll-btn secondary" onclick="rollNPC('noble')">Noble</button>
+      </div>
+      <div class="oracle-result-area" id="res-npc"><div class="oracle-result-empty">Press Roll NPC to conjure a stranger.</div></div>
+      <div class="sec-div"><span>Recent</span></div>
+      <div class="history-list" id="hist-npc"></div>
     </div>
-    <div class="summary-label">Character Description</div>
-    <div class="summary-box">
-      <p id="sum-character" class="empty">Roll the dice to generate your character...</p>
+
+    <!-- LOCATION ORACLE -->
+    <div class="panel" id="opanel-location">
+      <div class="oracle-controls">
+        <button class="oracle-roll-btn primary" onclick="rollLocation()">Roll Location</button>
+        <button class="oracle-roll-btn secondary" onclick="rollLocation('tavern')">Tavern</button>
+        <button class="oracle-roll-btn secondary" onclick="rollLocation('wilderness')">Wilderness</button>
+        <button class="oracle-roll-btn secondary" onclick="rollLocation('dungeon')">Dungeon</button>
+        <button class="oracle-roll-btn secondary" onclick="rollLocation('town')">Town</button>
+      </div>
+      <div class="oracle-result-area" id="res-location"><div class="oracle-result-empty">Press Roll Location to discover a place.</div></div>
+      <div class="sec-div"><span>Recent</span></div>
+      <div class="history-list" id="hist-location"></div>
     </div>
+
+    <!-- LOOT ORACLE -->
+    <div class="panel" id="opanel-loot">
+      <div class="oracle-controls">
+        <button class="oracle-roll-btn primary" onclick="rollLoot()">Roll Loot</button>
+        <button class="oracle-roll-btn secondary" onclick="rollLoot('poor')">Poor</button>
+        <button class="oracle-roll-btn secondary" onclick="rollLoot('modest')">Modest</button>
+        <button class="oracle-roll-btn secondary" onclick="rollLoot('rich')">Rich</button>
+        <button class="oracle-roll-btn secondary" onclick="rollLoot('hoard')">Hoard</button>
+      </div>
+      <div class="oracle-result-area" id="res-loot"><div class="oracle-result-empty">Press Roll Loot to find something worth taking.</div></div>
+      <div class="sec-div"><span>Recent</span></div>
+      <div class="history-list" id="hist-loot"></div>
+    </div>
+
+    <!-- ENCOUNTER ORACLE -->
+    <div class="panel" id="opanel-monster">
+      <div class="oracle-controls">
+        <button class="oracle-roll-btn primary" onclick="rollMonster()">Roll Encounter</button>
+        <button class="oracle-roll-btn secondary" onclick="rollMonster('forest')">Forest</button>
+        <button class="oracle-roll-btn secondary" onclick="rollMonster('road')">Road</button>
+        <button class="oracle-roll-btn secondary" onclick="rollMonster('dungeon')">Dungeon</button>
+        <button class="oracle-roll-btn secondary" onclick="rollMonster('urban')">Urban</button>
+      </div>
+      <div class="oracle-result-area" id="res-monster"><div class="oracle-result-empty">Press Roll Encounter to see what stirs nearby.</div></div>
+      <div class="sec-div"><span>Recent</span></div>
+      <div class="history-list" id="hist-monster"></div>
+    </div>
+
+    <!-- YES/NO ORACLE -->
+    <div class="panel" id="opanel-yesno">
+      <p style="font-style:italic;color:var(--ink-fade);font-size:0.95rem;margin-bottom:0.9rem;">Ask a yes/no question. The dice answer — with a twist.</p>
+      <div class="oracle-q-bar">
+        <input class="oracle-input" id="oracle-q" placeholder="Is the guard suspicious?" onkeydown="if(event.key==='Enter')askOracle()">
+        <button class="oracle-roll-btn gold" onclick="askOracle()">Ask the Dice</button>
+      </div>
+      <div id="oracle-ans-area"></div>
+      <div class="sec-div"><span>Recent</span></div>
+      <div class="history-list" id="hist-yesno"></div>
+    </div>
+
   </div>
-
 </div>
 
-<p class="footer-note">Inspired by RAG by Tuimiz &nbsp;·&nbsp; D&amp;D Edition &nbsp;·&nbsp; Click any card to re-roll that trait</p>
+<p class="footer-note">Inspired by RAG by Tuimiz &nbsp;·&nbsp; D&D Edition &nbsp;·&nbsp; Click any RAG card to re-roll that trait</p>
 
 <script>
-const DATA = {
-  creature: {
-    "Body Shape": { die:"d20", options:[
-      "Serpentine and coiling","Hulking and quadrupedal","Lithe and bipedal",
-      "Bloated and amorphous","Skeletal and towering","Compact and squat",
-      "Elongated like a worm","Crablike with many legs","Centipede-segmented",
-      "Apelike and hunched","Winged and avian","Gelatinous and shifting",
-      "Insectoid with six limbs","Stout as a dwarf-bear","Wispy and translucent",
-      "Cephalopod-shaped","Chimeric blend of three","Toad-like and swollen",
-      "Spindly as a spider","Enormous as a barn"
-    ]},
-    "Head": { die:"d20", options:[
-      "Skull of a horned stag","Fanged serpent head","Three-eyed toad face",
-      "Beaked like a raven","Long goat snout","No head — just a maw",
-      "Crustacean mandibles","Flat shark face","Six-eyed spider face",
-      "Bull skull wreathed in fire","Elongated horse face","Floating eyeball cluster",
-      "Feathered owl face","Tentacled octopus head","Cyclopean giant eye",
-      "Human face stretched wrong","Wolf with too many teeth","Dragonborn-like reptile",
-      "Leech mouth ringed with teeth","A second creature's detached head"
-    ]},
-    "Skin / Hide": { die:"d12", options:[
-      "Iron-hard obsidian scales","Rotting necrotic flesh","Luminescent amphibian skin",
-      "Bark-like tree hide","Matted coarse black fur","Translucent showing organs",
-      "Crystalline chitinous shell","Mud-encrusted hide","Iridescent feather-scales",
-      "Stone-grey rocky plates","Oozing pustule-covered skin","Silver mirror-bright scales"
-    ]},
-    "Limbs": { die:"d10", options:[
-      "Six crab claws","Two massive gorilla arms","Spider legs from its back",
-      "Tentacles where legs should be","Stubby vestigial arms",
-      "Two arms ending in blade-bone","Hooves and backward knees",
-      "Four wings used as arms","Boneless writhing pseudopods","No limbs — it floats"
-    ]},
-    "Tail": { die:"d8", options:[
-      "Scorpion stinger tail","Prehensile whip tail","Feathered peacock fan",
-      "Tail ending in a second jaw","Bony club tail","No tail — just a stump",
-      "Three serpent tails","Spectral ghost tail"
-    ]},
-    "Special Trait": { die:"d12", options:[
-      "Leaves a trail of ice","Eyes glow like embers","Speaks in stolen voices",
-      "Bleeds acid instead of blood","Surrounded by a swarm of flies","Phases through walls",
-      "Can detach its own limbs","Regenerates before your eyes","Casts no shadow",
-      "Immune to all magic","Smells of rot and copper","Has a second creature fused to its back"
-    ]},
-    "Size": { die:"d6", options:[
-      "Tiny (cat-sized)","Small (goblin-sized)","Medium (human-sized)",
-      "Large (horse-sized)","Huge (elephant-sized)","Gargantuan (fills the room)"
-    ]},
-    "CR Hint": { die:"d10", options:[
-      "CR 1/4 — an annoyance","CR 1 — real threat to townsfolk",
-      "CR 3 — watch out, adventurers","CR 5 — seasoned party challenge",
-      "CR 7 — regional menace","CR 9 — legendary local horror",
-      "CR 12 — dungeon boss territory","CR 15 — near-mythic terror",
-      "CR 18 — demigod-level menace","CR 20+ — end of campaign material"
-    ]}
-  },
+// ══════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function d(n){ return Math.floor(Math.random()*n)+1; }
+function slug(s){ return s.replace(/[^a-z0-9]/gi,'-').toLowerCase(); }
 
+// ══════════════════════════════════════════════════════
+// RAG DATA
+// ══════════════════════════════════════════════════════
+const RAG_DATA = {
+  creature: {
+    "Body Shape":{ die:"d20", options:["Serpentine and coiling","Hulking and quadrupedal","Lithe and bipedal","Bloated and amorphous","Skeletal and towering","Compact and squat","Elongated like a worm","Crablike with many legs","Centipede-segmented","Apelike and hunched","Winged and avian","Gelatinous and shifting","Insectoid with six limbs","Stout as a dwarf-bear","Wispy and translucent","Cephalopod-shaped","Chimeric blend of three","Toad-like and swollen","Spindly as a spider","Enormous as a barn"] },
+    "Head":{ die:"d20", options:["Skull of a horned stag","Fanged serpent head","Three-eyed toad face","Beaked like a raven","Long goat snout","No head — just a maw","Crustacean mandibles","Flat shark face","Six-eyed spider face","Bull skull wreathed in fire","Elongated horse face","Floating eyeball cluster","Feathered owl face","Tentacled octopus head","Cyclopean giant eye","Human face stretched wrong","Wolf with too many teeth","Dragonborn-like reptile","Leech mouth ringed with teeth","A second creature's detached head"] },
+    "Skin / Hide":{ die:"d12", options:["Iron-hard obsidian scales","Rotting necrotic flesh","Luminescent amphibian skin","Bark-like tree hide","Matted coarse black fur","Translucent showing organs","Crystalline chitinous shell","Mud-encrusted hide","Iridescent feather-scales","Stone-grey rocky plates","Oozing pustule-covered skin","Silver mirror-bright scales"] },
+    "Limbs":{ die:"d10", options:["Six crab claws","Two massive gorilla arms","Spider legs from its back","Tentacles where legs should be","Stubby vestigial arms","Two arms ending in blade-bone","Hooves and backward knees","Four wings used as arms","Boneless writhing pseudopods","No limbs — it floats"] },
+    "Tail":{ die:"d8", options:["Scorpion stinger tail","Prehensile whip tail","Feathered peacock fan","Tail ending in a second jaw","Bony club tail","No tail — just a stump","Three serpent tails","Spectral ghost tail"] },
+    "Special Trait":{ die:"d12", options:["Leaves a trail of ice","Eyes glow like embers","Speaks in stolen voices","Bleeds acid instead of blood","Surrounded by a swarm of flies","Phases through walls","Can detach its own limbs","Regenerates before your eyes","Casts no shadow","Immune to all magic","Smells of rot and copper","Has a second creature fused to its back"] },
+    "Size":{ die:"d6", options:["Tiny (cat-sized)","Small (goblin-sized)","Medium (human-sized)","Large (horse-sized)","Huge (elephant-sized)","Gargantuan (fills the room)"] },
+    "CR Hint":{ die:"d10", options:["CR 1/4 — an annoyance","CR 1 — real threat to townsfolk","CR 3 — watch out, adventurers","CR 5 — seasoned party challenge","CR 7 — regional menace","CR 9 — legendary local horror","CR 12 — dungeon boss territory","CR 15 — near-mythic terror","CR 18 — demigod-level menace","CR 20+ — end of campaign material"] }
+  },
   character: {
-    "Race": { die:"d20", options:[
-      "Human","Elf (High)","Elf (Wood)","Elf (Drow)","Dwarf (Hill)","Dwarf (Mountain)",
-      "Halfling (Lightfoot)","Halfling (Stout)","Gnome (Rock)","Gnome (Forest)",
-      "Half-Elf","Half-Orc","Tiefling","Dragonborn","Aasimar","Tabaxi",
-      "Firbolg","Goliath","Kenku","Changeling"
-    ]},
-    "Class": { die:"d12", options:[
-      "Barbarian","Bard","Cleric","Druid","Fighter","Monk",
-      "Paladin","Ranger","Rogue","Sorcerer","Warlock","Wizard"
-    ]},
-    "Background": { die:"d12", options:[
-      "Acolyte","Charlatan","Criminal","Entertainer","Folk Hero",
-      "Guild Artisan","Hermit","Noble","Outlander","Sage","Sailor","Soldier"
-    ]},
-    "Personality Trait": { die:"d12", options:[
-      "Boisterous and prone to tall tales","Speaks only when it matters — then bluntly",
-      "Obsessively keeps a journal of every event","Mistrustful of authority, fiercely loyal to allies",
-      "Cheerful to a fault, even in dire straits","Constantly quoting obscure proverbs",
-      "Haunted by a past mistake they won't discuss","Flirtatious and disarming with everyone",
-      "Deeply superstitious, reads omens in everything","Relentlessly competitive about everything",
-      "Overly formal, uncomfortable with casual speech","Empathetic to a fault — cries at funerals of strangers"
-    ]},
-    "Flaw": { die:"d10", options:[
-      "Cannot resist a wager, no matter the stakes","Harbours a secret shame that drives reckless choices",
-      "Deeply cowardly when truly alone","Pathologically dishonest, even needlessly",
-      "Holds grudges across decades","Addicted to a substance or vice",
-      "Arrogant about their own abilities","Freezes up under the scrutiny of authority",
-      "Paranoid — believes someone is always watching","Greedy, even with friends"
-    ]},
-    "Motivation": { die:"d10", options:[
-      "Seek redemption for a past wrong","Protect someone they love at all costs",
-      "Amass power or wealth to never feel vulnerable again","Prove themselves to a person who doubted them",
-      "Uncover a buried family secret","Serve their deity faithfully",
-      "Escape a life they were born into","Avenge a devastating loss",
-      "Simply survive another day","Find a place they truly belong"
-    ]},
-    "Alignment": { die:"d9", options:[
-      "Lawful Good","Neutral Good","Chaotic Good",
-      "Lawful Neutral","True Neutral","Chaotic Neutral",
-      "Lawful Evil","Neutral Evil","Chaotic Evil"
-    ]},
-    "Distinctive Feature": { die:"d12", options:[
-      "A long scar across the face with no explanation offered",
-      "Eyes of two different colours","Speaks with an unplaceable accent",
-      "Always fidgets with a specific trinket","Missing two fingers on the left hand",
-      "Unnaturally still — never fidgets, blinks rarely","Hair that shifts colour with mood",
-      "Covered in faded tattoos, each with a story","A nervous laugh that undercuts serious moments",
-      "Carries a portrait of someone and never speaks of them",
-      "Limps slightly — denies it if asked","Hums constantly, stops only in combat"
-    ]},
-    "Secret": { die:"d10", options:[
-      "Is wanted for a crime in another kingdom","Carries a cursed item they can't discard",
-      "Was once a member of the enemy faction","Has a family member who is a villain",
-      "Doesn't actually have the skills they claimed","Is being magically compelled by someone",
-      "Owes a life-debt to a powerful and dangerous figure","Their real name is famous — or infamous",
-      "Has already died once — and remembers it","Is not the race they appear to be"
-    ]}
+    "Race":{ die:"d20", options:["Human","Elf (High)","Elf (Wood)","Elf (Drow)","Dwarf (Hill)","Dwarf (Mountain)","Halfling (Lightfoot)","Halfling (Stout)","Gnome (Rock)","Gnome (Forest)","Half-Elf","Half-Orc","Tiefling","Dragonborn","Aasimar","Tabaxi","Firbolg","Goliath","Kenku","Changeling"] },
+    "Class":{ die:"d12", options:["Barbarian","Bard","Cleric","Druid","Fighter","Monk","Paladin","Ranger","Rogue","Sorcerer","Warlock","Wizard"] },
+    "Background":{ die:"d12", options:["Acolyte","Charlatan","Criminal","Entertainer","Folk Hero","Guild Artisan","Hermit","Noble","Outlander","Sage","Sailor","Soldier"] },
+    "Personality Trait":{ die:"d12", options:["Boisterous and prone to tall tales","Speaks only when it matters — then bluntly","Obsessively keeps a journal of every event","Mistrustful of authority, fiercely loyal to allies","Cheerful to a fault, even in dire straits","Constantly quoting obscure proverbs","Haunted by a past mistake they won't discuss","Flirtatious and disarming with everyone","Deeply superstitious, reads omens in everything","Relentlessly competitive about everything","Overly formal, uncomfortable with casual speech","Empathetic to a fault — cries at funerals of strangers"] },
+    "Flaw":{ die:"d10", options:["Cannot resist a wager, no matter the stakes","Harbours a secret shame that drives reckless choices","Deeply cowardly when truly alone","Pathologically dishonest, even needlessly","Holds grudges across decades","Addicted to a substance or vice","Arrogant about their own abilities","Freezes up under the scrutiny of authority","Paranoid — believes someone is always watching","Greedy, even with friends"] },
+    "Motivation":{ die:"d10", options:["Seek redemption for a past wrong","Protect someone they love at all costs","Amass power or wealth to never feel vulnerable again","Prove themselves to a person who doubted them","Uncover a buried family secret","Serve their deity faithfully","Escape a life they were born into","Avenge a devastating loss","Simply survive another day","Find a place they truly belong"] },
+    "Alignment":{ die:"d9", options:["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","True Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil","Chaotic Evil"] },
+    "Distinctive Feature":{ die:"d12", options:["A long scar across the face with no explanation offered","Eyes of two different colours","Speaks with an unplaceable accent","Always fidgets with a specific trinket","Missing two fingers on the left hand","Unnaturally still — never fidgets, blinks rarely","Hair that shifts colour with mood","Covered in faded tattoos, each with a story","A nervous laugh that undercuts serious moments","Carries a portrait of someone and never speaks of them","Limps slightly — denies it if asked","Hums constantly, stops only in combat"] },
+    "Secret":{ die:"d10", options:["Is wanted for a crime in another kingdom","Carries a cursed item they can't discard","Was once a member of the enemy faction","Has a family member who is a villain","Doesn't actually have the skills they claimed","Is being magically compelled by someone","Owes a life-debt to a powerful and dangerous figure","Their real name is famous — or infamous","Has already died once — and remembers it","Is not the race they appear to be"] }
   }
 };
 
-const state = { creature: {}, character: {} };
-const isRolling = { creature: false, character: false };
-let activeTab = 'creature';
+const ragState = { creature:{}, character:{} };
+const ragRolling = { creature:false, character:false };
 
-function slugify(s) { return s.replace(/[^a-z0-9]/gi,'-').toLowerCase(); }
-function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
-
-function buildGrid(mode) {
+function buildGrid(mode){
   const grid = document.getElementById('grid-'+mode);
   grid.innerHTML = '';
-  Object.entries(DATA[mode]).forEach(([key, {die}]) => {
+  Object.entries(RAG_DATA[mode]).forEach(([key,{die}])=>{
     const card = document.createElement('div');
     card.className = 'part-card';
     card.title = `Click to re-roll ${key}`;
-    card.innerHTML = `
-      <div class="part-label">
-        <span>${key}</span><span class="die">${die}</span>
-      </div>
-      <div class="part-value" id="v-${mode}-${slugify(key)}">—</div>`;
-    card.addEventListener('click', () => rollPart(mode, key));
+    card.innerHTML = `<div class="part-label"><span>${key}</span><span class="die">${die}</span></div><div class="part-value" id="v-${mode}-${slug(key)}">—</div>`;
+    card.addEventListener('click', ()=>rollPart(mode, key));
     grid.appendChild(card);
   });
 }
 
-function getEl(mode, key) {
-  return document.getElementById('v-'+mode+'-'+slugify(key));
-}
+function getEl(mode,key){ return document.getElementById('v-'+mode+'-'+slug(key)); }
 
-async function rollPart(mode, key, delay=0) {
-  const el = getEl(mode, key);
-  const opts = DATA[mode][key].options;
-  await new Promise(r => setTimeout(r, delay));
+async function rollPart(mode, key, delay=0){
+  const el = getEl(mode,key);
+  const opts = RAG_DATA[mode][key].options;
+  await new Promise(r=>setTimeout(r,delay));
   el.className = 'part-value rolling';
   el.textContent = '▒▒▒▒▒▒▒';
-  await new Promise(r => setTimeout(r, 360));
+  await new Promise(r=>setTimeout(r,360));
   const val = pick(opts);
-  state[mode][key] = val;
+  ragState[mode][key] = val;
   el.textContent = val;
   el.className = 'part-value revealed';
   updateSummary(mode);
 }
 
-async function rollAll(mode) {
-  if (isRolling[mode]) return;
-  isRolling[mode] = true;
+async function rollAll(mode){
+  if(ragRolling[mode]) return;
+  ragRolling[mode]=true;
   const ind = document.getElementById('ind-'+mode);
-  ind.textContent = '🎲 Rolling the dice...';
-  ind.classList.add('show');
-  const keys = Object.keys(DATA[mode]);
-  await Promise.all(keys.map((k,i) => rollPart(mode, k, i*75)));
-  ind.textContent = mode==='creature' ? '🐉 Creature conjured!' : '🧙 Character materialised!';
-  setTimeout(()=>ind.classList.remove('show'), 2200);
-  isRolling[mode] = false;
+  ind.textContent='🎲 Rolling the dice...'; ind.classList.add('show');
+  const keys = Object.keys(RAG_DATA[mode]);
+  await Promise.all(keys.map((k,i)=>rollPart(mode,k,i*70)));
+  ind.textContent = mode==='creature'?'🐉 Creature conjured!':'🧙 Character materialised!';
+  setTimeout(()=>ind.classList.remove('show'),2200);
+  ragRolling[mode]=false;
 }
 
-function rollOne(mode) {
-  const keys = Object.keys(DATA[mode]);
-  rollPart(mode, pick(keys));
+function rollOne(mode){ rollPart(mode, pick(Object.keys(RAG_DATA[mode]))); }
+
+function resetAll(mode){
+  ragState[mode]={};
+  Object.keys(RAG_DATA[mode]).forEach(k=>{ const el=getEl(mode,k); el.className='part-value'; el.textContent='—'; });
+  const s=document.getElementById('sum-'+mode);
+  s.className='empty';
+  s.textContent=mode==='creature'?'Roll the dice to conjure your creature...':'Roll the dice to generate your character...';
 }
 
-function resetAll(mode) {
-  state[mode] = {};
-  Object.keys(DATA[mode]).forEach(key => {
-    const el = getEl(mode, key);
-    el.className = 'part-value';
-    el.textContent = '—';
-  });
-  const sum = document.getElementById('sum-'+mode);
-  sum.className = 'empty';
-  sum.textContent = mode==='creature'
-    ? 'Roll the dice to conjure your creature...'
-    : 'Roll the dice to generate your character...';
-}
-
-function copySummary(mode) {
-  const el = document.getElementById('sum-'+mode);
-  if (!el || el.classList.contains('empty')) return;
-  navigator.clipboard.writeText(el.textContent).then(() => {
-    const ind = document.getElementById('ind-'+mode);
-    ind.textContent = '✓ Copied to clipboard!';
-    ind.classList.add('show');
-    setTimeout(()=>ind.classList.remove('show'), 1500);
+function copySummary(mode){
+  const el=document.getElementById('sum-'+mode);
+  if(!el||el.classList.contains('empty')) return;
+  navigator.clipboard.writeText(el.textContent).then(()=>{
+    const ind=document.getElementById('ind-'+mode);
+    ind.textContent='✓ Copied!'; ind.classList.add('show');
+    setTimeout(()=>ind.classList.remove('show'),1500);
   });
 }
 
-function updateSummary(mode) {
-  const s = state[mode];
-  const keys = Object.keys(DATA[mode]);
-  const filled = keys.filter(k => s[k]);
-  if (!filled.length) return;
-  let desc = '';
-
-  if (mode === 'creature') {
-    const size = s["Size"] ? s["Size"].replace(/\(.*\)/,'').trim().toLowerCase() : '';
-    const body = s["Body Shape"] ? s["Body Shape"].toLowerCase() : '';
-    desc = size && body ? `A ${size}, ${body} creature`
-         : body ? `A ${body} creature` : 'A creature';
-    if (s["Skin / Hide"]) desc += ` covered in ${s["Skin / Hide"].toLowerCase()}`;
-    if (s["Head"]) desc += `, bearing ${s["Head"].toLowerCase()}`;
-    if (s["Limbs"]) desc += `. It moves on ${s["Limbs"].toLowerCase()}`;
-    if (s["Tail"]) desc += ` and sports ${s["Tail"].toLowerCase()}`;
-    if (s["Special Trait"]) desc += `. Notably: ${s["Special Trait"].toLowerCase()}`;
-    if (s["CR Hint"]) desc += `. ${s["CR Hint"]}.`;
+function updateSummary(mode){
+  const s=ragState[mode]; const keys=Object.keys(RAG_DATA[mode]);
+  if(!keys.filter(k=>s[k]).length) return;
+  let desc='';
+  if(mode==='creature'){
+    const size=s["Size"]?s["Size"].replace(/\(.*\)/,'').trim().toLowerCase():'';
+    const body=s["Body Shape"]?s["Body Shape"].toLowerCase():'';
+    desc = size&&body?`A ${size}, ${body} creature`:body?`A ${body} creature`:'A creature';
+    if(s["Skin / Hide"]) desc+=` covered in ${s["Skin / Hide"].toLowerCase()}`;
+    if(s["Head"]) desc+=`, bearing ${s["Head"].toLowerCase()}`;
+    if(s["Limbs"]) desc+=`. It moves on ${s["Limbs"].toLowerCase()}`;
+    if(s["Tail"]) desc+=` and sports ${s["Tail"].toLowerCase()}`;
+    if(s["Special Trait"]) desc+=`. Notably: ${s["Special Trait"].toLowerCase()}`;
+    if(s["CR Hint"]) desc+=`. ${s["CR Hint"]}.`;
   } else {
-    const race = s["Race"] || '';
-    const cls  = s["Class"] || '';
-    const bg   = s["Background"] || '';
-    const al   = s["Alignment"] || '';
-    if (race && cls) desc = `A ${al ? al.toLowerCase()+' ' : ''}${race} ${cls}`;
-    else if (race) desc = `A ${race}`;
-    else desc = 'An adventurer';
-    if (bg) desc += ` with the background of a ${bg.toLowerCase()}`;
-    desc += '.';
-    if (s["Personality Trait"]) desc += ` ${s["Personality Trait"]}.`;
-    if (s["Flaw"]) desc += ` Their flaw: ${s["Flaw"].toLowerCase()}.`;
-    if (s["Motivation"]) desc += ` They are driven to: ${s["Motivation"].toLowerCase()}.`;
-    if (s["Distinctive Feature"]) desc += ` ${s["Distinctive Feature"]}.`;
-    if (s["Secret"]) desc += ` Secret: ${s["Secret"].toLowerCase()}.`;
+    const race=s["Race"]||'', cls=s["Class"]||'', bg=s["Background"]||'', al=s["Alignment"]||'';
+    if(race&&cls) desc=`A ${al?al.toLowerCase()+' ':''}${race} ${cls}`;
+    else if(race) desc=`A ${race}`; else desc='An adventurer';
+    if(bg) desc+=` with the background of a ${bg.toLowerCase()}`;
+    desc+='.';
+    if(s["Personality Trait"]) desc+=` ${s["Personality Trait"]}.`;
+    if(s["Flaw"]) desc+=` Their flaw: ${s["Flaw"].toLowerCase()}.`;
+    if(s["Motivation"]) desc+=` They are driven to: ${s["Motivation"].toLowerCase()}.`;
+    if(s["Distinctive Feature"]) desc+=` ${s["Distinctive Feature"]}.`;
+    if(s["Secret"]) desc+=` Secret: ${s["Secret"].toLowerCase()}.`;
   }
-
-  const el = document.getElementById('sum-'+mode);
-  el.className = '';
-  el.textContent = desc;
+  const el=document.getElementById('sum-'+mode);
+  el.className=''; el.textContent=desc;
 }
 
-function switchTab(mode) {
-  activeTab = mode;
-  // tab buttons
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.tab-btn.'+mode).classList.add('active');
-  // panels
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+function switchRag(mode, btn){
+  document.querySelectorAll('.tab-btn-rag').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#ragScroll .panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+mode).classList.add('active');
-  // scroll accent
-  const scroll = document.getElementById('mainScroll');
-  scroll.className = 'scroll mode-'+mode;
+  document.getElementById('ragScroll').className='scroll mode-'+mode;
 }
 
-// init
+// ══════════════════════════════════════════════════════
+// ORACLE DATA
+// ══════════════════════════════════════════════════════
+const NPC = {
+  names:['Aldric','Brina','Calder','Dessa','Emric','Faye','Gorin','Hessa','Ivor','Jarla','Keld','Lira','Marek','Nessa','Orin','Petra','Quen','Rova','Seld','Tava','Ulder','Vessa','Wren','Xara','Yoren','Zola','Bram','Cress','Daven','Elva','Finn','Gilda','Harwin','Isla','Jorin','Kessa','Lorn','Mira','Niall','Oswin'],
+  occupations:{
+    commoner:['miller','farmer','thatcher','shepherd','washerwoman','gravedigger','candlemaker','brewer','carter','hedgewitch'],
+    merchant:['cloth merchant','spice trader','moneylender','fence','jeweler','apothecary','weapon dealer','map seller','horse trader','wine merchant'],
+    guard:['gate guard','city watch','caravan guard','mercenary','bounty hunter','retired soldier','militia captain','dungeon warden','harbor master','bailiff'],
+    noble:['minor lord','tax collector','court advisor','magistrate','guild master','bishop','military officer','ambassador','landlord','chancellor'],
+  },
+  wants:["find a missing relative","recover a stolen item","warn someone of danger","earn enough coin to leave town","protect a secret","prove their innocence","find a buyer for something strange","avoid a debt collector","deliver a message","earn respect they feel they've lost","get revenge quietly","disappear without a trace"],
+  secrets:["owes a large debt to dangerous people","witnessed something they shouldn't have","is not who they claim to be","is in love with someone forbidden","is secretly a spy","has contraband hidden nearby","recently escaped from somewhere","knows where something valuable is buried","is being blackmailed","has a second family elsewhere","used to have a very different life","carries something that doesn't belong to them"],
+  moods:["guarded and watchful","warm but distracted","anxious, keeps looking over their shoulder","boisterous and too friendly","grieving, hollow-eyed","cheerful in a forced way","suspicious of outsiders","drunk or pretending to be","weary beyond their years","righteous and lecture-prone","quietly furious about something","at peace, almost unnervingly so"],
+  quirks:["taps a ring when nervous","won't make eye contact","laughs at the wrong moments","refers to themselves in third person","hums constantly","corrects everyone's grammar","smells strongly of a specific thing","carries a trinket they touch obsessively","speaks very quietly","overexplains everything","is brutally blunt","finishes others' sentences"],
+  appearances:["weathered hands, kind eyes","scar across the jaw","ink-stained fingers","missing an ear","one milky eye","fine clothes that have seen better days","several rings, none matching","braid laced with small bones","immaculately clean despite everything","moves with old military posture","perpetually damp, as if just rained on","too much perfume hiding something"],
+};
+
+const LOC = {
+  tavern:{
+    names:["The Guttered Candle","The Lame Ox","The Drowned Crow","The Copper Flagon","The Salted Heel","The Wanderer's Rest","The Split Log","Two Wolves Inn","The Sunken Barrel","The Empty Net"],
+    details:["sawdust floor, low beams","rushes on the floor, reeks of ale","tapestries of old hunts","mounted beast heads everywhere","roaring fire, too hot","dark corners, private booths","card game in the back","bard tuning up, badly","a dog sleeping under every table","cellar door padlocked shut"],
+    atmospheres:["tense — a recent argument","lively but watchful","nearly empty, oddly so","rowdy, a celebration of some kind","somber, recent bad news","busy, no one talking to strangers","festive but there's an undercurrent","calm, regulars only","someone is crying quietly in the corner","everyone seems to know everyone"],
+  },
+  wilderness:{
+    names:["the Ashwood","the Stillmoor","the Broken Fens","Greywolf Pass","the Pale Hills","the Drowned Valley","the Thornback Ridge","the Oldwood","Saltmarsh Flats","the Sunken Road"],
+    details:["ancient stone marker, worn smooth","smell of rain and rot","a stream crossing, rickety bridge","wagon tracks that end abruptly","bones picked clean nearby","fungal bloom over a dead tree","stone ruins barely visible in undergrowth","campfire ashes, recent","a hanging effigy from a branch","shrine to an unnamed god, fresh offerings"],
+    atmospheres:["unnaturally quiet","birdsong stops when you approach","distant smoke on the horizon","fog rolling in from nowhere","something is watching","tracks cross the path — something large","a distant horn call","feeling of being followed","a path that wasn't there before","wrong time of day — the light feels off"],
+  },
+  dungeon:{
+    names:["the Howling Vault","Thornhold Keep","the Forgotten Warren","the Salt Crypts","the Ember Cells","the Pale Sanctum","the Drowning Halls","the Hollow Spire","the Mourning Gallery","the Cracked Seal"],
+    details:["torches still burning, recently lit","claw marks on the walls","altar with dried offerings","collapsed section, another way around","flood damage, water stains high up","graffiti in multiple languages","chains hanging from the ceiling","a door sealed from the inside","scattered bones but no full skeletons","evidence of a camp, abandoned in haste"],
+    atmospheres:["eerie silence","distant dripping, steady as a heartbeat","something was here recently","air is wrong — too warm or too cold","faint sound of chanting from below","mold and rot everywhere","the dead here are restless","traps, old but some still live","someone has been mapping this place","you feel watched from the dark"],
+  },
+  town:{
+    names:["Ashford","Millhaven","Greybeck","Coldwater","Irongate","Saltern","the Crossing","Dusthallow","Weybridge","Fenwick"],
+    details:["market day, crowded","gates closed, guards doubled","notice board covered in fresh postings","public stocks, occupied","shrine being rebuilt after fire","a new building going up fast","foreign faces, a caravan in town","a funeral procession blocking the road","children's game that seems too adult","empty shop fronts on one street"],
+    atmospheres:["nervous, something happened recently","welcoming but wary","divided — two factions, obvious tension","busy, everyone has somewhere to be","under a quiet kind of pressure","celebratory — a local holiday","recovering from something bad","prosperous and showing it","looks fine from the outside","something is being kept from outsiders"],
+  },
+};
+
+const LOOT = {
+  poor:{ coin:()=>`${d(6)} cp, ${d(4)} sp`, items:["worn leather belt pouch","half a loaf of bread and some hard cheese","a clay pipe, cracked","cheap iron ring with no gem","a wanted poster, folded many times","a single boot, still good","fishing line and three hooks","a well-worn lucky stone","a tin whistle, slightly bent","tallow candle, short"], oddities:["a tooth with a note tied to it","a doll with no face","a pebble wrapped in string","a page torn from a book, partially burned","a button that doesn't match anything"] },
+  modest:{ coin:()=>`${d(6)} sp, ${d(4)} gp`, items:["silver ring, minor engraving","a good quality belt knife","sealed letter, unaddressed","a flask of decent whiskey","two vials of common healing salve","a small leather journal, half filled","a fine wool cloak, bloodstained","a brass compass that points slightly wrong","a set of loaded dice","a folded map of a local region"], oddities:["a key with no label","a merchant's ledger with names coded in margins","a folded cloth with a crude drawing of a face","a locket with a lock of hair, no portrait","a carved wooden token, faction unknown"] },
+  rich:{ coin:()=>`${d(10)} gp, ${d(4)} pp`, items:["a jeweled brooch worth 50 gp","a fine shortsword with an unusual maker's mark","silk clothing tailored for someone specific","a sealed iron chest (locked, something rattles inside)","a ring with a minor enchantment (light, once/day)","a complete set of fine thieves' tools","a deed to a small piece of property, signed","a spyglass with fine lenses","a small painting, valuable and recognizable","a pouch of spell components and a half-written scroll"], oddities:["a book written in a cipher","a severed finger in a ring box","a contract with terms no sane person would sign","a small idol that radiates faint warmth","a bottle of wine sealed with a noble's sigil"] },
+  hoard:{ coin:()=>`${d(6)*10} gp, ${d(6)} pp, gems worth ${d(4)*25} gp`, items:["a +1 weapon suited to the party","a set of armor with an unusual crest","a spellbook with 2d4 spells inside","a bag of holding, old and patched","an artifact of minor but obvious power","a map to somewhere significant","a collection of rare alchemical ingredients","a chest of art objects worth 500 gp","a legendary creature's trophy (horn, scale, feather)","a soul coin or other dark currency"], oddities:["a mirror that shows a slightly different reflection","a sealed urn containing ashes and a letter","a weapon that whispers the name of its last owner","a map where one location is marked in blood","something that absolutely should not be here"] },
+};
+
+const MONSTER = {
+  forest:{ creatures:["a pack of wolves (3d4)","a lone dire wolf","a giant spider and her brood","a troll, territorial","a green hag, curious","a pair of displacer beasts","a treant, old and angry","a will-o-wisp leading something worse","a sleeping owlbear","a dryad protecting a dying tree"], behaviors:["feeding on something already dead","following the party from a distance","fighting each other","guarding a den or nest","wounded and desperate","curious, not yet hostile","cornered and panicking","answering a call from deeper in","emerging slowly from the dark","circling, assessing"] },
+  road:{ creatures:["a bandit ambush (2d6)","a lone highwayman","a desperate refugee family","a broken-down merchant wagon","a messenger with a sealed letter and a crossbow","a patrol of soldiers, not the friendly kind","a traveling carnival in the wrong place","a monk walking barefoot, going the wrong way","a pair of bounty hunters looking for someone","a cart of prisoners being transferred"], behaviors:["blocking the road entirely","watching from cover","flagging the party down frantically","pretending to need help","demanding toll","moving suspiciously fast in the same direction","circling back for a second look","clearly lying about who they are","in worse shape than they're letting on","offering something too good"] },
+  dungeon:{ creatures:["a gelatinous cube, slow and silent","a swarm of rats, agitated","three skeletons, still armed","a lone ghoul, starving","a gibbering mouther in a collapsed chamber","a mimic on a door","a shadow following the party's light","a cultist survivor, hiding","an animated armor suit, still at post","a carrion crawler in the ceiling"], behaviors:["already alerted to the party's presence","sleeping / dormant","acting strangely, like it's afraid of something deeper in","standing perfectly still","guarding something specific","wounded from a recent fight","not interested in the party at all — busy with something else","patrolling a very specific route","reacting to light or sound abnormally","has already been bound or trapped by something smarter"] },
+  urban:{ creatures:["a city watch patrol (1d4+2)","a cutpurse, mid-attempt","a rival adventuring party","a city official with a grudge","a street gang shaking down a merchant","a disguised doppelganger","a spy following someone nearby","a debtor trying to skip town","a fire cult member distributing pamphlets","a shapeshifter caught mid-change"], behaviors:["pretending everything is normal","fleeing from something","looking for a specific person","trying to start something","about to be arrested","watching the party with too much interest","conducting a deal that's going wrong","asking questions the party was just asking","has overheard something they shouldn't","claiming to be someone they're not"] },
+};
+
+const HOOKS = ["A stranger is asking questions about the party","Something valuable was recently stolen here","An old conflict is about to boil over","There's a job, if you ask the right person","Someone is lying to everyone and doing it well","A rumor is spreading that may or may not be true","Something arrived here that shouldn't have","Someone is about to leave — and they're the only one who knows something important","A strange event happened last night, people are still shaken","There's a door / path / room no one will explain"];
+const TWISTS = ["They aren't here by accident","One of them recognizes the party","Something is driving them from behind","They have something the party needs","They're more intelligent than they appear","They're actually fleeing something worse","This isn't their territory — someone sent them","They're protecting something nearby","They're not the apex predator here","They can be reasoned with, if approached right","They've already sprung a trap","Killing them causes a different problem"];
+
+// ── Oracle histories ──
+const hist = { npc:[], location:[], loot:[], monster:[], yesno:[] };
+function addHist(type, text){
+  hist[type].unshift(text);
+  if(hist[type].length>4) hist[type].pop();
+  const el = document.getElementById('hist-'+type);
+  if(el) el.innerHTML = hist[type].map(t=>`<div class="history-item">— ${t}</div>`).join('');
+}
+
+function renderOracleResult(id, rows){
+  document.getElementById(id).innerHTML = `<div class="result-block">${rows.map(r=>`<div class="result-row"><span class="result-label">${r.label}</span><span class="result-value ${r.s||''}">${r.value}</span></div>`).join('')}</div>`;
+}
+
+function rollNPC(type){
+  const types = Object.keys(NPC.occupations);
+  const t = type||pick(types);
+  const name=pick(NPC.names), occ=pick(NPC.occupations[t]||NPC.occupations.commoner);
+  renderOracleResult('res-npc',[
+    {label:'Name',value:name,s:'big'},
+    {label:'Role',value:occ},
+    {label:'Looks',value:pick(NPC.appearances)},
+    {label:'Mood',value:pick(NPC.moods)},
+    {label:'Quirk',value:pick(NPC.quirks)},
+    {label:'Wants',value:pick(NPC.wants)},
+    {label:'Secret',value:pick(NPC.secrets),s:'flavor'},
+  ]);
+  addHist('npc',`${name}, ${occ}`);
+}
+
+function rollLocation(type){
+  const types=Object.keys(LOC);
+  const t=type||pick(types); const data=LOC[t]||LOC.town;
+  renderOracleResult('res-location',[
+    {label:'Name',value:pick(data.names),s:'big'},
+    {label:'Type',value:t.charAt(0).toUpperCase()+t.slice(1)},
+    {label:'Detail',value:pick(data.details)},
+    {label:'Atmosphere',value:pick(data.atmospheres)},
+    {label:'Hook',value:pick(HOOKS),s:'flavor'},
+  ]);
+  addHist('location',`${pick(data.names)} — ${t}`);
+}
+
+function rollLoot(tier){
+  const tiers=Object.keys(LOOT);
+  const t=tier||pick(tiers); const data=LOOT[t]||LOOT.modest;
+  const coin=data.coin(), item=pick(data.items);
+  const rows=[{label:'Tier',value:t.charAt(0).toUpperCase()+t.slice(1),s:'big'},{label:'Coin',value:coin},{label:'Item',value:item}];
+  if(d(6)>=4) rows.push({label:'Oddity',value:pick(data.oddities),s:'flavor'});
+  renderOracleResult('res-loot',rows);
+  addHist('loot',`${t}: ${item}`);
+}
+
+function rollMonster(env){
+  const envs=Object.keys(MONSTER);
+  const e=env||pick(envs); const data=MONSTER[e]||MONSTER.forest;
+  const creature=pick(data.creatures), behavior=pick(data.behaviors);
+  const rows=[{label:'Environment',value:e.charAt(0).toUpperCase()+e.slice(1),s:'big'},{label:'Encounter',value:creature},{label:'Behavior',value:behavior}];
+  if(d(6)>=3) rows.push({label:'Twist',value:pick(TWISTS),s:'flavor'});
+  renderOracleResult('res-monster',rows);
+  addHist('monster',`${creature} — ${behavior}`);
+}
+
+const YES_POOL=['Yes','Yes','Yes — and','Yes — and','Yes — but','Yes — but'];
+const NO_POOL=['No','No','No — and','No — and','No — but','No — but'];
+const YES_AND=["...and it's worse than expected","...and someone else sees it happen","...and it creates a new problem","...and it costs something","...and it draws attention"];
+const YES_BUT=["...but only briefly","...but with strings attached","...but someone is watching","...but at a cost","...but it's not what it seems"];
+const NO_AND=["...and now they're suspicious","...and things just got harder","...and something else happens too","...and the party is noticed","...and a door closes permanently"];
+const NO_BUT=["...but there's another way","...but they don't act on it yet","...but the party can change that","...but something interesting happens instead","...but information surfaces"];
+
+function askOracle(){
+  const q=document.getElementById('oracle-q').value.trim();
+  const roll=d(6), isYes=roll>=4;
+  const answer=pick(isYes?YES_POOL:NO_POOL);
+  const twistMap={'Yes — and':YES_AND,'Yes — but':YES_BUT,'No — and':NO_AND,'No — but':NO_BUT};
+  const twist=twistMap[answer]?pick(twistMap[answer]):null;
+  document.getElementById('oracle-ans-area').innerHTML=`<div class="oracle-answer"><div class="oracle-answer-main">${answer}</div>${twist?`<div class="oracle-answer-twist">${twist}</div>`:''}</div>`;
+  addHist('yesno', q?`"${q}" → ${answer}`:`Roll ${roll} → ${answer}`);
+  document.getElementById('oracle-q').value='';
+}
+
+function switchOracle(name, btn){
+  document.querySelectorAll('.tab-btn-oracle').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#oracleScroll .panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('opanel-'+name).classList.add('active');
+}
+
+// ── INIT ──
 buildGrid('creature');
 buildGrid('character');
+</script>
+
+<!-- DUNGEON GENERATOR SECTION -->
+<div class="dgen-wrap">
+  <p class="section-eyebrow" style="margin-top:0.5rem;">Dungeon Generator</p>
+  <div class="dgen-header-tab">
+    <span class="dgen-tab-label">🗺 Random Dungeon</span>
+  </div>
+  <div class="dgen-scroll">
+    <div class="dgen-controls">
+      <select class="dgen-select" id="dgen-size">
+        <option value="small">Small (14×10)</option>
+        <option value="medium" selected>Medium (22×16)</option>
+        <option value="large">Large (32×24)</option>
+      </select>
+      <select class="dgen-select" id="dgen-type">
+        <option value="cave">Cave</option>
+        <option value="ruins" selected>Ruins / Keep</option>
+        <option value="crypt">Crypt</option>
+        <option value="sewer">Sewer</option>
+      </select>
+      <select class="dgen-select" id="dgen-density">
+        <option value="sparse">Sparse rooms</option>
+        <option value="normal" selected>Normal</option>
+        <option value="dense">Dense / labyrinth</option>
+      </select>
+      <button class="dgen-btn gen" onclick="generateDungeon()">⚄ Generate</button>
+      <button class="dgen-btn exp" onclick="toggleExport()">{ } JSON</button>
+      <button class="dgen-btn exp" onclick="copyExport()">📋 Copy</button>
+    </div>
+
+    <div class="dgen-stats" id="dgen-stats">
+      <div class="dgen-stat"><div class="dgen-stat-label">Rooms</div><div class="dgen-stat-value" id="ds-rooms">—</div></div>
+      <div class="dgen-stat"><div class="dgen-stat-label">Tiles</div><div class="dgen-stat-value" id="ds-tiles">—</div></div>
+      <div class="dgen-stat"><div class="dgen-stat-label">Tokens</div><div class="dgen-stat-value" id="ds-tokens">—</div></div>
+      <div class="dgen-stat"><div class="dgen-stat-label">Props</div><div class="dgen-stat-value" id="ds-props">—</div></div>
+    </div>
+
+    <div class="dgen-canvas-wrap">
+      <canvas id="dungeonCanvas" width="800" height="608"></canvas>
+    </div>
+
+    <div class="dgen-legend">
+      <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#2a2018"></div>Void</div>
+      <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#6b5e4e"></div>Floor</div>
+      <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#3a3228;border:2px solid #1a1410"></div>Wall</div>
+      <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#7a6e5e"></div>Corridor</div>
+      <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#8a5a2a"></div>Door</div>
+      <div class="dgen-legend-item"><div class="dgen-swatch" style="background:rgba(10,14,40,0.75)"></div>Fog</div>
+      <div class="dgen-legend-item"><span>💀🪣⚰️🔥</span>&nbsp;Stamps</div>
+      <div class="dgen-legend-item"><span>👹🧟🧙💂</span>&nbsp;Tokens</div>
+    </div>
+
+    <div class="dgen-export-box" id="dgen-export-box"></div>
+  </div>
+</div>
+
+<p class="footer-note">Inspired by RAG by Tuimiz &nbsp;·&nbsp; D&amp;D Edition &nbsp;·&nbsp; Click any RAG card to re-roll that trait</p>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DUNGEON GENERATOR
+// ══════════════════════════════════════════════════════
+const DGEN = {
+  // cell types
+  VOID: 0, FLOOR: 1, WALL: 2, CORRIDOR: 3, DOOR: 4,
+
+  // palette per dungeon type
+  palette: {
+    ruins: { floor:'#6b5e4e', wall:'#3a3228', wallStroke:'#1a1410', corridor:'#7a6e5e', door:'#8a5a2a', void:'#2a2018', fog:'rgba(10,14,40,0.78)' },
+    cave:  { floor:'#5a5040', wall:'#2e2820', wallStroke:'#141008', corridor:'#6a604e', door:'#7a5020', void:'#1e1a10', fog:'rgba(5,10,5,0.80)' },
+    crypt: { floor:'#5a5560', wall:'#2a2830', wallStroke:'#0e0c14', corridor:'#6a6572', door:'#7a3838', void:'#18161e', fog:'rgba(10,5,25,0.82)' },
+    sewer: { floor:'#4a5848', wall:'#282e28', wallStroke:'#101410', corridor:'#5a6858', door:'#6a5838', void:'#141a12', fog:'rgba(5,15,5,0.80)' },
+  },
+
+  // token tables per dungeon type
+  tokenTables: {
+    ruins:  { npcs:['Guard','Scout','Bandit','Mercenary'], monsters:['Goblin','Skeleton','Zombie','Rat Swarm','Cultist'], bosses:['Bandit Lord','Undead Knight','Mage'] },
+    cave:   { npcs:['Lost Miner','Hermit'], monsters:['Giant Spider','Bat Swarm','Kobold','Troglodyte','Cave Bear'], bosses:['Troll','Basilisk','Dragon Wyrmling'] },
+    crypt:  { npcs:['Grave Robber','Cleric'], monsters:['Skeleton','Zombie','Shadow','Ghoul','Specter'], bosses:['Lich','Death Knight','Mummy Lord'] },
+    sewer:  { npcs:['Urchin','Spy'], monsters:['Giant Rat','Otyugh','Troglodyte','Were-rat','Crocodile'], bosses:['Thieves Guild Master','Aboleth','Sewer Hag'] },
+  },
+
+  stampTables: {
+    ruins:  ['💀','⚔️','🛡️','🔥','💰','🗝️','📜','🗡️','⭐','❗'],
+    cave:   ['💀','🦴','🕷️','🌿','💎','❄️','🍄','🐍','⭐','🔒'],
+    crypt:  ['💀','⚰️','🕯️','☠️','📜','🗝️','👁️','🧪','❗','🔒'],
+    sewer:  ['💀','🪣','🐀','🍄','⛓️','🔥','🗝️','💧','❗','🔒'],
+  },
+
+  propTables: {
+    // Only 'barrel' and 'chest' are confirmed built-in prop IDs in the editor.
+    // Others will render as fallback emoji until you add PNGs to /props/
+    ruins: ['barrel','chest','barrel','chest','chest'],
+    cave:  ['barrel','chest','barrel','chest','barrel'],
+    crypt: ['chest','chest','barrel','chest','barrel'],
+    sewer: ['barrel','barrel','chest','barrel','chest'],
+  },
+
+  sizes: {
+    small:  { w:14, h:10, tileSize:40 },
+    medium: { w:22, h:16, tileSize:34 },
+    large:  { w:32, h:24, tileSize:25 },
+  },
+
+  densityConfig: {
+    sparse: { minRooms:3, maxRooms:5,  minW:3, maxW:5, minH:3, maxH:4 },
+    normal: { minRooms:5, maxRooms:9,  minW:3, maxW:6, minH:3, maxH:5 },
+    dense:  { minRooms:8, maxRooms:14, minW:2, maxW:4, minH:2, maxH:4 },
+  },
+};
+
+let lastDungeonJSON = null;
+
+function dRand(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function dPick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+function generateDungeon(){
+  const sizeKey    = document.getElementById('dgen-size').value;
+  const typeKey    = document.getElementById('dgen-type').value;
+  const densityKey = document.getElementById('dgen-density').value;
+
+  const {w, h, tileSize} = DGEN.sizes[sizeKey];
+  const dc = DGEN.densityConfig[densityKey];
+  const pal = DGEN.palette[typeKey];
+  const {npcs, monsters, bosses} = DGEN.tokenTables[typeKey];
+  const stampPool = DGEN.stampTables[typeKey];
+  const propPool  = DGEN.propTables[typeKey];
+
+  // ── 1. Init grid ──────────────────────────────────
+  const grid = Array.from({length:h}, ()=>Array(w).fill(DGEN.VOID));
+
+  // ── 2. Place rooms ────────────────────────────────
+  const numRooms = dRand(dc.minRooms, dc.maxRooms);
+  const rooms = [];
+  const MAX_ATTEMPTS = 200;
+
+  for(let r=0; r<numRooms; r++){
+    let placed=false;
+    for(let a=0; a<MAX_ATTEMPTS; a++){
+      const rw = dRand(dc.minW, dc.maxW);
+      const rh = dRand(dc.minH, dc.maxH);
+      const rx = dRand(1, w-rw-2);
+      const ry = dRand(1, h-rh-2);
+      // check overlap (with 1-tile buffer)
+      let ok=true;
+      for(const rm of rooms){
+        if(rx<rm.x+rm.w+1 && rx+rw>rm.x-1 && ry<rm.y+rm.h+1 && ry+rh>rm.y-1){ ok=false; break; }
+      }
+      if(ok){
+        rooms.push({x:rx,y:ry,w:rw,h:rh});
+        for(let cy=ry;cy<ry+rh;cy++) for(let cx=rx;cx<rx+rw;cx++) grid[cy][cx]=DGEN.FLOOR;
+        placed=true; break;
+      }
+    }
+  }
+
+  // ── 3. Connect rooms with corridors ───────────────
+  const shuffled = [...rooms].sort(()=>Math.random()-0.5);
+  for(let i=1; i<shuffled.length; i++){
+    const a=shuffled[i-1], b=shuffled[i];
+    const ax=Math.floor(a.x+a.w/2), ay=Math.floor(a.y+a.h/2);
+    const bx=Math.floor(b.x+b.w/2), by=Math.floor(b.y+b.h/2);
+    // L-shaped corridor
+    const midX=Math.random()<0.5?ax:bx;
+    const midY=Math.random()<0.5?ay:by;
+    // horizontal leg 1
+    for(let cx=Math.min(ax,midX); cx<=Math.max(ax,midX); cx++){
+      if(grid[ay][cx]===DGEN.VOID) grid[ay][cx]=DGEN.CORRIDOR;
+    }
+    // vertical
+    for(let cy=Math.min(ay,midY); cy<=Math.max(ay,midY); cy++){
+      if(grid[cy][midX]===DGEN.VOID) grid[cy][midX]=DGEN.CORRIDOR;
+    }
+    // horizontal leg 2
+    for(let cx=Math.min(midX,bx); cx<=Math.max(midX,bx); cx++){
+      if(grid[by][cx]===DGEN.VOID) grid[by][cx]=DGEN.CORRIDOR;
+    }
+    // vertical leg 2
+    for(let cy=Math.min(midY,by); cy<=Math.max(midY,by); cy++){
+      if(grid[cy][bx]===DGEN.VOID) grid[cy][bx]=DGEN.CORRIDOR;
+    }
+  }
+
+  // ── 4. Carve walls around all non-void ────────────
+  const dirs=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+  for(let cy=0;cy<h;cy++) for(let cx=0;cx<w;cx++){
+    if(grid[cy][cx]===DGEN.VOID){
+      for(const [dy,dx] of dirs){
+        const ny=cy+dy, nx=cx+dx;
+        if(ny>=0&&ny<h&&nx>=0&&nx<w&&(grid[ny][nx]===DGEN.FLOOR||grid[ny][nx]===DGEN.CORRIDOR)){
+          grid[cy][cx]=DGEN.WALL; break;
+        }
+      }
+    }
+  }
+
+  // ── 5. Place doors at room entrances ─────────────
+  const doors = [];
+  for(const rm of rooms){
+    const perimeterCells = [];
+    for(let cx=rm.x;cx<rm.x+rm.w;cx++){
+      perimeterCells.push([rm.y,cx],[rm.y+rm.h-1,cx]);
+    }
+    for(let cy=rm.y;cy<rm.y+rm.h;cy++){
+      perimeterCells.push([cy,rm.x],[cy,rm.x+rm.w-1]);
+    }
+    for(const [cy,cx] of perimeterCells){
+      for(const [dy,dx] of [[0,1],[0,-1],[1,0],[-1,0]]){
+        const ny=cy+dy,nx=cx+dx;
+        if(ny>=0&&ny<h&&nx>=0&&nx<w&&grid[ny][nx]===DGEN.CORRIDOR&&Math.random()<0.5){
+          grid[ny][nx]=DGEN.DOOR;
+          doors.push([ny,nx]);
+        }
+      }
+    }
+  }
+
+  // ── 6. Populate tiles / fog / tokens / stamps / props ──
+  const tilesOut={}, fogCells={}, tokensOut={}, stampsOut={}, propsOut={};
+
+  let tileCount=0;
+  for(let cy=0;cy<h;cy++) for(let cx=0;cx<w;cx++){
+    const t=grid[cy][cx];
+    if(t===DGEN.VOID) continue;
+    const key=`${cx},${cy}`;
+    const isWall=(t===DGEN.WALL);
+    // Editor valid terrains: stone, wood, cobble, dirt, gravel, marble, mud, grass, sand, water, lava, ice, void, carpet
+    // corridors = stone (no walls), doors = wood (no walls), floors/walls = stone
+    const terrain = t===DGEN.DOOR?'wood':'stone';
+    tilesOut[key]={ terrain, walls:isWall };
+    tileCount++;
+    // fog entire map
+    fogCells[key]=true;
+  }
+
+  // Tokens — boss in last room, monsters in middle rooms, npc in first room
+  let tokId=1;
+  const tokCount_target=Math.max(2, Math.floor(rooms.length*0.6));
+  for(let i=0;i<rooms.length;i++){
+    const rm=rooms[i];
+    const cx=Math.floor(rm.x+rm.w/2), cy=Math.floor(rm.y+rm.h/2);
+    const tid=`tok_${tokId++}`;
+    let name,type='npc',hp=10,maxHp=10;
+    if(i===rooms.length-1 && rooms.length>1){
+      name=dPick(bosses); hp=dRand(40,80); maxHp=hp; type='npc';
+    } else if(i===0){
+      name=dPick(npcs); hp=dRand(6,14); maxHp=hp;
+    } else if(Math.random()<0.65){
+      name=dPick(monsters); hp=dRand(8,25); maxHp=hp; type='npc';
+    } else { continue; }
+    tokensOut[tid]={x:cx,y:cy,name,type,hp,maxHp,characterId:'__npc__'};
+  }
+
+  // Stamps — 1-3 per room
+  for(const rm of rooms){
+    const n=dRand(0,2);
+    for(let s=0;s<n;s++){
+      const sx=dRand(rm.x,rm.x+rm.w-1), sy=dRand(rm.y,rm.y+rm.h-1);
+      if(grid[sy][sx]===DGEN.FLOOR) stampsOut[`${sx}_${sy}`]=dPick(stampPool);
+    }
+  }
+
+  // Props — 0-1 per room
+  for(const rm of rooms){
+    if(Math.random()<0.5){
+      const px=dRand(rm.x,rm.x+rm.w-1), py=dRand(rm.y,rm.y+rm.h-1);
+      if(grid[py][px]===DGEN.FLOOR) propsOut[`${px},${py}`]={propId:dPick(propPool),w:1,h:1};
+    }
+  }
+
+  // ── 7. Build export JSON ──────────────────────────
+  const mapName = `${typeKey}-${Math.floor(Math.random()*9000)+1000}`;
+  lastDungeonJSON = {
+    mapName,
+    tiles: tilesOut,
+    fog: { fog_1:{ cells:fogCells } },
+    tokens: tokensOut,
+    stamps: stampsOut,
+    props: propsOut,
+  };
+
+  // ── 8. Update stats ───────────────────────────────
+  document.getElementById('dgen-stats').style.display='grid';
+  document.getElementById('ds-rooms').textContent  = rooms.length;
+  document.getElementById('ds-tiles').textContent  = tileCount;
+  document.getElementById('ds-tokens').textContent = Object.keys(tokensOut).length;
+  document.getElementById('ds-props').textContent  = Object.keys(propsOut).length;
+
+  // ── 9. Render to canvas ───────────────────────────
+  const canvas = document.getElementById('dungeonCanvas');
+  canvas.width  = w*tileSize;
+  canvas.height = h*tileSize;
+  const ctx = canvas.getContext('2d');
+
+  // void background
+  ctx.fillStyle = pal.void;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // tiles
+  for(let cy=0;cy<h;cy++) for(let cx=0;cx<w;cx++){
+    const t=grid[cy][cx];
+    const px=cx*tileSize, py=cy*tileSize;
+    if(t===DGEN.VOID) continue;
+    if(t===DGEN.WALL){
+      ctx.fillStyle=pal.wall;
+      ctx.fillRect(px,py,tileSize,tileSize);
+      ctx.strokeStyle=pal.wallStroke;
+      ctx.lineWidth=1;
+      ctx.strokeRect(px+0.5,py+0.5,tileSize-1,tileSize-1);
+      // subtle crosshatch
+      ctx.strokeStyle='rgba(0,0,0,0.15)';
+      ctx.lineWidth=0.5;
+      ctx.beginPath();
+      ctx.moveTo(px,py); ctx.lineTo(px+tileSize,py+tileSize);
+      ctx.moveTo(px+tileSize,py); ctx.lineTo(px,py+tileSize);
+      ctx.stroke();
+    } else if(t===DGEN.FLOOR){
+      ctx.fillStyle=pal.floor;
+      ctx.fillRect(px,py,tileSize,tileSize);
+      // subtle stone grain
+      ctx.strokeStyle='rgba(0,0,0,0.12)';
+      ctx.lineWidth=0.5;
+      ctx.strokeRect(px+0.5,py+0.5,tileSize-1,tileSize-1);
+      if(tileSize>=30){
+        ctx.strokeStyle='rgba(255,255,255,0.05)';
+        ctx.lineWidth=1;
+        ctx.strokeRect(px+2,py+2,tileSize-4,tileSize-4);
+      }
+    } else if(t===DGEN.CORRIDOR){
+      ctx.fillStyle=pal.corridor;
+      ctx.fillRect(px,py,tileSize,tileSize);
+    } else if(t===DGEN.DOOR){
+      ctx.fillStyle=pal.floor;
+      ctx.fillRect(px,py,tileSize,tileSize);
+      // door visual
+      ctx.fillStyle=pal.door;
+      const dw=Math.max(4,tileSize*0.55), dh=Math.max(4,tileSize*0.7);
+      ctx.fillRect(px+(tileSize-dw)/2, py+(tileSize-dh)/2, dw, dh);
+      ctx.strokeStyle='rgba(0,0,0,0.5)';
+      ctx.lineWidth=1;
+      ctx.strokeRect(px+(tileSize-dw)/2+0.5, py+(tileSize-dh)/2+0.5, dw-1, dh-1);
+    }
+  }
+
+  // fog overlay (50% so we can see the map in the generator)
+  ctx.fillStyle = pal.fog.replace(/[\d.]+\)$/, '0.45)');
+  for(const key in fogCells){
+    const [fx,fy]=key.split(',').map(Number);
+    ctx.fillRect(fx*tileSize, fy*tileSize, tileSize, tileSize);
+  }
+
+  // stamps
+  const stampFontSize = Math.max(10, tileSize*0.55);
+  ctx.font=`${stampFontSize}px serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const [key,emoji] of Object.entries(stampsOut)){
+    const [sx,sy]=key.split('_').map(Number);
+    ctx.fillText(emoji, sx*tileSize+tileSize/2, sy*tileSize+tileSize/2);
+  }
+
+  // tokens
+  const tokFontSize = Math.max(8, tileSize*0.48);
+  const tokenEmoji = { guard:'💂', goblin:'👹', skeleton:'💀', zombie:'🧟', shadow:'👤', bandit:'🗡️', mage:'🧙', troll:'👺', spider:'🕷️', default:'👾' };
+  for(const [tid, tok] of Object.entries(tokensOut)){
+    const tx=tok.x*tileSize, ty=tok.y*tileSize;
+    // token bg circle
+    ctx.beginPath();
+    ctx.arc(tx+tileSize/2, ty+tileSize/2, tileSize*0.38, 0, Math.PI*2);
+    ctx.fillStyle='rgba(10,10,30,0.75)';
+    ctx.fill();
+    ctx.strokeStyle='rgba(201,162,39,0.8)';
+    ctx.lineWidth=1.5;
+    ctx.stroke();
+    // emoji
+    const nameLow=tok.name.toLowerCase();
+    let em='👾';
+    for(const [k,v] of Object.entries(tokenEmoji)){ if(nameLow.includes(k)){ em=v; break; } }
+    ctx.font=`${tokFontSize}px serif`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(em, tx+tileSize/2, ty+tileSize/2);
+    // name label
+    if(tileSize>=28){
+      ctx.font=`bold ${Math.max(7,tileSize*0.22)}px sans-serif`;
+      ctx.fillStyle='rgba(255,240,180,0.9)';
+      ctx.textBaseline='bottom';
+      ctx.fillText(tok.name.split(' ')[0], tx+tileSize/2, ty+tileSize-2);
+    }
+  }
+
+  // grid lines (very subtle)
+  ctx.strokeStyle='rgba(255,255,255,0.04)';
+  ctx.lineWidth=0.5;
+  for(let cx=0;cx<=w;cx++){ ctx.beginPath(); ctx.moveTo(cx*tileSize,0); ctx.lineTo(cx*tileSize,h*tileSize); ctx.stroke(); }
+  for(let cy=0;cy<=h;cy++){ ctx.beginPath(); ctx.moveTo(0,cy*tileSize); ctx.lineTo(w*tileSize,cy*tileSize); ctx.stroke(); }
+
+  // hide export if visible
+  const exportBox = document.getElementById('dgen-export-box');
+  exportBox.style.display='none';
+}
+
+function toggleExport(){
+  if(!lastDungeonJSON) return;
+  const box = document.getElementById('dgen-export-box');
+  if(box.style.display==='block'){
+    box.style.display='none';
+  } else {
+    box.textContent = JSON.stringify(lastDungeonJSON, null, 2);
+    box.style.display='block';
+  }
+}
+
+function copyExport(){
+  if(!lastDungeonJSON) return;
+  navigator.clipboard.writeText(JSON.stringify(lastDungeonJSON, null, 2)).then(()=>{
+    const btn=event.target;
+    const orig=btn.textContent;
+    btn.textContent='✓ Copied!';
+    setTimeout(()=>btn.textContent=orig, 1500);
+  });
+}
+
+// Auto-generate on load so there's something to see
+generateDungeon();
 </script>
 </body>
 </html>
