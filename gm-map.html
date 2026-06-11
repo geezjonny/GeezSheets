@@ -561,6 +561,8 @@ let liveUnsub=null;
 function subscribeLive(){
   if(liveUnsub){liveUnsub();liveUnsub=null;}
   const mapName=mapInput.value.trim()||"dungeon-1";
+  // Tell all renderers which map the GM is on
+  set(ref(db,"session/currentMap"),mapName);
   liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
     if(pendingSaves>0){pendingSaves--;return;}
     const data=snap.val();
