@@ -341,6 +341,7 @@ const PROPS_LIST=[
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},textures={},fogGroups={},tokens={},stamps={},roofs={},props={};
+let bgImage=null,bgUrl="";
 const propTextures={},tokenTextures={},customProps=[...PROPS_LIST];
 let currentShape="rect",currentTerrain="grass",wallsEnabled=true;
 let fogMode=false,roofMode=false,currentStamp=null,currentProp=null;
@@ -632,6 +633,12 @@ function subscribeLive(){
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
+      if(data.background&&data.background!==bgUrl){
+        bgUrl=data.background;bgImage=null;
+        const img=new Image();img.crossOrigin="anonymous";
+        img.onload=()=>{bgImage=img;};img.onerror=()=>{bgImage=null;};
+        img.src=bgUrl;
+      }else if(!data.background){bgUrl="";bgImage=null;}
     }
     setStatus("live","Live ✓");
   },()=>setStatus("error","RTDB error"));
@@ -734,6 +741,8 @@ function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camX,camY);ctx.scale(zoom,zoom);
+  // Background image
+  if(bgImage){const s=32/70;ctx.drawImage(bgImage,0,0,bgImage.width*s,bgImage.height*s);}
   drawTiles();drawWalls();drawStamps();drawProps();
   drawTokenLayer("npc");drawFog();drawFogPreview();
   drawTokenLayer("pc");drawPlacingTokenPreview();
