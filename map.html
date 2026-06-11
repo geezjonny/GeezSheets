@@ -166,9 +166,8 @@ canvas{display:block;width:100%;height:100%}
   <div id="hud">
     <h1>⚔ DUNGEON</h1>
     <div class="sep"></div>
-    <input id="map-input" type="text" placeholder="dungeon-1" value="dungeon-1" spellcheck="false">
-    <button id="loadBtn">Load</button>
     <button id="fitBtn">Fit</button>
+    <input id="map-input" type="text" value="dungeon-1" hidden>
     <div class="sep"></div>
     <button id="pingBtn">📍 Ping</button>
     <button id="sheetsBtn">📋 Sheets</button>
@@ -774,7 +773,7 @@ function draw(){
   for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}
   ctx.restore();
 
-  ctx.strokeStyle="rgba(255,255,255,.1)";ctx.lineWidth=1/zoom;
+  ctx.strokeStyle="rgba(255,255,255,.03)";ctx.lineWidth=1/zoom;
   const l=-camX/zoom,t=-camY/zoom,r=(canvas.width-camX)/zoom,b=(canvas.height-camY)/zoom;
   for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
   for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}
@@ -793,10 +792,18 @@ function draw(){
 // ── Pointer events ────────────────────────────────────────────────────────────
 let draggingToken=null;
 
-document.getElementById("loadBtn").onclick=()=>{firstLoad=true;subscribeLive();};
 document.getElementById("fitBtn").onclick=fitCamera;
 document.getElementById("sheetsBtn").onclick=()=>window.open("https://geezjonny.github.io/GeezSheets","_blank");
-mapInput.addEventListener("keydown",e=>{if(e.key==="Enter"){firstLoad=true;subscribeLive();}});
+
+// Auto-follow GM's current map
+onValue(ref(db,"session/currentMap"),snap=>{
+  const mapName=snap.val();
+  if(!mapName)return;
+  // Update the hidden input so subscribeLive uses the right name
+  mapInput.value=mapName;
+  firstLoad=true;
+  subscribeLive();
+});
 
 document.getElementById("pingBtn").onclick=()=>{
   if(!playerName){showNameModal();return;}
