@@ -1,0 +1,10 @@
+[
+  {"id":"poisoned",   "label":"Poisoned",   "color":"#5aaa5a"},
+  {"id":"stunned",    "label":"Stunned",    "color":"#aaaa30"},
+  {"id":"prone",      "label":"Prone",      "color":"#888888"},
+  {"id":"burning",    "label":"Burning",    "color":"#e07030"},
+  {"id":"frozen",     "label":"Frozen",     "color":"#50c0e0"},
+  {"id":"blinded",    "label":"Blinded",    "color":"#dddddd"},
+  {"id":"charmed",    "label":"Charmed",    "color":"#e070c0"},
+  {"id":"frightened", "label":"Frightened", "color":"#9060d0"}
+]
