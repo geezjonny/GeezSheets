@@ -717,8 +717,10 @@ function drawToken(tok){
     ctx.textAlign="center";ctx.textBaseline="middle";
     ctx.fillText((tok.name||"?")[0].toUpperCase(),cx,cy);
   }
-  ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.fillStyle="#ddd";ctx.textAlign="center";ctx.textBaseline="top";
-  ctx.fillText(tok.name||"",cx,py+TILE+2/zoom);
+  ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.textAlign="center";ctx.textBaseline="top";
+  const nameLabel=tok.name||"";const nameW=ctx.measureText(nameLabel).width;
+  ctx.fillStyle="rgba(0,0,0,0.65)";ctx.fillRect(cx-nameW/2-3/zoom,py+TILE+2/zoom,nameW+6/zoom,10/zoom);
+  ctx.fillStyle="#fff";ctx.fillText(nameLabel,cx,py+TILE+2/zoom);
   const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+12/zoom;
   let liveHp=tok.hp,liveMaxHp=tok.maxHp;
   if(tok.type==="pc"&&pcsData[tok.characterId]){const c=pcsData[tok.characterId];liveHp=c.hp??c.combat?.hp_current??tok.hp;liveMaxHp=c.maxHp??c.combat?.hp_max??tok.maxHp;}
