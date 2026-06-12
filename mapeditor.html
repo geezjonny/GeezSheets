@@ -1010,7 +1010,32 @@ wallBtn.onclick=()=>{wallsEnabled=!wallsEnabled;wallBtn.textContent=wallsEnabled
 roofBtn.onclick=()=>{roofMode=!roofMode;roofBtn.classList.toggle("roof-active",roofMode);if(roofMode){fogMode=false;fogBtn.classList.remove("fog-active");currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();}};
 document.getElementById("roof-opacity-btn").onclick=()=>{roofOpacity=roofOpacity<0.9?roofOpacity+0.25:0.25;document.getElementById("roof-opacity-btn").textContent=`👁 ${Math.round(roofOpacity*100)}%`;};
 fogBtn.onclick=()=>{fogMode=!fogMode;fogBtn.classList.toggle("fog-active",fogMode);if(fogMode){roofMode=false;roofBtn.classList.remove("roof-active");currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();}};
-clearBtn.onclick=()=>{if(!confirm("Clear the entire map?"))return;pushUndo();for(const k in tiles)delete tiles[k];toast("Map cleared");scheduleSave();};
+clearBtn.onclick=async()=>{
+  if(!confirm("Clear entire map — tiles, fog, tokens, props, stamps, roofs, and background?"))return;
+  pushUndo();
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  for(const k in tiles)delete tiles[k];
+  for(const k in fogGroups)delete fogGroups[k];
+  for(const k in tokens)delete tokens[k];
+  for(const k in stamps)delete stamps[k];
+  for(const k in roofs)delete roofs[k];
+  for(const k in props)delete props[k];
+  bgImage=null;bgUrl="";
+  // Clear weather
+  ["rain","snow","mist","storm"].forEach(t=>weather[t].enabled=false);
+  await Promise.all([
+    set(ref(db,`maps/${mapName}/tiles`),null),
+    set(ref(db,`maps/${mapName}/fog`),null),
+    set(ref(db,`maps/${mapName}/tokens`),null),
+    set(ref(db,`maps/${mapName}/stamps`),null),
+    set(ref(db,`maps/${mapName}/roofs`),null),
+    set(ref(db,`maps/${mapName}/props`),null),
+    set(ref(db,`maps/${mapName}/background`),null),
+    set(ref(db,"weather"),null),
+  ]);
+  buildWeatherPanel();
+  toast("Map cleared");
+};
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
 
 // JSON import
