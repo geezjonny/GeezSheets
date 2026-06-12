@@ -681,7 +681,12 @@ function isMyToken(tokId){
   return tok&&tok.type==="pc"&&tok.name?.toLowerCase()===playerName.toLowerCase();
 }
 
-// ── Draw ──────────────────────────────────────────────────────────────────────
+// ── Characters/pcs — source of truth for HP ───────────────────────────────────
+const pcsData={};
+onValue(ref(db,"characters/pcs"),snap=>{
+  for(const k in pcsData)delete pcsData[k];
+  if(snap.exists())Object.assign(pcsData,snap.val());
+});
 function hasWall(x,y){const t=tiles[`${x},${y}`];return t&&t.walls;}
 
 function drawTileAt(x,y,terrain){
@@ -715,7 +720,9 @@ function drawToken(tok){
   ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.fillStyle="#ddd";ctx.textAlign="center";ctx.textBaseline="top";
   ctx.fillText(tok.name||"",cx,py+TILE+2/zoom);
   const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+12/zoom;
-  const pct=Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1)));
+  let liveHp=tok.hp,liveMaxHp=tok.maxHp;
+  if(tok.type==="pc"&&pcsData[tok.characterId]){const c=pcsData[tok.characterId];liveHp=c.hp??c.combat?.hp_current??tok.hp;liveMaxHp=c.maxHp??c.combat?.hp_max??tok.maxHp;}
+  const pct=Math.max(0,Math.min(1,(liveHp??liveMaxHp)/(liveMaxHp||1)));
   ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(bx,by,bw,bh);
   ctx.fillStyle=pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#aa3030";ctx.fillRect(bx,by,bw*pct,bh);
 }

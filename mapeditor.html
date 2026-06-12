@@ -936,7 +936,12 @@ function restoreTiles(s){for(const k in tiles)delete tiles[k];Object.assign(tile
 function undo(){if(!undoStack.length){toast("Nothing to undo");return;}redoStack.push(snapshotTiles());restoreTiles(undoStack.pop());scheduleSave();}
 function redo(){if(!redoStack.length){toast("Nothing to redo");return;}undoStack.push(snapshotTiles());restoreTiles(redoStack.pop());scheduleSave();}
 
-// ── Live listener ─────────────────────────────────────────────────────────────
+// ── Characters/pcs — source of truth for HP ───────────────────────────────────
+const pcsData={};
+onValue(ref(db,"characters/pcs"),snap=>{
+  for(const k in pcsData)delete pcsData[k];
+  if(snap.exists())Object.assign(pcsData,snap.val());
+});
 let liveUnsub=null;
 function subscribeLive(){
   if(liveUnsub){liveUnsub();liveUnsub=null;}
@@ -1037,7 +1042,11 @@ function drawToken(id,tok,alpha){
   if(img){ctx.save();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.clip();ctx.drawImage(img,px,py,TILE,TILE);ctx.restore();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();}
   else{ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();ctx.fillStyle="#fff";ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText((tok.name||"?")[0].toUpperCase(),cx2,cy2);}
   ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.fillStyle="#ddd";ctx.textAlign="center";ctx.textBaseline="top";ctx.fillText(tok.name||"",cx2,py+TILE+2/zoom);
-  const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+12/zoom;const pct=Math.max(0,Math.min(1,(tok.hp??tok.maxHp)/(tok.maxHp||1)));
+  const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+12/zoom;
+  // Use live character HP for PCs, fallback to token HP
+  let liveHp=tok.hp,liveMaxHp=tok.maxHp;
+  if(tok.type==="pc"&&pcsData[tok.characterId]){const c=pcsData[tok.characterId];liveHp=c.hp??c.combat?.hp_current??tok.hp;liveMaxHp=c.maxHp??c.combat?.hp_max??tok.maxHp;}
+  const pct=Math.max(0,Math.min(1,(liveHp??liveMaxHp)/(liveMaxHp||1)));
   ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(bx,by,bw,bh);ctx.fillStyle=pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#aa3030";ctx.fillRect(bx,by,bw*pct,bh);
   ctx.restore();
 }
