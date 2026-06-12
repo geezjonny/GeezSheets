@@ -355,6 +355,9 @@ canvas{display:block;cursor:crosshair}
       <div class="modal-section"><label>Name (override)</label><input id="tok-name" type="text" placeholder="auto"></div>
       <div class="modal-section"><label>Type</label><select id="tok-type"><option value="pc">PC</option><option value="npc">NPC</option></select></div>
     </div>
+    <div class="modal-row">
+      <div class="modal-section"><label>Size</label><select id="tok-size"><option value="0.5">Tiny (½)</option><option value="0.75">Small (¾)</option><option value="1" selected>Medium (1)</option><option value="2">Large (2)</option><option value="3">Huge (3)</option><option value="4">Gargantuan (4)</option></select></div>
+    </div>
     <div class="modal-row" id="tok-hp-row" style="display:none">
       <div class="modal-section"><label>HP</label><input id="tok-hp" type="number" placeholder="10" min="0"></div>
       <div class="modal-section"><label>Max HP</label><input id="tok-maxhp" type="number" placeholder="10" min="1"></div>
@@ -1024,7 +1027,7 @@ const tokMaxHpInput=document.getElementById("tok-maxhp");
 tokenBtn.onclick=async()=>{tokCharSel.innerHTML='<option value="">Loading…</option>';try{const snap=await get(child(ref(db),"characters/pcs"));tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';if(snap.exists()){const chars=snap.val();for(const[id,c]of Object.entries(chars)){const opt=document.createElement("option");opt.value=id;opt.textContent=c.name||(c.charName)||id;opt.dataset.hp=c.hp??c.currentHp??10;opt.dataset.maxhp=c.maxHp??c.hp??10;opt.dataset.type="pc";tokCharSel.appendChild(opt);}}}catch(e){tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';}tokNameInput.value="";tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="pc";document.getElementById("tok-hp-row").style.display="none";tokenModal.classList.remove("hidden");};
 tokCharSel.addEventListener("change",()=>{const opt=tokCharSel.selectedOptions[0];const isNpc=!opt||opt.value==="__npc__";document.getElementById("tok-hp-row").style.display=isNpc?"flex":"none";if(!isNpc&&opt.dataset.hp){tokHpInput.value=opt.dataset.hp;tokMaxHpInput.value=opt.dataset.maxhp;tokTypeInput.value=opt.dataset.type||"pc";tokNameInput.placeholder=opt.textContent;}else{tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="npc";tokNameInput.placeholder="NPC Name";}});
 document.getElementById("tok-cancel").onclick=()=>{tokenModal.classList.add("hidden");placingToken=null;};
-document.getElementById("tok-place").onclick=()=>{const charId=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];const name=tokNameInput.value.trim()||opt?.textContent||"Token";const type=tokTypeInput.value;const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;placingToken={id:"tok_"+Date.now(),characterId:charId,name,type,hp,maxHp,x:0,y:0};tryLoadTokenTexture(charId,name);tokenModal.classList.add("hidden");toast("Click the map to place token");};
+document.getElementById("tok-place").onclick=()=>{const charId=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];const name=tokNameInput.value.trim()||opt?.textContent||"Token";const type=tokTypeInput.value;const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;const size=parseFloat(document.getElementById("tok-size").value)||1;placingToken={id:"tok_"+Date.now(),characterId:charId,name,type,hp,maxHp,size,x:0,y:0};tryLoadTokenTexture(charId,name);tokenModal.classList.add("hidden");toast("Click the map to place token");};
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
 function drawTileAt(x,y,terrain){const px=x*TILE,py=y*TILE;if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=FALLBACK[terrain]||"#333";ctx.fillRect(px,py,TILE,TILE);}}
@@ -1034,18 +1037,20 @@ function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/zoo
 
 function drawToken(id,tok,alpha){
   ctx.save();ctx.globalAlpha=alpha??1;
-  const px=tok.x*TILE,py=tok.y*TILE,r=TILE*0.42,cx2=px+TILE/2,cy2=py+TILE/2;
+  const s=tok.size||1;
+  const px=tok.x*TILE,py=tok.y*TILE,sw=s*TILE,sh=s*TILE;
+  const r=sw*0.42,cx2=px+sw/2,cy2=py+sh/2;
   // Condition rings
   const conds=tok.conditions||[];
-  conds.forEach((c,i)=>{ctx.beginPath();ctx.arc(cx2,cy2,r+4+i*4,0,Math.PI*2);ctx.strokeStyle=CONDITIONS[c]||"#fff";ctx.lineWidth=2.5/zoom;ctx.stroke();});
+  conds.forEach((c,i)=>{ctx.beginPath();ctx.arc(cx2,cy2,r+4*s+i*4*s,0,Math.PI*2);ctx.strokeStyle=CONDITIONS[c]||"#fff";ctx.lineWidth=2.5/zoom;ctx.stroke();});
   const img=tokenTextures[tok.characterId];
-  if(img){ctx.save();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.clip();ctx.drawImage(img,px,py,TILE,TILE);ctx.restore();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();}
-  else{ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();ctx.fillStyle="#fff";ctx.font=`bold ${Math.round(14/zoom)}px Cinzel,serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText((tok.name||"?")[0].toUpperCase(),cx2,cy2);}
+  if(img){ctx.save();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.clip();ctx.drawImage(img,px,py,sw,sh);ctx.restore();ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();}
+  else{ctx.beginPath();ctx.arc(cx2,cy2,r,0,Math.PI*2);ctx.fillStyle=tok.type==="pc"?"#3a6aaa":"#8a2a2a";ctx.fill();ctx.strokeStyle=tok.type==="pc"?"#7ab0e0":"#e07070";ctx.lineWidth=2/zoom;ctx.stroke();ctx.fillStyle="#fff";ctx.font=`bold ${Math.round(14*s/zoom)}px Cinzel,serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText((tok.name||"?")[0].toUpperCase(),cx2,cy2);}
   ctx.font=`${Math.round(9/zoom)}px Cinzel,serif`;ctx.textAlign="center";ctx.textBaseline="top";
   const nameLabel=tok.name||"";const nameW=ctx.measureText(nameLabel).width;
-  ctx.fillStyle="rgba(0,0,0,0.65)";ctx.fillRect(cx2-nameW/2-3/zoom,py+TILE+2/zoom,nameW+6/zoom,10/zoom);
-  ctx.fillStyle="#fff";ctx.fillText(nameLabel,cx2,py+TILE+2/zoom);
-  const bw=TILE*0.85,bh=5/zoom,bx=px+(TILE-bw)/2,by=py+TILE+12/zoom;
+  ctx.fillStyle="rgba(0,0,0,0.65)";ctx.fillRect(cx2-nameW/2-3/zoom,py+sh+2/zoom,nameW+6/zoom,10/zoom);
+  ctx.fillStyle="#fff";ctx.fillText(nameLabel,cx2,py+sh+2/zoom);
+  const bw=sw*0.85,bh=5/zoom,bx=px+(sw-bw)/2,by=py+sh+12/zoom;
   // Use live character HP for PCs, fallback to token HP
   let liveHp=tok.hp,liveMaxHp=tok.maxHp;
   if(tok.type==="pc"&&pcsData[tok.characterId]){const c=pcsData[tok.characterId];liveHp=c.hp??c.combat?.hp_current??tok.hp;liveMaxHp=c.maxHp??c.combat?.hp_max??tok.maxHp;}
@@ -1118,7 +1123,13 @@ let selStamps={},selProps={},selTokenIds=[];
 function liftSelection(minX,minY,maxX,maxY){selectTiles={};selMinX=minX;selMinY=minY;selMaxX=maxX;selMaxY=maxY;selStamps={};selProps={};selTokenIds=[];for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);if(tiles[k])selectTiles[k]={...tiles[k]};if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain,walls:wallsEnabled};else delete tiles[k];if(stamps[k]){selStamps[k]=stamps[k];delete stamps[k];}if(props[k]){selProps[k]={...props[k]};delete props[k];}}for(const[id,tok]of Object.entries(tokens)){if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY)selTokenIds.push(id);}moveOffX=0;moveOffY=0;scheduleSave();}
 function commitSelection(){pushUndo();const ox=moveOffX,oy=moveOffY;for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);tiles[key(tx+ox,ty+oy)]={...selectTiles[k]};}for(const k in selStamps){const[tx,ty]=k.split(",").map(Number);const nk=key(tx+ox,ty+oy);stamps[nk]=selStamps[k];saveStamp(nk,selStamps[k]);}for(const k in selProps){const[tx,ty]=k.split(",").map(Number);props[key(tx+ox,ty+oy)]={...selProps[k]};}for(const id of selTokenIds){if(tokens[id]){tokens[id].x+=ox;tokens[id].y+=oy;saveToken(id,tokens[id]);}}selectTiles={};selStamps={};selProps={};selTokenIds=[];selectPhase=null;moveOffX=0;moveOffY=0;scheduleSave();saveProps();}
 function inSelection(wx,wy){if(!selectPhase||selectPhase==="marquee")return false;const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);return tx>=selMinX+moveOffX&&tx<=selMaxX+moveOffX&&ty>=selMinY+moveOffY&&ty<=selMaxY+moveOffY;}
-function tokenAtTile(tx,ty){for(const[id,tok]of Object.entries(tokens))if(tok.x===tx&&tok.y===ty)return id;return null;}
+function tokenAtTile(tx,ty){
+  for(const[id,tok]of Object.entries(tokens)){
+    const s=tok.size||1;
+    if(tx>=tok.x&&tx<tok.x+s&&ty>=tok.y&&ty<tok.y+s)return id;
+  }
+  return null;
+}
 function fogGroupXHit(wx,wy){for(const gid in fogGroups){const cells=fogGroups[gid].cells||{};const coords=Object.keys(cells).map(k=>k.split(",").map(Number));if(!coords.length)continue;const maxX=Math.max(...coords.map(([x])=>x));const minY=Math.min(...coords.map(([,y])=>y));const bx=(maxX+1)*TILE-14/zoom,by=minY*TILE,bs=14/zoom;if(wx>=bx&&wx<=bx+bs&&wy>=by&&wy<=by+bs)return gid;}return null;}
 function fogGroupAtTile(tx,ty){const k=key(tx,ty);for(const gid in fogGroups){if(fogGroups[gid].cells&&fogGroups[gid].cells[k])return gid;}return null;}
 
