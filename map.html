@@ -306,8 +306,36 @@ async function loadTextures(){
     const img=new Image();img.onload=()=>{textures[t]=img;resolve()};img.onerror=()=>resolve();img.src=`${TEXTURE_PATH}${t}.png`;
   })));
 }
-function tryLoadPropTexture(id){if(propTextures[id]!==undefined)return;propTextures[id]=null;const img=new Image();img.onload=()=>{propTextures[id]=img;};img.onerror=()=>{propTextures[id]=null;};img.src=`${PROP_PATH}${id}.png`;}
-function tryLoadTokenTexture(characterId,name){if(tokenTextures[characterId]!==undefined)return;tokenTextures[characterId]=null;const img=new Image();const fname=(name||characterId).toLowerCase().replace(/\s+/g,"_");img.onload=()=>{tokenTextures[characterId]=img;};img.onerror=()=>{tokenTextures[characterId]=null;};img.src=`${TOKEN_PATH}${fname}.png`;}
+function tryLoadPropTexture(id){
+  if(propTextures[id]!==undefined)return;
+  propTextures[id]=null;
+  const img=new Image();
+  img.onload=()=>{propTextures[id]=img;};
+  img.onerror=()=>{
+    // Fallback: check RTDB base64 upload
+    get(ref(db,`assets/uploads/props/${id}`)).then(snap=>{
+      const b64=snap.val();
+      if(b64){const i=new Image();i.onload=()=>{propTextures[id]=i;};i.src=b64;}
+    });
+  };
+  img.src=`${PROP_PATH}${id}.png`;
+}
+
+function tryLoadTokenTexture(characterId,name){
+  if(tokenTextures[characterId]!==undefined)return;
+  tokenTextures[characterId]=null;
+  const img=new Image();
+  const fname=(name||characterId).toLowerCase().replace(/\s+/g,"_");
+  img.onload=()=>{tokenTextures[characterId]=img;};
+  img.onerror=()=>{
+    // Fallback: check RTDB base64 upload
+    get(ref(db,`assets/uploads/tokens/${characterId}`)).then(snap=>{
+      const b64=snap.val();
+      if(b64){const i=new Image();i.onload=()=>{tokenTextures[characterId]=i;};i.src=b64;}
+    });
+  };
+  img.src=`${TOKEN_PATH}${fname}.png`;
+}
 
 // ── Resize ────────────────────────────────────────────────────────────────────
 function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;initParticles();}
@@ -769,9 +797,13 @@ function draw(){
   ctx.restore();
 
   for(const[k,p]of Object.entries(props)){
-    const[x,y]=k.split(",").map(Number);
+    let rx,ry;
+    if(p.attachedTo&&tokens[p.attachedTo]){
+      rx=tokens[p.attachedTo].x+(p.offsetX||0);
+      ry=tokens[p.attachedTo].y+(p.offsetY||0);
+    }else{[rx,ry]=k.split(",").map(Number);}
     const def=propDefs[p.propId]||{emoji:"📦",w:1,h:1};
-    const px=x*TILE,py=y*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
+    const px=rx*TILE,py=ry*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
     const img=propTextures[p.propId];
     if(img)ctx.drawImage(img,px,py,pw,ph);
     else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
