@@ -182,7 +182,20 @@ canvas{display:block;cursor:crosshair}
     <button id="pingBtn">📍 Ping</button>
     <button id="weatherBtn">🌦 Weather</button>
     <div class="sep"></div>
-    <button id="clearBtn">Clear</button>
+    <div class="picker-wrap" id="clear-wrap">
+      <button class="picker-btn" id="clearBtn">✕ Clear ▾</button>
+      <div class="picker-dropdown" id="clear-dropdown" style="grid-template-columns:1fr;min-width:160px">
+        <div class="pd-item" id="clear-bg"    style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🗺 Background</div>
+        <div class="pd-item" id="clear-tokens" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⚔ Tokens</div>
+        <div class="pd-item" id="clear-props"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🪣 Props</div>
+        <div class="pd-item" id="clear-fog"    style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog</div>
+        <div class="pd-item" id="clear-stamps" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⭐ Stamps</div>
+        <div class="pd-item" id="clear-tiles"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🟫 Tiles</div>
+        <div class="pd-item" id="clear-roofs"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🏠 Roofs</div>
+        <div style="height:1px;background:var(--border);margin:2px 0"></div>
+        <div class="pd-item" id="clear-all"    style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--red-bright)">💥 Clear All</div>
+      </div>
+    </div>
     <button id="loadJsonBtn">⬆ Import</button>
     <input type="file" id="jsonFileInput" accept=".json" hidden>
     <div id="status">Connecting…</div>
@@ -1010,32 +1023,83 @@ wallBtn.onclick=()=>{wallsEnabled=!wallsEnabled;wallBtn.textContent=wallsEnabled
 roofBtn.onclick=()=>{roofMode=!roofMode;roofBtn.classList.toggle("roof-active",roofMode);if(roofMode){fogMode=false;fogBtn.classList.remove("fog-active");currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();}};
 document.getElementById("roof-opacity-btn").onclick=()=>{roofOpacity=roofOpacity<0.9?roofOpacity+0.25:0.25;document.getElementById("roof-opacity-btn").textContent=`👁 ${Math.round(roofOpacity*100)}%`;};
 fogBtn.onclick=()=>{fogMode=!fogMode;fogBtn.classList.toggle("fog-active",fogMode);if(fogMode){roofMode=false;roofBtn.classList.remove("roof-active");currentStamp=null;stampLabelPrev.textContent="None";buildStampDropdown();currentProp=null;propLabelPrev.textContent="None";buildPropDropdown();document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();}};
-clearBtn.onclick=async()=>{
-  if(!confirm("Clear entire map — tiles, fog, tokens, props, stamps, roofs, and background?"))return;
-  pushUndo();
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  for(const k in tiles)delete tiles[k];
-  for(const k in fogGroups)delete fogGroups[k];
-  for(const k in tokens)delete tokens[k];
-  for(const k in stamps)delete stamps[k];
-  for(const k in roofs)delete roofs[k];
-  for(const k in props)delete props[k];
-  bgImage=null;bgUrl="";
-  // Clear weather
-  ["rain","snow","mist","storm"].forEach(t=>weather[t].enabled=false);
-  await Promise.all([
-    set(ref(db,`maps/${mapName}/tiles`),null),
-    set(ref(db,`maps/${mapName}/fog`),null),
-    set(ref(db,`maps/${mapName}/tokens`),null),
-    set(ref(db,`maps/${mapName}/stamps`),null),
-    set(ref(db,`maps/${mapName}/roofs`),null),
-    set(ref(db,`maps/${mapName}/props`),null),
-    set(ref(db,`maps/${mapName}/background`),null),
-    set(ref(db,"weather"),null),
-  ]);
-  buildWeatherPanel();
-  toast("Map cleared");
+// ── Clear dropdown ────────────────────────────────────────────────────────────
+const clearDropdown=document.getElementById("clear-dropdown");
+document.getElementById("clearBtn").onclick=(e)=>{
+  e.stopPropagation();
+  const r=document.getElementById("clearBtn").getBoundingClientRect();
+  clearDropdown.style.left=r.left+"px";
+  clearDropdown.classList.toggle("open");
 };
+clearDropdown.addEventListener("click",e=>e.stopPropagation());
+
+async function clearSection(section){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  switch(section){
+    case "bg":
+      if(!confirm("Clear background image?"))return;
+      bgImage=null;bgUrl="";
+      await set(ref(db,`maps/${mapName}/background`),null);
+      break;
+    case "tokens":
+      if(!confirm("Clear all tokens?"))return;
+      for(const k in tokens)delete tokens[k];
+      await set(ref(db,`maps/${mapName}/tokens`),null);
+      break;
+    case "props":
+      if(!confirm("Clear all props?"))return;
+      for(const k in props)delete props[k];
+      await set(ref(db,`maps/${mapName}/props`),null);
+      break;
+    case "fog":
+      if(!confirm("Clear all fog?"))return;
+      for(const k in fogGroups)delete fogGroups[k];
+      await set(ref(db,`maps/${mapName}/fog`),null);
+      break;
+    case "stamps":
+      if(!confirm("Clear all stamps?"))return;
+      for(const k in stamps)delete stamps[k];
+      await set(ref(db,`maps/${mapName}/stamps`),null);
+      break;
+    case "tiles":
+      if(!confirm("Clear all tiles?"))return;
+      pushUndo();
+      for(const k in tiles)delete tiles[k];
+      await set(ref(db,`maps/${mapName}/tiles`),null);
+      break;
+    case "roofs":
+      if(!confirm("Clear all roofs?"))return;
+      for(const k in roofs)delete roofs[k];
+      await set(ref(db,`maps/${mapName}/roofs`),null);
+      break;
+    case "all":
+      if(!confirm("Clear EVERYTHING — tiles, fog, tokens, props, stamps, roofs, background?"))return;
+      pushUndo();
+      for(const k in tiles)delete tiles[k];
+      for(const k in fogGroups)delete fogGroups[k];
+      for(const k in tokens)delete tokens[k];
+      for(const k in stamps)delete stamps[k];
+      for(const k in roofs)delete roofs[k];
+      for(const k in props)delete props[k];
+      bgImage=null;bgUrl="";
+      await Promise.all([
+        set(ref(db,`maps/${mapName}/tiles`),null),
+        set(ref(db,`maps/${mapName}/fog`),null),
+        set(ref(db,`maps/${mapName}/tokens`),null),
+        set(ref(db,`maps/${mapName}/stamps`),null),
+        set(ref(db,`maps/${mapName}/roofs`),null),
+        set(ref(db,`maps/${mapName}/props`),null),
+        set(ref(db,`maps/${mapName}/background`),null),
+      ]);
+      break;
+  }
+  clearDropdown.classList.remove("open");
+  toast(`${section==="all"?"Everything":section} cleared`);
+}
+
+["bg","tokens","props","fog","stamps","tiles","roofs","all"].forEach(s=>{
+  document.getElementById(`clear-${s}`).onclick=()=>clearSection(s);
+});
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
 
 // JSON import
