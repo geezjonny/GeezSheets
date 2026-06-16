@@ -92,6 +92,10 @@ canvas{display:block;width:100%;height:100%}
     <h2>Who Are You?</h2>
     <p>Enter your name to join the session</p>
     <input id="name-input" type="text" placeholder="Your name…" maxlength="30" spellcheck="false">
+    <input id="pass-input" type="password" placeholder="Session passphrase (if set)" maxlength="40" spellcheck="false" style="display:none">
+    <select id="char-select" style="display:none;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:14px;padding:7px 10px;border-radius:4px;outline:none;width:100%;text-align:center">
+      <option value="">— No character —</option>
+    </select>
     <button id="name-confirm" class="primary">Enter the Dungeon</button>
   </div>
 </div>
@@ -138,6 +142,7 @@ canvas{display:block;width:100%;height:100%}
     <input id="map-input" type="text" value="dungeon-1" hidden>
     <div class="sep"></div>
     <button id="pingBtn">📍 Ping</button>
+    <button id="micBtn">🎤 Mic</button>
     <button id="sheetsBtn">📋 Sheets</button>
     <div class="sep"></div>
     <span id="status">—</span>
@@ -183,7 +188,9 @@ import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weat
 import { drawToken, tokenAtTile, applyCondition, deleteToken } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
-import { drawRuler } from "./js/ruler.js";
+import { drawRuler, findSnapPoint } from "./js/ruler.js";
+import { startMicListener, stopMicListener, subscribeTalking, getShakeOffset } from "./js/mic.js";
+import { subscribePassphrase, checkPassphrase, hasPassphraseSet, fetchCharacterRoster, saveAuthSession, loadAuthSession } from "./js/auth.js";
 import { sendChat, renderChat } from "./js/chat.js";
 import { rollDie, animateDiceResult } from "./js/dice.js";
 import { rollInitiative, nextTurn, renderInitTrack } from "./js/initiative.js";
@@ -200,7 +207,9 @@ let pingHoldTimer=null,myLaserRef=null;
 const activePings={},activeLasers={};
 let draggingToken=null,panning=false;
 let panStartX=0,panStartY=0,camStartX=0,camStartY=0;
-let rulerStart=null,rulerEnd=null;
+let rulerStart=null,rulerEnd=null,rulerActive=false;
+let micEnabled=false;
+let myCharacterId=null,myCharacterName=null;
 let initiative={order:[],active:null,rolls:{}};
 let ctxTokenId=null;
 let liveUnsub=null;
@@ -226,16 +235,43 @@ const initRollModal=document.getElementById("init-roll-modal");
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function setStatus(cls,text){statusEl.className=cls;statusEl.textContent=text;}
 function showPingToast(msg){pingToast.textContent=msg;pingToast.classList.add("show");setTimeout(()=>pingToast.classList.remove("show"),2000);}
+function toast(msg){showPingToast(msg);}
 function screenPos(e){const r=viewport.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
 function toWorldLocal(sx,sy){return toWorld(sx,sy);}
 function toScreenLocal(wx,wy){return toScreen(wx,wy);}
 
-// ── Name ─────────────────────────────────────────────────────────────────────
-function showNameModal(){nameInput.value=playerName;nameModal.classList.remove("hidden");setTimeout(()=>nameInput.focus(),50);}
-function confirmName(){const n=nameInput.value.trim();if(!n)return;playerName=n;localStorage.setItem("vtt_player_name",n);nameModal.classList.add("hidden");nameDisplay.textContent=playerName;}
+// ── Name / Auth ───────────────────────────────────────────────────────────────
+const passInput=document.getElementById("pass-input");
+const charSelect=document.getElementById("char-select");
+
+async function showNameModal(){
+  nameInput.value=playerName;
+  passInput.style.display=hasPassphraseSet()?"block":"none";
+  passInput.value="";
+  // Populate character roster
+  const roster=await fetchCharacterRoster();
+  charSelect.innerHTML='<option value="">— No character —</option>';
+  roster.forEach(c=>{const opt=document.createElement("option");opt.value=c.id;opt.textContent=c.name;charSelect.appendChild(opt);});
+  charSelect.style.display=roster.length?"block":"none";
+  if(myCharacterId)charSelect.value=myCharacterId;
+  nameModal.classList.remove("hidden");setTimeout(()=>nameInput.focus(),50);
+}
+
+function confirmName(){
+  const n=nameInput.value.trim();if(!n)return;
+  if(hasPassphraseSet()&&!checkPassphrase(passInput.value)){toast?.("Incorrect passphrase");return;}
+  playerName=n;localStorage.setItem("vtt_player_name",n);
+  const charId=charSelect.value;
+  if(charId){myCharacterId=charId;myCharacterName=charSelect.selectedOptions[0]?.textContent;saveAuthSession(n,charId,myCharacterName);}
+  nameModal.classList.add("hidden");nameDisplay.textContent=playerName;
+}
 document.getElementById("name-confirm").onclick=confirmName;
 nameInput.addEventListener("keydown",e=>{if(e.key==="Enter")confirmName();});
 nameDisplay.onclick=showNameModal;
+
+// Restore previous session if available
+const savedAuth=loadAuthSession();
+if(savedAuth&&savedAuth.playerName===playerName){myCharacterId=savedAuth.characterId;myCharacterName=savedAuth.characterName;}
 
 // ── Resize ────────────────────────────────────────────────────────────────────
 function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;initParticles(canvas.width,canvas.height);}
@@ -371,6 +407,20 @@ document.getElementById("pingBtn").onclick=()=>{
   viewport.classList.toggle("pinging",pingMode);
 };
 
+document.getElementById("micBtn").onclick=async()=>{
+  if(!playerName){showNameModal();return;}
+  micEnabled=!micEnabled;
+  const btn=document.getElementById("micBtn");
+  if(micEnabled){
+    const ok=await startMicListener(playerName);
+    if(!ok){micEnabled=false;toast?.("Mic access denied");return;}
+    btn.classList.add("active");btn.textContent="🎤 Mic On";
+  }else{
+    stopMicListener(playerName);
+    btn.classList.remove("active");btn.textContent="🎤 Mic";
+  }
+};
+
 // ── Draw ──────────────────────────────────────────────────────────────────────
 const CONDITIONS={};
 
@@ -412,9 +462,9 @@ function draw(){
     else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
   }
 
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   drawFog(ctx,fog,camera.zoom,false);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
 
   ctx.save();ctx.globalAlpha=1;
   for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}
@@ -429,9 +479,14 @@ function draw(){
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
-  drawRuler(ctx,rulerStart,rulerEnd,(sx,sy)=>toWorld(sx,sy));
+  drawRuler(ctx,rulerStart,rulerEnd,(wx,wy)=>toScreen(wx,wy));
   requestAnimationFrame(draw);
 }
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+window.addEventListener("keydown",e=>{
+  if(e.code==="Escape"){rulerStart=null;rulerEnd=null;rulerActive=false;}
+});
 
 // ── Pointer events ────────────────────────────────────────────────────────────
 viewport.addEventListener("contextmenu",e=>{
@@ -443,10 +498,17 @@ viewport.addEventListener("contextmenu",e=>{
 viewport.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
   if(pingMode){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}
-  if(e.altKey){rulerStart=[sx,sy];rulerEnd=[sx,sy];viewport.setPointerCapture(e.pointerId);return;}
+  if(e.altKey){
+    const[wx,wy]=toWorld(sx,sy);
+    const snap=findSnapPoint(tokens,wx,wy);
+    const point=snap||[wx,wy];
+    if(!rulerActive){rulerStart=point;rulerEnd=point;rulerActive=true;}
+    else{rulerEnd=point;rulerActive=false;}
+    return;
+  }
   const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
   const tokId=tokenAtTile(tokens,tx,ty);
-  if(tokId&&tokens[tokId].name?.toLowerCase()===playerName.toLowerCase()&&tokens[tokId].type==="pc"){
+  if(tokId&&tokens[tokId].type==="pc"&&(tokens[tokId].name?.toLowerCase()===playerName.toLowerCase()||tokens[tokId].characterId===myCharacterId)){
     draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y};viewport.setPointerCapture(e.pointerId);return;
   }
   isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);
@@ -456,7 +518,7 @@ viewport.addEventListener("pointerdown",e=>{
 
 viewport.addEventListener("pointermove",e=>{
   const[sx,sy]=screenPos(e);
-  if(rulerStart){rulerEnd=[sx,sy];return;}
+  if(rulerActive){const[wx,wy]=toWorld(sx,sy);const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
   if(draggingToken){const[wx,wy]=toWorld(sx,sy);tokens[draggingToken.id].x=Math.floor(wx/TILE)-draggingToken.offsetTX;tokens[draggingToken.id].y=Math.floor(wy/TILE)-draggingToken.offsetTY;return;}
   if(isHolding&&myLaserRef){const[wx,wy]=toWorld(sx,sy);moveLaser(myLaserRef,wx,wy,playerName);return;}
   if(panning){camera.x=camStartX+(e.clientX-panStartX);camera.y=camStartY+(e.clientY-panStartY);}
@@ -464,7 +526,7 @@ viewport.addEventListener("pointermove",e=>{
 
 viewport.addEventListener("pointerup",e=>{
   const[sx,sy]=screenPos(e);
-  if(rulerStart){rulerEnd=[sx,sy];setTimeout(()=>{rulerStart=null;rulerEnd=null;},3000);return;}
+  if(rulerActive)return; // still placing second point, handled in pointerdown
   if(draggingToken){
     update(ref(db,`maps/${currentMap}/tokens/${draggingToken.id}`),{x:tokens[draggingToken.id].x,y:tokens[draggingToken.id].y});
     draggingToken=null;return;
@@ -483,7 +545,10 @@ viewport.addEventListener("wheel",e=>{
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
-  if(!playerName)showNameModal();else nameDisplay.textContent=playerName;
+  subscribePassphrase();
+  subscribeTalking();
+  // Give the passphrase listener a brief moment to populate before showing modal
+  setTimeout(()=>{ if(!playerName)showNameModal();else nameDisplay.textContent=playerName; },150);
   document.getElementById("overlay-msg").textContent="Loading…";
   await loadConfig();
   buildConditionsMap();

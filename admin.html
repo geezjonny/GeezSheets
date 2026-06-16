@@ -245,6 +245,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
         <div id="bg-status" style="font-size:9px;color:var(--dim);font-family:monospace"></div>
       </div>
 
+      <!-- Session passphrase -->
+      <div class="section">
+        <div class="sec-title">Player Login Passphrase</div>
+        <p style="font-size:10px;color:var(--dim);font-family:'IM Fell English',serif;margin-bottom:8px">Players must enter this to join. Leave blank to allow anyone in.</p>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input id="passphrase-input" type="text" placeholder="e.g. dragonsbane" style="flex:1;background:#111;border:1px solid var(--border);color:var(--gold);font-family:monospace;font-size:12px;padding:6px 10px;border-radius:4px;outline:none">
+          <button onclick="setPassphrase()" style="height:30px;padding:0 12px;border:1px solid var(--green);border-radius:4px;background:transparent;color:#2ecc71;font-family:'Cinzel',serif;font-size:9px;cursor:pointer">Set</button>
+          <button onclick="clearPassphrase()" style="height:30px;padding:0 12px;border:1px solid var(--red);border-radius:4px;background:transparent;color:#e74c3c;font-family:'Cinzel',serif;font-size:9px;cursor:pointer">Open</button>
+        </div>
+        <div id="passphrase-status" style="font-size:9px;color:var(--dim);font-family:monospace">Session is open — no passphrase set</div>
+      </div>
+
       <!-- Notes -->
       <div class="section" style="display:flex;flex-direction:column;min-height:200px;padding-bottom:16px">
         <div class="sec-title">GM Notes</div>
@@ -561,6 +573,29 @@ window.setBg=async()=>{
 window.clearBg=async()=>{
   await remove(ref(db,`maps/${currentMap}/background`));
   document.getElementById("bg-url").value="";document.getElementById("bg-status").textContent=`None for ${currentMap}`;toast("Background cleared");
+};
+
+// ── Session passphrase ───────────────────────────────────────────────────────
+onValue(ref(db,"session/passphrase"),snap=>{
+  const pass=snap.val();
+  const status=document.getElementById("passphrase-status");
+  if(pass){status.textContent=`Session locked — passphrase set`;document.getElementById("passphrase-input").value=pass;}
+  else status.textContent="Session is open — no passphrase set";
+},{onlyOnce:true});
+
+window.setPassphrase=async()=>{
+  const pass=document.getElementById("passphrase-input").value.trim();
+  if(!pass){toast("Enter a passphrase, or use Open to clear it");return;}
+  await set(ref(db,"session/passphrase"),pass);
+  document.getElementById("passphrase-status").textContent="Session locked — passphrase set";
+  toast("Passphrase set — players must enter it to join");
+};
+
+window.clearPassphrase=async()=>{
+  await remove(ref(db,"session/passphrase"));
+  document.getElementById("passphrase-input").value="";
+  document.getElementById("passphrase-status").textContent="Session is open — no passphrase set";
+  toast("Session opened — no passphrase required");
 };
 
 // ── GM Notes ──────────────────────────────────────────────────────────────────

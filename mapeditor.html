@@ -347,7 +347,8 @@ import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.j
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
 import { drawFog, fogGroupXHit, fogGroupAtTile, saveFog, deleteFogGroup as deleteFogGroupRTDB } from "./js/fog.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
-import { drawRuler } from "./js/ruler.js";
+import { subscribeTalking, getShakeOffset } from "./js/mic.js";
+import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { sendChat, renderChat } from "./js/chat.js";
 import { rollDie, animateDiceResult } from "./js/dice.js";
 import { rollInitiative, nextTurn, renderInitTrack } from "./js/initiative.js";
@@ -369,7 +370,7 @@ let selStamps={},selProps={},selTokenIds=[];
 let draggingToken=null,placingToken=null;
 let pingMode=false,isHolding=false,pingHoldTimer=null,myLaserRef=null;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0,spaceDown=false;
-let rulerStart=null,rulerEnd=null;
+let rulerStart=null,rulerEnd=null,rulerActive=false;
 let initiative={order:[],active:null,rolls:{}};
 let ctxTokenId=null,ctxPropKey=null;
 let liveUnsub=null,saveTimer=null,pendingSaves=0;
@@ -739,11 +740,11 @@ function render(){
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
   for(const k in tiles){if(!tiles[k].walls)continue;const[x,y]=k.split(",").map(Number);const px=x*TILE,py=y*TILE;[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}});}
   drawStamps();drawProps();
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   drawFog(ctx,fogGroups,camera.zoom,true);
   // Fog preview
   if(fogMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(10,20,40,0.35)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   // Placing token preview
   if(placingToken){const alpha=0.6+0.2*Math.sin(Date.now()/300);drawToken(ctx,{...placingToken,x:hoverTileX,y:hoverTileY},camera.zoom,pcsData,CONDITIONS,alpha);}
   // Roofs
@@ -756,14 +757,14 @@ function render(){
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
-  drawRuler(ctx,rulerStart,rulerEnd,(sx,sy)=>toWorld(sx,sy));
+  drawRuler(ctx,rulerStart,rulerEnd,(wx,wy)=>toScreen(wx,wy));
   requestAnimationFrame(render);
 }
 
 // ── Pointer events ────────────────────────────────────────────────────────────
 window.addEventListener("keydown",e=>{
   if(e.code==="Space"){spaceDown=true;canvas.style.cursor="grab";}
-  if(e.code==="Escape"){if(placingToken){placingToken=null;toast("Cancelled.");}if(selectPhase&&selectPhase!=="marquee")commitSelection();}
+  if(e.code==="Escape"){if(placingToken){placingToken=null;toast("Cancelled.");}if(selectPhase&&selectPhase!=="marquee")commitSelection();rulerStart=null;rulerEnd=null;rulerActive=false;}
   if((e.ctrlKey||e.metaKey)&&e.code==="KeyZ"&&!e.shiftKey){e.preventDefault();undo();}
   if((e.ctrlKey||e.metaKey)&&(e.code==="KeyY"||(e.code==="KeyZ"&&e.shiftKey))){e.preventDefault();redo();}
 });
@@ -784,7 +785,7 @@ canvas.addEventListener("pointermove",e=>{
   if(panning){camera.x=camStartX+(sx-panStartX);camera.y=camStartY+(sy-panStartY);return;}
   const[wx,wy]=toWorld(sx,sy);hoverTileX=Math.floor(wx/TILE);hoverTileY=Math.floor(wy/TILE);
   coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
-  if(rulerStart){rulerEnd=[sx,sy];return;}
+  if(rulerActive){const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
   if(draggingToken){const newTX=Math.floor(wx/TILE)-draggingToken.offsetTX;const newTY=Math.floor(wy/TILE)-draggingToken.offsetTY;tokens[draggingToken.id].x=newTX;tokens[draggingToken.id].y=newTY;return;}
   if(isHolding&&myLaserRef){moveLaser(myLaserRef,wx,wy,playerName);return;}
   if(currentShape==="select"&&selectPhase==="moving"){moveOffX=Math.round((wx-moveStartWorldX)/TILE);moveOffY=Math.round((wy-moveStartWorldY)/TILE);canvas.style.cursor="grabbing";return;}
@@ -796,7 +797,11 @@ canvas.addEventListener("pointerdown",e=>{
   if(e.button===1||spaceDown){canvas.setPointerCapture(e.pointerId);panning=true;panStartX=sx;panStartY=sy;camStartX=camera.x;camStartY=camera.y;canvas.style.cursor="grabbing";return;}
   if(e.button!==0)return;
   const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
-  if(e.altKey){rulerStart=[sx,sy];rulerEnd=[sx,sy];canvas.setPointerCapture(e.pointerId);return;}
+  if(e.altKey){
+    const snap=findSnapPoint(tokens,wx,wy);const point=snap||[wx,wy];
+    if(!rulerActive){rulerStart=point;rulerEnd=point;rulerActive=true;}else{rulerEnd=point;rulerActive=false;}
+    return;
+  }
   if(pingMode){isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);canvas.setPointerCapture(e.pointerId);return;}
   if(currentProp){if(currentProp==="erase"){const k=key(tx,ty);if(props[k]){delete props[k];savePropsLocal();}return;}const k=key(tx,ty);props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h};savePropsLocal();return;}
   if(currentStamp){const k=key(tx,ty);pushUndo();if(currentStamp==="erase")deleteStamp(k);else{stamps[k]=currentStamp;saveStamp(k,currentStamp);}return;}
@@ -810,7 +815,7 @@ canvas.addEventListener("pointerdown",e=>{
 
 canvas.addEventListener("pointerup",e=>{
   const[sx,sy]=screenPos(e);
-  if(rulerStart){rulerEnd=[sx,sy];setTimeout(()=>{rulerStart=null;rulerEnd=null;},3000);return;}
+  if(rulerActive)return;
   if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":"crosshair";return;}
   if(pingMode){clearTimeout(pingHoldTimer);if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}else{const[wx,wy]=toWorld(sx,sy);sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);}isHolding=false;pingMode=false;document.getElementById("pingBtn").classList.remove("active");return;}
   if(draggingToken){saveTokenLocal(draggingToken.id,tokens[draggingToken.id]);savePropsLocal();draggingToken=null;return;}
@@ -848,6 +853,7 @@ canvas.addEventListener("pointerup",e=>{
   buildTerrainDropdown();buildStampDropdown();buildPropDropdown();
   selectTerrain("grass");
   buildWeatherPanel();
+  subscribeTalking();
   subscribeLive();
   render();
 })();
