@@ -242,6 +242,8 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-condition="clear" style="color:var(--red-bright)">✕ Clear conditions</div>
   <div class="ctx-sep"></div>
   <div class="ctx-label">Token</div>
+  <div class="ctx-item" data-action="chain">🔗 Chain to token…</div>
+  <div class="ctx-item" data-action="unchain" style="display:none">⛓✕ Remove chain</div>
   <div class="ctx-item" data-action="delete" style="color:var(--red-bright)">✕ Delete token</div>
 </div>
 
@@ -336,6 +338,16 @@ canvas{display:block;cursor:crosshair}
   </div>
 </div>
 
+<div id="chain-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="min-width:320px"><h2>Chain to Token</h2><p>Pick the other token and a max distance (visual only — no movement restriction)</p>
+    <div id="chain-token-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:200px;overflow-y:auto"></div>
+    <div class="modal-row" style="margin-top:10px">
+      <div class="modal-section"><label>Max distance (tiles)</label><input id="chain-max-dist" type="number" value="6" min="1" max="30"></div>
+    </div>
+    <div class="modal-btns" style="margin-top:14px"><button id="chain-cancel">Cancel</button></div>
+  </div>
+</div>
+
 <script type="module">
 import { getDatabase, ref, set, get, child, onValue, remove, push, update }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
@@ -347,6 +359,7 @@ import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.j
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
 import { drawFog, fogGroupXHit, fogGroupAtTile, saveFog, deleteFogGroup as deleteFogGroupRTDB } from "./js/fog.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
+import { saveChain, deleteChain, chainsForToken, drawChains } from "./js/chains.js";
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { sendChat, renderChat } from "./js/chat.js";
@@ -354,7 +367,7 @@ import { rollDie, animateDiceResult } from "./js/dice.js";
 import { rollInitiative, nextTurn, renderInitTrack } from "./js/initiative.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={};
+const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},chains={};
 let bgImage=null,bgUrl="";
 let pcsData={},propDefs={};
 let customProps=[];
@@ -453,6 +466,7 @@ function subscribeLive(){
     for(const k in tiles)delete tiles[k];for(const k in fogGroups)delete fogGroups[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
+    for(const k in chains)delete chains[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fogGroups,data.fog);
@@ -460,6 +474,7 @@ function subscribeLive(){
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
+      if(data.chains)Object.assign(chains,data.chains);
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
     }
@@ -523,16 +538,51 @@ chatInput.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.prev
 document.getElementById("init-roll-call-btn").onclick=()=>rollInitiative(tokens,playerName||"GM");
 document.getElementById("init-next-btn").onclick=()=>nextTurn(initiative,tokens,playerName||"GM");
 
-// ── Conditions ────────────────────────────────────────────────────────────────
+// ── Conditions / Chains ───────────────────────────────────────────────────────
 document.querySelectorAll(".ctx-item").forEach(item=>{
   item.onclick=()=>{
     if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
     const cond=item.dataset.condition,action=item.dataset.action;
     if(cond)applyCondition(mapInput.value.trim()||"dungeon-1",ctxTokenId,cond,tokens);
     if(action==="delete")deleteToken(ctxTokenId);
-    ctxMenu.classList.remove("open");ctxTokenId=null;
+    if(action==="chain")openChainModal(ctxTokenId);
+    if(action==="unchain")removeChainsForToken(ctxTokenId);
+    ctxMenu.classList.remove("open");
+    if(action!=="chain")ctxTokenId=null;
   };
 });
+
+function openChainModal(tokId){
+  const list=document.getElementById("chain-token-list");list.innerHTML="";
+  for(const[id,tok]of Object.entries(tokens)){
+    if(id===tokId)continue;
+    const btn=document.createElement("button");
+    btn.style.cssText="width:100%;height:36px;text-align:left;padding:0 12px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text);cursor:pointer";
+    btn.textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;
+    btn.onmouseenter=()=>btn.style.borderColor="var(--gold-dim)";
+    btn.onmouseleave=()=>btn.style.borderColor="var(--border)";
+    btn.onclick=async()=>{
+      const maxDist=parseInt(document.getElementById("chain-max-dist").value)||6;
+      const chainId="chain_"+Date.now();
+      const mapName=mapInput.value.trim()||"dungeon-1";
+      await saveChain(mapName,chainId,tokId,id,maxDist);
+      chains[chainId]={tokenA:tokId,tokenB:id,maxDistance:maxDist};
+      document.getElementById("chain-modal").classList.add("hidden");
+      toast(`Chained ${tokens[tokId]?.name} ↔ ${tok.name}`);
+    };
+    list.appendChild(btn);
+  }
+  if(!Object.keys(tokens).filter(id=>id!==tokId).length)list.innerHTML=`<p style="font-size:12px;color:var(--text-dim)">No other tokens on map</p>`;
+  document.getElementById("chain-modal").classList.remove("hidden");
+}
+document.getElementById("chain-cancel").onclick=()=>{document.getElementById("chain-modal").classList.add("hidden");ctxTokenId=null;};
+
+async function removeChainsForToken(tokId){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  const matches=chainsForToken(chains,tokId);
+  for(const[chainId]of matches){await deleteChain(mapName,chainId,chains);}
+  toast(matches.length?"Chain removed":"No chain on this token");
+}
 
 // ── Prop context menu ─────────────────────────────────────────────────────────
 function propAtTile(tx,ty){for(const[k,p]of Object.entries(props)){let px,py;if(p.attachedTo&&tokens[p.attachedTo]){px=tokens[p.attachedTo].x+(p.offsetX||0);py=tokens[p.attachedTo].y+(p.offsetY||0);}else{[px,py]=k.split(",").map(Number);}const def=customProps.find(d=>d.id===p.propId)||{w:1,h:1};const w=p.w||def.w||1,h=p.h||def.h||1;if(tx>=px&&tx<px+w&&ty>=py&&ty<py+h)return k;}return null;}
@@ -558,7 +608,7 @@ async function clearSection(section){
   if(!confirm(confirm_msg[section]))return;
   if(section==="tiles"||section==="all")pushUndo();
   if(section==="bg"||section==="all"){bgImage=null;bgUrl="";await set(ref(db,`maps/${mapName}/background`),null);}
-  if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);}
+  if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);for(const k in chains)delete chains[k];await set(ref(db,`maps/${mapName}/chains`),null);}
   if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);}
   if(section==="fog"||section==="all"){for(const k in fogGroups)delete fogGroups[k];await set(ref(db,`maps/${mapName}/fog`),null);}
   if(section==="stamps"||section==="all"){for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
@@ -740,6 +790,7 @@ function render(){
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
   for(const k in tiles){if(!tiles[k].walls)continue;const[x,y]=k.split(",").map(Number);const px=x*TILE,py=y*TILE;[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}});}
   drawStamps();drawProps();
+  drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   drawFog(ctx,fogGroups,camera.zoom,true);
   // Fog preview
@@ -774,7 +825,13 @@ canvas.addEventListener("wheel",e=>{e.preventDefault();const[sx,sy]=screenPos(e)
 canvas.addEventListener("contextmenu",e=>{
   e.preventDefault();const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
   const tokId=tokenAtTile(tokens,tx,ty);
-  if(tokId){ctxTokenId=tokId;ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");return;}
+  if(tokId){
+    ctxTokenId=tokId;
+    const hasChain=chainsForToken(chains,tokId).length>0;
+    document.querySelector('.ctx-item[data-action="chain"]').style.display=hasChain?"none":"flex";
+    document.querySelector('.ctx-item[data-action="unchain"]').style.display=hasChain?"flex":"none";
+    ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");return;
+  }
   const pk=propAtTile(tx,ty);
   if(pk){ctxPropKey=pk;const isAttached=!!(props[pk]&&props[pk].attachedTo);document.getElementById("prop-ctx-attach").style.display=isAttached?"none":"block";document.getElementById("prop-ctx-detach").style.display=isAttached?"block":"none";propCtxMenu.style.left=e.clientX+"px";propCtxMenu.style.top=e.clientY+"px";propCtxMenu.style.display="block";return;}
   const gid=fogGroupAtTile(fogGroups,tx,ty);if(gid){deleteFogGroup(gid);return;}

@@ -188,6 +188,7 @@ import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weat
 import { drawToken, tokenAtTile, applyCondition, deleteToken } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
+import { drawChains } from "./js/chains.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { startMicListener, stopMicListener, subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { subscribePassphrase, checkPassphrase, hasPassphraseSet, fetchCharacterRoster, saveAuthSession, loadAuthSession } from "./js/auth.js";
@@ -196,7 +197,7 @@ import { rollDie, animateDiceResult } from "./js/dice.js";
 import { rollInitiative, nextTurn, renderInitTrack } from "./js/initiative.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={};
+let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
 let bgImage=null,bgUrl="";
 let pcsData={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
@@ -340,6 +341,7 @@ function subscribeLive(){
     for(const k in tiles)delete tiles[k];for(const k in fog)delete fog[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
+    for(const k in chains)delete chains[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fog,data.fog);
@@ -347,6 +349,7 @@ function subscribeLive(){
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
+      if(data.chains)Object.assign(chains,data.chains);
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
     }
@@ -462,6 +465,7 @@ function draw(){
     else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
   }
 
+  drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   drawFog(ctx,fog,camera.zoom,false);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));

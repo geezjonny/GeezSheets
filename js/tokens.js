@@ -15,6 +15,11 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
   const r   = sw * 0.42,    cx = px + sw / 2, cy = py + sh / 2;
   const img = tokenTextures[tok.characterId];
 
+  const allConds = tok.conditions || [];
+  const isProne  = allConds.includes("prone");
+  // Tint cycle excludes "prone" since that's a pose, not a color effect
+  const tintConds = allConds.filter(c => c !== "prone");
+
   // Live HP (PCs read from characters/pcs, NPCs use token data)
   let liveHp = tok.hp, liveMaxHp = tok.maxHp;
   if (tok.type === "pc" && pcsData[tok.characterId]) {
@@ -23,6 +28,9 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
     liveMaxHp = c.maxHp ?? c.combat?.hp_max  ?? tok.maxHp;
   }
   const pct = Math.max(0, Math.min(1, (liveHp ?? liveMaxHp) / (liveMaxHp || 1)));
+
+  // Prone rotation — rotate the portrait/circle 90° around its own center
+  if (isProne) { ctx.translate(cx, cy); ctx.rotate(Math.PI / 2); ctx.translate(-cx, -cy); }
 
   // Portrait or initial — clipped to circle
   ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
@@ -46,16 +54,15 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
     ctx.fillRect(px, py, sw, sh);
   }
 
-  // Condition tint — pulsing cycle through active condition colors
-  const conds = tok.conditions || [];
-  if (conds.length) {
+  // Condition tint — pulsing cycle through active condition colors (excluding prone)
+  if (tintConds.length) {
     const cycleMs = 1400; // time per condition color
     const now = Date.now();
-    const idx = Math.floor(now / cycleMs) % conds.length;
-    const nextIdx = (idx + 1) % conds.length;
+    const idx = Math.floor(now / cycleMs) % tintConds.length;
+    const nextIdx = (idx + 1) % tintConds.length;
     const blend = (now % cycleMs) / cycleMs; // 0..1 fade progress
-    const colorA = CONDITIONS[conds[idx]] || "#fff";
-    const colorB = CONDITIONS[conds[nextIdx]] || colorA;
+    const colorA = CONDITIONS[tintConds[idx]] || "#fff";
+    const colorB = CONDITIONS[tintConds[nextIdx]] || colorA;
     // Simple crossfade between two flat tints using two fillRects with alpha
     ctx.globalCompositeOperation = "source-atop";
     ctx.fillStyle = colorA; ctx.globalAlpha = alpha * 0.35 * (1 - blend);
@@ -70,6 +77,9 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
   // Ring border
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.strokeStyle = tok.type === "pc" ? "#7ab0e0" : "#e07070"; ctx.lineWidth = 2 / zoom; ctx.stroke();
+
+  // Undo prone rotation before drawing name/HP bar so they stay upright and in place
+  if (isProne) { ctx.translate(cx, cy); ctx.rotate(-Math.PI / 2); ctx.translate(-cx, -cy); }
 
   // Name label with dark background
   ctx.font = `${Math.round(9 / zoom)}px Cinzel,serif`;
