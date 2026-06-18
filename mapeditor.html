@@ -248,6 +248,7 @@ canvas{display:block;cursor:crosshair}
           <input id="bg-url-input" type="text" placeholder="https://raw.githubusercontent.com/…/map.png">
         </div>
         <div class="gm-tool-row">
+          <input id="bg-ppi-input" type="number" placeholder="PPI (e.g. 70)" value="70" min="1" style="max-width:110px">
           <button class="gm-tool-btn" style="flex:1" id="bg-set-btn">Set</button>
           <button class="gm-tool-btn" style="flex:1" id="bg-clear-btn">Clear</button>
         </div>
@@ -447,7 +448,7 @@ canvas{display:block;cursor:crosshair}
 import { getDatabase, ref, set, get, child, onValue, remove, push, update }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { db }                from "./js/firebase.js";
-import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, TILE, BG_SCALE, TEXTURE_PATH, PROP_PATH, TOKEN_PATH } from "./js/config.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, TILE, TEXTURE_PATH, PROP_PATH, TOKEN_PATH } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom } from "./js/camera.js";
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.js";
@@ -464,7 +465,7 @@ import { rollAfkDecision, EXPLORE_TABLE } from "./js/afkOracle.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},chains={};
-let bgImage=null,bgUrl="";
+let bgImage=null,bgUrl="",bgPpi=70;
 let pcsData={},propDefs={};
 let customProps=[];
 const activePings={},activeLasers={};
@@ -573,6 +574,7 @@ function subscribeLive(){
       if(data.chains)Object.assign(chains,data.chains);
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
+      bgPpi=data.backgroundPpi||70;
     }
     if(typeof refreshBgStatus==="function")refreshBgStatus();
     setStatus("live","Live ✓");
@@ -717,7 +719,7 @@ async function clearSection(section){
   const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",fog:"Clear all fog?",stamps:"Clear all stamps?",tiles:"Clear all tiles?",roofs:"Clear all roofs?",all:"Clear EVERYTHING?"};
   if(!confirm(confirm_msg[section]))return;
   if(section==="tiles"||section==="all")pushUndo();
-  if(section==="bg"||section==="all"){bgImage=null;bgUrl="";await set(ref(db,`maps/${mapName}/background`),null);}
+  if(section==="bg"||section==="all"){bgImage=null;bgUrl="";bgPpi=70;await set(ref(db,`maps/${mapName}/background`),null);await set(ref(db,`maps/${mapName}/backgroundPpi`),null);}
   if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);for(const k in chains)delete chains[k];await set(ref(db,`maps/${mapName}/chains`),null);}
   if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);}
   if(section==="fog"||section==="all"){for(const k in fogGroups)delete fogGroups[k];await set(ref(db,`maps/${mapName}/fog`),null);}
@@ -894,7 +896,7 @@ function commitSelection(){pushUndo();const ox=moveOffX,oy=moveOffY;for(const k 
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
-  if(bgImage){ctx.drawImage(bgImage,0,0,bgImage.width*BG_SCALE,bgImage.height*BG_SCALE);}
+  if(bgImage){const s=TILE/(bgPpi||70);ctx.drawImage(bgImage,0,0,bgImage.width*s,bgImage.height*s);}
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
   // Walls
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
@@ -1034,23 +1036,29 @@ document.getElementById("spawn-npc-btn").onclick=()=>{
 
 // ── Background Image control ─────────────────────────────────────────────────
 const bgUrlInput=document.getElementById("bg-url-input");
+const bgPpiInput=document.getElementById("bg-ppi-input");
 const bgStatusText=document.getElementById("bg-status-text");
+
 function refreshBgStatus(){
   const mapName=mapInput.value.trim()||"dungeon-1";
-  bgStatusText.textContent=bgUrl?`Background set for ${mapName}`:`No background for ${mapName}`;
+  bgStatusText.textContent=bgUrl?`Background set for ${mapName} · ${bgPpi} PPI`:`No background for ${mapName}`;
   if(bgUrl&&!bgUrl.startsWith("data:"))bgUrlInput.value=bgUrl;
+  bgPpiInput.value=bgPpi;
 }
 document.getElementById("bg-set-btn").onclick=async()=>{
   const url=bgUrlInput.value.trim();if(!url){toast("Enter a URL");return;}
+  const ppi=parseFloat(bgPpiInput.value)||70;
   const mapName=mapInput.value.trim()||"dungeon-1";
   await set(ref(db,`maps/${mapName}/background`),url);
-  bgUrl=url;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=url;
-  refreshBgStatus();toast("Background set ✓");
+  await set(ref(db,`maps/${mapName}/backgroundPpi`),ppi);
+  bgUrl=url;bgPpi=ppi;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=url;
+  refreshBgStatus();toast(`Background set ✓ (${ppi} PPI)`);
 };
 document.getElementById("bg-clear-btn").onclick=async()=>{
   const mapName=mapInput.value.trim()||"dungeon-1";
   await set(ref(db,`maps/${mapName}/background`),null);
-  bgUrl="";bgImage=null;bgUrlInput.value="";
+  await set(ref(db,`maps/${mapName}/backgroundPpi`),null);
+  bgUrl="";bgPpi=70;bgImage=null;bgUrlInput.value="";
   refreshBgStatus();toast("Background cleared");
 };
 
