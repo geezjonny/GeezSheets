@@ -593,7 +593,6 @@ window.loadMapList=async()=>{
   });
 };
 loadMapList();
-setAfkMode("combat");
 
 // ── Background image ──────────────────────────────────────────────────────────
 async function loadBgForMap(name){
@@ -698,6 +697,8 @@ window.loadAfkTargets=async()=>{
     const opt=document.createElement("option");opt.value=t.name;opt.textContent=t.name;sel.appendChild(opt);
   });
 };
+
+setAfkMode("combat"); // safe to call now — defined above
 
 async function afkRollDie(sides){
   // Reuse the shared public dice roller so everyone sees the live roll
