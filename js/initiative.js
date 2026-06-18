@@ -1,51 +1,99 @@
-// Initiative — order, active turn, rolls
-// State lives in RTDB initiative/
+// Initiative — manual, ordered list of names, drag-to-reorder
+// State lives in RTDB initiative/ as { order: [{id,name}], active: id|null }
+// No auto-rolling, no token binding — just a name list the GM controls directly
 
 import { db } from "./firebase.js";
 import { ref, set, update, remove } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { sendChat } from "./chat.js";
 
-export async function rollInitiative(tokens, callerName) {
-  const rolls = {};
-  for (const [id, tok] of Object.entries(tokens)) {
-    if (tok.type === "npc") rolls[id] = Math.ceil(Math.random() * 20);
-  }
-  await set(ref(db, "initiative"), { rolling: true, order: [], active: null, rolls, requestedAt: Date.now() });
-  await sendChat("called for Initiative rolls!", callerName, "system");
+export async function addToInitiative(initiative, name, callerName) {
+  const entry = { id: "init_" + Date.now() + "_" + Math.floor(Math.random() * 1000), name };
+  const order = [...(initiative.order || []), entry];
+  await set(ref(db, "initiative"), { order, active: initiative.active ?? (order.length === 1 ? entry.id : null) });
+  await sendChat(`Added **${name}** to initiative`, callerName, "system");
 }
 
-export async function nextTurn(initiative, tokens, callerName) {
-  if (!initiative.order.length) return;
-  const idx  = initiative.order.indexOf(initiative.active);
-  const next = initiative.order[(idx + 1) % initiative.order.length];
-  await update(ref(db, "initiative"), { active: next });
-  await sendChat(`It's ${tokens[next]?.name || next}'s turn`, callerName, "system");
+export async function removeFromInitiative(initiative, id, callerName) {
+  const order = (initiative.order || []).filter(e => e.id !== id);
+  let active = initiative.active;
+  if (active === id) active = order[0]?.id ?? null;
+  await set(ref(db, "initiative"), { order, active });
+  if (callerName) await sendChat(`Removed from initiative`, callerName, "system");
+}
+
+export async function reorderInitiative(initiative, newOrder) {
+  await update(ref(db, "initiative"), { order: newOrder });
+}
+
+export async function nextTurn(initiative, callerName) {
+  const order = initiative.order || [];
+  if (!order.length) return;
+  const idx  = order.findIndex(e => e.id === initiative.active);
+  const next = order[(idx + 1) % order.length];
+  await update(ref(db, "initiative"), { active: next.id });
+  await sendChat(`It's **${next.name}**'s turn`, callerName, "system");
+}
+
+export async function setActiveTurn(id) {
+  await update(ref(db, "initiative"), { active: id });
 }
 
 export async function clearInitiative() {
   await remove(ref(db, "initiative"));
 }
 
-export function renderInitTrack(containerEl, initiative, tokens, onCardClick) {
+// Renders the initiative track with drag-to-reorder.
+// onReorder(newOrderArray) is called locally on drop, then the caller should persist via reorderInitiative.
+// onCardClick(id, entry) fires on a plain click (not drag) — used to ping/highlight.
+// onRemove(id) fires when the small × on a card is clicked.
+export function renderInitTrack(containerEl, initiative, { onCardClick, onRemove, onDropReorder } = {}) {
   containerEl.innerHTML = "";
-  if (!initiative.order.length) {
-    containerEl.innerHTML = `<span style="font-family:'Cinzel',serif;font-size:10px;color:var(--dim)">No initiative set</span>`;
+  const order = initiative.order || [];
+  if (!order.length) {
+    containerEl.innerHTML = `<span style="font-family:'Cinzel',serif;font-size:10px;color:var(--dim)">No one in initiative — click ➕ Add</span>`;
     return;
   }
-  initiative.order.forEach(tokId => {
-    const tok      = tokens[tokId];
-    const isActive = initiative.active === tokId;
-    const roll     = initiative.rolls?.[tokId] || "?";
-    const hpPct    = tok ? Math.max(0, Math.min(1, (tok.hp ?? tok.maxHp) / (tok.maxHp || 1))) : 1;
-    const hpColor  = hpPct > .5 ? "#5a9a5a" : hpPct > .25 ? "#aaaa30" : "#e04040";
-    const card     = document.createElement("div");
+
+  let dragSrcIdx = null;
+
+  order.forEach((entry, idx) => {
+    const isActive = initiative.active === entry.id;
+    const card = document.createElement("div");
     card.className = "init-card" + (isActive ? " active-turn" : "");
+    card.draggable = true;
+    card.dataset.idx = idx;
     card.innerHTML = `
-      <div class="init-name">${tok?.name || tokId}</div>
-      <div class="init-num">Roll: ${roll}</div>
-      ${tok ? `<div class="init-hp" style="color:${hpColor}">${tok.hp ?? "?"}/${tok.maxHp ?? "?"} HP</div>` : ""}
+      <div class="init-name">${entry.name}</div>
+      <div class="init-remove" title="Remove" style="position:absolute;top:2px;right:4px;font-size:9px;color:var(--dim);cursor:pointer;opacity:.6">✕</div>
     `;
-    card.onclick = () => onCardClick && onCardClick(tokId, tok);
+
+    card.querySelector(".init-remove").onclick = (e) => {
+      e.stopPropagation();
+      onRemove && onRemove(entry.id);
+    };
+
+    card.onclick = (e) => {
+      if (e.target.classList.contains("init-remove")) return;
+      onCardClick && onCardClick(entry.id, entry);
+    };
+
+    card.addEventListener("dragstart", (e) => {
+      dragSrcIdx = idx;
+      card.style.opacity = "0.4";
+      e.dataTransfer.effectAllowed = "move";
+    });
+    card.addEventListener("dragend", () => { card.style.opacity = "1"; });
+    card.addEventListener("dragover", (e) => { e.preventDefault(); });
+    card.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (dragSrcIdx === null || dragSrcIdx === idx) return;
+      const newOrder = [...order];
+      const [moved] = newOrder.splice(dragSrcIdx, 1);
+      newOrder.splice(idx, 0, moved);
+      dragSrcIdx = null;
+      onDropReorder && onDropReorder(newOrder);
+    });
+
     containerEl.appendChild(card);
   });
 }

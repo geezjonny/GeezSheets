@@ -81,8 +81,6 @@ canvas{display:block;width:100%;height:100%}
 .ctx-label{padding:4px 14px;font-family:'Cinzel',serif;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
 #ping-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
 #ping-toast.show{opacity:1}
-#init-roll-modal .roll-result{font-family:'Cinzel',serif;font-size:48px;color:var(--gold);text-align:center;min-height:60px}
-#init-roll-modal .rolling{color:var(--dim)}
 </style>
 </head>
 <body>
@@ -108,14 +106,6 @@ canvas{display:block;width:100%;height:100%}
   </div>
 </div>
 <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-
-<div id="init-roll-modal" class="modal-overlay hidden">
-  <div class="modal-box" style="text-align:center;min-width:260px">
-    <h2>Roll Initiative!</h2>
-    <div class="roll-result" id="init-roll-result">—</div>
-    <button id="init-roll-btn" class="primary">Roll d20</button>
-  </div>
-</div>
 
 <div id="ctx-menu">
   <div class="ctx-label">Conditions</div>
@@ -168,10 +158,6 @@ canvas{display:block;width:100%;height:100%}
   </div>
   <div id="initiative-bar">
     <div id="init-label">Initiative</div>
-    <div id="init-controls">
-      <button id="init-roll-call-btn">⚄ Roll</button>
-      <button id="init-next-btn">▶ Next</button>
-    </div>
     <div id="init-track"></div>
   </div>
 </div>
@@ -194,7 +180,7 @@ import { startMicListener, stopMicListener, subscribeTalking, getShakeOffset } f
 import { subscribePassphrase, checkPassphrase, hasPassphraseSet, fetchCharacterRoster, saveAuthSession, loadAuthSession } from "./js/auth.js";
 import { sendChat, renderChat } from "./js/chat.js";
 import { rollDie, animateDiceResult } from "./js/dice.js";
-import { rollInitiative, nextTurn, renderInitTrack } from "./js/initiative.js";
+import { renderInitTrack } from "./js/initiative.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
@@ -211,7 +197,7 @@ let panStartX=0,panStartY=0,camStartX=0,camStartY=0;
 let rulerStart=null,rulerEnd=null,rulerActive=false;
 let micEnabled=false;
 let myCharacterId=null,myCharacterName=null;
-let initiative={order:[],active:null,rolls:{}};
+let initiative={order:[],active:null};
 let ctxTokenId=null;
 let liveUnsub=null;
 
@@ -231,7 +217,6 @@ const chatLog   = document.getElementById("chat-log");
 const chatInput = document.getElementById("chat-input");
 const initTrack = document.getElementById("init-track");
 const ctxMenu   = document.getElementById("ctx-menu");
-const initRollModal=document.getElementById("init-roll-modal");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function setStatus(cls,text){statusEl.className=cls;statusEl.textContent=text;}
@@ -310,15 +295,17 @@ onValue(ref(db,"lasers"),snap=>{
   for(const[name,pos]of Object.entries(data)){if(name!==playerName.replace(/\./g,"_"))activeLasers[name]={wx:pos.wx,wy:pos.wy,color:pos.color};}
 });
 
-// Initiative
+// Initiative — read-only display for players
 onValue(ref(db,"initiative"),snap=>{
   const data=snap.val()||{};
-  initiative.order=data.order||[];initiative.active=data.active||null;initiative.rolls=data.rolls||{};
-  renderInitTrack(initTrack,initiative,tokens,(tokId,tok)=>{
-    const t=tokens[tokId];if(t)activePings[`init_${tokId}`]={wx:t.x*TILE+TILE/2,wy:t.y*TILE+TILE/2,name:tok?.name||"",startTime:Date.now(),id:`init_${tokId}`};
+  initiative.order=data.order||[];initiative.active=data.active||null;
+  renderInitTrack(initTrack,initiative,{
+    onCardClick:(id,entry)=>{
+      const tok=Object.values(tokens).find(t=>t.name?.toLowerCase()===entry.name.toLowerCase());
+      if(tok)activePings[`init_${id}`]={wx:tok.x*TILE+TILE/2,wy:tok.y*TILE+TILE/2,name:entry.name,startTime:Date.now(),id:`init_${id}`};
+    },
+    // No remove/reorder for players — read-only
   });
-  if(data.rolling&&playerName){const myKey=playerName.replace(/\./g,"_");if(!data.rolls?.[myKey])initRollModal.classList.remove("hidden");else initRollModal.classList.add("hidden");}
-  else initRollModal.classList.add("hidden");
 });
 
 // Chat
@@ -380,26 +367,6 @@ document.getElementById("chat-send").onclick=()=>{if(!playerName){showNameModal(
 chatInput.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!playerName){showNameModal();return;}sendChat(chatInput.value,playerName);chatInput.value="";}});
 
 const diceContainer=document.getElementById("dice-btns");
-
-// ── Initiative UI ─────────────────────────────────────────────────────────────
-document.getElementById("init-roll-call-btn").onclick=()=>rollInitiative(tokens,playerName||"GM");
-document.getElementById("init-next-btn").onclick=()=>nextTurn(initiative,tokens,playerName||"GM");
-document.getElementById("init-roll-btn").onclick=async()=>{
-  const result=Math.ceil(Math.random()*20);
-  const el=document.getElementById("init-roll-result");
-  el.className="roll-result rolling";
-  let ticks=0;const t=setInterval(async()=>{
-    ticks++;el.textContent=Math.ceil(Math.random()*20);
-    if(ticks>=15){clearInterval(t);el.textContent=result;el.className="roll-result";
-      const myKey=playerName.replace(/\./g,"_");
-      await update(ref(db,"initiative/rolls"),{[myKey]:result});
-      const myTok=Object.entries(tokens).find(([,t])=>t.name?.toLowerCase()===playerName.toLowerCase()&&t.type==="pc");
-      if(myTok)await update(ref(db,"initiative/rolls"),{[myTok[0]]:result});
-      sendChat(`rolled initiative: ${result}`,playerName,"system");
-      setTimeout(()=>initRollModal.classList.add("hidden"),1500);
-    }
-  },60);
-};
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
 document.getElementById("fitBtn").onclick=()=>fitCamera(tiles,TILE,canvas.width,canvas.height);
