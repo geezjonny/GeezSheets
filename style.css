@@ -1,0 +1,53 @@
+body{
+    margin:0;
+    font-family:Consolas, monospace;
+    background:#202124;
+    color:#eee;
+}
+
+#container{
+    display:flex;
+    height:100vh;
+}
+
+#searchPanel{
+    width:320px;
+    border-right:1px solid #444;
+    display:flex;
+    flex-direction:column;
+}
+
+#searchBox{
+    padding:10px;
+    font-size:18px;
+    border:none;
+    outline:none;
+}
+
+#resultList{
+    overflow-y:auto;
+    flex:1;
+}
+
+.result{
+    padding:8px;
+    cursor:pointer;
+}
+
+.result:hover{
+    background:#333;
+}
+
+.selected{
+    background:#444;
+}
+
+#detailPanel{
+    flex:1;
+    overflow-y:auto;
+    padding:15px;
+}
+
+#details{
+    white-space:pre-wrap;
+}
