@@ -235,8 +235,11 @@ canvas{display:block;cursor:crosshair}
       <div class="gm-tool-section">
         <div class="gm-tool-title">Spawn NPC</div>
         <div class="gm-tool-row">
-          <input id="spawn-npc-name" type="text" placeholder="Name" spellcheck="false">
+          <input id="spawn-npc-name" type="text" placeholder="Display name (e.g. Goblin Brute 3)" spellcheck="false">
           <input id="spawn-npc-hp" type="number" placeholder="HP" value="10" min="1" style="max-width:64px">
+        </div>
+        <div class="gm-tool-row">
+          <input id="spawn-npc-lookup" type="text" placeholder="Portrait lookup name (optional, e.g. goblin)" spellcheck="false">
         </div>
         <button class="gm-tool-btn" style="width:100%" id="spawn-npc-btn">⚔ Spawn — click map to place</button>
       </div>
@@ -364,8 +367,11 @@ canvas{display:block;cursor:crosshair}
   <div class="modal-box"><h2>Place Token</h2>
     <div class="modal-section"><label>Character</label><select id="tok-char"></select></div>
     <div class="modal-row">
-      <div class="modal-section"><label>Name (override)</label><input id="tok-name" type="text" placeholder="auto"></div>
+      <div class="modal-section"><label>Display Name</label><input id="tok-name" type="text" placeholder="auto"></div>
       <div class="modal-section"><label>Type</label><select id="tok-type"><option value="pc">PC</option><option value="npc">NPC</option></select></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-section"><label>Portrait lookup name <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><input id="tok-lookup-name" type="text" placeholder="defaults to Display Name"></div>
     </div>
     <div class="modal-row">
       <div class="modal-section"><label>Size</label><select id="tok-size"></select></div>
@@ -567,7 +573,7 @@ function subscribeLive(){
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fogGroups,data.fog);
-      if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.name));}
+      if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
@@ -787,12 +793,12 @@ tokenBtn.onclick=async()=>{
   tokCharSel.innerHTML='<option value="">Loading…</option>';
   try{const snap=await get(child(ref(db),"characters/pcs"));tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';if(snap.exists()){const chars=snap.val();for(const[id,c]of Object.entries(chars)){const opt=document.createElement("option");opt.value=id;opt.textContent=c.name||id;opt.dataset.hp=c.hp??c.combat?.hp_current??10;opt.dataset.maxhp=c.maxHp??c.combat?.hp_max??10;opt.dataset.type="pc";tokCharSel.appendChild(opt);}}}
   catch(e){tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';}
-  tokNameInput.value="";tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="pc";document.getElementById("tok-hp-row").style.display="none";
+  tokNameInput.value="";tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="pc";document.getElementById("tok-hp-row").style.display="none";document.getElementById("tok-lookup-name").value="";
   document.getElementById("token-modal").classList.remove("hidden");
 };
 tokCharSel.addEventListener("change",()=>{const opt=tokCharSel.selectedOptions[0];const isNpc=!opt||opt.value==="__npc__";document.getElementById("tok-hp-row").style.display=isNpc?"flex":"none";if(!isNpc&&opt.dataset.hp){tokHpInput.value=opt.dataset.hp;tokMaxHpInput.value=opt.dataset.maxhp;tokTypeInput.value=opt.dataset.type||"pc";tokNameInput.placeholder=opt.textContent;}else{tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="npc";tokNameInput.placeholder="NPC Name";}});
 document.getElementById("tok-cancel").onclick=()=>{document.getElementById("token-modal").classList.add("hidden");placingToken=null;};
-document.getElementById("tok-place").onclick=()=>{const charId=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];const name=tokNameInput.value.trim()||opt?.textContent||"Token";const type=tokTypeInput.value;const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;const size=parseFloat(document.getElementById("tok-size").value)||1;placingToken={id:"tok_"+Date.now(),characterId:charId,name,type,hp,maxHp,size,x:0,y:0};tryLoadTokenTexture(charId,name);document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");};
+document.getElementById("tok-place").onclick=()=>{const charId=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];const name=tokNameInput.value.trim()||opt?.textContent||"Token";const lookupName=document.getElementById("tok-lookup-name").value.trim()||name;const type=tokTypeInput.value;const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;const size=parseFloat(document.getElementById("tok-size").value)||1;placingToken={id:"tok_"+Date.now(),characterId:charId,name,lookupName,type,hp,maxHp,size,x:0,y:0};tryLoadTokenTexture(charId,lookupName);document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");};
 
 // ── Prop modal ────────────────────────────────────────────────────────────────
 document.getElementById("prop-cancel").onclick=()=>document.getElementById("prop-modal").classList.add("hidden");
@@ -1029,8 +1035,10 @@ gmNotesArea.addEventListener("input",()=>{
 document.getElementById("spawn-npc-btn").onclick=()=>{
   const name=document.getElementById("spawn-npc-name").value.trim();
   const hp=parseInt(document.getElementById("spawn-npc-hp").value)||10;
+  const lookupName=document.getElementById("spawn-npc-lookup").value.trim()||name;
   if(!name){toast("Enter an NPC name");return;}
-  placingToken={id:"tok_"+Date.now(),characterId:"__npc__",name,type:"npc",hp,maxHp:hp,size:1,x:0,y:0};
+  placingToken={id:"tok_"+Date.now(),characterId:"__npc__",name,lookupName,type:"npc",hp,maxHp:hp,size:1,x:0,y:0};
+  tryLoadTokenTexture("__npc__",lookupName);
   toast(`Click the map to place ${name}`);
 };
 

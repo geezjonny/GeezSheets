@@ -6,8 +6,14 @@ import { get, ref } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-dat
 import { TEXTURE_PATH, TOKEN_PATH, PROP_PATH } from "./config.js";
 
 export const textures      = {}; // terrain id → HTMLImageElement
-export const tokenTextures = {}; // characterId → HTMLImageElement | null
+export const tokenTextures = {}; // cacheKey → HTMLImageElement | null
 export const propTextures  = {}; // propId → HTMLImageElement | null
+
+// Generic/blank NPCs all share characterId "__npc__" — cache by lookup name instead
+// so different NPCs (e.g. "goblin" vs "skeleton") don't collide on one shared texture.
+export function tokenCacheKey(characterId, lookupName) {
+  return characterId === "__npc__" && lookupName ? `__npc__:${lookupName.toLowerCase()}` : characterId;
+}
 
 export async function loadTerrainTextures(terrains) {
   await Promise.all(terrains.map(t => new Promise(resolve => {
@@ -19,15 +25,16 @@ export async function loadTerrainTextures(terrains) {
 }
 
 export function tryLoadTokenTexture(characterId, name) {
-  if (tokenTextures[characterId] !== undefined) return;
-  tokenTextures[characterId] = null;
+  const cacheKey = tokenCacheKey(characterId, name);
+  if (tokenTextures[cacheKey] !== undefined) return;
+  tokenTextures[cacheKey] = null;
   const img = new Image();
   const fname = (name || characterId).toLowerCase().replace(/\s+/g, "_");
-  img.onload  = () => { tokenTextures[characterId] = img; };
+  img.onload  = () => { tokenTextures[cacheKey] = img; };
   img.onerror = () => {
-    get(ref(db, `assets/uploads/tokens/${characterId}`)).then(snap => {
+    get(ref(db, `assets/uploads/tokens/${cacheKey}`)).then(snap => {
       const b64 = snap.val();
-      if (b64) { const i = new Image(); i.onload = () => { tokenTextures[characterId] = i; }; i.src = b64; }
+      if (b64) { const i = new Image(); i.onload = () => { tokenTextures[cacheKey] = i; }; i.src = b64; }
     });
   };
   img.src = `${TOKEN_PATH}${fname}.png`;
