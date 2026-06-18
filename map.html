@@ -184,7 +184,7 @@ import { renderInitTrack } from "./js/initiative.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
-let bgImage=null,bgUrl="",bgPpi=70;
+let bgImage=null,bgUrl="",bgPpi=70,nightMode=false;
 let pcsData={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
 let currentMap="dungeon-1";
@@ -340,6 +340,7 @@ function subscribeLive(){
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;
+      nightMode=!!data.nightMode;
     }
     setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
     if(firstLoad){firstLoad=false;fitCamera(tiles,TILE,canvas.width,canvas.height);overlayEl.classList.add("hidden");}
@@ -411,7 +412,23 @@ function draw(){
   ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
 
-  if(bgImage){const s=TILE/(bgPpi||70);ctx.drawImage(bgImage,0,0,bgImage.width*s,bgImage.height*s);}
+  if(bgImage){
+    const s=TILE/(bgPpi||70);
+    const bw=bgImage.width*s,bh=bgImage.height*s;
+    if(nightMode){
+      ctx.save();
+      ctx.filter="saturate(0.55) brightness(0.55)";
+      ctx.drawImage(bgImage,0,0,bw,bh);
+      ctx.filter="none";
+      ctx.globalCompositeOperation="multiply";
+      ctx.fillStyle="rgba(40,60,110,0.55)";
+      ctx.fillRect(0,0,bw,bh);
+      ctx.globalCompositeOperation="source-over";
+      ctx.restore();
+    }else{
+      ctx.drawImage(bgImage,0,0,bw,bh);
+    }
+  }
 
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
 

@@ -255,6 +255,9 @@ canvas{display:block;cursor:crosshair}
           <button class="gm-tool-btn" style="flex:1" id="bg-set-btn">Set</button>
           <button class="gm-tool-btn" style="flex:1" id="bg-clear-btn">Clear</button>
         </div>
+        <div class="gm-tool-row">
+          <button class="gm-tool-btn" style="width:100%" id="night-toggle-btn">🌙 Night Mode: Off</button>
+        </div>
         <div class="gm-tool-result" id="bg-status-text"></div>
       </div>
 
@@ -343,7 +346,19 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-label">Token</div>
   <div class="ctx-item" data-action="chain">🔗 Chain to token…</div>
   <div class="ctx-item" data-action="unchain" style="display:none">⛓✕ Remove chain</div>
+  <div class="ctx-item" data-action="hide-hp" style="display:none">🙈 Hide HP bar</div>
+  <div class="ctx-item" data-action="show-hp" style="display:none">❤️ Show HP bar</div>
+  <div class="ctx-item" data-action="adjust-hp" style="display:none">❤️ Adjust HP…</div>
   <div class="ctx-item" data-action="delete" style="color:var(--red-bright)">✕ Delete token</div>
+</div>
+
+<!-- PC HP adjust popover (shown via right-click \u2192 Adjust HP) -->
+<div id="hp-adjust-popover" style="position:fixed;z-index:600;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:10px 12px;display:none;min-width:200px;box-shadow:0 6px 24px rgba(0,0,0,.6)">
+  <div style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold);margin-bottom:8px" id="hp-adjust-name">—</div>
+  <input id="hp-adjust-slider" type="range" min="0" max="100" value="100" style="width:100%;accent-color:var(--green);margin-bottom:6px">
+  <div style="display:flex;justify-content:space-between;font-family:'IM Fell English',serif;font-size:12px;color:var(--text)">
+    <span id="hp-adjust-current">0</span><span style="color:var(--text-dim)">/ <span id="hp-adjust-max">0</span></span>
+  </div>
 </div>
 
 <!-- Prop context menu -->
@@ -471,7 +486,7 @@ import { rollAfkDecision, EXPLORE_TABLE } from "./js/afkOracle.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},chains={};
-let bgImage=null,bgUrl="",bgPpi=70;
+let bgImage=null,bgUrl="",bgPpi=70,nightMode=false;
 let pcsData={},propDefs={};
 let customProps=[];
 const activePings={},activeLasers={};
@@ -581,8 +596,10 @@ function subscribeLive(){
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;
+      nightMode=!!data.nightMode;
     }
     if(typeof refreshBgStatus==="function")refreshBgStatus();
+    if(typeof refreshNightBtn==="function")refreshNightBtn();
     setStatus("live","Live ✓");
   },()=>setStatus("error","RTDB error"));
 }
@@ -656,7 +673,7 @@ document.getElementById("init-add-btn").onclick=()=>{
 document.getElementById("init-next-btn").onclick=()=>nextTurn(initiative,playerName||"GM");
 document.getElementById("init-clear-btn").onclick=()=>{if(confirm("Clear initiative order?"))clearInitiative();};
 
-// ── Conditions / Chains ───────────────────────────────────────────────────────
+// ── Conditions / Chains / HP ──────────────────────────────────────────────────
 document.querySelectorAll(".ctx-item").forEach(item=>{
   item.onclick=()=>{
     if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
@@ -665,10 +682,54 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     if(action==="delete")deleteToken(ctxTokenId);
     if(action==="chain")openChainModal(ctxTokenId);
     if(action==="unchain")removeChainsForToken(ctxTokenId);
+    if(action==="hide-hp")setTokenHideHp(ctxTokenId,true);
+    if(action==="show-hp")setTokenHideHp(ctxTokenId,false);
+    if(action==="adjust-hp"){ctxMenu.classList.remove("open");setTimeout(()=>openHpAdjustPopover(ctxTokenId),0);return;}
     ctxMenu.classList.remove("open");
     if(action!=="chain")ctxTokenId=null;
   };
 });
+
+async function setTokenHideHp(tokId,hide){
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  await update(ref(db,`maps/${mapName}/tokens/${tokId}`),{hideHp:hide});
+  if(tokens[tokId])tokens[tokId].hideHp=hide;
+  toast(hide?"HP bar hidden":"HP bar shown");
+}
+
+// PC HP adjust popover — reads/writes characters/pcs directly (source of truth)
+const hpAdjustPopover=document.getElementById("hp-adjust-popover");
+const hpAdjustSlider=document.getElementById("hp-adjust-slider");
+let hpAdjustCharId=null;
+
+function openHpAdjustPopover(tokId){
+  const tok=tokens[tokId];
+  if(!tok||tok.type!=="pc"){toast("Adjust HP is for PC tokens");return;}
+  const charId=tok.characterId;
+  const c=pcsData[charId]||{};
+  const maxHp=c.maxHp??c.combat?.hp_max??tok.maxHp??10;
+  const hp=c.hp??c.combat?.hp_current??tok.hp??maxHp;
+  hpAdjustCharId=charId;
+  document.getElementById("hp-adjust-name").textContent=tok.name||"PC";
+  hpAdjustSlider.max=maxHp;hpAdjustSlider.value=hp;
+  document.getElementById("hp-adjust-current").textContent=hp;
+  document.getElementById("hp-adjust-max").textContent=maxHp;
+  hpAdjustPopover.style.left=lastCtxX+"px";hpAdjustPopover.style.top=lastCtxY+"px";
+  hpAdjustPopover.style.display="block";
+}
+hpAdjustSlider.addEventListener("input",()=>{
+  document.getElementById("hp-adjust-current").textContent=hpAdjustSlider.value;
+});
+hpAdjustSlider.addEventListener("change",async()=>{
+  if(!hpAdjustCharId)return;
+  const v=parseInt(hpAdjustSlider.value);
+  const c=pcsData[hpAdjustCharId]||{};
+  const updates={};
+  if(c.combat?.hp_current!==undefined)updates[`characters/pcs/${hpAdjustCharId}/combat/hp_current`]=v;
+  else updates[`characters/pcs/${hpAdjustCharId}/hp`]=v;
+  await update(ref(db),updates);
+});
+document.addEventListener("click",e=>{if(!hpAdjustPopover.contains(e.target))hpAdjustPopover.style.display="none";});
 
 function openChainModal(tokId){
   const list=document.getElementById("chain-token-list");list.innerHTML="";
@@ -902,7 +963,23 @@ function commitSelection(){pushUndo();const ox=moveOffX,oy=moveOffY;for(const k 
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
-  if(bgImage){const s=TILE/(bgPpi||70);ctx.drawImage(bgImage,0,0,bgImage.width*s,bgImage.height*s);}
+  if(bgImage){
+    const s=TILE/(bgPpi||70);
+    const bw=bgImage.width*s,bh=bgImage.height*s;
+    if(nightMode){
+      ctx.save();
+      ctx.filter="saturate(0.55) brightness(0.55)";
+      ctx.drawImage(bgImage,0,0,bw,bh);
+      ctx.filter="none";
+      ctx.globalCompositeOperation="multiply";
+      ctx.fillStyle="rgba(40,60,110,0.55)";
+      ctx.fillRect(0,0,bw,bh);
+      ctx.globalCompositeOperation="source-over";
+      ctx.restore();
+    }else{
+      ctx.drawImage(bgImage,0,0,bw,bh);
+    }
+  }
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
   // Walls
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
@@ -940,14 +1017,22 @@ window.addEventListener("keydown",e=>{
 window.addEventListener("keyup",e=>{if(e.code==="Space"){spaceDown=false;canvas.style.cursor="crosshair";}});
 canvas.addEventListener("wheel",e=>{e.preventDefault();const[sx,sy]=screenPos(e);applyZoom(e.deltaY<0?1.1:.9,sx,sy);},{passive:false});
 
+let lastCtxX=0,lastCtxY=0;
 canvas.addEventListener("contextmenu",e=>{
   e.preventDefault();const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
     ctxTokenId=tokId;
+    lastCtxX=e.clientX;lastCtxY=e.clientY;
+    const tok=tokens[tokId];
     const hasChain=chainsForToken(chains,tokId).length>0;
     document.querySelector('.ctx-item[data-action="chain"]').style.display=hasChain?"none":"flex";
     document.querySelector('.ctx-item[data-action="unchain"]').style.display=hasChain?"flex":"none";
+    // HP visibility toggle — available for any token
+    document.querySelector('.ctx-item[data-action="hide-hp"]').style.display=tok.hideHp?"none":"flex";
+    document.querySelector('.ctx-item[data-action="show-hp"]').style.display=tok.hideHp?"flex":"none";
+    // Adjust HP — only meaningful for PCs (reads/writes characters/pcs)
+    document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display=tok.type==="pc"?"flex":"none";
     ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");return;
   }
   const pk=propAtTile(tx,ty);
@@ -1070,6 +1155,19 @@ document.getElementById("bg-clear-btn").onclick=async()=>{
   refreshBgStatus();toast("Background cleared");
 };
 
+const nightToggleBtn=document.getElementById("night-toggle-btn");
+function refreshNightBtn(){
+  nightToggleBtn.textContent=`🌙 Night Mode: ${nightMode?"On":"Off"}`;
+  nightToggleBtn.classList.toggle("on",nightMode);
+}
+nightToggleBtn.onclick=async()=>{
+  nightMode=!nightMode;
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  await set(ref(db,`maps/${mapName}/nightMode`),nightMode);
+  refreshNightBtn();
+  toast(`Night Mode ${nightMode?"enabled":"disabled"}`);
+};
+
 // ── AFK PC Oracle — manual name + class entry ────────────────────────────────
 let afkMode="combat";
 function setAfkMode(mode){
@@ -1121,6 +1219,7 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
   setAfkMode("combat");
   subscribeLive();
   refreshBgStatus();
+  refreshNightBtn();
   render();
 })();
 </script>

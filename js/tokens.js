@@ -90,12 +90,14 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
   ctx.fillRect(cx - nameW / 2 - 3 / zoom, py + sh + 2 / zoom, nameW + 6 / zoom, 10 / zoom);
   ctx.fillStyle = "#fff"; ctx.fillText(nameLabel, cx, py + sh + 2 / zoom);
 
-  // HP bar
-  const bw  = sw * 0.85, bh = 5 / zoom;
-  const bx  = px + (sw - bw) / 2, by = py + sh + 12 / zoom;
-  ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(bx, by, bw, bh);
-  ctx.fillStyle = pct > .5 ? "#4a9a4a" : pct > .25 ? "#aaaa30" : "#aa3030";
-  ctx.fillRect(bx, by, bw * pct, bh);
+  // HP bar — suppressed if tok.hideHp is set (e.g. NPCs the GM wants to keep mysterious)
+  if (!tok.hideHp) {
+    const bw  = sw * 0.85, bh = 5 / zoom;
+    const bx  = px + (sw - bw) / 2, by = py + sh + 12 / zoom;
+    ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = pct > .5 ? "#4a9a4a" : pct > .25 ? "#aaaa30" : "#aa3030";
+    ctx.fillRect(bx, by, bw * pct, bh);
+  }
 
   ctx.restore();
 }
