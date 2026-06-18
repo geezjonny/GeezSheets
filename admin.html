@@ -83,6 +83,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 /* ── Quick actions ── */
 .qa-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .qa-btn{height:48px;border-radius:6px;border:1px solid var(--border);background:var(--panel2);color:var(--dim);font-family:'Cinzel',serif;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .12s}
+.qa-btn.on{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.1)}
 .qa-btn:hover{border-color:var(--gold-dim);color:var(--text)}
 .qa-btn.danger{border-color:var(--red);color:#e74c3c}
 .qa-btn.danger:hover{background:rgba(192,57,43,.12)}
@@ -255,6 +256,41 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
           <button onclick="clearPassphrase()" style="height:30px;padding:0 12px;border:1px solid var(--red);border-radius:4px;background:transparent;color:#e74c3c;font-family:'Cinzel',serif;font-size:9px;cursor:pointer">Open</button>
         </div>
         <div id="passphrase-status" style="font-size:9px;color:var(--dim);font-family:monospace">Session is open — no passphrase set</div>
+      </div>
+
+      <!-- AFK PC Oracle -->
+      <div class="section">
+        <div class="sec-title">AFK PC Oracle</div>
+        <p style="font-size:10px;color:var(--dim);font-family:'IM Fell English',serif;margin-bottom:8px">Pick the absent PC, then roll for their decisions. Results post to chat.</p>
+        <select id="afk-pc-select" style="width:100%;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:13px;padding:7px 10px;border-radius:4px;outline:none;margin-bottom:10px">
+          <option value="">— Select PC —</option>
+        </select>
+
+        <div id="afk-combat-mode" style="display:none">
+          <div class="qa-grid" style="margin-bottom:8px">
+            <button class="qa-btn" onclick="rollAfk('style')">🎭 Roll Style</button>
+            <button class="qa-btn" onclick="rollAfk('mainAction')">⚔ Main Action</button>
+            <button class="qa-btn" onclick="rollAfk('bonusAction')">✨ Bonus Action</button>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+            <span style="font-size:9px;color:var(--dim);letter-spacing:.06em">TARGET</span>
+            <select id="afk-target-select" style="flex:1;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:11px;padding:5px 8px;border-radius:4px;outline:none">
+              <option value="">— None —</option>
+            </select>
+            <button onclick="loadAfkTargets()" style="height:26px;padding:0 8px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--dim);font-family:'Cinzel',serif;font-size:8px;cursor:pointer">↺</button>
+          </div>
+        </div>
+
+        <div id="afk-explore-mode" style="display:none">
+          <button class="qa-btn blue" style="width:100%;height:42px" onclick="rollAfk('explore')">🎲 Roll Idle Behavior (d20)</button>
+        </div>
+
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button id="afk-mode-combat" class="qa-btn" style="flex:1" onclick="setAfkMode('combat')">⚔ Combat</button>
+          <button id="afk-mode-explore" class="qa-btn" style="flex:1" onclick="setAfkMode('explore')">🌿 Exploring</button>
+        </div>
+
+        <div id="afk-result" style="margin-top:10px;font-family:'Cinzel',serif;font-size:11px;color:var(--gold);min-height:16px"></div>
       </div>
 
       <!-- Notes -->
@@ -557,6 +593,7 @@ window.loadMapList=async()=>{
   });
 };
 loadMapList();
+setAfkMode("combat");
 
 // ── Background image ──────────────────────────────────────────────────────────
 async function loadBgForMap(name){
@@ -597,6 +634,118 @@ window.clearPassphrase=async()=>{
   document.getElementById("passphrase-status").textContent="Session is open — no passphrase set";
   toast("Session opened — no passphrase required");
 };
+
+// ── AFK PC Oracle ─────────────────────────────────────────────────────────────
+// Class-weighted tables: melee leans Attack/Aggressive, casters lean Spell/Strategic, hybrids flat.
+const MELEE_CLASSES   = ["fighter","barbarian","rogue","monk","paladin","ranger"];
+const CASTER_CLASSES  = ["wizard","sorcerer","warlock","druid","cleric","bard"];
+
+// d8 tables — base entries, then we bias by duplicating favored entries for the PC's class
+const STYLE_BASE   = ["Aggressive","Defensive","Strategic","Reckless","Hesitant","Aggressive","Strategic","Defensive"];
+const MAIN_BASE     = ["Attack","Attack","Spell","Cantrip","Dash","Help","Attack","Spell"];
+const BONUS_BASE    = ["Cantrip","Item","None","Dodge stance","Taunt","None","Cantrip","Item"];
+
+// d20 idle/exploration table — flat odds, pure flavor
+const EXPLORE_TABLE = [
+  "Hide","Cast a Cantrip","Cast a Spell","Yell something dramatic","Whisper to the party",
+  "Talk about a PC","Talk about a nearby NPC","Wander off","Snack break","Sharpen weapon / fidget with gear",
+  "Stare blankly","Pet an animal","Trip over something","Compliment someone","Hum or sing",
+  "Check the map / get oriented","Practice a combat stance","Stretch / yawn","Mutter to themselves","Strike a heroic pose"
+];
+
+function classBucket(cls){
+  const c=(cls||"").toLowerCase();
+  if(MELEE_CLASSES.includes(c))return "melee";
+  if(CASTER_CLASSES.includes(c))return "caster";
+  return "flat";
+}
+
+// Build a weighted table by biasing toward favored entries for the PC's class bucket
+function weightedTable(base,bucket,favorMelee,favorCaster){
+  if(bucket==="melee")return base.map(v=>v).concat(favorMelee,favorMelee); // extra weight
+  if(bucket==="caster")return base.map(v=>v).concat(favorCaster,favorCaster);
+  return base;
+}
+
+let afkMode="combat";
+let afkPcId=null;
+
+function populateAfkPcSelect(){
+  const sel=document.getElementById("afk-pc-select");
+  sel.innerHTML='<option value="">— Select PC —</option>';
+  Object.entries(pcsData).forEach(([id,c])=>{
+    const opt=document.createElement("option");opt.value=id;opt.textContent=c.name||c.charName||id;
+    sel.appendChild(opt);
+  });
+}
+document.getElementById("afk-pc-select").onchange=(e)=>{afkPcId=e.target.value||null;};
+
+window.setAfkMode=(mode)=>{
+  afkMode=mode;
+  document.getElementById("afk-combat-mode").style.display=mode==="combat"?"block":"none";
+  document.getElementById("afk-explore-mode").style.display=mode==="explore"?"block":"none";
+  document.getElementById("afk-mode-combat").classList.toggle("on",mode==="combat");
+  document.getElementById("afk-mode-explore").classList.toggle("on",mode==="explore");
+  if(mode==="combat")loadAfkTargets();
+};
+
+window.loadAfkTargets=async()=>{
+  const sel=document.getElementById("afk-target-select");
+  sel.innerHTML='<option value="">— None —</option>';
+  const snap=await get(ref(db,`maps/${currentMap}/tokens`));
+  if(!snap.exists())return;
+  Object.values(snap.val()).filter(t=>t.type==="npc").forEach(t=>{
+    const opt=document.createElement("option");opt.value=t.name;opt.textContent=t.name;sel.appendChild(opt);
+  });
+};
+
+async function afkRollDie(sides){
+  // Reuse the shared public dice roller so everyone sees the live roll
+  const result=Math.ceil(Math.random()*sides);
+  await set(ref(db,"dice/last"),{sides,result,roller:"AFK Oracle",t:Date.now()});
+  return result;
+}
+
+window.rollAfk=async(kind)=>{
+  if(!afkPcId){toast("Select a PC first");return;}
+  const pc=pcsData[afkPcId];
+  const pcName=pc?.name||pc?.charName||"Someone";
+  const bucket=classBucket(pc?.class);
+  const target=document.getElementById("afk-target-select")?.value||"";
+  const resultEl=document.getElementById("afk-result");
+
+  let table,label,die,line;
+
+  if(kind==="style"){
+    table=weightedTable(STYLE_BASE,bucket,"Aggressive","Strategic");label="Style";die=8;
+  } else if(kind==="mainAction"){
+    table=weightedTable(MAIN_BASE,bucket,"Attack","Spell");label="Main Action";die=8;
+  } else if(kind==="bonusAction"){
+    table=weightedTable(BONUS_BASE,bucket,"Item","Cantrip");label="Bonus Action";die=8;
+  } else if(kind==="explore"){
+    table=EXPLORE_TABLE;label="Idle Behavior";die=20;
+  } else return;
+
+  const roll=await afkRollDie(die);
+  const idx=Math.min(table.length-1,Math.floor((roll-1)/die*table.length));
+  const choice=table[idx % table.length];
+
+  resultEl.textContent=`${pcName} — ${label}: ${choice}`;
+
+  if(kind==="explore"){
+    line=`🎲 ${pcName} rolls for idle behavior... **${choice}**`;
+  } else if(kind==="mainAction"&&target){
+    line=`⚔ ${pcName} rolls Main Action: **${choice}**${choice==="Attack"||choice==="Spell"||choice==="Cantrip"?` — targeting ${target}`:""}`;
+  } else {
+    line=`🎭 ${pcName} rolls ${label}: **${choice}**`;
+  }
+
+  await push(ref(db,"chat"),{sender:"AFK Oracle",text:line,type:"system",t:Date.now()});
+};
+
+// Repopulate PC dropdown whenever characters/pcs updates
+const origRenderHpSliders=renderHpSliders;
+renderHpSliders=function(){origRenderHpSliders();populateAfkPcSelect();};
 
 // ── GM Notes ──────────────────────────────────────────────────────────────────
 const notesArea=document.getElementById("notes-area");
