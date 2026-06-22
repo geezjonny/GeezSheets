@@ -315,7 +315,7 @@ onValue(ref(db,"chat"),snap=>{renderChat(snap.val(),chatLog,playerName);});
 onValue(ref(db,"dice/last"),snap=>{
   const data=snap.val();if(!data||Date.now()-data.t>10000)return;
   const resultEl=document.getElementById("dice-result-inline");
-  animateDiceResult(data,resultEl,d=>{resultEl.textContent=`${d.roller}: ${d.result}`;});
+  animateDiceResult(data,resultEl,d=>{resultEl.textContent=`${d.roller}: d${d.sides} → ${d.result}`;});
 });
 
 // Map

@@ -344,6 +344,7 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-condition="clear" style="color:var(--red-bright)">✕ Clear conditions</div>
   <div class="ctx-sep"></div>
   <div class="ctx-label">Token</div>
+  <div class="ctx-item" data-action="edit">✏ Edit token…</div>
   <div class="ctx-item" data-action="chain">🔗 Chain to token…</div>
   <div class="ctx-item" data-action="unchain" style="display:none">⛓✕ Remove chain</div>
   <div class="ctx-item" data-action="hide-hp" style="display:none">🙈 Hide HP bar</div>
@@ -498,13 +499,13 @@ let hoverTileX=0,hoverTileY=0,roofOpacity=0.5;
 let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
 let moveOffX=0,moveOffY=0,moveStartWorldX=0,moveStartWorldY=0;
 let selStamps={},selProps={},selTokenIds=[];
-let draggingToken=null,placingToken=null;
+let draggingToken=null,draggingProp=null,placingToken=null;
 let pingMode=false,isHolding=false,pingHoldTimer=null,myLaserRef=null;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0,spaceDown=false;
 let rulerStart=null,rulerEnd=null,rulerActive=false;
 let initiative={order:[],active:null};
 let ctxTokenId=null,ctxPropKey=null;
-let liveUnsub=null,saveTimer=null,pendingSaves=0;
+let liveUnsub=null,saveTimer=null,isSavingTiles=false;
 let dropBase64=null,dropFilename="",dropTileX=0,dropTileY=0,dropType="map";
 const undoStack=[],redoStack=[];
 let CONDITIONS={};
@@ -555,7 +556,7 @@ function resize(){const w=canvasWrap;canvas.width=w.clientWidth;canvas.height=w.
 resize();window.addEventListener("resize",resize);
 
 // ── RTDB save helpers ─────────────────────────────────────────────────────────
-function scheduleSave(){clearTimeout(saveTimer);setStatus("saving","Saving…");saveTimer=setTimeout(async()=>{const mapName=mapInput.value.trim()||"dungeon-1";try{pendingSaves++;await set(ref(db,`maps/${mapName}/tiles`),Object.keys(tiles).length?tiles:null);await set(ref(db,`maps/${mapName}/updatedAt`),Date.now());setStatus("live","Live ✓");}catch(e){setStatus("error","Error");}},600);}
+function scheduleSave(){clearTimeout(saveTimer);setStatus("saving","Saving…");saveTimer=setTimeout(async()=>{const mapName=mapInput.value.trim()||"dungeon-1";try{isSavingTiles=true;await set(ref(db,`maps/${mapName}/tiles`),Object.keys(tiles).length?tiles:null);await set(ref(db,`maps/${mapName}/updatedAt`),Date.now());setStatus("live","Live ✓");}catch(e){setStatus("error","Error");}finally{isSavingTiles=false;}},600);}
 async function saveRoofs(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/roofs`),Object.keys(roofs).length?roofs:null);}
 async function saveFogLocal(){const m=mapInput.value.trim()||"dungeon-1";await saveFog(m,fogGroups);}
 async function deleteFogGroup(id){const m=mapInput.value.trim()||"dungeon-1";await deleteFogGroupRTDB(m,id,fogGroups);}
@@ -579,14 +580,17 @@ function subscribeLive(){
   const mapName=mapInput.value.trim()||"dungeon-1";
   set(ref(db,"session/currentMap"),mapName);
   liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
-    if(pendingSaves>0){pendingSaves--;return;}
     const data=snap.val();
-    for(const k in tiles)delete tiles[k];for(const k in fogGroups)delete fogGroups[k];
+    // Only skip tile reload if we're mid-save to avoid overwriting our own edits
+    if(!isSavingTiles){
+      for(const k in tiles)delete tiles[k];
+      if(data?.tiles)Object.assign(tiles,data.tiles);
+    }
+    for(const k in fogGroups)delete fogGroups[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in chains)delete chains[k];
     if(data){
-      if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fogGroups,data.fog);
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
@@ -625,7 +629,9 @@ onValue(ref(db,"chat"),snap=>{renderChat(snap.val(),chatLog,playerName);});
 onValue(ref(db,"dice/last"),snap=>{
   const data=snap.val();if(!data||Date.now()-data.t>10000)return;
   const resultEl=document.getElementById("dice-result-inline");
-  animateDiceResult(data,resultEl,d=>{resultEl.textContent=`${d.roller}: ${d.result}`;sendChat(`rolled d${d.sides} → ${d.result}`,playerName,"dice");});
+  animateDiceResult(data,resultEl,d=>{
+    resultEl.textContent=`${d.roller}: d${d.sides} → ${d.result}`;
+  });
 });
 
 // Initiative — manual, ordered list, drag to reorder
@@ -680,6 +686,7 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     const cond=item.dataset.condition,action=item.dataset.action;
     if(cond)applyCondition(mapInput.value.trim()||"dungeon-1",ctxTokenId,cond,tokens);
     if(action==="delete")deleteToken(ctxTokenId);
+    if(action==="edit"){ctxMenu.classList.remove("open");openEditTokenModal(ctxTokenId);return;}
     if(action==="chain")openChainModal(ctxTokenId);
     if(action==="unchain")removeChainsForToken(ctxTokenId);
     if(action==="hide-hp")setTokenHideHp(ctxTokenId,true);
@@ -730,6 +737,25 @@ hpAdjustSlider.addEventListener("change",async()=>{
   await update(ref(db),updates);
 });
 document.addEventListener("click",e=>{if(!hpAdjustPopover.contains(e.target))hpAdjustPopover.style.display="none";});
+
+let editingTokenId=null;
+
+function openEditTokenModal(tokId){
+  const tok=tokens[tokId];if(!tok)return;
+  editingTokenId=tokId;
+  // Pre-fill fields with existing token data
+  tokNameInput.value=tok.name||"";
+  document.getElementById("tok-lookup-name").value=tok.lookupName||"";
+  tokTypeInput.value=tok.type||"npc";
+  tokHpInput.value=tok.hp||10;tokMaxHpInput.value=tok.maxHp||tok.hp||10;
+  document.getElementById("tok-hp-row").style.display="flex";
+  // Set size
+  const sizeSelect=document.getElementById("tok-size");
+  if(sizeSelect)sizeSelect.value=tok.size||1;
+  // Update place button label
+  document.getElementById("tok-place").textContent="Save Changes";
+  document.getElementById("token-modal").classList.remove("hidden");
+}
 
 function openChainModal(tokId){
   const list=document.getElementById("chain-token-list");list.innerHTML="";
@@ -854,12 +880,33 @@ tokenBtn.onclick=async()=>{
   tokCharSel.innerHTML='<option value="">Loading…</option>';
   try{const snap=await get(child(ref(db),"characters/pcs"));tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';if(snap.exists()){const chars=snap.val();for(const[id,c]of Object.entries(chars)){const opt=document.createElement("option");opt.value=id;opt.textContent=c.name||id;opt.dataset.hp=c.hp??c.combat?.hp_current??10;opt.dataset.maxhp=c.maxHp??c.combat?.hp_max??10;opt.dataset.type="pc";tokCharSel.appendChild(opt);}}}
   catch(e){tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';}
-  tokNameInput.value="";tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="pc";document.getElementById("tok-hp-row").style.display="none";document.getElementById("tok-lookup-name").value="";
+  tokNameInput.value="";tokHpInput.value="10";tokMaxHpInput.value="10";tokTypeInput.value="npc";
+  document.getElementById("tok-hp-row").style.display="flex";
+  document.getElementById("tok-lookup-name").value="";
+  tokCharSel.value="__npc__";
   document.getElementById("token-modal").classList.remove("hidden");
 };
 tokCharSel.addEventListener("change",()=>{const opt=tokCharSel.selectedOptions[0];const isNpc=!opt||opt.value==="__npc__";document.getElementById("tok-hp-row").style.display=isNpc?"flex":"none";if(!isNpc&&opt.dataset.hp){tokHpInput.value=opt.dataset.hp;tokMaxHpInput.value=opt.dataset.maxhp;tokTypeInput.value=opt.dataset.type||"pc";tokNameInput.placeholder=opt.textContent;}else{tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="npc";tokNameInput.placeholder="NPC Name";}});
-document.getElementById("tok-cancel").onclick=()=>{document.getElementById("token-modal").classList.add("hidden");placingToken=null;};
-document.getElementById("tok-place").onclick=()=>{const charId=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];const name=tokNameInput.value.trim()||opt?.textContent||"Token";const lookupName=document.getElementById("tok-lookup-name").value.trim()||name;const type=tokTypeInput.value;const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;const size=parseFloat(document.getElementById("tok-size").value)||1;placingToken={id:"tok_"+Date.now(),characterId:charId,name,lookupName,type,hp,maxHp,size,x:0,y:0};tryLoadTokenTexture(charId,lookupName);document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");};
+document.getElementById("tok-cancel").onclick=()=>{editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";document.getElementById("token-modal").classList.add("hidden");placingToken=null;};
+document.getElementById("tok-place").onclick=async()=>{
+  const charId=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];
+  const name=tokNameInput.value.trim()||opt?.textContent||"Token";
+  const lookupName=document.getElementById("tok-lookup-name").value.trim()||name;
+  const type=tokTypeInput.value;
+  const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;
+  const size=parseFloat(document.getElementById("tok-size").value)||1;
+  if(editingTokenId){
+    // Edit existing token in place
+    const tok=tokens[editingTokenId];
+    if(tok){Object.assign(tok,{name,lookupName,type,hp,maxHp,size,characterId:charId});tryLoadTokenTexture(charId,lookupName);await saveTokenLocal(editingTokenId,tok);}
+    editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";
+    document.getElementById("token-modal").classList.add("hidden");toast("Token updated");
+  }else{
+    placingToken={id:"tok_"+Date.now(),characterId:charId,name,lookupName,type,hp,maxHp,size,x:0,y:0};
+    tryLoadTokenTexture(charId,lookupName);
+    document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");
+  }
+};
 
 // ── Prop modal ────────────────────────────────────────────────────────────────
 document.getElementById("prop-cancel").onclick=()=>document.getElementById("prop-modal").classList.add("hidden");
@@ -1047,6 +1094,16 @@ canvas.addEventListener("pointermove",e=>{
   coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
   if(rulerActive){const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
   if(draggingToken){const newTX=Math.floor(wx/TILE)-draggingToken.offsetTX;const newTY=Math.floor(wy/TILE)-draggingToken.offsetTY;tokens[draggingToken.id].x=newTX;tokens[draggingToken.id].y=newTY;return;}
+  if(draggingProp){
+    const newTX=Math.floor(wx/TILE)-draggingProp.offsetTX;
+    const newTY=Math.floor(wy/TILE)-draggingProp.offsetTY;
+    const p=props[draggingProp.oldKey];
+    if(p){
+      if(p.attachedTo){p.offsetX=newTX-tokens[p.attachedTo]?.x;p.offsetY=newTY-tokens[p.attachedTo]?.y;}
+      else{const nk=key(newTX,newTY);if(nk!==draggingProp.oldKey){props[nk]={...p};delete props[draggingProp.oldKey];draggingProp.oldKey=nk;}}
+    }
+    return;
+  }
   if(isHolding&&myLaserRef){moveLaser(myLaserRef,wx,wy,playerName);return;}
   if(currentShape==="select"&&selectPhase==="moving"){moveOffX=Math.round((wx-moveStartWorldX)/TILE);moveOffY=Math.round((wy-moveStartWorldY)/TILE);canvas.style.cursor="grabbing";return;}
   if(dragging){curX=wx;curY=wy;}
@@ -1069,6 +1126,11 @@ canvas.addEventListener("pointerdown",e=>{
   if(fogMode){const hitGid=fogGroupXHit(fogGroups,wx,wy,camera.zoom);if(hitGid){deleteFogGroup(hitGid);return;}canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
   if(roofMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
   const tokId=tokenAtTile(tokens,tx,ty);if(tokId){canvas.setPointerCapture(e.pointerId);draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y};return;}
+  // Prop drag — check if clicking a placed prop with no active tool
+  if(!currentProp&&!currentStamp&&currentShape!=="select"){
+    const pk=propAtTile(tx,ty);
+    if(pk){canvas.setPointerCapture(e.pointerId);const p=props[pk];let ox,oy;if(p.attachedTo&&tokens[p.attachedTo]){ox=tokens[p.attachedTo].x+(p.offsetX||0);oy=tokens[p.attachedTo].y+(p.offsetY||0);}else{[ox,oy]=pk.split(",").map(Number);}draggingProp={oldKey:pk,offsetTX:tx-ox,offsetTY:ty-oy};return;}
+  }
   if(currentShape==="select"){if((selectPhase==="selected"||selectPhase==="moving")&&inSelection(wx,wy)){selectPhase="moving";moveStartWorldX=wx-moveOffX*TILE;moveStartWorldY=wy-moveOffY*TILE;canvas.style.cursor="grabbing";return;}if(selectPhase==="selected"||selectPhase==="moving")commitSelection();selectPhase="marquee";dragging=true;canvas.setPointerCapture(e.pointerId);startX=wx;startY=wy;curX=wx;curY=wy;return;}
   dragging=true;canvas.setPointerCapture(e.pointerId);startX=wx;startY=wy;curX=wx;curY=wy;
 });
@@ -1079,6 +1141,7 @@ canvas.addEventListener("pointerup",e=>{
   if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":"crosshair";return;}
   if(pingMode){clearTimeout(pingHoldTimer);if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}else{const[wx,wy]=toWorld(sx,sy);sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);}isHolding=false;pingMode=false;document.getElementById("pingBtn").classList.remove("active");return;}
   if(draggingToken){saveTokenLocal(draggingToken.id,tokens[draggingToken.id]);savePropsLocal();draggingToken=null;return;}
+  if(draggingProp){savePropsLocal();draggingProp=null;return;}
   if(fogMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="fog_"+Date.now();fogGroups[gid]={cells};saveFogLocal();return;}
   if(roofMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyRoof(x,y);saveRoofs();return;}
   if(currentShape==="select"&&selectPhase==="moving"){selectPhase="selected";canvas.style.cursor="move";return;}
