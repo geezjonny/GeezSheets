@@ -1062,13 +1062,14 @@ document.querySelectorAll(".fog-type-item").forEach(item=>{
   item.onclick=(e)=>{
     e.stopPropagation();
     currentFogType=item.dataset.fogtype;
-    fogBtn.childNodes[0].textContent=fogTypeLabels[currentFogType]+" ▾";
+    fogBtn.textContent=fogTypeLabels[currentFogType]+" ▾";
     document.querySelectorAll(".fog-type-item").forEach(i=>i.classList.remove("active"));
     item.classList.add("active");
     deactivateLayerModes();fogMode=true;fogBtn.classList.add("fog-active");
+    document.getElementById("fog-type-dropdown").classList.remove("open");
   };
 });
-fogBtn.onclick=()=>{const on=!fogMode;deactivateLayerModes();fogMode=on;fogBtn.classList.toggle("fog-active",on);};
+fogBtn.onclick=(e)=>{e.stopPropagation();const r=fogBtn.getBoundingClientRect();const dd=document.getElementById("fog-type-dropdown");dd.style.left=r.left+"px";dd.classList.toggle("open");};
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
