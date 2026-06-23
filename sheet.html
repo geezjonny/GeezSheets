@@ -93,6 +93,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM
 .panel-btn.skill-btn:hover,.panel-btn.skill-btn.open{border-color:var(--skill);color:var(--skill2);background:rgba(14,165,233,.08)}
 .panel-btn.weapon-btn:hover,.panel-btn.weapon-btn.open{border-color:var(--weapon);color:var(--weapon2);background:rgba(232,131,74,.08)}
 .panel-btn.tip-btn:hover,.panel-btn.tip-btn.open{border-color:var(--tip);color:var(--tip2);background:rgba(34,197,94,.05)}
+.panel-btn.inv-btn:hover,.panel-btn.inv-btn.open{border-color:var(--gold-dim);color:var(--gold);background:rgba(200,168,75,.06)}
 .expand-panel{display:none;border-top:1px solid var(--border);padding:12px;background:rgba(12,9,8,.5)}
 .expand-panel.open{display:block}
 
@@ -152,6 +153,19 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM
 .combat-guide{font-size:.7rem;font-family:'JetBrains Mono',monospace;color:var(--tip2);line-height:1.7;white-space:pre-wrap}
 .combat-guide-wrap{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:9px 11px}
 
+/* ── Inventory ── */
+.inv-item{padding:7px 8px;border-radius:5px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:4px}
+.inv-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.inv-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text)}
+.inv-qty{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--gold);white-space:nowrap}
+.inv-cat{font-size:.58rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:2px;padding:1px 6px;border:1px solid var(--border);border-radius:999px;display:inline-block}
+.inv-desc{font-size:.67rem;color:var(--dim);line-height:1.5;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.inv-notes{font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--gold-dim);margin-top:3px;font-style:italic}
+.inv-rarity-uncommon{border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.03)}
+.inv-rarity-rare{border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.03)}
+.inv-rarity-very.rare{border-color:rgba(192,132,252,.3);background:rgba(192,132,252,.03)}
+.inv-rarity-legendary{border-color:rgba(251,146,60,.3);background:rgba(251,146,60,.03)}
+
 /* ── Loading tag ── */
 .spell-loading{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--dim);padding:4px 0}
 </style>
@@ -192,16 +206,22 @@ const db  = getDatabase(app);
 const $   = id => document.getElementById(id);
 
 // ── Load API data from scraped JSONs ──────────────────────────────────────────
-let spellsDb  = {};  // name.lowercase → spell object
-let skillsDb  = [];  // array of skill objects from skills.json
+let spellsDb    = {};  // name.lowercase → spell object
+let skillsDb    = [];  // array from skills.json
+let equipDb     = {};  // name.lowercase → equipment object
+let magicDb     = {};  // name.lowercase → magic item object
 
 async function loadApiData() {
   try {
-    const [spellsRaw, skillsRaw] = await Promise.all([
+    const [spellsRaw, skillsRaw, equipRaw, magicRaw] = await Promise.all([
       fetch("data/spells.json").then(r => r.json()),
       fetch("data/skills.json").then(r => r.json()),
+      fetch("data/equipment.json").then(r => r.json()).catch(()=>[]),
+      fetch("data/magic_items.json").then(r => r.json()).catch(()=>[]),
     ]);
     spellsRaw.forEach(s => { spellsDb[s.name.toLowerCase()] = s; });
+    equipRaw.forEach(e  => { equipDb[e.name.toLowerCase()]  = e; });
+    magicRaw.forEach(m  => { magicDb[m.name.toLowerCase()]  = m; });
     skillsDb = skillsRaw.map(s => ({
       key:   s.index.replace(/-/g, "_"),
       label: s.name,
@@ -233,7 +253,28 @@ async function loadApiData() {
   }
 }
 
-// ── Spell lookup from scraped data ───────────────────────────────────────────
+// ── Item lookup — checks equipment.json then magic_items.json ────────────────
+function getItemData(name) {
+  if (!name) return null;
+  const key = name.toLowerCase();
+  return equipDb[key] ?? magicDb[key] ?? null;
+}
+
+function itemDescText(item) {
+  if (!item) return "";
+  // equipment has desc array, magic items have desc array too
+  const desc = item.desc ?? item.special ?? [];
+  if (Array.isArray(desc)) return desc[0] ?? "";
+  return String(desc);
+}
+
+function itemCategory(item) {
+  if (!item) return null;
+  return item.equipment_category?.name
+      ?? item.gear_category?.name
+      ?? item.rarity?.name
+      ?? null;
+}
 function getSpellData(name) {
   return spellsDb[name?.toLowerCase()] ?? null;
 }
@@ -323,42 +364,35 @@ function buildCard(char) {
   }
   
 	// ── Inventory ───────────────────────────────────────────────────────────────
-	const inventory = char.inventory || [];
+	// Inventory stored in RTDB as object {itemId: {name, qty, notes...}} or array
+	const invRaw    = char.inventory ?? {};
+	const inventory = Array.isArray(invRaw) ? invRaw : Object.values(invRaw);
 	const hasInventory = inventory.length > 0;
 
 	let inventoryPanelHtml = '';
 
 	if (hasInventory) {
-
 	  const inventoryItems = inventory.map(item => {
-
-		return `
-		  <div class="feat-item">
-			<div class="feat-name">
-			  ${esc(item.name || 'Unnamed')}
-			  ${item.qty > 1 ? ` x${item.qty}` : ''}
-			</div>
-
-			${item.category ? `
-			  <div class="weapon-type">
-				${esc(item.category)}
-			  </div>
-			` : ''}
-
-			${item.desc ? `
-			  <div class="feat-desc">
-				${esc(item.desc)}
-			  </div>
-			` : ''}
-		  </div>
-		`;
-
+	    const apiItem  = getItemData(item.name);
+	    const desc     = item.desc ?? itemDescText(apiItem);
+	    const category = item.category ?? itemCategory(apiItem);
+	    const rarity   = apiItem?.rarity?.name?.toLowerCase().replace(/\s+/g,'-') ?? null;
+	    const rarityClass = rarity && rarity!=='none' ? ` inv-rarity-${rarity}` : '';
+	    return `<div class="inv-item${rarityClass}">
+	      <div class="inv-item-top">
+	        <span class="inv-name">${esc(item.name || 'Unnamed')}</span>
+	        ${(item.qty??1) > 1 ? `<span class="inv-qty">×${item.qty}</span>` : ''}
+	      </div>
+	      ${category ? `<span class="inv-cat">${esc(category)}</span>` : ''}
+	      ${desc     ? `<div class="inv-desc">${esc(desc)}</div>` : ''}
+	      ${item.notes ? `<div class="inv-notes">${esc(item.notes)}</div>` : ''}
+	    </div>`;
 	  }).join('');
 
 	  inventoryPanelHtml = `
-		<div class="expand-panel" id="inv-${char.id}">
-		  ${inventoryItems}
-		</div>
+	    <div class="expand-panel" id="inv-${char.id}">
+	      ${inventoryItems}
+	    </div>
 	  `;
 	}
 
@@ -475,13 +509,13 @@ function buildCard(char) {
       ${hasWeapons?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">⚔ Weapons &amp; Attacks <span class="chevron">▾</span></button>`:''}
       <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">📋 Skills &amp; Feats <span class="chevron">▾</span></button>
       ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">✨ Spells &amp; Cantrips <span class="chevron">▾</span></button>`:''}
-	  ${hasInventory?`<button class="panel-btn" id="invbtn-${char.id}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="chevron">▾</span></button>`:''}
+      ${hasInventory?`<button class="panel-btn inv-btn" id="invbtn-${char.id}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="chevron">▾</span></button>`:''}
     </div>
     ${tipPanelHtml}
     ${weaponPanelHtml}
     ${skillPanelHtml}
-    ${spellPanelHtml}`
-	${inventoryPanelHtml};
+    ${spellPanelHtml}
+    ${inventoryPanelHtml}`;
   return card;
 }
 
