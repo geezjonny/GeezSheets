@@ -1043,7 +1043,7 @@ function render(){
   // Roofs
   ctx.save();ctx.globalAlpha=roofOpacity;for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}ctx.restore();
   // Roof preview
-  if(roofMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.save();ctx.globalAlpha=roofOpacity*0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)drawTileAt(x,y,currentTerrain==="erase"?"stone":currentTerrain);ctx.restore();}
+  if(roofMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.save();if(currentTerrain==="erase"){ctx.globalAlpha=0.5;ctx.fillStyle="rgba(220,60,60,0.5)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else{ctx.globalAlpha=roofOpacity*0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)drawTileAt(x,y,currentTerrain);}ctx.restore();}
   drawGrid();
   if(currentShape==="select")drawSelection();else drawPreview();
   ctx.restore();
@@ -1084,6 +1084,7 @@ canvas.addEventListener("contextmenu",e=>{
   }
   const pk=propAtTile(tx,ty);
   if(pk){ctxPropKey=pk;const isAttached=!!(props[pk]&&props[pk].attachedTo);document.getElementById("prop-ctx-attach").style.display=isAttached?"none":"block";document.getElementById("prop-ctx-detach").style.display=isAttached?"block":"none";propCtxMenu.style.left=e.clientX+"px";propCtxMenu.style.top=e.clientY+"px";propCtxMenu.style.display="block";return;}
+  if(roofMode){const k=key(tx,ty);if(roofs[k]){delete roofs[k];saveRoofs();}return;}
   const gid=fogGroupAtTile(fogGroups,tx,ty);if(gid){deleteFogGroup(gid);return;}
 });
 
