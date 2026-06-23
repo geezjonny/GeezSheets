@@ -8,10 +8,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&display=swap');
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Transparent for OBS browser source */
+/* Chroma key green — OBS will key this out */
 html, body {
   width: 100%; height: 100%;
-  background: transparent;
+  background: #00ff00;
   overflow: hidden;
 }
 
@@ -136,6 +136,9 @@ const FIREBASE_CONFIG = {
 const app = initializeApp(FIREBASE_CONFIG);
 const db  = getDatabase(app);
 
+// ── Campaign filter — ?campaign=YourCampaign in the URL ──────────────────────
+const CAMPAIGN_FILTER = new URLSearchParams(window.location.search).get("campaign")?.toLowerCase() || null;
+
 // ── State ─────────────────────────────────────────────────────────────────────
 const TOKEN_PATH = "./tokens/"; // same as the rest of the VTT
 const players    = {};          // name → { wrap, portrait, nameEl }
@@ -215,6 +218,7 @@ onValue(ref(db, "characters/pcs"), snap => {
   for (const [id, char] of Object.entries(data)) {
     if (!char || !char.name) continue;
     if (char.type === "npc" || char.campaign === "__oracle__") continue;
+    if (CAMPAIGN_FILTER && (char.campaign||"").toLowerCase() !== CAMPAIGN_FILTER) continue;
 
     const nameKey = char.name.toLowerCase();
     if (!players[nameKey]) {
