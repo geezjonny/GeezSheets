@@ -168,6 +168,38 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM
 
 /* ── Loading tag ── */
 .spell-loading{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--dim);padding:4px 0}
+
+/* ── Coin purse ── */
+.coin-row{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.coin-label{font-family:'Cinzel',serif;font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-right:2px}
+.coin{display:flex;align-items:center;gap:3px;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid}
+.coin.pp{color:#c4b5fd;border-color:rgba(196,181,253,.3);background:rgba(196,181,253,.07)}
+.coin.gp{color:var(--gold);border-color:rgba(200,168,75,.3);background:rgba(200,168,75,.07)}
+.coin.ep{color:#67e8f9;border-color:rgba(103,232,249,.3);background:rgba(103,232,249,.07)}
+.coin.sp{color:#94a3b8;border-color:rgba(148,163,184,.3);background:rgba(148,163,184,.07)}
+.coin.cp{color:#b45309;border-color:rgba(180,83,9,.3);background:rgba(180,83,9,.07)}
+
+/* ── Equipped row ── */
+.equipped-row{display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.equipped-badge{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:2px 8px;border-radius:5px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.05);color:var(--gold-dim)}
+.equipped-badge span{color:var(--text)}
+
+/* ── Saves & Senses inside skill panel ── */
+.save-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:8px}
+.save-row-item{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:4px 8px;border-radius:5px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.7rem}
+.save-row-item.prof .skill-name{color:var(--gold)}
+.senses-block{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.sense-pill{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:3px 9px;border-radius:5px;border:1px solid rgba(14,165,233,.25);background:rgba(14,165,233,.05);color:var(--skill2)}
+
+/* ── Charge pips (abilities) ── */
+.ability-charge{padding:7px 8px;border-radius:5px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:4px}
+.ability-charge-top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px}
+.ability-charge-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text)}
+.ability-charge-meta{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--dim)}
+.charge-pips{display:flex;gap:5px;flex-wrap:wrap}
+.charge-pip{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.2);cursor:pointer;transition:all .12s;flex-shrink:0}
+.charge-pip:hover{transform:scale(1.15)}
+.charge-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
 </style>
 </head>
 <body>
@@ -455,8 +487,22 @@ function buildCard(char) {
     return `<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${fmtBonus(bonus)}</span></div>`;
   }).join('');
 
-  const abilityCards  = Object.entries(char.abilities||{}).map(([,ab])=>{
-    if(!ab||!ab.label)return'';
+  // ── Ability cards — charge pips for kind:"charge", plain card otherwise ──────
+  const abilityCards = Object.entries(char.abilities||{}).map(([abKey,ab])=>{
+    if(!ab||!ab.label) return '';
+    if(ab.kind==='charge' && ab.max) {
+      const used = ab.max - (ab.current??ab.max);
+      const meta = [ab.die?`${ab.die}`:null, ab.recharge?`recharge: ${ab.recharge}`:null].filter(Boolean).join(' · ');
+      const pips = Array.from({length:ab.max},(_,i)=>`<div class="charge-pip${i<used?' used':''}" data-charid="${char.id}" data-abkey="${abKey}" data-idx="${i}" data-max="${ab.max}" onclick="window.toggleCharge(this)"></div>`).join('');
+      return `<div class="ability-charge">
+        <div class="ability-charge-top">
+          <span class="ability-charge-name">${esc(ab.label)}</span>
+          ${meta?`<span class="ability-charge-meta">${esc(meta)}</span>`:''}
+        </div>
+        <div class="charge-pips">${pips}</div>
+        ${ab.effect_desc?`<div class="feat-desc" style="margin-top:5px">${esc(ab.effect_desc)}</div>`:''}
+      </div>`;
+    }
     return `<div class="feat-item"><div class="feat-name">${esc(ab.label)}</div>${ab.effect_desc?`<div class="feat-desc">${esc(ab.effect_desc)}</div>`:''}</div>`;
   }).join('');
   const featuresText  = char.text_blocks?.features_traits||'';
@@ -464,7 +510,29 @@ function buildCard(char) {
   const featuresBlock = featuresText?`<div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${esc(featuresText)}</div></div>`:'';
   const profBlock     = profText?`<div class="sp-section-title">Proficiencies &amp; Languages</div><div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${esc(profText)}</div></div>`:'';
 
+  // ── Saving throws ──────────────────────────────────────────────────────────
+  const savesData = char.saves||{};
+  const saveProfList = savesData.proficient||[];
+  const saveRowsHtml = ABILITY_KEYS.map(k => {
+    const base  = Math.floor(((st[k]??10)-10)/2);
+    const isProficient = saveProfList.includes(k);
+    const bonus = base + (isProficient ? profBonus : 0);
+    return `<div class="save-row-item${isProficient?' prof':''}"><span class="skill-name">${ABILITY_LABELS[k]}</span><span class="skill-val">${fmtBonus(bonus)}</span></div>`;
+  }).join('');
+
+  // ── Senses ─────────────────────────────────────────────────────────────────
+  const sensesData = char.senses||{};
+  const sensePills = Object.entries(sensesData).map(([k,v])=>{
+    if(v==null||v===false||v==='') return '';
+    const label = k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    const val   = typeof v==='number'?` ${v} ft`:(v===true?'':` ${v}`);
+    return `<div class="sense-pill">${label}${val}</div>`;
+  }).join('');
+
   const skillPanelHtml = `<div class="expand-panel" id="sk-${char.id}">
+    <div class="sp-section-title">Saving Throws</div>
+    <div class="save-grid">${saveRowsHtml}</div>
+    ${sensePills?`<div class="sp-section-title">Senses</div><div class="senses-block">${sensePills}</div>`:''}
     <div class="sp-section-title">Skills</div>
     <div class="skill-grid">${skillRowsHtml}</div>
     ${abilityCards||featuresBlock?`<div class="sp-section-title">Features &amp; Traits</div>${abilityCards}${featuresBlock}`:''}
@@ -502,6 +570,22 @@ function buildCard(char) {
       <div class="stat-cell"><div class="stat-label">Prof</div><div class="stat-val">+${profBonus}</div></div>
       <div class="stat-cell"><div class="stat-label">Perc</div><div class="stat-val">${passPerc}</div></div>
     </div>
+    ${(()=>{
+      const eq=char.equipped||{}; const parts=[];
+      if(eq.armor) parts.push(`<div class="equipped-badge">🛡 <span>${esc(eq.armor)}</span></div>`);
+      if(eq.shield) parts.push(`<div class="equipped-badge">🔰 <span>Shield</span></div>`);
+      if(eq.offhand) parts.push(`<div class="equipped-badge">✋ <span>${esc(eq.offhand)}</span></div>`);
+      return parts.length?`<div class="equipped-row">${parts.join('')}</div>`:'';
+    })()}
+    ${(()=>{
+      const cp=char.coin_purse||{}; const coins=[];
+      if(cp.pp) coins.push(`<div class="coin pp">◈ ${cp.pp}pp</div>`);
+      if(cp.gp) coins.push(`<div class="coin gp">◉ ${cp.gp}gp</div>`);
+      if(cp.ep) coins.push(`<div class="coin ep">◈ ${cp.ep}ep</div>`);
+      if(cp.sp) coins.push(`<div class="coin sp">◎ ${cp.sp}sp</div>`);
+      if(cp.cp) coins.push(`<div class="coin cp">○ ${cp.cp}cp</div>`);
+      return coins.length?`<div class="coin-row"><span class="coin-label">💰</span>${coins.join('')}</div>`:'';
+    })()}
     <div class="ability-grid">${abilityBoxes}</div>
     ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
     <div class="card-footer">
@@ -531,6 +615,20 @@ window.toggleSlot = function(pip) {
   const clamped=Math.max(0,Math.min(max,pip.classList.contains('used')?idx:idx+1));
   pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
   set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(console.error);
+};
+
+window.toggleCharge = function(pip) {
+  const charId=pip.dataset.charid, abKey=pip.dataset.abkey;
+  const idx=parseInt(pip.dataset.idx,10), max=parseInt(pip.dataset.max,10);
+  const pips=[...pip.parentElement.querySelectorAll('.charge-pip')];
+  const usedCount = pips.filter(p=>p.classList.contains('used')).length;
+  const newUsed = pip.classList.contains('used') ? idx : idx+1;
+  const clamped = Math.max(0,Math.min(max,newUsed));
+  pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
+  const newCurrent = max - clamped;
+  import("https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js").then(({ref:fbRef,set:fbSet})=>{
+    fbSet(fbRef(db,`characters/pcs/${charId}/abilities/${abKey}/current`),newCurrent).catch(console.error);
+  });
 };
 
 window.adjustHp = async function(charId, isHeal) {
