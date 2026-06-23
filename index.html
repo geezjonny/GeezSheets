@@ -406,6 +406,7 @@ import { renderInitTrack } from "./js/initiative.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
+const wallGroups={},darknessGroups={},doors={};
 let bgImage=null,bgUrl="",bgPpi=70,nightMode=false;
 let pcsData={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
@@ -614,9 +615,15 @@ function subscribeLive(){
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in chains)delete chains[k];
+    for(const k in wallGroups)delete wallGroups[k];
+    for(const k in darknessGroups)delete darknessGroups[k];
+    for(const k in doors)delete doors[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fog,data.fog);
+      if(data.wallGroups)Object.assign(wallGroups,data.wallGroups);
+      if(data.darknessGroups)Object.assign(darknessGroups,data.darknessGroups);
+      if(data.doors)Object.assign(doors,data.doors);
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
@@ -663,7 +670,18 @@ document.getElementById("pingBtn").onclick=()=>{
 // ── Draw ──────────────────────────────────────────────────────────────────────
 const CONDITIONS={};
 function buildConditionsMap(){getCONDITIONS().forEach(c=>CONDITIONS[c.id]=c.color);}
-function hasWall(x,y){const t=tiles[`${x},${y}`];return t&&t.walls;}
+// Find door within click range of a world point
+function findDoorAtPoint(wx,wy){
+  for(const did in doors){
+    const d=doors[did];
+    const px=d.x*TILE,py=d.y*TILE;
+    const edgeMid={n:[px+TILE/2,py],s:[px+TILE/2,py+TILE],w:[px,py+TILE/2],e:[px+TILE,py+TILE/2]};
+    const[mx,my]=edgeMid[d.edge]||edgeMid.n;
+    const dist=Math.hypot(wx-mx,wy-my);
+    if(dist<TILE*0.6)return did;
+  }
+  return null;
+}
 function drawTileAt(x,y,terrain){
   const TERRAINS=getTERRAINS();const def=TERRAINS.find(t=>t.id===terrain);
   const px=x*TILE,py=y*TILE;
@@ -687,8 +705,46 @@ function draw(){
   }
 
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
+
+  // Darkness overlay
+  ctx.save();ctx.fillStyle="rgba(10,5,20,0.75)";
+  for(const gid in darknessGroups){const cells=darknessGroups[gid].cells||{};for(const ck in cells){const[x,y]=ck.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}
+  ctx.restore();
+
+  // Wall groups — perimeter edges only
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
-  for(const k in tiles){if(!tiles[k].walls)continue;const[x,y]=k.split(",").map(Number);const px=x*TILE,py=y*TILE;[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}});}
+  for(const gid in wallGroups){
+    const cells=wallGroups[gid].cells||{};
+    for(const ck in cells){
+      const[x,y]=ck.split(",").map(Number);const px=x*TILE,py=y*TILE;
+      [[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{
+        if(!cells[`${x+dx},${y+dy}`]){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+      });
+    }
+  }
+
+  // Doors
+  for(const did in doors){
+    const d=doors[did];
+    const px=d.x*TILE,py=d.y*TILE;
+    const edgeCoords={n:[px,py,px+TILE,py],s:[px,py+TILE,px+TILE,py+TILE],w:[px,py,px,py+TILE],e:[px+TILE,py,px+TILE,py+TILE]};
+    const[x1,y1,x2,y2]=edgeCoords[d.edge]||edgeCoords.n;
+    const mx=(x1+x2)/2,my=(y1+y2)/2;
+    if(d.open){
+      ctx.strokeStyle="#8a6a2a";ctx.lineWidth=2/camera.zoom;
+      const len=TILE*0.25;const isH=d.edge==="n"||d.edge==="s";
+      ctx.beginPath();
+      if(isH){ctx.moveTo(x1,y1-len);ctx.lineTo(x1,y1+len);ctx.moveTo(x2,y2-len);ctx.lineTo(x2,y2+len);}
+      else{ctx.moveTo(x1-len,y1);ctx.lineTo(x1+len,y1);ctx.moveTo(x2-len,y2);ctx.lineTo(x2+len,y2);}
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle=d.locked?"#8a2a2a":"#8a6a2a";ctx.lineWidth=3.5/camera.zoom;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      const sz=4/camera.zoom;
+      ctx.fillStyle=d.locked?"#c04040":"#c0a040";
+      ctx.fillRect(mx-sz/2,my-sz/2,sz,sz);
+    }
+  }
 
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
   for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
@@ -1051,13 +1107,23 @@ viewport.addEventListener("pointerdown",e=>{
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
     const tok=tokens[tokId];
-    // Own PC token — allow drag; also open sheet
     if(tok.type==="pc"&&(tok.name?.toLowerCase()===playerName.toLowerCase()||tok.characterId===myCharacterId)){
       draggingToken={id:tokId,offsetTX:tx-tok.x,offsetTY:ty-tok.y};viewport.setPointerCapture(e.pointerId);
       openCharSheet(tok.characterId,tok.name);return;
     }
-    // Any other token — just open sheet (read-only)
     openCharSheet(tok.characterId,tok.name);return;
+  }
+
+  // Door click — check all doors for proximity to click point
+  const clickedDoor=findDoorAtPoint(wx,wy);
+  if(clickedDoor){
+    const d=doors[clickedDoor];
+    if(d.locked){
+      toast(`🔒 ${d.lockReason||"This door is locked."}`);
+    } else {
+      update(ref(db,`maps/${currentMap}/doors/${clickedDoor}`),{open:!d.open});
+    }
+    return;
   }
   isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);
   panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camera.x;camStartY=camera.y;
