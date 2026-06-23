@@ -627,9 +627,7 @@ window.toggleCharge = function(pip) {
   const clamped = Math.max(0,Math.min(max,newUsed));
   pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
   const newCurrent = max - clamped;
-  import("https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js").then(({ref:fbRef,set:fbSet})=>{
-    fbSet(fbRef(db,`characters/pcs/${charId}/abilities/${abKey}/current`),newCurrent).catch(console.error);
-  });
+  set(ref(db,`characters/pcs/${charId}/abilities/${abKey}/current`),newCurrent).catch(console.error);
 };
 
 window.adjustHp = async function(charId, isHeal) {
@@ -682,7 +680,8 @@ async function loadParty() {
     const snap = await get(ref(db,'characters/pcs'));
     $('loadingScreen').style.display='none';
     if(!snap.exists()){$('errorMsg').textContent='No player characters found.';$('errorScreen').style.display='flex';return;}
-    allPcs = Object.values(snap.val())
+    allPcs = Object.entries(snap.val())
+      .map(([id,c]) => c ? {...c, id} : null)
       .filter(c => c && c.name && c.campaign !== '__oracle__' && c.type !== 'npc' && c.record_type !== 'npc')
       .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
     const campaigns = [...new Set(allPcs.map(c=>c.campaign||'').filter(c=>c&&c!=='__oracle__'))].sort();
