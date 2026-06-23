@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>GeezVTT — Talking Indicators</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Transparent for OBS browser source */
+html, body {
+  width: 100%; height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+#stage {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 12px;
+  width: 100%;
+  height: 100%;
+  /* Anchored bottom-left — common OBS layout */
+  position: absolute;
+  bottom: 0; left: 0;
+}
+
+.token-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  transition: transform 0.1s ease;
+  /* shake applied via JS inline style */
+}
+
+.portrait {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2.5px solid rgba(122, 176, 224, 0.5);
+  background: #3a6aaa;
+  position: relative;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.portrait .initial {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* Talking state — gold ring + glow */
+.token-wrap.talking .portrait {
+  border-color: #c8a84b;
+  box-shadow: 0 0 0 3px rgba(200, 168, 75, 0.35), 0 0 18px rgba(200, 168, 75, 0.5);
+}
+
+/* Sound wave bars — visible only when talking */
+.wave {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  height: 14px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.token-wrap.talking .wave { opacity: 1; }
+.wave span {
+  display: block;
+  width: 3px;
+  border-radius: 2px;
+  background: #c8a84b;
+  animation: none;
+}
+.token-wrap.talking .wave span { animation: bar 0.6s ease-in-out infinite alternate; }
+.wave span:nth-child(1) { height: 4px;  animation-delay: 0s;    }
+.wave span:nth-child(2) { height: 10px; animation-delay: 0.1s;  }
+.wave span:nth-child(3) { height: 14px; animation-delay: 0.05s; }
+.wave span:nth-child(4) { height: 10px; animation-delay: 0.15s; }
+.wave span:nth-child(5) { height: 4px;  animation-delay: 0.08s; }
+@keyframes bar {
+  from { transform: scaleY(0.4); }
+  to   { transform: scaleY(1.0); }
+}
+
+.name-label {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #d4c49a;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8);
+  letter-spacing: .05em;
+  white-space: nowrap;
+  opacity: 0.75;
+  transition: opacity 0.2s;
+}
+.token-wrap.talking .name-label {
+  opacity: 1;
+  color: #c8a84b;
+}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+
+<script type="module">
+import { initializeApp }    from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, get }
+                            from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+const FIREBASE_CONFIG = {
+  apiKey:        "AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",
+  authDomain:    "sheets-e5838.firebaseapp.com",
+  databaseURL:   "https://sheets-e5838-default-rtdb.firebaseio.com",
+  projectId:     "sheets-e5838",
+  storageBucket: "sheets-e5838.firebasestorage.app",
+};
+const app = initializeApp(FIREBASE_CONFIG);
+const db  = getDatabase(app);
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const TOKEN_PATH = "./tokens/"; // same as the rest of the VTT
+const players    = {};          // name → { wrap, portrait, nameEl }
+const talking    = {};          // nameKey → bool
+
+// ── Build a token card ────────────────────────────────────────────────────────
+function makeCard(id, char) {
+  const name = char.name || id;
+
+  const wrap = document.createElement("div");
+  wrap.className = "token-wrap";
+  wrap.dataset.id = id;
+
+  const portrait = document.createElement("div");
+  portrait.className = "portrait";
+
+  // Try to load portrait image — same lookup logic as assets.js
+  const fname = name.toLowerCase().replace(/\s+/g, "_");
+  const img = document.createElement("img");
+  img.onload = () => { portrait.innerHTML = ""; portrait.appendChild(img); };
+  img.onerror = () => {
+    // Fall back to RTDB base64 upload
+    get(ref(db, `assets/uploads/tokens/${id}`)).then(snap => {
+      const b64 = snap.val();
+      if (b64) {
+        const i = document.createElement("img");
+        i.onload = () => { portrait.innerHTML = ""; portrait.appendChild(i); };
+        i.src = b64;
+      } else {
+        // Final fallback: initial letter
+        portrait.innerHTML = `<div class="initial">${name[0].toUpperCase()}</div>`;
+      }
+    }).catch(() => {
+      portrait.innerHTML = `<div class="initial">${name[0].toUpperCase()}</div>`;
+    });
+  };
+  img.src = `${TOKEN_PATH}${fname}.png`;
+  portrait.appendChild(img);
+
+  const wave = document.createElement("div");
+  wave.className = "wave";
+  wave.innerHTML = "<span></span><span></span><span></span><span></span><span></span>";
+
+  const nameEl = document.createElement("div");
+  nameEl.className = "name-label";
+  nameEl.textContent = name;
+
+  wrap.appendChild(portrait);
+  wrap.appendChild(wave);
+  wrap.appendChild(nameEl);
+
+  return { wrap, portrait, nameEl };
+}
+
+// ── Shake loop ────────────────────────────────────────────────────────────────
+function shakeLoop() {
+  const t = Date.now() / 50;
+  for (const [nameKey, card] of Object.entries(players)) {
+    if (talking[nameKey]) {
+      const dx = Math.sin(t + nameKey.length) * 2;
+      const dy = Math.cos(t * 1.3 + nameKey.length) * 2;
+      card.wrap.style.transform = `translate(${dx}px, ${dy}px)`;
+    } else {
+      card.wrap.style.transform = "";
+    }
+  }
+  requestAnimationFrame(shakeLoop);
+}
+requestAnimationFrame(shakeLoop);
+
+// ── Subscribe to characters/pcs ───────────────────────────────────────────────
+onValue(ref(db, "characters/pcs"), snap => {
+  const stage = document.getElementById("stage");
+  const data  = snap.val() || {};
+
+  // Add new / update existing
+  for (const [id, char] of Object.entries(data)) {
+    if (!char || !char.name) continue;
+    if (char.type === "npc" || char.campaign === "__oracle__") continue;
+
+    const nameKey = char.name.toLowerCase();
+    if (!players[nameKey]) {
+      const card = makeCard(id, char);
+      players[nameKey] = card;
+      stage.appendChild(card.wrap);
+    }
+  }
+
+  // Remove cards for deleted characters
+  for (const nameKey of Object.keys(players)) {
+    const still = Object.values(data).find(c => c?.name?.toLowerCase() === nameKey);
+    if (!still) {
+      players[nameKey].wrap.remove();
+      delete players[nameKey];
+    }
+  }
+});
+
+// ── Subscribe to cursors/talking ──────────────────────────────────────────────
+onValue(ref(db, "cursors"), snap => {
+  const data = snap.val() || {};
+
+  // Clear all
+  for (const k in talking) delete talking[k];
+
+  for (const [rawKey, info] of Object.entries(data)) {
+    if (info && info.talking) {
+      const nameKey = rawKey.replace(/_/g, " ").toLowerCase();
+      talking[nameKey] = true;
+    }
+  }
+
+  // Update card states
+  for (const [nameKey, card] of Object.entries(players)) {
+    card.wrap.classList.toggle("talking", !!talking[nameKey]);
+  }
+});
+</script>
+</body>
+</html>

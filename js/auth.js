@@ -37,8 +37,8 @@ export async function fetchCharacterRoster() {
 // Local session info — stored so refresh doesn't force re-login
 const STORAGE_KEY = "vtt_auth";
 
-export function saveAuthSession(playerName, characterId, characterName) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ playerName, characterId, characterName, t: Date.now() }));
+export function saveAuthSession(playerName, characterId, characterName, campaign) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ playerName, characterId, characterName, campaign, t: Date.now() }));
 }
 
 export function loadAuthSession() {
