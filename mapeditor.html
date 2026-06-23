@@ -136,6 +136,135 @@ canvas{display:block;cursor:crosshair}
 .drop-type-btn{border:2px solid var(--border);background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;cursor:pointer;transition:all .15s}
 .drop-type-btn:hover{border-color:var(--gold-dim);color:var(--text)}
 .drop-type-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
+/* ── Character sheet slide-in panel ── */
+#sheet-panel{position:fixed;top:56px;left:0;bottom:0;width:300px;background:var(--panel);border-right:1px solid var(--border);z-index:50;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,.5)}
+#sheet-panel.open{transform:translateX(0)}
+#sheet-panel-header{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--panel2)}
+#sheet-panel-title{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;flex:1}
+#sheet-panel-close{border:none;background:transparent;color:var(--dim);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1;transition:color .12s}
+#sheet-panel-close:hover{color:var(--text)}
+#sheet-view{flex:1;overflow-y:auto;padding:0}
+#sheet-empty{display:flex;align-items:center;justify-content:center;height:100%;font-family:'Cinzel',serif;font-size:.75rem;color:var(--dim);text-align:center;padding:20px;line-height:1.8}
+/* Sheet card styles (scoped to panel) */
+#sheet-panel .card{background:transparent;border:none;border-radius:0;width:100%;flex-shrink:0;overflow:visible}
+#sheet-panel .card-header{padding:12px 12px 8px;border-bottom:1px solid var(--border)}
+#sheet-panel .char-name{font-family:'Cinzel',serif;font-size:1rem;font-weight:700;color:var(--gold);margin-bottom:2px}
+#sheet-panel .char-sub{font-size:.68rem;color:var(--dim);font-family:'JetBrains Mono',monospace}
+#sheet-panel .char-role-badge{display:inline-block;font-family:'Cinzel',serif;font-size:.56rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:rgba(200,168,75,.1);border:1px solid rgba(200,168,75,.3);color:var(--gold);margin-top:4px}
+#sheet-panel .hp-row{display:flex;align-items:center;gap:6px;margin-top:8px}
+#sheet-panel .hp-label{font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;width:16px}
+#sheet-panel .hp-bar-wrap{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+#sheet-panel .hp-bar{height:100%;border-radius:999px;transition:width .4s,background-color .4s}
+#sheet-panel .hp-val{font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);white-space:nowrap;min-width:48px;text-align:right}
+#sheet-panel .temp-badge{font-size:.58rem;font-family:'JetBrains Mono',monospace;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);color:#c084fc;border-radius:999px;padding:1px 6px;white-space:nowrap}
+#sheet-panel .hp-controls{display:flex;align-items:center;gap:5px;margin-top:6px}
+#sheet-panel .hp-delta{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:.76rem;font-family:'JetBrains Mono',monospace;outline:none;text-align:center;min-width:0}
+#sheet-panel .hp-delta:focus{border-color:var(--gold-dim)}
+#sheet-panel .hp-btn{border-radius:4px;padding:4px 8px;font-size:.68rem;font-weight:700;font-family:'Cinzel',serif;cursor:pointer;transition:all .12s;white-space:nowrap;letter-spacing:.04em}
+#sheet-panel .hp-btn.heal{background:rgba(74,154,74,.12);border:1px solid rgba(74,154,74,.3);color:#5a9a5a}
+#sheet-panel .hp-btn.heal:hover{background:rgba(74,154,74,.22)}
+#sheet-panel .hp-btn.dmg{background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.3);color:#fca5a5}
+#sheet-panel .hp-btn.dmg:hover{background:rgba(224,64,64,.22)}
+#sheet-panel .stats-row{display:flex;border-bottom:1px solid var(--border)}
+#sheet-panel .stat-cell{flex:1;padding:6px 2px;text-align:center;border-right:1px solid var(--border)}
+#sheet-panel .stat-cell:last-child{border-right:none}
+#sheet-panel .stat-label{font-family:'Cinzel',serif;font-size:.52rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
+#sheet-panel .stat-val{font-size:.84rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
+#sheet-panel .ability-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:8px;border-bottom:1px solid var(--border)}
+#sheet-panel .ab-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:5px;padding:5px 2px;text-align:center}
+#sheet-panel .ab-name{font-family:'Cinzel',serif;font-size:.5rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);margin-bottom:1px}
+#sheet-panel .ab-score{font-size:.84rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);line-height:1}
+#sheet-panel .ab-mod{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--gold);margin-top:1px}
+#sheet-panel .conditions-row{display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;border-bottom:1px solid var(--border)}
+#sheet-panel .conditions-row:empty{display:none}
+#sheet-panel .cond-pill{font-family:'Cinzel',serif;font-size:.55rem;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.3);color:#fca5a5}
+#sheet-panel .card-footer{padding:6px;display:flex;flex-direction:column;gap:4px}
+#sheet-panel .panel-btn{width:100%;border-radius:5px;color:var(--dim);font-family:'Cinzel',serif;font-size:.68rem;font-weight:700;letter-spacing:.04em;padding:6px 8px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;border:1px solid var(--border);background:rgba(255,255,255,.02)}
+#sheet-panel .panel-btn .chevron{margin-left:auto;transition:transform .2s}
+#sheet-panel .panel-btn.open .chevron{transform:rotate(180deg)}
+#sheet-panel .panel-btn:hover,#sheet-panel .panel-btn.open{border-color:var(--gold-dim);color:var(--text);background:rgba(200,168,75,.05)}
+#sheet-panel .panel-btn.spell-btn:hover,#sheet-panel .panel-btn.spell-btn.open{border-color:#8b5cf6;color:#c084fc;background:rgba(139,92,246,.08)}
+#sheet-panel .panel-btn.skill-btn:hover,#sheet-panel .panel-btn.skill-btn.open{border-color:#0ea5e9;color:#38bdf8;background:rgba(14,165,233,.08)}
+#sheet-panel .panel-btn.weapon-btn:hover,#sheet-panel .panel-btn.weapon-btn.open{border-color:#e8834a;color:#f5a87b;background:rgba(232,131,74,.08)}
+#sheet-panel .panel-btn.tip-btn:hover,#sheet-panel .panel-btn.tip-btn.open{border-color:#22c55e;color:#4ade80;background:rgba(34,197,94,.05)}
+#sheet-panel .panel-btn.inv-btn:hover,#sheet-panel .panel-btn.inv-btn.open{border-color:var(--gold-dim);color:var(--gold);background:rgba(200,168,75,.06)}
+#sheet-panel .expand-panel{display:none;border-top:1px solid var(--border);padding:10px;background:rgba(12,9,8,.5)}
+#sheet-panel .expand-panel.open{display:block}
+#sheet-panel .sp-section-title{font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:5px;margin-top:8px}
+#sheet-panel .sp-section-title:first-child{margin-top:0}
+#sheet-panel .slot-levels{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+#sheet-panel .slot-level-row{display:flex;align-items:center;gap:6px}
+#sheet-panel .slot-level-label{font-family:'Cinzel',serif;font-size:.58rem;color:var(--dim);width:38px;flex-shrink:0}
+#sheet-panel .slot-pips{display:flex;gap:4px;flex-wrap:wrap}
+#sheet-panel .slot-pip{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.15);cursor:pointer;transition:all .12s;flex-shrink:0}
+#sheet-panel .slot-pip:hover{transform:scale(1.15)}
+#sheet-panel .slot-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
+#sheet-panel .spell-list{display:flex;flex-direction:column;gap:3px}
+#sheet-panel .spell-item{padding:5px 7px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
+#sheet-panel .spell-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:5px}
+#sheet-panel .spell-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text)}
+#sheet-panel .spell-level-tag{font-size:.58rem;font-family:'JetBrains Mono',monospace;color:var(--dim);white-space:nowrap}
+#sheet-panel .spell-desc{font-size:.64rem;color:var(--dim);line-height:1.5;margin-top:2px;font-family:'JetBrains Mono',monospace}
+#sheet-panel .skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:6px}
+#sheet-panel .skill-row-item{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:3px 7px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.66rem}
+#sheet-panel .skill-name{color:var(--dim)}
+#sheet-panel .skill-val{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text)}
+#sheet-panel .skill-row-item.prof .skill-name{color:#38bdf8}
+#sheet-panel .skill-row-item.expert .skill-name{color:#4ade80}
+#sheet-panel .save-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-bottom:6px}
+#sheet-panel .save-row-item{display:flex;align-items:center;justify-content:space-between;flex-direction:column;gap:2px;padding:4px 3px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.62rem;text-align:center}
+#sheet-panel .save-row-item.prof .skill-name{color:var(--gold)}
+#sheet-panel .senses-block{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
+#sheet-panel .sense-pill{font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:2px 7px;border-radius:4px;border:1px solid rgba(14,165,233,.25);background:rgba(14,165,233,.05);color:#38bdf8}
+#sheet-panel .feat-item{padding:5px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
+#sheet-panel .feat-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:1px}
+#sheet-panel .feat-desc{font-size:.64rem;color:var(--dim);line-height:1.5;font-family:'JetBrains Mono',monospace}
+#sheet-panel .weapon-list{display:flex;flex-direction:column;gap:4px}
+#sheet-panel .weapon-item{border:1px solid var(--border);border-radius:5px;background:rgba(255,255,255,.02);overflow:hidden}
+#sheet-panel .weapon-top{display:flex;align-items:center;gap:6px;padding:6px 8px}
+#sheet-panel .weapon-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text);flex:1}
+#sheet-panel .weapon-type{font-size:.56rem;font-family:'JetBrains Mono',monospace;color:var(--dim);padding:1px 5px;border:1px solid var(--border);border-radius:999px;white-space:nowrap}
+#sheet-panel .weapon-stats{display:flex;gap:4px;padding:0 8px 6px;flex-wrap:wrap}
+#sheet-panel .wstat{display:flex;flex-direction:column;align-items:center;background:rgba(232,131,74,.06);border:1px solid rgba(232,131,74,.2);border-radius:4px;padding:3px 8px;min-width:48px}
+#sheet-panel .wstat-label{font-family:'Cinzel',serif;font-size:.5rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#e8834a;margin-bottom:1px}
+#sheet-panel .wstat-val{font-size:.8rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:#f5a87b}
+#sheet-panel .weapon-notes{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--dim);padding:0 8px 6px;line-height:1.5}
+#sheet-panel .inv-item{padding:6px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
+#sheet-panel .inv-item-top{display:flex;align-items:center;justify-content:space-between;gap:5px}
+#sheet-panel .inv-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text);flex:1}
+#sheet-panel .inv-qty{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--gold);white-space:nowrap}
+#sheet-panel .inv-cat{font-size:.56rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:1px;padding:1px 5px;border:1px solid var(--border);border-radius:999px;display:inline-block}
+#sheet-panel .inv-desc{font-size:.64rem;color:var(--dim);line-height:1.5;margin-top:3px;font-family:'JetBrains Mono',monospace}
+#sheet-panel .inv-notes{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--gold-dim);margin-top:2px;font-style:italic}
+#sheet-panel .equipped-row{display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+#sheet-panel .equipped-badge{font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:2px 7px;border-radius:4px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.05);color:var(--gold-dim)}
+#sheet-panel .equipped-badge span{color:var(--text)}
+#sheet-panel .coin-row{display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+#sheet-panel .coin-label{font-family:'Cinzel',serif;font-size:.54rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-right:1px}
+#sheet-panel .coin{display:flex;align-items:center;gap:2px;font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:700;padding:1px 6px;border-radius:999px;border:1px solid}
+#sheet-panel .coin.pp{color:#c4b5fd;border-color:rgba(196,181,253,.3);background:rgba(196,181,253,.07)}
+#sheet-panel .coin.gp{color:var(--gold);border-color:rgba(200,168,75,.3);background:rgba(200,168,75,.07)}
+#sheet-panel .coin.ep{color:#67e8f9;border-color:rgba(103,232,249,.3);background:rgba(103,232,249,.07)}
+#sheet-panel .coin.sp{color:#94a3b8;border-color:rgba(148,163,184,.3);background:rgba(148,163,184,.07)}
+#sheet-panel .coin.cp{color:#b45309;border-color:rgba(180,83,9,.3);background:rgba(180,83,9,.07)}
+#sheet-panel .ability-charge{padding:6px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
+#sheet-panel .ability-charge-top{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:4px}
+#sheet-panel .ability-charge-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text)}
+#sheet-panel .ability-charge-meta{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--dim)}
+#sheet-panel .charge-pips{display:flex;gap:4px;flex-wrap:wrap}
+#sheet-panel .charge-pip{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.2);cursor:pointer;transition:all .12s;flex-shrink:0}
+#sheet-panel .charge-pip:hover{transform:scale(1.15)}
+#sheet-panel .charge-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
+#sheet-panel .empty-panel{font-family:'Cinzel',serif;font-size:.68rem;color:var(--dim);text-align:center;padding:8px 0}
+#sheet-panel .combat-guide-wrap{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:8px 10px}
+#sheet-panel .combat-guide{font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#4ade80;line-height:1.7;white-space:pre-wrap}
+#sheet-panel .spell-meta{font-size:.6rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap}
+#sheet-panel .spell-meta span{color:var(--text)}
+#sheet-panel .spell-tip{display:flex;align-items:flex-start;gap:4px;margin-top:3px;padding:3px 6px;border-radius:3px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2)}
+#sheet-panel .spell-tip-text{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:#4ade80;line-height:1.5}
+#sheet-panel .sp-meta{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+#sheet-panel .sp-meta-item{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--dim)}
+#sheet-panel .sp-meta-item span{color:var(--gold);font-weight:700}
 </style>
 </head>
 <body>
@@ -215,6 +344,17 @@ canvas{display:block;cursor:crosshair}
     <div id="presence-row" style="display:flex;align-items:center;gap:4px;margin-left:4px;flex-shrink:0"></div>
     <span id="player-name-display" style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);cursor:pointer;flex-shrink:0;padding:0 8px"></span>
   </div>
+
+<!-- ── Character sheet panel ── -->
+<div id="sheet-panel">
+  <div id="sheet-panel-header">
+    <div id="sheet-panel-title">📋 CHARACTER</div>
+    <button id="sheet-panel-close" onclick="closeSheetPanel()">✕</button>
+  </div>
+  <div id="sheet-view">
+    <div id="sheet-empty">Right-click a PC token<br>to view their sheet</div>
+  </div>
+</div>
 
   <div id="canvas-wrap">
     <canvas id="canvas"></canvas>
@@ -1213,7 +1353,7 @@ function render(){
 // ── Pointer events ────────────────────────────────────────────────────────────
 window.addEventListener("keydown",e=>{
   if(e.code==="Space"){spaceDown=true;canvas.style.cursor="grab";}
-  if(e.code==="Escape"){if(placingToken){placingToken=null;toast("Cancelled.");}if(selectPhase&&selectPhase!=="marquee")commitSelection();rulerStart=null;rulerEnd=null;rulerActive=false;}
+  if(e.code==="Escape"){if(placingToken){placingToken=null;toast("Cancelled.");}if(selectPhase&&selectPhase!=="marquee")commitSelection();rulerStart=null;rulerEnd=null;rulerActive=false;closeSheetPanel();}
   if((e.ctrlKey||e.metaKey)&&e.code==="KeyZ"&&!e.shiftKey){e.preventDefault();undo();}
   if((e.ctrlKey||e.metaKey)&&(e.code==="KeyY"||(e.code==="KeyZ"&&e.shiftKey))){e.preventDefault();redo();}
 });
@@ -1225,16 +1365,18 @@ canvas.addEventListener("contextmenu",e=>{
   e.preventDefault();const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
+    const tok=tokens[tokId];
+    // PC token — open sheet panel
+    if(tok.type==="pc"&&tok.characterId){
+      openCharSheet(tok.characterId,tok.name);return;
+    }
     ctxTokenId=tokId;
     lastCtxX=e.clientX;lastCtxY=e.clientY;
-    const tok=tokens[tokId];
     const hasChain=chainsForToken(chains,tokId).length>0;
     document.querySelector('.ctx-item[data-action="chain"]').style.display=hasChain?"none":"flex";
     document.querySelector('.ctx-item[data-action="unchain"]').style.display=hasChain?"flex":"none";
-    // HP visibility toggle — available for any token
     document.querySelector('.ctx-item[data-action="hide-hp"]').style.display=tok.hideHp?"none":"flex";
     document.querySelector('.ctx-item[data-action="show-hp"]').style.display=tok.hideHp?"flex":"none";
-    // Adjust HP — only meaningful for PCs (reads/writes characters/pcs)
     document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display=tok.type==="pc"?"flex":"none";
     ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");return;
   }
@@ -1466,6 +1608,202 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
   refreshNightBtn();
   render();
 })();
+
+// ── Character sheet panel (GM editable) ───────────────────────────────────────
+const LIGHT_SOURCES={
+  "torch":{bright:4,dim:8},"candle":{bright:1,dim:2},
+  "hooded lantern":{bright:6,dim:12},"bullseye lantern":{bright:12,dim:24},
+  "light":{bright:4,dim:8},"daylight":{bright:12,dim:24},"dancing lights":{bright:0,dim:4},
+};
+const HEAL_ITEMS={
+  "potion of healing":()=>rollDiceExpr("2d4+2"),
+  "potion of greater healing":()=>rollDiceExpr("4d4+4"),
+  "potion of superior healing":()=>rollDiceExpr("8d4+8"),
+  "potion of supreme healing":()=>rollDiceExpr("10d4+20"),
+  "goodberry":()=>1,
+};
+const CONDITION_REMOVERS={"antitoxin":["poisoned"]};
+
+function rollDiceExpr(expr){const m=expr.match(/(\d+)d(\d+)([+-]\d+)?/);if(!m)return 0;let t=0;for(let i=0;i<parseInt(m[1]);i++)t+=Math.floor(Math.random()*parseInt(m[2]))+1;if(m[3])t+=parseInt(m[3]);return t;}
+function itemKey(name){return(name||"").toLowerCase().trim();}
+
+const SHEET_ABILITY_KEYS=["str","dex","con","int","wis","cha"];
+const SHEET_ABILITY_LABELS={str:"STR",dex:"DEX",con:"CON",int:"INT",wis:"WIS",cha:"CHA"};
+const SHEET_SKILLS=[
+  {key:"acrobatics",label:"Acrobatics",stat:"dex"},{key:"animal_handling",label:"Animal Handling",stat:"wis"},
+  {key:"arcana",label:"Arcana",stat:"int"},{key:"athletics",label:"Athletics",stat:"str"},
+  {key:"deception",label:"Deception",stat:"cha"},{key:"history",label:"History",stat:"int"},
+  {key:"insight",label:"Insight",stat:"wis"},{key:"intimidation",label:"Intimidation",stat:"cha"},
+  {key:"investigation",label:"Investigation",stat:"int"},{key:"medicine",label:"Medicine",stat:"wis"},
+  {key:"nature",label:"Nature",stat:"int"},{key:"perception",label:"Perception",stat:"wis"},
+  {key:"performance",label:"Performance",stat:"cha"},{key:"persuasion",label:"Persuasion",stat:"cha"},
+  {key:"religion",label:"Religion",stat:"int"},{key:"sleight_of_hand",label:"Sleight of Hand",stat:"dex"},
+  {key:"stealth",label:"Stealth",stat:"dex"},{key:"survival",label:"Survival",stat:"wis"},
+];
+function sMod(s){const m=Math.floor((s-10)/2);return(m>=0?"+":"")+m;}
+function sFmt(n){return(n>=0?"+":"")+n;}
+function sEsc(str){return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function sSpellLevel(lvl){if(lvl===0)return"Cantrip";const s=["th","st","nd","rd","th","th","th","th","th","th"][lvl]||"th";return lvl+s+" Level";}
+function sHpColor(cur,max){if(!max)return"#c8a84b";const p=cur/max;return p>.5?"#5a9a5a":p>.25?"#aaaa30":"#e04040";}
+
+window.togglePanel=window.togglePanel||function(panelId,btnId){const p=document.getElementById(panelId),b=document.getElementById(btnId);if(!p||!b)return;const o=p.classList.toggle("open");b.classList.toggle("open",o);};
+window.toggleSlot=window.toggleSlot||function(pip){const charId=pip.dataset.charid,lvl=pip.dataset.lvl,idx=parseInt(pip.dataset.idx,10),max=parseInt(pip.dataset.max,10);const pips=[...pip.parentElement.querySelectorAll(".slot-pip")];const clamped=Math.max(0,Math.min(max,pip.classList.contains("used")?idx:idx+1));pips.forEach((p,i)=>p.classList.toggle("used",i<clamped));set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(console.error);};
+window.toggleCharge=window.toggleCharge||function(pip){const charId=pip.dataset.charid,abKey=pip.dataset.abkey,idx=parseInt(pip.dataset.idx,10),max=parseInt(pip.dataset.max,10);const pips=[...pip.parentElement.querySelectorAll(".charge-pip")];const clamped=Math.max(0,Math.min(max,pip.classList.contains("used")?idx:idx+1));pips.forEach((p,i)=>p.classList.toggle("used",i<clamped));set(ref(db,`characters/pcs/${charId}/abilities/${abKey}/current`),max-clamped).catch(console.error);};
+window.adjustHp=window.adjustHp||async function(charId,isHeal){const deltaEl=document.getElementById(`hpdelta-${charId}`);const delta=parseInt(deltaEl?.value,10)||1;if(!deltaEl||delta<=0)return;try{const snap=await get(ref(db,`characters/pcs/${charId}/combat`));if(!snap.exists())return;const c=snap.val(),max=c.hp_max??1;let cur=c.hp_current??0;cur=isHeal?Math.min(max,cur+delta):Math.max(0,cur-delta);await update(ref(db,`characters/pcs/${charId}/combat`),{hp_current:cur});deltaEl.value="";}catch(e){console.error("HP save failed:",e);}};
+
+window.useItem=async function(charId,idx){
+  const snap=await get(ref(db,`characters/pcs/${charId}`));if(!snap.exists())return;
+  const char={...snap.val(),id:charId};
+  const inv=Array.isArray(char.inventory)?[...char.inventory]:Object.values(char.inventory||{});
+  const item=inv[idx];if(!item)return;const key=itemKey(item.name);
+  const lightDef=LIGHT_SOURCES[key];
+  if(lightDef){const isOn=char.light?.active&&char.light?.source===item.name;if(isOn){await update(ref(db,`characters/pcs/${charId}`),{"light/active":false,"light/source":null});showPingToast(`🕯 ${item.name} extinguished`);}else{const newQty=(item.qty??1)-1;inv[idx]={...item,qty:newQty};const updates={"light/active":true,"light/source":item.name,"light/bright":lightDef.bright,"light/dim":lightDef.dim};if(newQty<=0)inv.splice(idx,1);updates.inventory=inv;await update(ref(db,`characters/pcs/${charId}`),updates);showPingToast(`🕯 ${item.name} lit`);}return;}
+  const healFn=HEAL_ITEMS[key];
+  if(healFn){const roll=healFn();const c=char.combat||{};const newHp=Math.min(c.hp_max??1,(c.hp_current??0)+roll);const newQty=(item.qty??1)-1;inv[idx]={...item,qty:newQty};if(newQty<=0)inv.splice(idx,1);await update(ref(db,`characters/pcs/${charId}`),{inventory:inv,"combat/hp_current":newHp});showPingToast(`❤️ ${item.name}: +${roll} HP`);return;}
+  const newQty=(item.qty??1)-1;inv[idx]={...item,qty:newQty};if(newQty<=0)inv.splice(idx,1);
+  await update(ref(db,`characters/pcs/${charId}`),{inventory:inv});showPingToast(`Used ${item.name}`);
+};
+window.removeItem=async function(charId,idx){const snap=await get(ref(db,`characters/pcs/${charId}/inventory`));const inv=snap.exists()?(Array.isArray(snap.val())?[...snap.val()]:Object.values(snap.val())):[];inv.splice(idx,1);await set(ref(db,`characters/pcs/${charId}/inventory`),inv);};
+window.addItem=async function(charId){const name=prompt("Item name:");if(!name?.trim())return;const qty=parseInt(prompt("Quantity:","1"))||1;const snap=await get(ref(db,`characters/pcs/${charId}/inventory`));const inv=snap.exists()?(Array.isArray(snap.val())?[...snap.val()]:Object.values(snap.val())):[];inv.push({name:name.trim(),qty});await set(ref(db,`characters/pcs/${charId}/inventory`),inv);};
+window.giveLight=async function(charId){const name=prompt("Light source name (e.g. 'Flaming Sword'):");if(!name?.trim())return;const bright=parseInt(prompt("Bright radius (tiles):","4"))||4;const dim=parseInt(prompt("Dim radius (tiles):","8"))||8;const consumeItem=prompt("Consume item from inventory? (leave blank to skip):");if(consumeItem?.trim()){const snap=await get(ref(db,`characters/pcs/${charId}/inventory`));const inv=snap.exists()?(Array.isArray(snap.val())?[...snap.val()]:Object.values(snap.val())):[];const idx=inv.findIndex(i=>i.name.toLowerCase()===consumeItem.trim().toLowerCase());if(idx>=0){const newQty=(inv[idx].qty??1)-1;inv[idx]={...inv[idx],qty:newQty};if(newQty<=0)inv.splice(idx,1);await set(ref(db,`characters/pcs/${charId}/inventory`),inv);}}await update(ref(db,`characters/pcs/${charId}`),{"light/active":true,"light/source":name.trim(),"light/bright":bright,"light/dim":dim});showPingToast(`🕯 ${name} lit for ${charId}`);};
+window.extinguishLight=async function(charId){await update(ref(db,`characters/pcs/${charId}`),{"light/active":false,"light/source":null});showPingToast("Light extinguished");};
+
+function buildSheetCard(char,editable=true){
+  const c=char.combat||{},st=char.stats||{},sp=char.spellcasting||null,sk=char.skills||{};
+  const conds=c.conditions||[];
+  const hpCur=c.hp_current??0,hpMax=c.hp_max??1;
+  const hpPct=Math.max(0,Math.min(1,hpCur/hpMax));
+  const tempHp=c.temp_hp??0;
+  const initBonus=c.initiative_bonus??Math.floor(((st.dex??10)-10)/2);
+  const profBonus=c.proficiency_bonus??2;
+  const passPerc=char.senses?.passive_perception??(10+Math.floor(((st.wis??10)-10)/2));
+  const subLine=`Lv ${char.level??'?'} ${char.class||''}${char.subclass?` (${char.subclass})`:''}${char.species?` · ${char.species}`:''}`;
+
+  const abilityBoxes=SHEET_ABILITY_KEYS.map(k=>{const score=st[k]??10;return `<div class="ab-box"><div class="ab-name">${SHEET_ABILITY_LABELS[k]}</div><div class="ab-score">${score}</div><div class="ab-mod">${sMod(score)}</div></div>`;}).join('');
+  const condPills=conds.map(cd=>`<div class="cond-pill">${cd}</div>`).join('');
+
+  // Light status
+  const lightActive=char.light?.active;
+  const lightBanner=lightActive?`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:rgba(200,168,75,.08);border-bottom:1px solid rgba(200,168,75,.2)"><span style="font-family:'Cinzel',serif;font-size:.65rem;color:var(--gold)">🕯 ${sEsc(char.light.source||'Light')} — ${char.light.bright}ft bright</span><button onclick="window.extinguishLight('${char.id}')" style="font-family:'Cinzel',serif;font-size:.58rem;padding:1px 6px;border-radius:3px;border:1px solid rgba(224,64,64,.3);background:transparent;color:#fca5a5;cursor:pointer">Extinguish</button></div>`:'';
+
+  // Weapons
+  const attacks=char.attacks||[];
+  let weaponHtml='';
+  if(attacks.length){const items=attacks.map(a=>{const atk=a.to_hit!=null&&a.to_hit!==''?sFmt(parseInt(String(a.to_hit).replace(/[^0-9\-]/g,""),10)||0):(a.attack_bonus!=null?sFmt(parseInt(String(a.attack_bonus).replace(/[^0-9\-]/g,""),10)||0):'—');const notes=[a.properties,a.notes].filter(Boolean).join(' · ');return `<div class="weapon-item"><div class="weapon-top"><div class="weapon-name">${a.name||'Unnamed'}</div>${a.damage_type?`<div class="weapon-type">${a.damage_type}</div>`:''}</div><div class="weapon-stats"><div class="wstat"><div class="wstat-label">Attack</div><div class="wstat-val">${atk}</div></div><div class="wstat"><div class="wstat-label">Damage</div><div class="wstat-val">${a.damage||'—'}</div></div>${a.range?`<div class="wstat"><div class="wstat-label">Range</div><div class="wstat-val">${a.range}</div></div>`:''}</div>${notes?`<div class="weapon-notes">${sEsc(notes)}</div>`:''}</div>`;}).join('');weaponHtml=`<div class="expand-panel" id="wp-${char.id}"><div class="weapon-list">${items}</div></div>`;}
+
+  // Inventory
+  const invRaw=char.inventory??{};
+  const inventory=Array.isArray(invRaw)?invRaw:Object.values(invRaw);
+  let invHtml='';
+  if(inventory.length||editable){
+    const items=inventory.map((item,idx)=>{
+      const key=itemKey(item.name);
+      const isLight=!!LIGHT_SOURCES[key];
+      const isHeal=!!HEAL_ITEMS[key];
+      const lightActive=char.light?.active&&char.light?.source===item.name;
+      const useLabel=isLight?(lightActive?'🕯 Extinguish':'🕯 Light'):(isHeal?'❤️ Use':'✨ Use');
+      const useBtnStyle=isLight&&lightActive?'color:#c8a84b;border-color:rgba(200,168,75,.4)':'';
+      return `<div class="inv-item"><div class="inv-item-top"><span class="inv-name">${sEsc(item.name||'Unnamed')}</span><div style="display:flex;align-items:center;gap:3px;flex-shrink:0">${(item.qty??1)>1?`<span class="inv-qty">×${item.qty}</span>`:''}<button onclick="window.useItem('${char.id}',${idx})" style="font-family:'Cinzel',serif;font-size:.56rem;padding:2px 5px;border-radius:3px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:var(--dim);cursor:pointer;${useBtnStyle}">${useLabel}</button>${editable?`<button onclick="window.removeItem('${char.id}',${idx})" style="font-family:'Cinzel',serif;font-size:.6rem;padding:2px 5px;border-radius:3px;border:1px solid rgba(224,64,64,.3);background:rgba(224,64,64,.06);color:#fca5a5;cursor:pointer">✕</button>`:''}</div></div>${item.notes?`<div class="inv-notes">${sEsc(item.notes)}</div>`:''}</div>`;
+    }).join('');
+    const addRow=editable?`<button onclick="window.addItem('${char.id}')" style="width:100%;margin-top:6px;font-family:'Cinzel',serif;font-size:.65rem;padding:6px;border-radius:4px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.06);color:var(--gold-dim);cursor:pointer">+ Add Item</button>`:'';
+    const giveRow=editable?`<button onclick="window.giveLight('${char.id}')" style="width:100%;margin-top:4px;font-family:'Cinzel',serif;font-size:.65rem;padding:6px;border-radius:4px;border:1px solid rgba(200,168,75,.2);background:transparent;color:var(--dim);cursor:pointer">🕯 Give Custom Light</button>`:'';
+    invHtml=`<div class="expand-panel" id="inv-${char.id}">${items}${addRow}${giveRow}</div>`;
+  }
+
+  // Spells
+  let spellHtml='',hasSpells=false;
+  if(sp){
+    const spMeta=[sp.ability?`Ability: <span>${sp.ability.toUpperCase()}</span>`:null,sp.spell_save_dc?`DC <span>${sp.spell_save_dc}</span>`:null,sp.spell_attack_bonus!=null?`Atk <span>${sFmt(sp.spell_attack_bonus)}</span>`:null].filter(Boolean).map(s=>`<div class="sp-meta-item">${s}</div>`).join('');
+    let slotRows='';
+    for(let lvl=1;lvl<=9;lvl++){const maxS=sp.slots?.[String(lvl)]??sp.slots?.[lvl]??0;if(!maxS)continue;const usedS=sp.slots_used?.[String(lvl)]??sp.slots_used?.[lvl]??0;let pips='';for(let i=0;i<maxS;i++)pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;slotRows+=`<div class="slot-level-row"><div class="slot-level-label">${sSpellLevel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;}
+    const spells=sp.spells||[];
+    const cantrips=spells.filter(s=>s.prepared_type==='cantrip'||s.level===0);
+    const prepared=spells.filter(s=>s.prepared_type!=='cantrip'&&s.level!==0);
+    const renderSpell=s=>`<div class="spell-item"><div class="spell-item-top"><span class="spell-name">${sEsc(s.name)}</span><span class="spell-level-tag">${s.level===0||s.prepared_type==='cantrip'?'Cantrip':sSpellLevel(s.level||1)}</span></div>${s.beginner_tip?`<div class="spell-tip"><span class="spell-tip-text">✦ ${sEsc(s.beginner_tip)}</span></div>`:''}</div>`;
+    hasSpells=!!(cantrips.length||prepared.length||slotRows);
+    spellHtml=`<div class="expand-panel" id="sp-${char.id}">${spMeta?`<div class="sp-meta">${spMeta}</div>`:''}${slotRows?`<div class="slot-levels">${slotRows}</div>`:''}${cantrips.length?`<div class="sp-section-title">Cantrips</div><div class="spell-list">${cantrips.map(renderSpell).join('')}</div>`:''}${prepared.length?`<div class="sp-section-title">Prepared</div><div class="spell-list">${prepared.map(renderSpell).join('')}</div>`:''}${!cantrips.length&&!prepared.length?`<div class="empty-panel">No spells recorded.</div>`:''}</div>`;
+  }
+
+  // Skills & Saves
+  const skillRows=SHEET_SKILLS.map(s=>{const d=sk[s.key]||{};const base=Math.floor(((st[s.stat]??10)-10)/2);const bonus=d.bonus!=null?d.bonus:(base+(d.proficient?profBonus:0)+(d.expertise?profBonus:0));const cls=d.expertise?'expert':d.proficient?'prof':'';return `<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${sFmt(bonus)}</span></div>`;}).join('');
+  const saveProfList=char.saves?.proficient||[];
+  const saveRows=SHEET_ABILITY_KEYS.map(k=>{const base=Math.floor(((st[k]??10)-10)/2);const prof=saveProfList.includes(k);return `<div class="save-row-item${prof?' prof':''}"><span class="skill-name">${SHEET_ABILITY_LABELS[k]}</span><span class="skill-val">${sFmt(base+(prof?profBonus:0))}</span></div>`;}).join('');
+  const sensePills=Object.entries(char.senses||{}).map(([k,v])=>{if(v==null||v===false||v==='')return'';const label=k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());const val=typeof v==='number'?` ${v} ft`:(v===true?'':` ${v}`);return `<div class="sense-pill">${label}${val}</div>`;}).join('');
+
+  const abilityCards=Object.entries(char.abilities||{}).map(([abKey,ab])=>{if(!ab||!ab.label)return'';if(ab.kind==='charge'&&ab.max){const used=ab.max-(ab.current??ab.max);const meta=[ab.die?`${ab.die}`:null,ab.recharge?`recharge: ${ab.recharge}`:null].filter(Boolean).join(' · ');const pips=Array.from({length:ab.max},(_,i)=>`<div class="charge-pip${i<used?' used':''}" data-charid="${char.id}" data-abkey="${abKey}" data-idx="${i}" data-max="${ab.max}" onclick="window.toggleCharge(this)"></div>`).join('');return `<div class="ability-charge"><div class="ability-charge-top"><span class="ability-charge-name">${sEsc(ab.label)}</span>${meta?`<span class="ability-charge-meta">${sEsc(meta)}</span>`:''}</div><div class="charge-pips">${pips}</div>${ab.effect_desc?`<div class="feat-desc" style="margin-top:4px">${sEsc(ab.effect_desc)}</div>`:''}</div>`;}return `<div class="feat-item"><div class="feat-name">${sEsc(ab.label)}</div>${ab.effect_desc?`<div class="feat-desc">${sEsc(ab.effect_desc)}</div>`:''}</div>`;}).join('');
+  const featuresText=char.text_blocks?.features_traits||'';
+  const profText=char.text_blocks?.proficiencies_languages||'';
+  const featuresBlock=featuresText?`<div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${sEsc(featuresText)}</div></div>`:'';
+  const profBlock=profText?`<div class="sp-section-title">Proficiencies &amp; Languages</div><div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${sEsc(profText)}</div></div>`:'';
+  const skillPanel=`<div class="expand-panel" id="sk-${char.id}"><div class="sp-section-title">Saving Throws</div><div class="save-grid">${saveRows}</div>${sensePills?`<div class="sp-section-title">Senses</div><div class="senses-block">${sensePills}</div>`:''}<div class="sp-section-title">Skills</div><div class="skill-grid">${skillRows}</div>${abilityCards||featuresBlock?`<div class="sp-section-title">Features &amp; Traits</div>${abilityCards}${featuresBlock}`:''} ${profBlock}</div>`;
+
+  const hasTip=!!char.beginner_tip;
+  const tipPanel=hasTip?`<div class="expand-panel" id="tg-${char.id}"><div class="combat-guide-wrap"><div class="combat-guide">${sEsc(char.beginner_tip)}</div></div></div>`:'';
+
+  const eq=char.equipped||{};const eqParts=[];
+  if(eq.armor)eqParts.push(`<div class="equipped-badge">🛡 <span>${sEsc(eq.armor)}</span></div>`);
+  if(eq.shield)eqParts.push(`<div class="equipped-badge">🔰 <span>Shield</span></div>`);
+  if(eq.offhand)eqParts.push(`<div class="equipped-badge">✋ <span>${sEsc(eq.offhand)}</span></div>`);
+  const cp=char.coin_purse;
+  const coinRow=cp?`<div class="coin-row"><span class="coin-label">💰</span><div class="coin pp">◈ ${cp.pp??0}pp</div><div class="coin gp">◉ ${cp.gp??0}gp</div><div class="coin ep">◈ ${cp.ep??0}ep</div><div class="coin sp">◎ ${cp.sp??0}sp</div><div class="coin cp">○ ${cp.cp??0}cp</div></div>`:'';
+
+  const card=document.createElement('div');card.className='card';card.id=`card-${char.id}`;
+  card.innerHTML=`
+    <div class="card-header">
+      <div class="char-name">${sEsc(char.name||'Unnamed')}</div>
+      <div class="char-sub">${sEsc(subLine)}</div>
+      ${char.combat_role?`<div class="char-role-badge">${sEsc(char.combat_role)}</div>`:''}
+      <div class="hp-row"><div class="hp-label">HP</div><div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${sHpColor(hpCur,hpMax)}"></div></div><div class="hp-val" id="hpval-${char.id}">${hpCur} / ${hpMax}</div>${tempHp?`<div class="temp-badge">+${tempHp} tmp</div>`:''}</div>
+      <div class="hp-controls"><input class="hp-delta" id="hpdelta-${char.id}" type="number" min="1" placeholder="amt"/><button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button><button class="hp-btn dmg" onclick="window.adjustHp('${char.id}',false)">− Dmg</button></div>
+    </div>
+    ${lightBanner}
+    <div class="stats-row">
+      <div class="stat-cell"><div class="stat-label">AC</div><div class="stat-val">${c.ac??'—'}</div></div>
+      <div class="stat-cell"><div class="stat-label">Speed</div><div class="stat-val">${c.speed??30}</div></div>
+      <div class="stat-cell"><div class="stat-label">Init</div><div class="stat-val">${sFmt(initBonus)}</div></div>
+      <div class="stat-cell"><div class="stat-label">Prof</div><div class="stat-val">+${profBonus}</div></div>
+      <div class="stat-cell"><div class="stat-label">Perc</div><div class="stat-val">${passPerc}</div></div>
+    </div>
+    ${eqParts.length?`<div class="equipped-row">${eqParts.join('')}</div>`:''}
+    ${coinRow}
+    <div class="ability-grid">${abilityBoxes}</div>
+    ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
+    <div class="card-footer">
+      ${hasTip?`<button class="panel-btn tip-btn" id="tgbtn-${char.id}" onclick="window.togglePanel('tg-${char.id}','tgbtn-${char.id}')">✦ Combat Guide <span class="chevron">▾</span></button>`:''}
+      ${attacks.length?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">⚔ Weapons &amp; Attacks <span class="chevron">▾</span></button>`:''}
+      <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">📋 Skills &amp; Saves <span class="chevron">▾</span></button>
+      ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">✨ Spells <span class="chevron">▾</span></button>`:''}
+      ${inventory.length||editable?`<button class="panel-btn inv-btn" id="invbtn-${char.id}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="chevron">▾</span></button>`:''}
+    </div>
+    ${tipPanel}${attacks.length?weaponHtml:''}${skillPanel}${hasSpells?spellHtml:''}${inventory.length||editable?invHtml:''}`;
+  return card;
+}
+
+let sheetWatcher=null;
+let sheetCharId=null;
+
+window.closeSheetPanel=function(){
+  document.getElementById('sheet-panel').classList.remove('open');
+  if(sheetWatcher){sheetWatcher();sheetWatcher=null;}
+  sheetCharId=null;
+};
+
+function openCharSheet(charId,charName){
+  const panel=document.getElementById('sheet-panel');
+  const view=document.getElementById('sheet-view');
+  const title=document.getElementById('sheet-panel-title');
+  panel.classList.add('open');
+  view.innerHTML='<div id="sheet-empty">Loading…</div>';
+  title.textContent=`📋 ${charName||'CHARACTER'}`;
+  if(sheetWatcher){sheetWatcher();sheetWatcher=null;}
+  sheetCharId=charId;
+  sheetWatcher=onValue(ref(db,`characters/pcs/${charId}`),snap=>{
+    if(!snap.exists()){view.innerHTML=`<div id="sheet-empty">Character not found</div>`;return;}
+    const char={...snap.val(),id:charId};
+    view.innerHTML='';
+    view.appendChild(buildSheetCard(char,true));
+  });
+}
 </script>
 </body>
 </html>

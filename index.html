@@ -807,6 +807,122 @@ window.closeSheetPanel=function(){
   if(sheetWatcher){sheetWatcher();sheetWatcher=null;}
 };
 
+// ── Consumable item definitions ───────────────────────────────────────────────
+const LIGHT_SOURCES={
+  "torch":           {bright:4,dim:8},
+  "candle":          {bright:1,dim:2},
+  "hooded lantern":  {bright:6,dim:12},
+  "bullseye lantern":{bright:12,dim:24},
+  "light":           {bright:4,dim:8},
+  "daylight":        {bright:12,dim:24},
+  "dancing lights":  {bright:0,dim:4},
+};
+const HEAL_ITEMS={
+  "potion of healing":         ()=>rollDiceExpr("2d4+2"),
+  "potion of greater healing": ()=>rollDiceExpr("4d4+4"),
+  "potion of superior healing":()=>rollDiceExpr("8d4+8"),
+  "potion of supreme healing": ()=>rollDiceExpr("10d4+20"),
+  "goodberry":                 ()=>1,
+};
+const CONDITION_REMOVERS={
+  "antitoxin":["poisoned"],
+};
+
+function rollDiceExpr(expr){
+  // e.g. "2d4+2"
+  const m=expr.match(/(\d+)d(\d+)([+-]\d+)?/);
+  if(!m)return 0;
+  let total=0;
+  for(let i=0;i<parseInt(m[1]);i++)total+=Math.floor(Math.random()*parseInt(m[2]))+1;
+  if(m[3])total+=parseInt(m[3]);
+  return total;
+}
+
+function itemKey(name){return(name||"").toLowerCase().trim();}
+
+window.useItem=async function(charId,idx){
+  const snap=await get(ref(db,`characters/pcs/${charId}`));
+  if(!snap.exists())return;
+  const char={...snap.val(),id:charId};
+  const inv=Array.isArray(char.inventory)?[...char.inventory]:Object.values(char.inventory||{});
+  const item=inv[idx];if(!item)return;
+  const key=itemKey(item.name);
+
+  // Light source
+  const lightDef=LIGHT_SOURCES[key];
+  if(lightDef){
+    const currentLight=char.light||{};
+    const isOn=currentLight.active&&currentLight.source===item.name;
+    if(isOn){
+      // Turn off
+      await update(ref(db,`characters/pcs/${charId}`),{"light/active":false,"light/source":null});
+      toast(`🕯 ${item.name} extinguished`);
+    } else {
+      // Turn on, consume 1
+      const newQty=(item.qty??1)-1;
+      inv[idx]={...item,qty:newQty};
+      const updates={"light/active":true,"light/source":item.name,"light/bright":lightDef.bright,"light/dim":lightDef.dim};
+      if(newQty<=0)inv.splice(idx,1);
+      updates.inventory=inv;
+      await update(ref(db,`characters/pcs/${charId}`),updates);
+      toast(`🕯 ${item.name} lit — ${lightDef.bright} ft bright, ${lightDef.dim} ft dim`);
+    }
+    return;
+  }
+
+  // Healing item
+  const healFn=HEAL_ITEMS[key];
+  if(healFn){
+    const roll=healFn();
+    const c=char.combat||{};
+    const newHp=Math.min(c.hp_max??1,(c.hp_current??0)+roll);
+    const newQty=(item.qty??1)-1;
+    inv[idx]={...item,qty:newQty};
+    if(newQty<=0)inv.splice(idx,1);
+    await update(ref(db,`characters/pcs/${charId}`),{inventory:inv,"combat/hp_current":newHp});
+    toast(`❤️ ${item.name}: +${roll} HP (${newHp}/${c.hp_max??1})`);
+    return;
+  }
+
+  // Condition remover
+  const condRemove=CONDITION_REMOVERS[key];
+  if(condRemove){
+    const c=char.combat||{};
+    const existing=c.conditions||[];
+    const newConds=existing.filter(cd=>!condRemove.includes(cd.toLowerCase()));
+    const newQty=(item.qty??1)-1;
+    inv[idx]={...item,qty:newQty};
+    if(newQty<=0)inv.splice(idx,1);
+    await update(ref(db,`characters/pcs/${charId}`),{inventory:inv,"combat/conditions":newConds});
+    toast(`✨ ${item.name} used — removed ${condRemove.join(", ")}`);
+    return;
+  }
+
+  // Generic consume
+  const newQty=(item.qty??1)-1;
+  inv[idx]={...item,qty:newQty};
+  if(newQty<=0)inv.splice(idx,1);
+  await update(ref(db,`characters/pcs/${charId}`),{inventory:inv});
+  toast(`Used ${item.name}`);
+};
+
+window.removeItem=async function(charId,idx){
+  const snap=await get(ref(db,`characters/pcs/${charId}/inventory`));
+  const inv=snap.exists()?(Array.isArray(snap.val())?[...snap.val()]:Object.values(snap.val())):[];
+  inv.splice(idx,1);
+  await set(ref(db,`characters/pcs/${charId}/inventory`),inv);
+};
+
+window.addItem=async function(charId){
+  const name=prompt("Item name:");if(!name?.trim())return;
+  const qtyStr=prompt("Quantity:","1");
+  const qty=parseInt(qtyStr)||1;
+  const snap=await get(ref(db,`characters/pcs/${charId}/inventory`));
+  const inv=snap.exists()?(Array.isArray(snap.val())?[...snap.val()]:Object.values(snap.val())):[];
+  inv.push({name:name.trim(),qty});
+  await set(ref(db,`characters/pcs/${charId}/inventory`),inv);
+};
+
 // ── Sheet helpers (ported from sheet.html) ────────────────────────────────────
 let sheetSpellsDb={}, sheetSkillsDb=[], sheetEquipDb={}, sheetMagicDb={};
 let sheetApiLoaded=false;
@@ -893,7 +1009,7 @@ window.adjustHp=async function(charId,isHeal){
   }catch(e){console.error("HP save failed:",e);}
 };
 
-function buildSheetCard(char){
+function buildSheetCard(char, editable=false){
   const c=char.combat||{},st=char.stats||{},sp=char.spellcasting||null,sk=char.skills||{};
   const conds=c.conditions||[];
   const hpCur=c.hp_current??0,hpMax=c.hp_max??1;
@@ -932,17 +1048,34 @@ function buildSheetCard(char){
   const invRaw=char.inventory??{};
   const inventory=Array.isArray(invRaw)?invRaw:Object.values(invRaw);
   let invHtml='';
-  if(inventory.length){
-    const items=inventory.map(item=>{
+  if(inventory.length||editable){
+    const items=inventory.map((item,idx)=>{
       const api=sheetGetItem(item.name);
       const rarity=api?.rarity?.name?.toLowerCase().replace(/\s+/g,'-')??null;
       const rc=rarity&&rarity!=='none'?` inv-rarity-${rarity}`:'';
-      return `<div class="inv-item${rc}"><div class="inv-item-top"><span class="inv-name">${sheetEsc(item.name||'Unnamed')}</span>${(item.qty??1)>1?`<span class="inv-qty">×${item.qty}</span>`:''}</div>
+      const key=itemKey(item.name);
+      const isLight=!!LIGHT_SOURCES[key];
+      const isHeal=!!HEAL_ITEMS[key];
+      const isCondRemove=!!CONDITION_REMOVERS[key];
+      const isConsumable=isLight||isHeal||isCondRemove||true; // show Use on all
+      const lightActive=char.light?.active&&char.light?.source===item.name;
+      const useLabel=isLight?(lightActive?'🕯 Extinguish':'🕯 Light'):(isHeal?'❤️ Use':'✨ Use');
+      const useBtnStyle=isLight&&lightActive?'color:#c8a84b;border-color:rgba(200,168,75,.4)':'';
+      return `<div class="inv-item${rc}" style="position:relative">
+        <div class="inv-item-top">
+          <span class="inv-name">${sheetEsc(item.name||'Unnamed')}</span>
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+            ${(item.qty??1)>1?`<span class="inv-qty">×${item.qty}</span>`:''}
+            <button onclick="window.useItem('${char.id}',${idx})" style="font-family:'Cinzel',serif;font-size:.58rem;padding:2px 6px;border-radius:3px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:var(--dim);cursor:pointer;${useBtnStyle}">${useLabel}</button>
+            ${editable?`<button onclick="window.removeItem('${char.id}',${idx})" style="font-family:'Cinzel',serif;font-size:.6rem;padding:2px 6px;border-radius:3px;border:1px solid rgba(224,64,64,.3);background:rgba(224,64,64,.06);color:#fca5a5;cursor:pointer">✕</button>`:''}
+          </div>
+        </div>
         ${sheetItemCat(api)?`<span class="inv-cat">${sheetEsc(sheetItemCat(api))}</span>`:''}
         ${item.desc||sheetItemDesc(api)?`<div class="inv-desc">${sheetEsc(item.desc||sheetItemDesc(api))}</div>`:''}
         ${item.notes?`<div class="inv-notes">${sheetEsc(item.notes)}</div>`:''}</div>`;
     }).join('');
-    invHtml=`<div class="expand-panel" id="inv-${char.id}">${items}</div>`;
+    const addRow=editable?`<button onclick="window.addItem('${char.id}')" style="width:100%;margin-top:6px;font-family:'Cinzel',serif;font-size:.65rem;padding:6px;border-radius:4px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.06);color:var(--gold-dim);cursor:pointer">+ Add Item</button>`:'';
+    invHtml=`<div class="expand-panel" id="inv-${char.id}">${items}${addRow}</div>`;
   }
 
   // Spells
