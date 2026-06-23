@@ -552,7 +552,7 @@ function charToForm(){
 
 // ── form → char ───────────────────────────────────────────────────────────────
 function getVal(id){const el=$id(id);if(!el)return undefined;return el.type==='checkbox'?el.checked:el.value;}
-function getNum(id){const v=getVal(id);return v===''||v==null?undefined:Number(v);}
+function getNum(id){const v=getVal(id);return v===''||v==null?null:Number(v);}
 
 function formToChar(){
   const c=currentChar;
@@ -560,11 +560,10 @@ function formToChar(){
   c.class=getVal('f-class'); c.subclass=getVal('f-subclass'); c.species=getVal('f-species');
   c.background=getVal('f-background'); c.alignment=getVal('f-alignment');
   c.combat_role=getVal('f-combat_role'); c.beginner_tip=getVal('f-beginner_tip');
-  c.senses={
-    passive_perception:getNum('f-senses-passive_perception'),
-    darkvision:getNum('f-senses-darkvision')||undefined,
-    tremorsense:getNum('f-senses-tremorsense')||undefined,
-  };
+  const sensesOut={passive_perception:getNum('f-senses-passive_perception')||10};
+  const dv=getNum('f-senses-darkvision'); if(dv) sensesOut.darkvision=dv;
+  const ts=getNum('f-senses-tremorsense'); if(ts) sensesOut.tremorsense=ts;
+  c.senses=sensesOut;
   c.equipped={armor:getVal('f-equipped-armor'),shield:getVal('f-equipped-shield'),offhand:getVal('f-equipped-offhand')};
   const co=c.combat||{}; c.combat=co;
   ['hp_current','hp_max','temp_hp','ac','speed','initiative_bonus','proficiency_bonus'].forEach(k=>{co[k]=getNum(`f-combat-${k}`);});

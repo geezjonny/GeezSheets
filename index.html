@@ -265,7 +265,14 @@ resize();window.addEventListener("resize",resize);
 
 // ── RTDB Listeners ────────────────────────────────────────────────────────────
 // Characters — source of truth for HP
-onValue(ref(db,"characters/pcs"),snap=>{for(const k in pcsData)delete pcsData[k];if(snap.exists())Object.assign(pcsData,snap.val());});
+onValue(ref(db,"characters/pcs"),snap=>{
+  for(const k in pcsData)delete pcsData[k];
+  if(snap.exists()){
+    for(const[id,c]of Object.entries(snap.val())){
+      if(c&&c.name&&c.campaign!=='__oracle__'&&c.type!=='npc')pcsData[id]=c;
+    }
+  }
+});
 
 // Prop definitions
 onValue(ref(db,"propDefs"),snap=>{const data=snap.val();if(!data)return;for(const[id,p]of Object.entries(data)){propDefs[id]=p;tryLoadPropTexture(id);}});
