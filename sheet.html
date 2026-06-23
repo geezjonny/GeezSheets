@@ -578,13 +578,14 @@ function buildCard(char) {
       return parts.length?`<div class="equipped-row">${parts.join('')}</div>`:'';
     })()}
     ${(()=>{
-      const cp=char.coin_purse||{}; const coins=[];
-      if(cp.pp) coins.push(`<div class="coin pp">◈ ${cp.pp}pp</div>`);
-      if(cp.gp) coins.push(`<div class="coin gp">◉ ${cp.gp}gp</div>`);
-      if(cp.ep) coins.push(`<div class="coin ep">◈ ${cp.ep}ep</div>`);
-      if(cp.sp) coins.push(`<div class="coin sp">◎ ${cp.sp}sp</div>`);
-      if(cp.cp) coins.push(`<div class="coin cp">○ ${cp.cp}cp</div>`);
-      return coins.length?`<div class="coin-row"><span class="coin-label">💰</span>${coins.join('')}</div>`:'';
+      const cp=char.coin_purse; if(!cp) return '';
+      const coins=[];
+      coins.push(`<div class="coin pp">◈ ${cp.pp??0}pp</div>`);
+      coins.push(`<div class="coin gp">◉ ${cp.gp??0}gp</div>`);
+      coins.push(`<div class="coin ep">◈ ${cp.ep??0}ep</div>`);
+      coins.push(`<div class="coin sp">◎ ${cp.sp??0}sp</div>`);
+      coins.push(`<div class="coin cp">○ ${cp.cp??0}cp</div>`);
+      return `<div class="coin-row"><span class="coin-label">💰</span>${coins.join('')}</div>`;
     })()}
     <div class="ability-grid">${abilityBoxes}</div>
     ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
