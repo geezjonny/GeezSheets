@@ -321,6 +321,46 @@ function buildCard(char) {
     }).join('');
     weaponPanelHtml = `<div class="expand-panel" id="wp-${char.id}"><div class="weapon-list">${weaponItems}</div></div>`;
   }
+  
+	// ── Inventory ───────────────────────────────────────────────────────────────
+	const inventory = char.inventory || [];
+	const hasInventory = inventory.length > 0;
+
+	let inventoryPanelHtml = '';
+
+	if (hasInventory) {
+
+	  const inventoryItems = inventory.map(item => {
+
+		return `
+		  <div class="feat-item">
+			<div class="feat-name">
+			  ${esc(item.name || 'Unnamed')}
+			  ${item.qty > 1 ? ` x${item.qty}` : ''}
+			</div>
+
+			${item.category ? `
+			  <div class="weapon-type">
+				${esc(item.category)}
+			  </div>
+			` : ''}
+
+			${item.desc ? `
+			  <div class="feat-desc">
+				${esc(item.desc)}
+			  </div>
+			` : ''}
+		  </div>
+		`;
+
+	  }).join('');
+
+	  inventoryPanelHtml = `
+		<div class="expand-panel" id="inv-${char.id}">
+		  ${inventoryItems}
+		</div>
+	  `;
+	}
 
   // ── Spells — descriptions now from spells.json ─────────────────────────────
   let spellPanelHtml = '', hasSpells = false;
@@ -435,11 +475,13 @@ function buildCard(char) {
       ${hasWeapons?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">⚔ Weapons &amp; Attacks <span class="chevron">▾</span></button>`:''}
       <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">📋 Skills &amp; Feats <span class="chevron">▾</span></button>
       ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">✨ Spells &amp; Cantrips <span class="chevron">▾</span></button>`:''}
+	  ${hasInventory?`<button class="panel-btn" id="invbtn-${char.id}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="chevron">▾</span></button>`:''}
     </div>
     ${tipPanelHtml}
     ${weaponPanelHtml}
     ${skillPanelHtml}
-    ${spellPanelHtml}`;
+    ${spellPanelHtml}`
+	${inventoryPanelHtml};
   return card;
 }
 

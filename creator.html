@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GeezSheets Currency Admin</title>
+
+<style>
+body{
+    background:#121214;
+    color:white;
+    font-family:sans-serif;
+    padding:20px;
+}
+
+.panel{
+    max-width:600px;
+    margin:auto;
+    background:#1a1a1e;
+    padding:20px;
+    border-radius:8px;
+}
+
+label{
+    display:block;
+    margin-top:12px;
+}
+
+input,select{
+    width:100%;
+    padding:10px;
+    margin-top:4px;
+    background:#222;
+    color:white;
+    border:1px solid #444;
+}
+
+button{
+    margin-top:20px;
+    width:100%;
+    padding:12px;
+    background:#7289da;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+
+#status{
+    margin-top:15px;
+}
+</style>
+</head>
+<body>
+
+<div class="panel">
+
+<h2>Currency Admin</h2>
+
+<label>Character</label>
+<select id="characterSelect">
+    <option>Loading...</option>
+</select>
+
+<label>CP</label>
+<input id="cp" type="number" value="0">
+
+<label>SP</label>
+<input id="sp" type="number" value="0">
+
+<label>GP</label>
+<input id="gp" type="number" value="0">
+
+<label>PP</label>
+<input id="pp" type="number" value="0">
+
+<button id="addCurrencyBtn">
+Add Currency
+</button>
+
+<div id="status"></div>
+
+</div>
+
+<script type="module">
+
+import {
+    initializeApp
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+
+import {
+    getDatabase,
+    ref,
+    get,
+    update
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-database.js";
+
+
+/*
+PASTE YOUR EXISTING CONFIG
+*/
+const firebaseConfig = {
+    // existing config
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const characterSelect =
+    document.getElementById("characterSelect");
+
+async function loadCharacters(){
+
+    const snap =
+        await get(ref(db,"characters"));
+
+    characterSelect.innerHTML = "";
+
+    if(!snap.exists()) return;
+
+    const characters = snap.val();
+
+    Object.entries(characters)
+    .forEach(([id,char])=>{
+
+        const option =
+            document.createElement("option");
+
+        option.value = id;
+        option.textContent =
+            char.name || id;
+
+        characterSelect.appendChild(option);
+    });
+}
+
+async function addCurrency(){
+
+    const charId =
+        characterSelect.value;
+
+    const cp =
+        Number(document.getElementById("cp").value);
+
+    const sp =
+        Number(document.getElementById("sp").value);
+
+    const gp =
+        Number(document.getElementById("gp").value);
+
+    const pp =
+        Number(document.getElementById("pp").value);
+
+    const charRef =
+        ref(db,`characters/${charId}`);
+
+    const snap =
+        await get(charRef);
+
+    if(!snap.exists()){
+        alert("Character not found");
+        return;
+    }
+
+    const data = snap.val();
+
+    const currency =
+        data.currency || {
+            cp:0,
+            sp:0,
+            gp:0,
+            pp:0
+        };
+
+    await update(charRef,{
+        currency:{
+            cp:(currency.cp||0)+cp,
+            sp:(currency.sp||0)+sp,
+            gp:(currency.gp||0)+gp,
+            pp:(currency.pp||0)+pp
+        }
+    });
+
+    document.getElementById("status")
+        .textContent =
+        "Currency Added";
+}
+
+document
+    .getElementById("addCurrencyBtn")
+    .addEventListener(
+        "click",
+        addCurrency
+    );
+
+loadCharacters();
+
+</script>
+
+</body>
+</html>
