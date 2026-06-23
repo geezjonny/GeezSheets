@@ -25,6 +25,9 @@ button:hover{border-color:var(--gold-dim);color:var(--text)}
 button.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
 button.fog-active{border-color:#4a8aaa;color:#7ac0e0;background:rgba(74,138,170,.1)}
 button.roof-active{border-color:#aa7a4a;color:#e0b070;background:rgba(170,122,74,.1)}
+button.wall-active{border-color:#c0392b;color:#e07070;background:rgba(192,57,43,.1)}
+button.darkness-active{border-color:#4a3a6a;color:#9070c0;background:rgba(74,58,106,.1)}
+button.door-active{border-color:#aa8a4a;color:#d4b870;background:rgba(170,138,74,.1)}
 .picker-wrap{position:relative;flex-shrink:0}
 .picker-btn{display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;cursor:pointer}
 .picker-swatch{width:18px;height:18px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.15);background-size:cover}
@@ -154,7 +157,11 @@ canvas{display:block;cursor:crosshair}
     </div>
     <div class="sep"></div>
     <span class="tool-label">Walls</span>
-    <button id="wallBtn" class="active">On</button>
+    <button id="wallBtn">🧱 Walls</button>
+    <span class="tool-label">Dark</span>
+    <button id="darknessBtn">🌑 Dark</button>
+    <span class="tool-label">Door</span>
+    <button id="doorBtn">🚪 Door</button>
     <div class="sep"></div>
     <span class="tool-label">Roof</span>
     <button id="roofBtn">🏠 Roof</button>
@@ -188,6 +195,9 @@ canvas{display:block;cursor:crosshair}
         <div class="pd-item" id="clear-tokens" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⚔ Tokens</div>
         <div class="pd-item" id="clear-props"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🪣 Props</div>
         <div class="pd-item" id="clear-fog"    style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog</div>
+        <div class="pd-item" id="clear-walls"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🧱 Walls</div>
+        <div class="pd-item" id="clear-darkness" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌑 Darkness</div>
+        <div class="pd-item" id="clear-doors"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🚪 Doors</div>
         <div class="pd-item" id="clear-stamps" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⭐ Stamps</div>
         <div class="pd-item" id="clear-tiles"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🟫 Tiles</div>
         <div class="pd-item" id="clear-roofs"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🏠 Roofs</div>
@@ -487,13 +497,15 @@ import { rollAfkDecision, EXPLORE_TABLE } from "./js/afkOracle.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},chains={};
+const wallGroups={},darknessGroups={},doors={};
 let bgImage=null,bgUrl="",bgPpi=70,nightMode=false;
 let pcsData={},propDefs={};
 let customProps=[];
 const activePings={},activeLasers={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
-let currentShape="rect",currentTerrain="grass",wallsEnabled=true;
-let fogMode=false,roofMode=false,currentStamp=null,currentProp=null;
+let currentShape="rect",currentTerrain="grass",wallsEnabled=false;
+let fogMode=false,roofMode=false,wallMode=false,darknessMode=false,doorMode=false;
+let currentStamp=null,currentProp=null;
 let dragging=false,startX=0,startY=0,curX=0,curY=0;
 let hoverTileX=0,hoverTileY=0,roofOpacity=0.5;
 let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
@@ -518,6 +530,8 @@ const coordsEl  =document.getElementById("coords");
 const toastEl   =document.getElementById("toast");
 const mapInput  =document.getElementById("map-name");
 const wallBtn   =document.getElementById("wallBtn");
+const darknessBtn=document.getElementById("darknessBtn");
+const doorBtn   =document.getElementById("doorBtn");
 const fogBtn    =document.getElementById("fogBtn");
 const roofBtn   =document.getElementById("roofBtn");
 const tokenBtn  =document.getElementById("tokenBtn");
@@ -537,6 +551,34 @@ const canvasWrap=document.getElementById("canvas-wrap");
 function key(x,y){return`${x},${y}`;}
 function screenPos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
 function hasWall(x,y){const t=tiles[key(x,y)];return t&&t.walls;}
+
+// Find which wall group contains a tile
+function wallGroupAtTile(tx,ty){const k=key(tx,ty);for(const gid in wallGroups){if(wallGroups[gid].cells?.[k])return gid;}return null;}
+function darknessGroupAtTile(tx,ty){const k=key(tx,ty);for(const gid in darknessGroups){if(darknessGroups[gid].cells?.[k])return gid;}return null;}
+
+// Find nearest wall-group edge to place a door on
+function nearestWallEdge(tx,ty){
+  const neighbors=[{dx:0,dy:-1,edge:"n"},{dx:0,dy:1,edge:"s"},{dx:-1,dy:0,edge:"w"},{dx:1,dy:0,edge:"e"}];
+  // Check if the hovered tile is in a wall group — find an exposed edge
+  const myGid=wallGroupAtTile(tx,ty);
+  if(myGid){
+    for(const{dx,dy,edge}of neighbors){
+      const nk=key(tx+dx,ty+dy);
+      if(!wallGroups[myGid].cells?.[nk])return{edge,x:tx,y:ty};
+    }
+  }
+  // Otherwise check adjacent wall group tiles
+  for(const{dx,dy,edge}of neighbors){
+    const nx=tx+dx,ny=ty+dy;
+    const ngid=wallGroupAtTile(nx,ny);
+    if(ngid){
+      // The edge is on the neighbor tile, facing back toward us
+      const opposite={n:"s",s:"n",e:"w",w:"e"};
+      return{edge:opposite[edge],x:nx,y:ny};
+    }
+  }
+  return{edge:null,x:tx,y:ty};
+}
 function applyTile(x,y){const k=key(x,y);if(currentTerrain==="erase"){delete tiles[k];return;}tiles[k]={terrain:currentTerrain,walls:wallsEnabled};}
 function applyRoof(x,y){const k=key(x,y);if(currentTerrain==="erase"){delete roofs[k];return;}roofs[k]={terrain:currentTerrain};}
 let toastTimer;
@@ -560,6 +602,9 @@ function scheduleSave(){clearTimeout(saveTimer);setStatus("saving","Saving…");
 async function saveRoofs(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/roofs`),Object.keys(roofs).length?roofs:null);}
 async function saveFogLocal(){const m=mapInput.value.trim()||"dungeon-1";await saveFog(m,fogGroups);}
 async function deleteFogGroup(id){const m=mapInput.value.trim()||"dungeon-1";await deleteFogGroupRTDB(m,id,fogGroups);}
+async function saveWallGroups(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/wallGroups`),Object.keys(wallGroups).length?wallGroups:null);}
+async function saveDarknessGroups(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/darknessGroups`),Object.keys(darknessGroups).length?darknessGroups:null);}
+async function saveDoors(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/doors`),Object.keys(doors).length?doors:null);}
 async function saveTokenLocal(id,data){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/tokens/${id}`),data);}
 async function deleteToken(id){const m=mapInput.value.trim()||"dungeon-1";await deleteTokenRTDB(m,id,tokens);}
 async function saveStamp(k,emoji){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/stamps/${k.replace(",","_")}`),emoji||null);}
@@ -587,11 +632,17 @@ function subscribeLive(){
       if(data?.tiles)Object.assign(tiles,data.tiles);
     }
     for(const k in fogGroups)delete fogGroups[k];
+    for(const k in wallGroups)delete wallGroups[k];
+    for(const k in darknessGroups)delete darknessGroups[k];
+    for(const k in doors)delete doors[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in chains)delete chains[k];
     if(data){
       if(data.fog)Object.assign(fogGroups,data.fog);
+      if(data.wallGroups)Object.assign(wallGroups,data.wallGroups);
+      if(data.darknessGroups)Object.assign(darknessGroups,data.darknessGroups);
+      if(data.doors)Object.assign(doors,data.doors);
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
@@ -816,12 +867,15 @@ async function clearSection(section){
   if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);for(const k in chains)delete chains[k];await set(ref(db,`maps/${mapName}/chains`),null);}
   if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);}
   if(section==="fog"||section==="all"){for(const k in fogGroups)delete fogGroups[k];await set(ref(db,`maps/${mapName}/fog`),null);}
+  if(section==="walls"||section==="all"){for(const k in wallGroups)delete wallGroups[k];await set(ref(db,`maps/${mapName}/wallGroups`),null);}
+  if(section==="darkness"||section==="all"){for(const k in darknessGroups)delete darknessGroups[k];await set(ref(db,`maps/${mapName}/darknessGroups`),null);}
+  if(section==="doors"||section==="all"){for(const k in doors)delete doors[k];await set(ref(db,`maps/${mapName}/doors`),null);}
   if(section==="stamps"||section==="all"){for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
   if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);}
   if(section==="roofs"||section==="all"){for(const k in roofs)delete roofs[k];await set(ref(db,`maps/${mapName}/roofs`),null);}
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
 }
-["bg","tokens","props","fog","stamps","tiles","roofs","all"].forEach(s=>{document.getElementById(`clear-${s}`).onclick=()=>clearSection(s);});
+["bg","tokens","props","fog","walls","darkness","doors","stamps","tiles","roofs","all"].forEach(s=>{document.getElementById(`clear-${s}`).onclick=()=>clearSection(s);});
 
 // ── JSON Import ───────────────────────────────────────────────────────────────
 document.getElementById("loadJsonBtn").onclick=()=>document.getElementById("jsonFileInput").click();
@@ -961,11 +1015,21 @@ document.addEventListener("click",()=>{
 });
 
 // Mode buttons
-document.querySelectorAll(".shape").forEach(btn=>{btn.onclick=()=>{if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();fogMode=false;fogBtn.classList.remove("fog-active");roofMode=false;roofBtn.classList.remove("roof-active");currentStamp=null;currentProp=null;currentShape=btn.dataset.shape;document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));btn.classList.add("active");};});
-wallBtn.onclick=()=>{wallsEnabled=!wallsEnabled;wallBtn.textContent=wallsEnabled?"On":"Off";wallBtn.classList.toggle("active",wallsEnabled);};
-roofBtn.onclick=()=>{roofMode=!roofMode;roofBtn.classList.toggle("roof-active",roofMode);if(roofMode){fogMode=false;fogBtn.classList.remove("fog-active");if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();}};
+function deactivateLayerModes(){
+  fogMode=false;fogBtn.classList.remove("fog-active");
+  roofMode=false;roofBtn.classList.remove("roof-active");
+  wallMode=false;wallBtn.classList.remove("wall-active");
+  darknessMode=false;darknessBtn.classList.remove("darkness-active");
+  doorMode=false;doorBtn.classList.remove("door-active");
+  if(selectPhase==="selected"||selectPhase==="moving")commitSelection();
+}
+document.querySelectorAll(".shape").forEach(btn=>{btn.onclick=()=>{deactivateLayerModes();currentStamp=null;currentProp=null;currentShape=btn.dataset.shape;document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));btn.classList.add("active");};});
+wallBtn.onclick=()=>{const on=!wallMode;deactivateLayerModes();wallMode=on;wallBtn.classList.toggle("wall-active",on);};
+darknessBtn.onclick=()=>{const on=!darknessMode;deactivateLayerModes();darknessMode=on;darknessBtn.classList.toggle("darkness-active",on);};
+doorBtn.onclick=()=>{const on=!doorMode;deactivateLayerModes();doorMode=on;doorBtn.classList.toggle("door-active",on);};
+roofBtn.onclick=()=>{const on=!roofMode;deactivateLayerModes();roofMode=on;roofBtn.classList.toggle("roof-active",on);};
 document.getElementById("roof-opacity-btn").onclick=()=>{roofOpacity=roofOpacity<0.9?roofOpacity+0.25:0.25;document.getElementById("roof-opacity-btn").textContent=`👁 ${Math.round(roofOpacity*100)}%`;};
-fogBtn.onclick=()=>{fogMode=!fogMode;fogBtn.classList.toggle("fog-active",fogMode);if(fogMode){roofMode=false;roofBtn.classList.remove("roof-active");if(currentShape==="select"&&(selectPhase==="selected"||selectPhase==="moving"))commitSelection();}};
+fogBtn.onclick=()=>{const on=!fogMode;deactivateLayerModes();fogMode=on;fogBtn.classList.toggle("fog-active",on);};
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
@@ -995,7 +1059,7 @@ function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle
 
 function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/camera.zoom;const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,r=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
-function drawPreview(){if(fogMode||roofMode)return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
+function drawPreview(){if(fogMode||roofMode||wallMode||darknessMode||doorMode)return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
 
 function drawSelection(){if(currentShape!=="select")return;if(selectPhase==="marquee"&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(100,160,255,0.15)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=1.5/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);return;}if(selectPhase==="selected"||selectPhase==="moving"){const ox=moveOffX,oy=moveOffY;const TERRAINS=getTERRAINS();for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);const{terrain}=selectTiles[k];const px=(tx+ox)*TILE,py=(ty+oy)*TILE;const def=TERRAINS.find(t=>t.id===terrain);if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=def?.color||"#333";ctx.fillRect(px,py,TILE,TILE);}}const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE,pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;ctx.fillStyle="rgba(100,160,255,0.18)";ctx.fillRect(px,py,pw,ph);ctx.strokeStyle="rgba(100,160,255,0.95)";ctx.lineWidth=2/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);}}
 
@@ -1028,15 +1092,69 @@ function render(){
     }
   }
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
-  // Walls
+  // Darkness overlay
+  ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
+  for(const gid in darknessGroups){const cells=darknessGroups[gid].cells||{};for(const ck in cells){const[x,y]=ck.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}
+  ctx.restore();
+  // Wall groups — draw perimeter edges
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
-  for(const k in tiles){if(!tiles[k].walls)continue;const[x,y]=k.split(",").map(Number);const px=x*TILE,py=y*TILE;[[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{if(!hasWall(x+dx,y+dy)){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}});}
+  for(const gid in wallGroups){
+    const cells=wallGroups[gid].cells||{};
+    for(const ck in cells){
+      const[x,y]=ck.split(",").map(Number);const px=x*TILE,py=y*TILE;
+      [[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{
+        const nk=key(x+dx,y+dy);
+        if(!cells[nk]){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+      });
+    }
+  }
+  // Doors
+  for(const did in doors){
+    const d=doors[did];
+    const px=d.x*TILE,py=d.y*TILE;
+    const edges={n:[px,py,px+TILE,py],s:[px,py+TILE,px+TILE,py+TILE],w:[px,py,px,py+TILE],e:[px+TILE,py,px+TILE,py+TILE]};
+    const[x1,y1,x2,y2]=edges[d.edge]||edges.n;
+    const mx=(x1+x2)/2,my=(y1+y2)/2;
+    if(d.open){
+      // Open door — short perpendicular lines at each end
+      ctx.strokeStyle="#8a6a2a";ctx.lineWidth=2/camera.zoom;
+      const len=TILE*0.25;
+      const isH=d.edge==="n"||d.edge==="s";
+      ctx.beginPath();
+      if(isH){ctx.moveTo(x1,y1-len);ctx.lineTo(x1,y1+len);ctx.moveTo(x2,y2-len);ctx.lineTo(x2,y2+len);}
+      else{ctx.moveTo(x1-len,y1);ctx.lineTo(x1+len,y1);ctx.moveTo(x2-len,y2);ctx.lineTo(x2+len,y2);}
+      ctx.stroke();
+    } else {
+      // Closed door — colored line across the edge
+      ctx.strokeStyle=d.locked?"#8a2a2a":"#8a6a2a";ctx.lineWidth=3.5/camera.zoom;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      // Small square in center
+      const sz=4/camera.zoom;
+      ctx.fillStyle=d.locked?"#c04040":"#c0a040";
+      ctx.fillRect(mx-sz/2,my-sz/2,sz,sz);
+    }
+  }
   drawStamps();drawProps();
   drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   drawFog(ctx,fogGroups,camera.zoom,true);
   // Fog preview
   if(fogMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(10,20,40,0.35)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+  // Wall mode preview
+  if(wallMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(192,57,43,0.2)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+  // Darkness mode preview
+  if(darknessMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(40,10,80,0.35)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+  // Door mode — highlight hovered wall edge
+  if(doorMode&&!dragging){
+    const{edge,x,y}=nearestWallEdge(hoverTileX,hoverTileY);
+    if(edge){
+      const px=x*TILE,py=y*TILE;
+      const edges={n:[px,py,px+TILE,py],s:[px,py+TILE,px+TILE,py+TILE],w:[px,py,px,py+TILE],e:[px+TILE,py,px+TILE,py+TILE]};
+      const[x1,y1,x2,y2]=edges[edge];
+      ctx.strokeStyle="rgba(200,168,75,0.8)";ctx.lineWidth=4/camera.zoom;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    }
+  }
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   // Placing token preview
   if(placingToken){const alpha=0.6+0.2*Math.sin(Date.now()/300);drawToken(ctx,{...placingToken,x:hoverTileX,y:hoverTileY},camera.zoom,pcsData,CONDITIONS,alpha);}
@@ -1085,6 +1203,9 @@ canvas.addEventListener("contextmenu",e=>{
   const pk=propAtTile(tx,ty);
   if(pk){ctxPropKey=pk;const isAttached=!!(props[pk]&&props[pk].attachedTo);document.getElementById("prop-ctx-attach").style.display=isAttached?"none":"block";document.getElementById("prop-ctx-detach").style.display=isAttached?"block":"none";propCtxMenu.style.left=e.clientX+"px";propCtxMenu.style.top=e.clientY+"px";propCtxMenu.style.display="block";return;}
   if(roofMode){const k=key(tx,ty);if(roofs[k]){delete roofs[k];saveRoofs();}return;}
+  if(wallMode){const gid=wallGroupAtTile(tx,ty);if(gid){delete wallGroups[gid];saveWallGroups();}return;}
+  if(darknessMode){const gid=darknessGroupAtTile(tx,ty);if(gid){delete darknessGroups[gid];saveDarknessGroups();}return;}
+  if(doorMode){const did=Object.keys(doors).find(id=>doors[id].x===tx&&doors[id].y===ty);if(did){delete doors[did];saveDoors();}return;}
   const gid=fogGroupAtTile(fogGroups,tx,ty);if(gid){deleteFogGroup(gid);return;}
 });
 
@@ -1126,6 +1247,27 @@ canvas.addEventListener("pointerdown",e=>{
   if(placingToken){placingToken.x=tx;placingToken.y=ty;tokens[placingToken.id]={...placingToken};saveTokenLocal(placingToken.id,placingToken);placingToken=null;toast("Token placed");return;}
   if(fogMode){const hitGid=fogGroupXHit(fogGroups,wx,wy,camera.zoom);if(hitGid){deleteFogGroup(hitGid);return;}canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
   if(roofMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
+  if(wallMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
+  if(darknessMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
+  if(doorMode){
+    const{edge,x,y}=nearestWallEdge(tx,ty);
+    if(edge){
+      // Toggle existing door or place new
+      const existingId=Object.keys(doors).find(id=>doors[id].x===x&&doors[id].y===y&&doors[id].edge===edge);
+      if(existingId){
+        // Cycle: closed → open → locked → remove
+        const d=doors[existingId];
+        if(d.locked){delete doors[existingId];}
+        else if(d.open){doors[existingId]={...d,open:false,locked:true};}
+        else{doors[existingId]={...d,open:true};}
+      } else {
+        const did="door_"+Date.now();
+        doors[did]={x,y,edge,open:false,locked:false};
+      }
+      saveDoors();
+    }
+    return;
+  }
   const tokId=tokenAtTile(tokens,tx,ty);if(tokId){canvas.setPointerCapture(e.pointerId);draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y};return;}
   // Prop drag — check if clicking a placed prop with no active tool
   if(!currentProp&&!currentStamp&&currentShape!=="select"){
@@ -1144,6 +1286,8 @@ canvas.addEventListener("pointerup",e=>{
   if(draggingToken){saveTokenLocal(draggingToken.id,tokens[draggingToken.id]);savePropsLocal();draggingToken=null;return;}
   if(draggingProp){savePropsLocal();draggingProp=null;return;}
   if(fogMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="fog_"+Date.now();fogGroups[gid]={cells};saveFogLocal();return;}
+  if(wallMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="wg_"+Date.now();wallGroups[gid]={cells};saveWallGroups();return;}
+  if(darknessMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="dk_"+Date.now();darknessGroups[gid]={cells};saveDarknessGroups();return;}
   if(roofMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyRoof(x,y);saveRoofs();return;}
   if(currentShape==="select"&&selectPhase==="moving"){selectPhase="selected";canvas.style.cursor="move";return;}
   if(currentShape==="select"&&selectPhase==="marquee"&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);pushUndo();liftSelection(minX,minY,maxX,maxY);selectPhase=Object.keys(selectTiles).length>0?"selected":null;canvas.style.cursor=selectPhase?"move":"crosshair";return;}
