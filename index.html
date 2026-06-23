@@ -1,313 +1,1219 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>GeezVTT — Map View</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dungeon Renderer</title>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body {
-  width: 100%; height: 100%;
-  background: #00ff00; /* chroma key — OBS will remove this */
-  overflow: hidden;
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=IM+Fell+English&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0b08;--panel:#1a1510;--panel2:#151208;--border:#3d2e1a;
+  --gold:#c8a84b;--gold-dim:#7a6228;--text:#d4c49a;--dim:#6b5a38;
+  --red:#e04040;--green:#5a9a5a;
+  --sidebar:280px;--hud:48px;--initiative:56px;
 }
-canvas { display: block; width: 100%; height: 100%; }
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
+#app{display:grid;grid-template-columns:1fr var(--sidebar);grid-template-rows:var(--hud) 1fr var(--initiative);width:100vw;height:100vh}
+#hud{grid-column:1/3;grid-row:1;background:rgba(13,11,8,.95);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;z-index:20;backdrop-filter:blur(6px)}
+#hud h1{font-family:'Cinzel',serif;font-size:12px;font-weight:600;color:var(--gold);letter-spacing:.12em;white-space:nowrap}
+.sep{width:1px;height:22px;background:var(--border);flex-shrink:0}
+button{height:30px;padding:0 11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--dim);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.05em;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+button:hover{border-color:var(--gold-dim);color:var(--text)}
+button.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
+#status{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;color:var(--dim);flex-shrink:0}
+#status.live{color:var(--green)}
+#status.error{color:var(--red)}
+#player-name-display{font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);margin-left:auto;flex-shrink:0;cursor:pointer;padding:0 4px}
+#player-name-display:hover{color:var(--gold)}
+#viewport{grid-column:1;grid-row:2;position:relative;overflow:hidden;cursor:grab}
+#viewport.grabbing{cursor:grabbing}
+#viewport.pinging{cursor:crosshair}
+canvas{display:block;width:100%;height:100%}
+#scale-label{position:absolute;bottom:8px;left:8px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);pointer-events:none}
+#weather-indicator{position:absolute;bottom:8px;left:60px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);pointer-events:none}
+#session{grid-column:2;grid-row:2;display:flex;flex-direction:column;background:var(--panel2);border-left:1px solid var(--border);overflow:hidden}
+#session-header{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+#chat-log{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px}
+#chat-log::-webkit-scrollbar{width:4px}
+#chat-log::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.chat-msg{font-size:12px;line-height:1.4;word-break:break-word}
+.chat-msg .who{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);margin-right:6px}
+.chat-msg .who.system{color:var(--dim)}
+.chat-msg .who.dice{color:#7ab0e0}
+.chat-msg.mine .who{color:#e0b070}
+#dice-section{border-top:1px solid var(--border);padding:8px;flex-shrink:0}
+#dice-section-label{font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.08em;margin-bottom:6px}
+#dice-btns{display:flex;gap:4px;flex-wrap:wrap}
+.die-btn{width:36px;height:36px;padding:0;font-family:'Cinzel',serif;font-size:10px;border-radius:4px}
+#dice-result-inline{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-top:6px;min-height:18px;text-align:center}
+#chat-input-row{display:flex;gap:6px;padding:8px;border-top:1px solid var(--border);flex-shrink:0}
+#chat-input{flex:1;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:12px;padding:5px 8px;border-radius:4px;outline:none;min-width:0}
+#chat-input:focus{border-color:var(--gold-dim)}
+#chat-send{padding:0 10px;height:28px;font-size:10px}
+#initiative-bar{grid-column:1/3;grid-row:3;background:rgba(13,11,8,.95);border-top:1px solid var(--border);display:flex;align-items:center;overflow:hidden}
+#init-label{font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.1em;padding:0 10px;flex-shrink:0;text-transform:uppercase}
+#init-controls{display:flex;flex-direction:column;gap:4px;padding:4px 8px;border-right:1px solid var(--border);flex-shrink:0}
+#init-controls button{height:22px;font-size:9px;padding:0 8px}
+#init-track{flex:1;display:flex;align-items:center;gap:6px;padding:0 8px;overflow-x:auto}
+#init-track::-webkit-scrollbar{height:3px}
+#init-track::-webkit-scrollbar-thumb{background:var(--border)}
+.init-card{flex-shrink:0;height:44px;min-width:80px;border:1px solid var(--border);border-radius:4px;background:var(--panel);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;padding:0 8px;position:relative}
+.init-card:hover{border-color:var(--gold-dim)}
+.init-card.active-turn{border-color:var(--gold);background:rgba(200,168,75,.1);box-shadow:0 0 8px rgba(200,168,75,.3)}
+.init-card.active-turn::before{content:'▶';position:absolute;left:-14px;font-size:10px;color:var(--gold)}
+.init-card .init-name{font-family:'Cinzel',serif;font-size:10px;color:var(--text);letter-spacing:.04em;text-align:center}
+.init-card .init-num{font-family:'Cinzel',serif;font-size:9px;color:var(--dim)}
+.init-card .init-hp{font-size:9px;font-family:'Cinzel',serif}
+
+/* ── Context menu ── */
+#ctx-menu{position:fixed;z-index:200;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:4px 0;display:none;min-width:160px;box-shadow:0 6px 24px rgba(0,0,0,.6)}
+#ctx-menu.open{display:block}
+.ctx-item{padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.05em;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--dim);transition:background .1s}
+.ctx-item:hover{background:rgba(200,168,75,.08);color:var(--text)}
+.ctx-item .ctx-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0}
+.ctx-label{padding:4px 14px;font-family:'Cinzel',serif;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+
+/* ── Left slide-in sheet panel ── */
+#sheet-panel{
+  position:fixed;top:var(--hud);left:0;bottom:var(--initiative);
+  width:300px;
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  z-index:50;
+  display:flex;flex-direction:column;
+  transform:translateX(-100%);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  box-shadow:4px 0 24px rgba(0,0,0,.5);
+}
+#sheet-panel.open{transform:translateX(0)}
+#sheet-panel-header{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;border-bottom:1px solid var(--border);
+  flex-shrink:0;background:var(--panel2);
+}
+#sheet-panel-title{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;flex:1}
+#sheet-panel-close{
+  border:none;background:transparent;color:var(--dim);font-size:14px;
+  cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1;
+  transition:color .12s;
+}
+#sheet-panel-close:hover{color:var(--text)}
+#sheet-view{flex:1;overflow-y:auto;padding:0}
+#sheet-empty{display:flex;align-items:center;justify-content:center;height:100%;font-family:'Cinzel',serif;font-size:.75rem;color:var(--dim);text-align:center;padding:20px;line-height:1.8}
+
+/* ── Session header (restored) ── */
+#session-header{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
+#chat-view{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+
+/* ── Sheet card (scoped to panel) ── */
+#sheet-panel .card{background:transparent;border:none;border-radius:0;width:100%;flex-shrink:0;overflow:visible}
+#sheet-panel .card-header{padding:12px 12px 8px;border-bottom:1px solid var(--border)}
+#sheet-panel .char-name{font-family:'Cinzel',serif;font-size:1rem;font-weight:700;color:var(--gold);margin-bottom:2px}
+#sheet-panel .char-sub{font-size:.68rem;color:var(--dim);font-family:'JetBrains Mono',monospace}
+#sheet-panel .char-role-badge{display:inline-block;font-family:'Cinzel',serif;font-size:.56rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:rgba(200,168,75,.1);border:1px solid rgba(200,168,75,.3);color:var(--gold);margin-top:4px}
+#sheet-panel .hp-row{display:flex;align-items:center;gap:6px;margin-top:8px}
+#sheet-panel .hp-label{font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;width:16px}
+#sheet-panel .hp-bar-wrap{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
+#sheet-panel .hp-bar{height:100%;border-radius:999px;transition:width .4s,background-color .4s}
+#sheet-panel .hp-val{font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);white-space:nowrap;min-width:48px;text-align:right}
+#sheet-panel .temp-badge{font-size:.58rem;font-family:'JetBrains Mono',monospace;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);color:#c084fc;border-radius:999px;padding:1px 6px;white-space:nowrap}
+#sheet-panel .hp-controls{display:flex;align-items:center;gap:5px;margin-top:6px}
+#sheet-panel .hp-delta{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:.76rem;font-family:'JetBrains Mono',monospace;outline:none;text-align:center;min-width:0}
+#sheet-panel .hp-delta:focus{border-color:var(--gold-dim)}
+#sheet-panel .hp-btn{border-radius:4px;padding:4px 8px;font-size:.68rem;font-weight:700;font-family:'Cinzel',serif;cursor:pointer;transition:all .12s;white-space:nowrap;letter-spacing:.04em}
+#sheet-panel .hp-btn.heal{background:rgba(74,154,74,.12);border:1px solid rgba(74,154,74,.3);color:var(--green)}
+#sheet-panel .hp-btn.heal:hover{background:rgba(74,154,74,.22)}
+#sheet-panel .hp-btn.dmg{background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.3);color:#fca5a5}
+#sheet-panel .hp-btn.dmg:hover{background:rgba(224,64,64,.22)}
+#sheet-panel .stats-row{display:flex;border-bottom:1px solid var(--border)}
+#sheet-panel .stat-cell{flex:1;padding:6px 2px;text-align:center;border-right:1px solid var(--border)}
+#sheet-panel .stat-cell:last-child{border-right:none}
+#sheet-panel .stat-label{font-family:'Cinzel',serif;font-size:.52rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
+#sheet-panel .stat-val{font-size:.84rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
+#sheet-panel .ability-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:8px;border-bottom:1px solid var(--border)}
+#sheet-panel .ab-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:5px;padding:5px 2px;text-align:center}
+#sheet-panel .ab-name{font-family:'Cinzel',serif;font-size:.5rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);margin-bottom:1px}
+#sheet-panel .ab-score{font-size:.84rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);line-height:1}
+#sheet-panel .ab-mod{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--gold);margin-top:1px}
+#sheet-panel .conditions-row{display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;border-bottom:1px solid var(--border)}
+#sheet-panel .conditions-row:empty{display:none}
+#sheet-panel .cond-pill{font-family:'Cinzel',serif;font-size:.55rem;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.3);color:#fca5a5}
+#sheet-panel .card-footer{padding:6px;display:flex;flex-direction:column;gap:4px}
+#sheet-panel .panel-btn{width:100%;border-radius:5px;color:var(--dim);font-family:'Cinzel',serif;font-size:.68rem;font-weight:700;letter-spacing:.04em;padding:6px 8px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;border:1px solid var(--border);background:rgba(255,255,255,.02)}
+#sheet-panel .panel-btn .chevron{margin-left:auto;transition:transform .2s}
+#sheet-panel .panel-btn.open .chevron{transform:rotate(180deg)}
+#sheet-panel .panel-btn:hover,#sheet-panel .panel-btn.open{border-color:var(--gold-dim);color:var(--text);background:rgba(200,168,75,.05)}
+#sheet-panel .panel-btn.spell-btn:hover,#sheet-panel .panel-btn.spell-btn.open{border-color:#8b5cf6;color:#c084fc;background:rgba(139,92,246,.08)}
+#sheet-panel .panel-btn.skill-btn:hover,#sheet-panel .panel-btn.skill-btn.open{border-color:#0ea5e9;color:#38bdf8;background:rgba(14,165,233,.08)}
+#sheet-panel .panel-btn.weapon-btn:hover,#sheet-panel .panel-btn.weapon-btn.open{border-color:#e8834a;color:#f5a87b;background:rgba(232,131,74,.08)}
+#sheet-panel .panel-btn.tip-btn:hover,#sheet-panel .panel-btn.tip-btn.open{border-color:#22c55e;color:#4ade80;background:rgba(34,197,94,.05)}
+#sheet-panel .panel-btn.inv-btn:hover,#sheet-panel .panel-btn.inv-btn.open{border-color:var(--gold-dim);color:var(--gold);background:rgba(200,168,75,.06)}
+#sheet-panel .expand-panel{display:none;border-top:1px solid var(--border);padding:10px;background:rgba(12,9,8,.5)}
+#sheet-panel .expand-panel.open{display:block}
+#sheet-panel .sp-section-title{font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:5px;margin-top:8px}
+#sheet-panel .sp-section-title:first-child{margin-top:0}
+#sheet-panel .empty-panel{font-family:'Cinzel',serif;font-size:.68rem;color:var(--dim);text-align:center;padding:8px 0}
+#sheet-panel .sp-meta{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+#sheet-panel .sp-meta-item{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--dim)}
+#sheet-panel .sp-meta-item span{color:var(--gold);font-weight:700}
+#sheet-panel .slot-levels{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+#sheet-panel .slot-level-row{display:flex;align-items:center;gap:6px}
+#sheet-panel .slot-level-label{font-family:'Cinzel',serif;font-size:.58rem;color:var(--dim);width:38px;flex-shrink:0}
+#sheet-panel .slot-pips{display:flex;gap:4px;flex-wrap:wrap}
+#sheet-panel .slot-pip{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.15);cursor:pointer;transition:all .12s;flex-shrink:0}
+#sheet-panel .slot-pip:hover{transform:scale(1.15)}
+#sheet-panel .slot-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
+#sheet-panel .spell-list{display:flex;flex-direction:column;gap:3px}
+#sheet-panel .spell-item{padding:5px 7px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
+#sheet-panel .spell-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:5px}
+#sheet-panel .spell-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text)}
+#sheet-panel .spell-level-tag{font-size:.58rem;font-family:'JetBrains Mono',monospace;color:var(--dim);white-space:nowrap}
+#sheet-panel .spell-desc{font-size:.64rem;color:var(--dim);line-height:1.5;margin-top:2px;font-family:'JetBrains Mono',monospace}
+#sheet-panel .spell-meta{font-size:.6rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap}
+#sheet-panel .spell-meta span{color:var(--text)}
+#sheet-panel .spell-tip{display:flex;align-items:flex-start;gap:4px;margin-top:3px;padding:3px 6px;border-radius:3px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2)}
+#sheet-panel .spell-tip-text{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:#4ade80;line-height:1.5}
+#sheet-panel .skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:6px}
+#sheet-panel .skill-row-item{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:3px 7px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.66rem}
+#sheet-panel .skill-name{color:var(--dim)}
+#sheet-panel .skill-val{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text)}
+#sheet-panel .skill-row-item.prof .skill-name{color:#38bdf8}
+#sheet-panel .skill-row-item.expert .skill-name{color:#4ade80}
+#sheet-panel .save-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-bottom:6px}
+#sheet-panel .save-row-item{display:flex;align-items:center;justify-content:space-between;flex-direction:column;gap:2px;padding:4px 3px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.62rem;text-align:center}
+#sheet-panel .save-row-item.prof .skill-name{color:var(--gold)}
+#sheet-panel .senses-block{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
+#sheet-panel .sense-pill{font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:2px 7px;border-radius:4px;border:1px solid rgba(14,165,233,.25);background:rgba(14,165,233,.05);color:#38bdf8}
+#sheet-panel .feat-item{padding:5px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
+#sheet-panel .feat-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:1px}
+#sheet-panel .feat-desc{font-size:.64rem;color:var(--dim);line-height:1.5;font-family:'JetBrains Mono',monospace}
+#sheet-panel .weapon-list{display:flex;flex-direction:column;gap:4px}
+#sheet-panel .weapon-item{border:1px solid var(--border);border-radius:5px;background:rgba(255,255,255,.02);overflow:hidden}
+#sheet-panel .weapon-top{display:flex;align-items:center;gap:6px;padding:6px 8px}
+#sheet-panel .weapon-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text);flex:1}
+#sheet-panel .weapon-type{font-size:.56rem;font-family:'JetBrains Mono',monospace;color:var(--dim);padding:1px 5px;border:1px solid var(--border);border-radius:999px;white-space:nowrap}
+#sheet-panel .weapon-stats{display:flex;gap:4px;padding:0 8px 6px;flex-wrap:wrap}
+#sheet-panel .wstat{display:flex;flex-direction:column;align-items:center;background:rgba(232,131,74,.06);border:1px solid rgba(232,131,74,.2);border-radius:4px;padding:3px 8px;min-width:48px}
+#sheet-panel .wstat-label{font-family:'Cinzel',serif;font-size:.5rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#e8834a;margin-bottom:1px}
+#sheet-panel .wstat-val{font-size:.8rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:#f5a87b}
+#sheet-panel .weapon-notes{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--dim);padding:0 8px 6px;line-height:1.5}
+#sheet-panel .combat-guide{font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#4ade80;line-height:1.7;white-space:pre-wrap}
+#sheet-panel .combat-guide-wrap{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:8px 10px}
+#sheet-panel .inv-item{padding:6px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
+#sheet-panel .inv-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:5px}
+#sheet-panel .inv-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text)}
+#sheet-panel .inv-qty{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--gold);white-space:nowrap}
+#sheet-panel .inv-cat{font-size:.56rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:1px;padding:1px 5px;border:1px solid var(--border);border-radius:999px;display:inline-block}
+#sheet-panel .inv-desc{font-size:.64rem;color:var(--dim);line-height:1.5;margin-top:3px;font-family:'JetBrains Mono',monospace}
+#sheet-panel .inv-notes{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--gold-dim);margin-top:2px;font-style:italic}
+#sheet-panel .stats-row + .equipped-row,.equipped-row{display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+#sheet-panel .equipped-badge{font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:2px 7px;border-radius:4px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.05);color:var(--gold-dim)}
+#sheet-panel .equipped-badge span{color:var(--text)}
+#sheet-panel .coin-row{display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+#sheet-panel .coin-label{font-family:'Cinzel',serif;font-size:.54rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-right:1px}
+#sheet-panel .coin{display:flex;align-items:center;gap:2px;font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:700;padding:1px 6px;border-radius:999px;border:1px solid}
+#sheet-panel .coin.pp{color:#c4b5fd;border-color:rgba(196,181,253,.3);background:rgba(196,181,253,.07)}
+#sheet-panel .coin.gp{color:var(--gold);border-color:rgba(200,168,75,.3);background:rgba(200,168,75,.07)}
+#sheet-panel .coin.ep{color:#67e8f9;border-color:rgba(103,232,249,.3);background:rgba(103,232,249,.07)}
+#sheet-panel .coin.sp{color:#94a3b8;border-color:rgba(148,163,184,.3);background:rgba(148,163,184,.07)}
+#sheet-panel .coin.cp{color:#b45309;border-color:rgba(180,83,9,.3);background:rgba(180,83,9,.07)}
+#sheet-panel .ability-charge{padding:6px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
+#sheet-panel .ability-charge-top{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:4px}
+#sheet-panel .ability-charge-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text)}
+#sheet-panel .ability-charge-meta{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--dim)}
+#sheet-panel .charge-pips{display:flex;gap:4px;flex-wrap:wrap}
+#sheet-panel .charge-pip{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.2);cursor:pointer;transition:all .12s;flex-shrink:0}
+#sheet-panel .charge-pip:hover{transform:scale(1.15)}
+#sheet-panel .charge-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
+#sheet-empty{display:flex;align-items:center;justify-content:center;flex:1;font-family:'Cinzel',serif;font-size:.75rem;color:var(--dim);text-align:center;padding:20px;line-height:1.8}
+
+/* ── Toast ── */
+#ping-toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
+#ping-toast.show{opacity:1}
+
+/* ── Login modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:300;backdrop-filter:blur(4px)}
+.modal-overlay.hidden{display:none}
+.login-box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:28px 28px 24px;width:380px;display:flex;flex-direction:column;gap:0}
+.login-title{font-family:'Cinzel',serif;font-size:18px;font-weight:600;color:var(--gold);letter-spacing:.1em;text-align:center;margin-bottom:4px}
+.login-sub{font-family:'Cinzel',serif;font-size:10px;color:var(--dim);text-align:center;letter-spacing:.06em;margin-bottom:22px}
+.login-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.login-field label{font-family:'Cinzel',serif;font-size:.6rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.login-field input,.login-field select{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'IM Fell English',serif;font-size:14px;padding:9px 11px;outline:none;transition:border-color .15s;width:100%}
+.login-field input:focus,.login-field select:focus{border-color:var(--gold-dim)}
+.login-field select option{background:var(--panel)}
+.login-divider{height:1px;background:var(--border);margin:6px 0 16px}
+.mic-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:14px;cursor:pointer;transition:border-color .15s}
+.mic-row:hover{border-color:var(--gold-dim)}
+.mic-row.granted{border-color:rgba(90,154,90,.5);background:rgba(90,154,90,.05)}
+.mic-row.denied{border-color:rgba(224,64,64,.4);background:rgba(224,64,64,.04);cursor:default}
+.mic-icon{font-size:20px;flex-shrink:0}
+.mic-text{flex:1}
+.mic-text strong{font-family:'Cinzel',serif;font-size:.7rem;font-weight:600;color:var(--text);display:block;margin-bottom:1px}
+.mic-text span{font-family:'Cinzel',serif;font-size:.6rem;color:var(--dim)}
+.mic-check{font-size:14px}
+.login-btn{width:100%;height:42px;border:1px solid rgba(200,168,75,.5);border-radius:6px;background:rgba(200,168,75,.08);color:var(--gold);font-family:'Cinzel',serif;font-size:.8rem;font-weight:600;letter-spacing:.08em;cursor:pointer;margin-top:4px;transition:all .15s}
+.login-btn:hover{background:rgba(200,168,75,.16);border-color:var(--gold)}
+.login-err{font-family:'Cinzel',serif;font-size:.65rem;color:var(--red);text-align:center;min-height:16px;margin-top:-8px;margin-bottom:4px}
+
+/* ── Spinner overlay ── */
+#overlay{position:fixed;inset:0;background:rgba(13,11,8,.92);display:flex;align-items:center;justify-content:center;z-index:200;flex-direction:column;gap:14px}
+#overlay.hidden{display:none}
+#overlay p{font-family:'Cinzel',serif;font-size:.85rem;color:var(--dim)}
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
+
+<!-- ── Login Modal ── -->
+<div id="login-modal" class="modal-overlay">
+  <div class="login-box">
+    <div class="login-title">⚔ GeezVTT</div>
+    <div class="login-sub">Enter the dungeon</div>
+
+    <div class="login-field">
+      <label>Your Name</label>
+      <input id="login-name" type="text" placeholder="How shall you be known?" maxlength="30" spellcheck="false" autocomplete="off"/>
+    </div>
+
+    <div class="login-field" id="login-campaign-field">
+      <label>Campaign</label>
+      <select id="login-campaign"><option value="">Loading…</option></select>
+    </div>
+
+    <div class="login-field">
+      <label>Your Character</label>
+      <select id="login-char"><option value="">— Choose your character —</option></select>
+    </div>
+
+    <div class="login-field" id="login-pass-field" style="display:none">
+      <label>Session Passphrase</label>
+      <input id="login-pass" type="password" placeholder="Ask your GM" maxlength="40" spellcheck="false"/>
+    </div>
+
+    <div class="login-divider"></div>
+
+    <div class="mic-row" id="mic-row" onclick="requestMic()">
+      <div class="mic-icon">🎤</div>
+      <div class="mic-text">
+        <strong>Microphone</strong>
+        <span id="mic-status-text">Click to enable talking indicator</span>
+      </div>
+      <div class="mic-check" id="mic-check">○</div>
+    </div>
+
+    <div class="login-err" id="login-err"></div>
+    <button class="login-btn" id="login-confirm">Enter the Dungeon</button>
+  </div>
+</div>
+
+<!-- ── Loading overlay ── -->
+<div id="overlay">
+  <div class="spinner"></div>
+  <p id="overlay-msg">Loading…</p>
+</div>
+
+<!-- ── Context menu ── -->
+<div id="ctx-menu">
+  <div class="ctx-label">Conditions</div>
+  <div class="ctx-item" data-condition="poisoned"  ><div class="ctx-dot" style="background:#5aaa5a"></div>Poisoned</div>
+  <div class="ctx-item" data-condition="stunned"   ><div class="ctx-dot" style="background:#aaaa30"></div>Stunned</div>
+  <div class="ctx-item" data-condition="prone"     ><div class="ctx-dot" style="background:#888888"></div>Prone</div>
+  <div class="ctx-item" data-condition="burning"   ><div class="ctx-dot" style="background:#e07030"></div>Burning</div>
+  <div class="ctx-item" data-condition="frozen"    ><div class="ctx-dot" style="background:#50c0e0"></div>Frozen</div>
+  <div class="ctx-item" data-condition="blinded"   ><div class="ctx-dot" style="background:#dddddd"></div>Blinded</div>
+  <div class="ctx-item" data-condition="charmed"   ><div class="ctx-dot" style="background:#e070c0"></div>Charmed</div>
+  <div class="ctx-item" data-condition="frightened"><div class="ctx-dot" style="background:#9060d0"></div>Frightened</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" data-condition="clear" style="color:var(--red)">✕ Clear conditions</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-label">Token</div>
+  <div class="ctx-item" data-action="delete" style="color:var(--red)">✕ Delete token</div>
+</div>
+
+<!-- ── Left slide-in sheet panel ── -->
+<div id="sheet-panel">
+  <div id="sheet-panel-header">
+    <div id="sheet-panel-title">📋 CHARACTER</div>
+    <button id="sheet-panel-close" onclick="closeSheetPanel()">✕</button>
+  </div>
+  <div id="sheet-view">
+    <div id="sheet-empty">Click a token<br>to view their sheet</div>
+  </div>
+</div>
+
+<!-- ── App shell ── -->
+<div id="app">
+  <div id="hud">
+    <h1>⚔ DUNGEON</h1>
+    <div class="sep"></div>
+    <button id="fitBtn">Fit</button>
+    <input id="map-input" type="text" value="dungeon-1" hidden>
+    <div class="sep"></div>
+    <button id="pingBtn">📍 Ping</button>
+    <button id="micBtn">🎤 Mic</button>
+    <button id="sheetsBtn">📋 Sheets</button>
+    <div class="sep"></div>
+    <span id="status">—</span>
+    <div id="presence-row" style="display:flex;align-items:center;gap:4px;margin-left:4px;flex-shrink:0"></div>
+    <span id="player-name-display" title="Click to re-login"></span>
+  </div>
+  <div id="viewport">
+    <canvas id="canvas"></canvas>
+    <div id="scale-label">100%</div>
+    <div id="weather-indicator"></div>
+  </div>
+  <div id="session">
+    <div id="session-header">⚔ SESSION</div>
+    <div id="chat-log"></div>
+    <div id="dice-section">
+      <div id="dice-section-label">DICE ROLLER</div>
+      <div id="dice-btns"></div>
+      <div id="dice-result-inline"></div>
+    </div>
+    <div id="chat-input-row">
+      <input id="chat-input" type="text" placeholder="Message…" maxlength="300" spellcheck="false">
+      <button id="chat-send">Send</button>
+    </div>
+  </div>
+  <div id="initiative-bar">
+    <div id="init-label">Initiative</div>
+    <div id="init-track"></div>
+  </div>
+</div>
+<div id="ping-toast"></div>
 
 <script type="module">
-import { initializeApp }   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-
-const FIREBASE_CONFIG = {
-  apiKey:        "AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",
-  authDomain:    "sheets-e5838.firebaseapp.com",
-  databaseURL:   "https://sheets-e5838-default-rtdb.firebaseio.com",
-  projectId:     "sheets-e5838",
-  storageBucket: "sheets-e5838.firebasestorage.app",
-};
-const app = initializeApp(FIREBASE_CONFIG);
-const db  = getDatabase(app);
-
-const TILE = 32;
+import { getDatabase, ref, onValue, set, push, remove, update, get }
+  from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import { db }                from "./js/firebase.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, getDICE, TILE } from "./js/config.js";
+import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
+import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
+import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
+import { drawToken, tokenAtTile, applyCondition, deleteToken } from "./js/tokens.js";
+import { drawFog } from "./js/fog.js";
+import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
+import { drawChains } from "./js/chains.js";
+import { drawRuler, findSnapPoint } from "./js/ruler.js";
+import { startMicListener, stopMicListener, subscribeTalking, getShakeOffset } from "./js/mic.js";
+import { subscribePassphrase, checkPassphrase, hasPassphraseSet, fetchCharacterRoster, saveAuthSession, loadAuthSession } from "./js/auth.js";
+import { sendChat, renderChat } from "./js/chat.js";
+import { rollDie, animateDiceResult } from "./js/dice.js";
+import { renderInitTrack } from "./js/initiative.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={}, fogGroups={}, tokens={}, stamps={}, roofs={}, props={}, wallGroups={}, doors={};
-let bgImage=null, bgUrl="", bgPpi=70, nightMode=false;
-const tokenTextures={}, propTextures={}, terrainTextures={};
+let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
+const wallGroups={},doors={};
+let bgImage=null,bgUrl="",bgPpi=70,nightMode=false;
+let pcsData={};
+let playerName=localStorage.getItem("vtt_player_name")||"";
+let currentMap="dungeon-1";
 let firstLoad=true;
+let pingMode=false,isHolding=false;
+let pingHoldTimer=null,myLaserRef=null;
+const activePings={},activeLasers={};
+let draggingToken=null,panning=false;
+let panStartX=0,panStartY=0,camStartX=0,camStartY=0;
+let rulerStart=null,rulerEnd=null,rulerActive=false;
+let micEnabled=false;
+let micPermission="unknown"; // "unknown" | "granted" | "denied"
+let myCharacterId=null,myCharacterName=null;
+let initiative={order:[],active:null};
+let ctxTokenId=null;
+let liveUnsub=null;
+let allRosterChars=[]; // [{id, name, campaign}]
 
-const canvas = document.getElementById("canvas");
-const ctx    = canvas.getContext("2d");
+// ── DOM ───────────────────────────────────────────────────────────────────────
+const canvas     = document.getElementById("canvas");
+const ctx        = canvas.getContext("2d");
+const viewport   = document.getElementById("viewport");
+const statusEl   = document.getElementById("status");
+const overlayEl  = document.getElementById("overlay");
+const mapInput   = document.getElementById("map-input");
+const scaleLabel = document.getElementById("scale-label");
+const pingToast  = document.getElementById("ping-toast");
+const loginModal = document.getElementById("login-modal");
+const nameDisplay= document.getElementById("player-name-display");
+const chatLog    = document.getElementById("chat-log");
+const chatInput  = document.getElementById("chat-input");
+const initTrack  = document.getElementById("init-track");
+const ctxMenu    = document.getElementById("ctx-menu");
+const micBtn     = document.getElementById("micBtn");
 
-// ── Camera — fit on first load, then fixed ────────────────────────────────────
-const camera = { x: 0, y: 0, zoom: 1 };
+// Login elements
+const loginName      = document.getElementById("login-name");
+const loginCampaign  = document.getElementById("login-campaign");
+const loginChar      = document.getElementById("login-char");
+const loginPass      = document.getElementById("login-pass");
+const loginPassField = document.getElementById("login-pass-field");
+const loginErr       = document.getElementById("login-err");
+const micRow         = document.getElementById("mic-row");
+const micStatusText  = document.getElementById("mic-status-text");
+const micCheck       = document.getElementById("mic-check");
 
-function fitCamera() {
-  const tileKeys = Object.keys(tiles);
-  if (!tileKeys.length) return;
-  const coords = tileKeys.map(k => k.split(",").map(Number));
-  const minX = Math.min(...coords.map(([x]) => x));
-  const minY = Math.min(...coords.map(([, y]) => y));
-  const maxX = Math.max(...coords.map(([x]) => x)) + 1;
-  const maxY = Math.max(...coords.map(([, y]) => y)) + 1;
-  const mapW = (maxX - minX) * TILE, mapH = (maxY - minY) * TILE;
-  const scaleX = canvas.width / mapW, scaleY = canvas.height / mapH;
-  camera.zoom = Math.min(scaleX, scaleY) * 0.95;
-  camera.x = (canvas.width  - mapW * camera.zoom) / 2 - minX * TILE * camera.zoom;
-  camera.y = (canvas.height - mapH * camera.zoom) / 2 - minY * TILE * camera.zoom;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function setStatus(cls,text){statusEl.className=cls;statusEl.textContent=text;}
+function toast(msg){pingToast.textContent=msg;pingToast.classList.add("show");setTimeout(()=>pingToast.classList.remove("show"),2500);}
+function screenPos(e){const r=viewport.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
+
+// ── Mic permission request (login modal) ──────────────────────────────────────
+window.requestMic = async function(){
+  if(micPermission==="denied") return;
+  if(micPermission==="granted"){micPermission="unknown";updateMicUI();return;}
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    stream.getTracks().forEach(t=>t.stop()); // just checking permission
+    micPermission="granted";
+  }catch(e){
+    micPermission="denied";
+  }
+  updateMicUI();
+};
+
+function updateMicUI(){
+  micRow.classList.toggle("granted",micPermission==="granted");
+  micRow.classList.toggle("denied",micPermission==="denied");
+  if(micPermission==="granted"){micStatusText.textContent="Microphone enabled";micCheck.textContent="✓";}
+  else if(micPermission==="denied"){micStatusText.textContent="Access denied — check browser settings";micCheck.textContent="✗";}
+  else{micStatusText.textContent="Click to enable talking indicator";micCheck.textContent="○";}
 }
 
-function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-resize(); window.addEventListener("resize", resize);
+// ── Populate login dropdowns from RTDB ────────────────────────────────────────
+async function populateLoginDropdowns(){
+  const snap=await get(ref(db,"characters/pcs"));
+  if(!snap.exists()){loginCampaign.innerHTML='<option value="">No characters found</option>';return;}
+  const data=snap.val();
+  allRosterChars=Object.entries(data)
+    .filter(([,c])=>c&&c.name&&c.type!=='npc'&&c.campaign!=='__oracle__')
+    .map(([id,c])=>({id,name:c.name,campaign:c.campaign||''}));
 
-// ── Texture loaders ───────────────────────────────────────────────────────────
-function loadTerrainTexture(id) {
-  if (terrainTextures[id] !== undefined) return;
-  terrainTextures[id] = null;
-  const img = new Image();
-  img.onload = () => { terrainTextures[id] = img; };
-  img.src = `./textures/${id}.png`;
+  const campaigns=[...new Set(allRosterChars.map(c=>c.campaign).filter(Boolean))].sort();
+  loginCampaign.innerHTML='<option value="">— All —</option>'+campaigns.map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  // Restore saved session to pre-fill
+  const saved=loadAuthSession();
+  if(saved){
+    loginName.value=saved.playerName||'';
+    if(saved.campaign) loginCampaign.value=saved.campaign;
+  }
+  filterCharsBycampaign();
+
+  if(saved&&saved.characterId) loginChar.value=saved.characterId;
 }
 
-function loadTokenTexture(characterId, name) {
-  const cacheKey = characterId === "__npc__" && name ? `__npc__:${name.toLowerCase()}` : characterId;
-  if (tokenTextures[cacheKey] !== undefined) return cacheKey;
-  tokenTextures[cacheKey] = null;
-  const fname = (name || characterId).toLowerCase().replace(/\s+/g, "_");
-  const img = new Image();
-  img.onload = () => { tokenTextures[cacheKey] = img; };
-  img.src = `./tokens/${fname}.png`;
-  return cacheKey;
+function filterCharsBycampaign(){
+  const camp=loginCampaign.value;
+  const filtered=camp?allRosterChars.filter(c=>c.campaign===camp):allRosterChars;
+  const prev=loginChar.value;
+  loginChar.innerHTML='<option value="">— Choose your character —</option>'+filtered.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(prev&&filtered.find(c=>c.id===prev)) loginChar.value=prev;
+}
+loginCampaign.addEventListener("change",filterCharsBycampaign);
+
+// ── Confirm login ─────────────────────────────────────────────────────────────
+async function confirmLogin(){
+  const name=loginName.value.trim();
+  if(!name){loginErr.textContent="Please enter your name.";return;}
+  if(hasPassphraseSet()&&!checkPassphrase(loginPass.value)){loginErr.textContent="Incorrect passphrase.";return;}
+  loginErr.textContent="";
+
+  playerName=name;
+  localStorage.setItem("vtt_player_name",name);
+
+  const charId=loginChar.value;
+  const charEntry=allRosterChars.find(c=>c.id===charId);
+  myCharacterId=charId||null;
+  myCharacterName=charEntry?.name||null;
+  saveAuthSession(name,charId,charEntry?.name||null,loginCampaign.value);
+
+  // Start mic if permission was granted in the modal
+  if(micPermission==="granted"&&!micEnabled){
+    const ok=await startMicListener(playerName);
+    if(ok){micEnabled=true;micBtn.classList.add("active");micBtn.textContent="🎤 On";}
+  }
+
+  loginModal.classList.add("hidden");
+  nameDisplay.textContent=playerName+(myCharacterName?` · ${myCharacterName}`:"");
+  writePresence();
 }
 
-// ── Fog colors (matches fog.js) ───────────────────────────────────────────────
-const FOG_COLORS = {
-  fog:      "rgba(10,20,40,0.55)",
-  darkness: "rgba(10,5,20,0.72)",
-  magical:  "rgba(60,10,80,0.65)",
+function writePresence(){if(!playerName)return;const k=playerName.replace(/\./g,"_");set(ref(db,`presence/${k}`),{name:playerName,page:"map",t:Date.now()});}
+window.addEventListener("beforeunload",()=>{if(playerName)set(ref(db,`presence/${playerName.replace(/\./g,"_")}`),null);});
+
+document.getElementById("login-confirm").onclick=confirmLogin;
+loginName.addEventListener("keydown",e=>{if(e.key==="Enter")confirmLogin();});
+
+// ── HUD mic toggle ────────────────────────────────────────────────────────────
+micBtn.onclick=async()=>{
+  if(!playerName){loginModal.classList.remove("hidden");return;}
+  micEnabled=!micEnabled;
+  if(micEnabled){
+    const ok=await startMicListener(playerName);
+    if(!ok){micEnabled=false;toast("Mic access denied");return;}
+    micBtn.classList.add("active");micBtn.textContent="🎤 On";
+  }else{
+    stopMicListener(playerName);
+    micBtn.classList.remove("active");micBtn.textContent="🎤 Mic";
+  }
+};
+
+// Re-login from name display
+nameDisplay.onclick=()=>{
+  populateLoginDropdowns();
+  loginModal.classList.remove("hidden");
+};
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;initParticles(canvas.width,canvas.height);}
+resize();window.addEventListener("resize",resize);
+
+// ── RTDB Listeners ────────────────────────────────────────────────────────────
+onValue(ref(db,"characters/pcs"),snap=>{for(const k in pcsData)delete pcsData[k];if(snap.exists())Object.assign(pcsData,snap.val());});
+onValue(ref(db,"propDefs"),snap=>{const data=snap.val();if(!data)return;for(const[id,p]of Object.entries(data)){propDefs[id]=p;tryLoadPropTexture(id);}});
+onValue(ref(db,"weather"),snap=>{
+  const data=snap.val();if(!data)return;
+  applyWeatherData(data);
+  const active=["rain","snow","mist","storm"].filter(t=>weather[t].enabled).map(t=>t[0].toUpperCase()+t.slice(1));
+  document.getElementById("weather-indicator").textContent=active.length?active.join(" · "):"";
+});
+onValue(ref(db,"pings"),snap=>{
+  const data=snap.val()||{};const now=Date.now();
+  for(const[id,ping]of Object.entries(data)){
+    if(!activePings[id]&&now-ping.t<4000){
+      activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};
+      if(ping.name!==playerName)toast(`📍 ${ping.name} pinged!`);
+    }
+  }
+});
+onValue(ref(db,"lasers"),snap=>{
+  const data=snap.val()||{};for(const k in activeLasers)delete activeLasers[k];
+  for(const[name,pos]of Object.entries(data)){if(name!==playerName.replace(/\./g,"_"))activeLasers[name]={wx:pos.wx,wy:pos.wy,color:pos.color};}
+});
+onValue(ref(db,"initiative"),snap=>{
+  const data=snap.val()||{};
+  initiative.order=data.order||[];initiative.active=data.active||null;
+  renderInitTrack(initTrack,initiative,{
+    onCardClick:(id,entry)=>{
+      const tok=Object.values(tokens).find(t=>t.name?.toLowerCase()===entry.name.toLowerCase());
+      if(tok)activePings[`init_${id}`]={wx:tok.x*TILE+TILE/2,wy:tok.y*TILE+TILE/2,name:entry.name,startTime:Date.now(),id:`init_${id}`};
+    },
+  });
+});
+onValue(ref(db,"chat"),snap=>{renderChat(snap.val(),chatLog,playerName);});
+
+// Presence
+onValue(ref(db,"presence"),snap=>{
+  const data=snap.val()||{};
+  const row=document.getElementById("presence-row");if(!row)return;
+  row.innerHTML="";
+  const stale=Date.now()-30000;
+  for(const[,p]of Object.entries(data)){
+    if(!p||p.t<stale)continue;
+    const isMe=p.name===playerName;
+    const pageColor=p.page==="editor"?"#c8a84b":p.page==="map"?"#4a9a4a":"#4a8aaa";
+    const pill=document.createElement("div");
+    pill.style.cssText=`display:flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;border:1px solid ${pageColor}40;background:${pageColor}12;font-family:'Cinzel',serif;font-size:9px;color:${isMe?"#fff":pageColor};white-space:nowrap;opacity:${isMe?1:0.8}`;
+    pill.title=`${p.name} — ${p.page}`;
+    const dot=document.createElement("div");dot.style.cssText=`width:5px;height:5px;border-radius:50%;background:${pageColor};flex-shrink:0`;
+    pill.appendChild(dot);pill.appendChild(document.createTextNode(p.name));
+    row.appendChild(pill);
+  }
+});
+onValue(ref(db,"dice/last"),snap=>{
+  const data=snap.val();if(!data||Date.now()-data.t>10000)return;
+  const resultEl=document.getElementById("dice-result-inline");
+  animateDiceResult(data,resultEl,d=>{resultEl.textContent=`${d.roller}: d${d.sides} → ${d.result}`;});
+});
+
+function subscribeLive(){
+  if(liveUnsub){liveUnsub();liveUnsub=null;}
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  setStatus("","Connecting…");
+  liveUnsub=onValue(ref(db,`maps/${mapName}`),snap=>{
+    const data=snap.val();
+    for(const k in tiles)delete tiles[k];for(const k in fog)delete fog[k];
+    for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
+    for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
+    for(const k in chains)delete chains[k];
+    for(const k in wallGroups)delete wallGroups[k];
+    for(const k in doors)delete doors[k];
+    if(data){
+      if(data.tiles)Object.assign(tiles,data.tiles);
+      if(data.fog)Object.assign(fog,data.fog);
+      if(data.wallGroups)Object.assign(wallGroups,data.wallGroups);
+      if(data.doors)Object.assign(doors,data.doors);
+      if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
+      if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
+      if(data.roofs)Object.assign(roofs,data.roofs);
+      if(data.props)Object.assign(props,data.props);
+      if(data.chains)Object.assign(chains,data.chains);
+      if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
+      else if(!data.background){bgUrl="";bgImage=null;}
+      bgPpi=data.backgroundPpi||70;nightMode=!!data.nightMode;
+    }
+    setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
+    if(firstLoad){firstLoad=false;fitCamera(tiles,TILE,canvas.width,canvas.height);overlayEl.classList.add("hidden");}
+  },()=>{setStatus("error","RTDB error");overlayEl.classList.add("hidden");});
+}
+onValue(ref(db,"session/currentMap"),snap=>{
+  const name=snap.val();if(!name)return;
+  mapInput.value=name;currentMap=name;firstLoad=true;subscribeLive();
+});
+
+// ── Context menu ──────────────────────────────────────────────────────────────
+document.querySelectorAll(".ctx-item").forEach(item=>{
+  item.onclick=()=>{
+    if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
+    const cond=item.dataset.condition,action=item.dataset.action;
+    if(cond)applyCondition(currentMap,ctxTokenId,cond,tokens);
+    if(action==="delete")deleteToken(currentMap,ctxTokenId,tokens);
+    ctxMenu.classList.remove("open");ctxTokenId=null;
+  };
+});
+document.addEventListener("click",()=>ctxMenu.classList.remove("open"));
+
+// ── Chat & Dice ───────────────────────────────────────────────────────────────
+document.getElementById("chat-send").onclick=()=>{if(!playerName)return;sendChat(chatInput.value,playerName);chatInput.value="";};
+chatInput.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!playerName)return;sendChat(chatInput.value,playerName);chatInput.value="";}});
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+document.getElementById("fitBtn").onclick=()=>fitCamera(tiles,TILE,canvas.width,canvas.height);
+document.getElementById("sheetsBtn").onclick=()=>window.open("sheet.html","_blank");
+document.getElementById("pingBtn").onclick=()=>{
+  if(!playerName)return;
+  pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);
+  viewport.classList.toggle("pinging",pingMode);
 };
 
 // ── Draw ──────────────────────────────────────────────────────────────────────
-function drawTileAt(x, y, terrain) {
-  const px = x * TILE, py = y * TILE;
-  loadTerrainTexture(terrain);
-  if (terrainTextures[terrain]) {
-    ctx.drawImage(terrainTextures[terrain], px, py, TILE, TILE);
-  } else {
-    ctx.fillStyle = "#334";
-    ctx.fillRect(px, py, TILE, TILE);
+const CONDITIONS={};
+function buildConditionsMap(){getCONDITIONS().forEach(c=>CONDITIONS[c.id]=c.color);}
+// Find door within click range of a world point
+function findDoorAtPoint(wx,wy){
+  for(const did in doors){
+    const d=doors[did];
+    const px=d.x*TILE,py=d.y*TILE;
+    const edgeMid={n:[px+TILE/2,py],s:[px+TILE/2,py+TILE],w:[px,py+TILE/2],e:[px+TILE,py+TILE/2]};
+    const[mx,my]=edgeMid[d.edge]||edgeMid.n;
+    const dist=Math.hypot(wx-mx,wy-my);
+    if(dist<TILE*0.6)return did;
   }
+  return null;
+}
+function drawTileAt(x,y,terrain){
+  const TERRAINS=getTERRAINS();const def=TERRAINS.find(t=>t.id===terrain);
+  const px=x*TILE,py=y*TILE;
+  if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);
+  else{ctx.fillStyle=def?.color||"#333";ctx.fillRect(px,py,TILE,TILE);}
 }
 
-function drawToken(tok) {
-  const s = tok.size || 1;
-  const px = tok.x * TILE, py = tok.y * TILE;
-  const sw = s * TILE, sh = s * TILE;
-  const r = sw * 0.42, cx = px + sw / 2, cy = py + sh / 2;
-  const cacheKey = loadTokenTexture(tok.characterId, tok.lookupName || tok.name);
-  const img = tokenTextures[cacheKey];
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
 
-  ctx.save();
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
-  if (img) {
-    ctx.drawImage(img, px, py, sw, sh);
-  } else {
-    ctx.fillStyle = tok.type === "pc" ? "#3a6aaa" : "#8a2a2a";
-    ctx.fillRect(px, py, sw, sh);
-    ctx.fillStyle = "#fff";
-    ctx.font = `bold ${Math.round(14 * s / camera.zoom)}px Cinzel,serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText((tok.name || "?")[0].toUpperCase(), cx, cy);
-  }
-  ctx.restore();
-
-  // Ring
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = tok.type === "pc" ? "#7ab0e0" : "#e07070";
-  ctx.lineWidth = 2 / camera.zoom; ctx.stroke();
-
-  // Name
-  ctx.font = `${Math.round(9 / camera.zoom)}px Cinzel,serif`;
-  ctx.textAlign = "center"; ctx.textBaseline = "top";
-  const nameW = ctx.measureText(tok.name || "").width;
-  ctx.fillStyle = "rgba(0,0,0,0.65)";
-  ctx.fillRect(cx - nameW / 2 - 3 / camera.zoom, py + sh + 2 / camera.zoom, nameW + 6 / camera.zoom, 10 / camera.zoom);
-  ctx.fillStyle = "#fff"; ctx.fillText(tok.name || "", cx, py + sh + 2 / camera.zoom);
-}
-
-function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#0d0b08"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.save();
-  ctx.translate(camera.x, camera.y); ctx.scale(camera.zoom, camera.zoom);
-
-  // Background image
-  if (bgImage) {
-    const s = TILE / (bgPpi || 70);
-    const bw = bgImage.width * s, bh = bgImage.height * s;
-    if (nightMode) {
-      ctx.save();
-      ctx.filter = "saturate(0.55) brightness(0.55)";
-      ctx.drawImage(bgImage, 0, 0, bw, bh);
-      ctx.filter = "none";
-      ctx.globalCompositeOperation = "multiply";
-      ctx.fillStyle = "rgba(40,60,110,0.55)"; ctx.fillRect(0, 0, bw, bh);
-      ctx.globalCompositeOperation = "source-over";
-      ctx.restore();
-    } else {
-      ctx.drawImage(bgImage, 0, 0, bw, bh);
-    }
+  if(bgImage){
+    const s=TILE/(bgPpi||70);const bw=bgImage.width*s,bh=bgImage.height*s;
+    if(nightMode){
+      ctx.save();ctx.filter="saturate(0.55) brightness(0.55)";ctx.drawImage(bgImage,0,0,bw,bh);
+      ctx.filter="none";ctx.globalCompositeOperation="multiply";
+      ctx.fillStyle="rgba(40,60,110,0.55)";ctx.fillRect(0,0,bw,bh);
+      ctx.globalCompositeOperation="source-over";ctx.restore();
+    }else{ctx.drawImage(bgImage,0,0,bw,bh);}
   }
 
-  // Tiles
-  for (const k in tiles) {
-    const [x, y] = k.split(",").map(Number);
-    drawTileAt(x, y, tiles[k].terrain);
-  }
+  for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
 
-  // Fog — GM view (semi-transparent, typed colors)
-  for (const gid in fogGroups) {
-    const group = fogGroups[gid];
-    const cells = group.cells || {};
-    const type  = group.type || "fog";
-    ctx.fillStyle = FOG_COLORS[type] || FOG_COLORS.fog;
-    for (const ck in cells) {
-      const [x, y] = ck.split(",").map(Number);
-      ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
-    }
-    // × delete button (visual only — no interaction in OBS view)
-    const coords = Object.keys(cells).map(k => k.split(",").map(Number));
-    if (!coords.length) continue;
-    const maxX = Math.max(...coords.map(([x]) => x));
-    const minY = Math.min(...coords.map(([, y]) => y));
-    const bx = (maxX + 1) * TILE - 14 / camera.zoom, by = minY * TILE, bs = 14 / camera.zoom;
-    const btnColor = type === "magical" ? "rgba(120,20,160,0.92)" : type === "darkness" ? "rgba(20,10,40,0.92)" : "rgba(200,50,50,0.92)";
-    ctx.fillStyle = btnColor; ctx.fillRect(bx, by, bs, bs);
-    ctx.fillStyle = "#fff";
-    ctx.font = `bold ${Math.round(11 / camera.zoom)}px sans-serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("×", bx + bs / 2, by + bs / 2);
-  }
-
-  // Stamps
-  ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.font = `${Math.round(TILE * 0.65)}px serif`;
-  for (const [k, emoji] of Object.entries(stamps)) {
-    const [x, y] = k.split(",").map(Number);
-    ctx.fillText(emoji, x * TILE + TILE / 2, y * TILE + TILE / 2);
-  }
-  ctx.restore();
-
-  // Wall groups
-  ctx.strokeStyle = "#c0392b"; ctx.lineWidth = 2.5 / camera.zoom; ctx.lineCap = "round";
-  for (const gid in wallGroups) {
-    const cells = wallGroups[gid].cells || {};
-    for (const ck in cells) {
-      const [x, y] = ck.split(",").map(Number);
-      const px = x * TILE, py = y * TILE;
-      [[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2]) => {
-        if (!cells[`${x+dx},${y+dy}`]) { ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); }
+  // Wall groups — perimeter edges only
+  ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
+  for(const gid in wallGroups){
+    const cells=wallGroups[gid].cells||{};
+    for(const ck in cells){
+      const[x,y]=ck.split(",").map(Number);const px=x*TILE,py=y*TILE;
+      [[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{
+        if(!cells[`${x+dx},${y+dy}`]){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
       });
     }
   }
 
   // Doors
-  for (const did in doors) {
-    const d = doors[did];
-    const px = d.x * TILE, py = d.y * TILE;
-    const edgeCoords = { n:[px,py,px+TILE,py], s:[px,py+TILE,px+TILE,py+TILE], w:[px,py,px,py+TILE], e:[px+TILE,py,px+TILE,py+TILE] };
-    const [x1,y1,x2,y2] = edgeCoords[d.edge] || edgeCoords.n;
-    const mx = (x1+x2)/2, my = (y1+y2)/2;
-    if (d.open) {
-      ctx.strokeStyle = "#8a6a2a"; ctx.lineWidth = 2 / camera.zoom;
-      const len = TILE * 0.25; const isH = d.edge === "n" || d.edge === "s";
+  for(const did in doors){
+    const d=doors[did];
+    const px=d.x*TILE,py=d.y*TILE;
+    const edgeCoords={n:[px,py,px+TILE,py],s:[px,py+TILE,px+TILE,py+TILE],w:[px,py,px,py+TILE],e:[px+TILE,py,px+TILE,py+TILE]};
+    const[x1,y1,x2,y2]=edgeCoords[d.edge]||edgeCoords.n;
+    const mx=(x1+x2)/2,my=(y1+y2)/2;
+    if(d.open){
+      ctx.strokeStyle="#8a6a2a";ctx.lineWidth=2/camera.zoom;
+      const len=TILE*0.25;const isH=d.edge==="n"||d.edge==="s";
       ctx.beginPath();
-      if (isH) { ctx.moveTo(x1,y1-len); ctx.lineTo(x1,y1+len); ctx.moveTo(x2,y2-len); ctx.lineTo(x2,y2+len); }
-      else { ctx.moveTo(x1-len,y1); ctx.lineTo(x1+len,y1); ctx.moveTo(x2-len,y2); ctx.lineTo(x2+len,y2); }
+      if(isH){ctx.moveTo(x1,y1-len);ctx.lineTo(x1,y1+len);ctx.moveTo(x2,y2-len);ctx.lineTo(x2,y2+len);}
+      else{ctx.moveTo(x1-len,y1);ctx.lineTo(x1+len,y1);ctx.moveTo(x2-len,y2);ctx.lineTo(x2+len,y2);}
       ctx.stroke();
     } else {
-      ctx.strokeStyle = d.locked ? "#8a2a2a" : "#8a6a2a"; ctx.lineWidth = 3.5 / camera.zoom;
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-      const sz = 4 / camera.zoom;
-      ctx.fillStyle = d.locked ? "#c04040" : "#c0a040";
-      ctx.fillRect(mx - sz/2, my - sz/2, sz, sz);
+      ctx.strokeStyle=d.locked?"#8a2a2a":"#8a6a2a";ctx.lineWidth=3.5/camera.zoom;
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      const sz=4/camera.zoom;
+      ctx.fillStyle=d.locked?"#c04040":"#c0a040";
+      ctx.fillRect(mx-sz/2,my-sz/2,sz,sz);
     }
   }
 
-  // NPC tokens
-  for (const tok of Object.values(tokens)) if (tok.type === "npc") drawToken(tok);
+  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
+  for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
+  ctx.restore();
 
-  // PC tokens
-  for (const tok of Object.values(tokens)) if (tok.type === "pc") drawToken(tok);
-
-  // Roofs
-  ctx.save(); ctx.globalAlpha = 0.85;
-  for (const [k, r] of Object.entries(roofs)) {
-    const [x, y] = k.split(",").map(Number);
-    drawTileAt(x, y, r.terrain);
+  for(const[k,p]of Object.entries(props)){
+    let rx,ry;
+    if(p.attachedTo&&tokens[p.attachedTo]){rx=tokens[p.attachedTo].x+(p.offsetX||0);ry=tokens[p.attachedTo].y+(p.offsetY||0);}
+    else{[rx,ry]=k.split(",").map(Number);}
+    const def=propDefs[p.propId]||{emoji:"📦",w:1,h:1};
+    const px=rx*TILE,py=ry*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
+    const img=propTextures[p.propId];
+    if(img)ctx.drawImage(img,px,py,pw,ph);
+    else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
   }
+
+  drawChains(ctx,chains,tokens,camera.zoom);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+  drawFog(ctx,fog,camera.zoom,false);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+
+  ctx.save();ctx.globalAlpha=1;
+  for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}
   ctx.restore();
 
-  // Grid
-  ctx.strokeStyle = "rgba(255,255,255,.03)"; ctx.lineWidth = 1 / camera.zoom;
-  const l = -camera.x/camera.zoom, t = -camera.y/camera.zoom;
-  const rr = (canvas.width - camera.x)/camera.zoom, b = (canvas.height - camera.y)/camera.zoom;
-  for (let x = Math.floor(l/TILE)*TILE; x < rr; x += TILE) { ctx.beginPath(); ctx.moveTo(x,t); ctx.lineTo(x,b); ctx.stroke(); }
-  for (let y = Math.floor(t/TILE)*TILE; y < b; y += TILE) { ctx.beginPath(); ctx.moveTo(l,y); ctx.lineTo(rr,y); ctx.stroke(); }
-
+  ctx.strokeStyle="rgba(255,255,255,.03)";ctx.lineWidth=1/camera.zoom;
+  const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,rr=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;
+  for(let x=Math.floor(l/TILE)*TILE;x<rr;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
+  for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(rr,y);ctx.stroke();}
   ctx.restore();
-  requestAnimationFrame(render);
+
+  drawWeather(ctx,canvas.width,canvas.height);
+  drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
+  drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
+  drawRuler(ctx,rulerStart,rulerEnd,(wx,wy)=>toScreen(wx,wy));
+  requestAnimationFrame(draw);
 }
 
-// ── RTDB ──────────────────────────────────────────────────────────────────────
-let liveUnsub = null;
+// ── Pointer events ────────────────────────────────────────────────────────────
+// ── Left slide-in sheet panel ─────────────────────────────────────────────────
+window.closeSheetPanel=function(){
+  document.getElementById('sheet-panel').classList.remove('open');
+  if(sheetWatcher){sheetWatcher();sheetWatcher=null;}
+};
 
-function subscribeLive(mapName) {
-  if (liveUnsub) { liveUnsub(); liveUnsub = null; }
-  liveUnsub = onValue(ref(db, `maps/${mapName}`), snap => {
-    const data = snap.val();
-    for (const k in tiles) delete tiles[k];
-    for (const k in fogGroups) delete fogGroups[k];
-    for (const k in tokens) delete tokens[k];
-    for (const k in stamps) delete stamps[k];
-    for (const k in roofs) delete roofs[k];
-    for (const k in wallGroups) delete wallGroups[k];
-    for (const k in doors) delete doors[k];
-    if (data) {
-      if (data.tiles) Object.assign(tiles, data.tiles);
-      if (data.fog)   Object.assign(fogGroups, data.fog);
-      if (data.wallGroups) Object.assign(wallGroups, data.wallGroups);
-      if (data.doors) Object.assign(doors, data.doors);
-      if (data.tokens) {
-        Object.assign(tokens, data.tokens);
-        Object.values(data.tokens).forEach(t => loadTokenTexture(t.characterId, t.lookupName || t.name));
-      }
-      if (data.stamps) for (const [k,v] of Object.entries(data.stamps)) stamps[k.replace("_",",")] = v;
-      if (data.roofs) Object.assign(roofs, data.roofs);
-      if (data.background && data.background !== bgUrl) {
-        bgUrl = data.background; bgImage = null;
-        const img = new Image(); img.crossOrigin = "anonymous";
-        img.onload = () => bgImage = img; img.src = bgUrl;
-      } else if (!data.background) { bgUrl = ""; bgImage = null; }
-      bgPpi = data.backgroundPpi || 70;
-      nightMode = !!data.nightMode;
+// ── Sheet helpers (ported from sheet.html) ────────────────────────────────────
+let sheetSpellsDb={}, sheetSkillsDb=[], sheetEquipDb={}, sheetMagicDb={};
+let sheetApiLoaded=false;
+async function loadSheetApi(){
+  if(sheetApiLoaded)return;
+  sheetApiLoaded=true;
+  try{
+    const[spellsRaw,skillsRaw,equipRaw,magicRaw]=await Promise.all([
+      fetch("data/spells.json").then(r=>r.json()),
+      fetch("data/skills.json").then(r=>r.json()),
+      fetch("data/equipment.json").then(r=>r.json()).catch(()=>[]),
+      fetch("data/magic_items.json").then(r=>r.json()).catch(()=>[]),
+    ]);
+    spellsRaw.forEach(s=>{sheetSpellsDb[s.name.toLowerCase()]=s;});
+    equipRaw.forEach(e=>{sheetEquipDb[e.name.toLowerCase()]=e;});
+    magicRaw.forEach(m=>{sheetMagicDb[m.name.toLowerCase()]=m;});
+    sheetSkillsDb=skillsRaw.map(s=>({key:s.index.replace(/-/g,"_"),label:s.name,stat:s.ability_score?.index?.slice(0,3)??"str"}));
+  }catch(e){
+    sheetSkillsDb=[
+      {key:"acrobatics",label:"Acrobatics",stat:"dex"},{key:"animal_handling",label:"Animal Handling",stat:"wis"},
+      {key:"arcana",label:"Arcana",stat:"int"},{key:"athletics",label:"Athletics",stat:"str"},
+      {key:"deception",label:"Deception",stat:"cha"},{key:"history",label:"History",stat:"int"},
+      {key:"insight",label:"Insight",stat:"wis"},{key:"intimidation",label:"Intimidation",stat:"cha"},
+      {key:"investigation",label:"Investigation",stat:"int"},{key:"medicine",label:"Medicine",stat:"wis"},
+      {key:"nature",label:"Nature",stat:"int"},{key:"perception",label:"Perception",stat:"wis"},
+      {key:"performance",label:"Performance",stat:"cha"},{key:"persuasion",label:"Persuasion",stat:"cha"},
+      {key:"religion",label:"Religion",stat:"int"},{key:"sleight_of_hand",label:"Sleight of Hand",stat:"dex"},
+      {key:"stealth",label:"Stealth",stat:"dex"},{key:"survival",label:"Survival",stat:"wis"},
+    ];
+  }
+}
+
+const SHEET_ABILITY_KEYS=["str","dex","con","int","wis","cha"];
+const SHEET_ABILITY_LABELS={str:"STR",dex:"DEX",con:"CON",int:"INT",wis:"WIS",cha:"CHA"};
+function sheetMod(s){const m=Math.floor((s-10)/2);return(m>=0?"+":"")+m;}
+function sheetFmt(n){return(n>=0?"+":"")+n;}
+function sheetParseBonus(v){return parseInt(String(v).replace(/[^0-9\-]/g,""),10)||0;}
+function sheetHpColor(cur,max){if(!max)return"var(--gold)";const p=cur/max;return p>.5?"var(--green)":p>.25?"var(--warn)":"var(--red)";}
+function sheetEsc(str){return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function sheetSpellLevel(lvl){if(lvl===0)return"Cantrip";const s=["th","st","nd","rd","th","th","th","th","th","th"][lvl]||"th";return lvl+s+" Level";}
+function sheetGetItem(name){if(!name)return null;const k=name.toLowerCase();return sheetEquipDb[k]??sheetMagicDb[k]??null;}
+function sheetItemDesc(item){if(!item)return"";const d=item.desc??item.special??[];return Array.isArray(d)?d[0]??"":`${d}`;}
+function sheetItemCat(item){if(!item)return null;return item.equipment_category?.name??item.gear_category?.name??item.rarity?.name??null;}
+function sheetSpellDesc(name){const s=sheetSpellsDb[name?.toLowerCase()];if(!s)return"";const d=s.desc??[];return Array.isArray(d)?d[0]??"":`${d}`;}
+function sheetSpellMeta(name){
+  const s=sheetSpellsDb[name?.toLowerCase()];if(!s)return"";
+  const parts=[];
+  if(s.casting_time)parts.push(`Cast: <span>${s.casting_time}</span>`);
+  if(s.range)parts.push(`Range: <span>${s.range}</span>`);
+  if(s.duration)parts.push(`Duration: <span>${s.duration}</span>`);
+  return parts.length?`<div class="spell-meta">${parts.map(p=>`<span>${p}</span>`).join("")}</div>`:"";
+}
+
+window.togglePanel=function(panelId,btnId){
+  const panel=document.getElementById(panelId),btn=document.getElementById(btnId);if(!panel||!btn)return;
+  const open=panel.classList.toggle("open");btn.classList.toggle("open",open);
+};
+window.toggleSlot=function(pip){
+  const charId=pip.dataset.charid,lvl=pip.dataset.lvl,idx=parseInt(pip.dataset.idx,10),max=parseInt(pip.dataset.max,10);
+  const pips=[...pip.parentElement.querySelectorAll(".slot-pip")];
+  const clamped=Math.max(0,Math.min(max,pip.classList.contains("used")?idx:idx+1));
+  pips.forEach((p,i)=>p.classList.toggle("used",i<clamped));
+  set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(console.error);
+};
+window.toggleCharge=function(pip){
+  const charId=pip.dataset.charid,abKey=pip.dataset.abkey;
+  const idx=parseInt(pip.dataset.idx,10),max=parseInt(pip.dataset.max,10);
+  const pips=[...pip.parentElement.querySelectorAll(".charge-pip")];
+  const clamped=Math.max(0,Math.min(max,pip.classList.contains("used")?idx:idx+1));
+  pips.forEach((p,i)=>p.classList.toggle("used",i<clamped));
+  set(ref(db,`characters/pcs/${charId}/abilities/${abKey}/current`),max-clamped).catch(console.error);
+};
+window.adjustHp=async function(charId,isHeal){
+  const deltaEl=document.getElementById(`hpdelta-${charId}`);
+  const delta=parseInt(deltaEl?.value,10)||1;
+  if(!deltaEl||delta<=0)return;
+  try{
+    const snap=await get(ref(db,`characters/pcs/${charId}/combat`));if(!snap.exists())return;
+    const c=snap.val(),max=c.hp_max??1;
+    let cur=c.hp_current??0;
+    cur=isHeal?Math.min(max,cur+delta):Math.max(0,cur-delta);
+    await update(ref(db,`characters/pcs/${charId}/combat`),{hp_current:cur});
+    deltaEl.value="";
+  }catch(e){console.error("HP save failed:",e);}
+};
+
+function buildSheetCard(char){
+  const c=char.combat||{},st=char.stats||{},sp=char.spellcasting||null,sk=char.skills||{};
+  const conds=c.conditions||[];
+  const hpCur=c.hp_current??0,hpMax=c.hp_max??1;
+  const hpPct=Math.max(0,Math.min(1,hpCur/hpMax));
+  const tempHp=c.temp_hp??0;
+  const initBonus=c.initiative_bonus??Math.floor(((st.dex??10)-10)/2);
+  const profBonus=c.proficiency_bonus??2;
+  const passPerc=char.senses?.passive_perception??(10+Math.floor(((st.wis??10)-10)/2));
+  const subLine=`Lv ${char.level??'?'} ${char.class||''}${char.subclass?` (${char.subclass})`:''}${char.species?` · ${char.species}`:''}`;
+
+  const abilityBoxes=SHEET_ABILITY_KEYS.map(k=>{
+    const score=st[k]??10;
+    return `<div class="ab-box"><div class="ab-name">${SHEET_ABILITY_LABELS[k]}</div><div class="ab-score">${score}</div><div class="ab-mod">${sheetMod(score)}</div></div>`;
+  }).join('');
+
+  const condPills=conds.map(cd=>`<div class="cond-pill">${cd}</div>`).join('');
+
+  // Weapons
+  const attacks=char.attacks||[];
+  let weaponHtml='';
+  if(attacks.length){
+    const items=attacks.map(a=>{
+      const atk=a.to_hit!=null&&a.to_hit!==''?sheetFmt(sheetParseBonus(a.to_hit)):(a.attack_bonus!=null?sheetFmt(sheetParseBonus(a.attack_bonus)):'—');
+      const notes=[a.properties,a.notes].filter(Boolean).join(' · ');
+      return `<div class="weapon-item"><div class="weapon-top"><div class="weapon-name">${a.name||'Unnamed'}</div>${a.damage_type?`<div class="weapon-type">${a.damage_type}</div>`:''}</div>
+        <div class="weapon-stats">
+          <div class="wstat"><div class="wstat-label">Attack</div><div class="wstat-val">${atk}</div></div>
+          <div class="wstat"><div class="wstat-label">Damage</div><div class="wstat-val">${a.damage||'—'}</div></div>
+          ${a.range?`<div class="wstat"><div class="wstat-label">Range</div><div class="wstat-val">${a.range}</div></div>`:''}
+        </div>${notes?`<div class="weapon-notes">${sheetEsc(notes)}</div>`:''}</div>`;
+    }).join('');
+    weaponHtml=`<div class="expand-panel" id="wp-${char.id}"><div class="weapon-list">${items}</div></div>`;
+  }
+
+  // Inventory
+  const invRaw=char.inventory??{};
+  const inventory=Array.isArray(invRaw)?invRaw:Object.values(invRaw);
+  let invHtml='';
+  if(inventory.length){
+    const items=inventory.map(item=>{
+      const api=sheetGetItem(item.name);
+      const rarity=api?.rarity?.name?.toLowerCase().replace(/\s+/g,'-')??null;
+      const rc=rarity&&rarity!=='none'?` inv-rarity-${rarity}`:'';
+      return `<div class="inv-item${rc}"><div class="inv-item-top"><span class="inv-name">${sheetEsc(item.name||'Unnamed')}</span>${(item.qty??1)>1?`<span class="inv-qty">×${item.qty}</span>`:''}</div>
+        ${sheetItemCat(api)?`<span class="inv-cat">${sheetEsc(sheetItemCat(api))}</span>`:''}
+        ${item.desc||sheetItemDesc(api)?`<div class="inv-desc">${sheetEsc(item.desc||sheetItemDesc(api))}</div>`:''}
+        ${item.notes?`<div class="inv-notes">${sheetEsc(item.notes)}</div>`:''}</div>`;
+    }).join('');
+    invHtml=`<div class="expand-panel" id="inv-${char.id}">${items}</div>`;
+  }
+
+  // Spells
+  let spellHtml='',hasSpells=false;
+  if(sp){
+    const spMeta=[sp.ability?`Ability: <span>${sp.ability.toUpperCase()}</span>`:null,sp.spell_save_dc?`DC <span>${sp.spell_save_dc}</span>`:null,sp.spell_attack_bonus!=null?`Atk <span>${sheetFmt(sp.spell_attack_bonus)}</span>`:null].filter(Boolean).map(s=>`<div class="sp-meta-item">${s}</div>`).join('');
+    let slotRows='';
+    for(let lvl=1;lvl<=9;lvl++){
+      const maxS=sp.slots?.[String(lvl)]??sp.slots?.[lvl]??0;if(!maxS)continue;
+      const usedS=sp.slots_used?.[String(lvl)]??sp.slots_used?.[lvl]??0;
+      let pips='';for(let i=0;i<maxS;i++)pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;
+      slotRows+=`<div class="slot-level-row"><div class="slot-level-label">${sheetSpellLevel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;
     }
-    if (firstLoad) { firstLoad = false; fitCamera(); }
+    const spells=sp.spells||[];
+    const cantrips=spells.filter(s=>s.prepared_type==='cantrip'||s.level===0);
+    const prepared=spells.filter(s=>s.prepared_type!=='cantrip'&&s.level!==0);
+    const renderSpell=s=>{
+      const levelTag=(s.level===0||s.prepared_type==='cantrip')?'Cantrip':sheetSpellLevel(s.level||1);
+      return `<div class="spell-item"><div class="spell-item-top"><span class="spell-name">${sheetEsc(s.name)}</span><span class="spell-level-tag">${levelTag}</span></div>
+        ${sheetSpellDesc(s.name)?`<div class="spell-desc">${sheetEsc(sheetSpellDesc(s.name))}</div>`:''}
+        ${sheetSpellMeta(s.name)}
+        ${s.beginner_tip?`<div class="spell-tip"><span class="spell-tip-text">✦ ${sheetEsc(s.beginner_tip)}</span></div>`:''}</div>`;
+    };
+    hasSpells=!!(cantrips.length||prepared.length||slotRows);
+    spellHtml=`<div class="expand-panel" id="sp-${char.id}">
+      ${spMeta?`<div class="sp-meta">${spMeta}</div>`:''}
+      ${slotRows?`<div class="slot-levels">${slotRows}</div>`:''}
+      ${cantrips.length?`<div class="sp-section-title">Cantrips</div><div class="spell-list">${cantrips.map(renderSpell).join('')}</div>`:''}
+      ${prepared.length?`<div class="sp-section-title">Prepared Spells</div><div class="spell-list">${prepared.map(renderSpell).join('')}</div>`:''}
+      ${!cantrips.length&&!prepared.length?`<div class="empty-panel">No spells recorded.</div>`:''}
+    </div>`;
+  }
+
+  // Skills
+  const skillRows=sheetSkillsDb.map(s=>{
+    const d=sk[s.key]||{};
+    const base=Math.floor(((st[s.stat]??10)-10)/2);
+    const bonus=d.bonus!=null?d.bonus:(base+(d.proficient?profBonus:0)+(d.expertise?profBonus:0));
+    const cls=d.expertise?'expert':d.proficient?'prof':'';
+    return `<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${sheetFmt(bonus)}</span></div>`;
+  }).join('');
+
+  // Ability cards
+  const abilityCards=Object.entries(char.abilities||{}).map(([abKey,ab])=>{
+    if(!ab||!ab.label)return'';
+    if(ab.kind==='charge'&&ab.max){
+      const used=ab.max-(ab.current??ab.max);
+      const meta=[ab.die?`${ab.die}`:null,ab.recharge?`recharge: ${ab.recharge}`:null].filter(Boolean).join(' · ');
+      const pips=Array.from({length:ab.max},(_,i)=>`<div class="charge-pip${i<used?' used':''}" data-charid="${char.id}" data-abkey="${abKey}" data-idx="${i}" data-max="${ab.max}" onclick="window.toggleCharge(this)"></div>`).join('');
+      return `<div class="ability-charge"><div class="ability-charge-top"><span class="ability-charge-name">${sheetEsc(ab.label)}</span>${meta?`<span class="ability-charge-meta">${sheetEsc(meta)}</span>`:''}</div><div class="charge-pips">${pips}</div>${ab.effect_desc?`<div class="feat-desc" style="margin-top:4px">${sheetEsc(ab.effect_desc)}</div>`:''}</div>`;
+    }
+    return `<div class="feat-item"><div class="feat-name">${sheetEsc(ab.label)}</div>${ab.effect_desc?`<div class="feat-desc">${sheetEsc(ab.effect_desc)}</div>`:''}</div>`;
+  }).join('');
+
+  const featuresText=char.text_blocks?.features_traits||'';
+  const profText=char.text_blocks?.proficiencies_languages||'';
+  const featuresBlock=featuresText?`<div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${sheetEsc(featuresText)}</div></div>`:'';
+  const profBlock=profText?`<div class="sp-section-title">Proficiencies &amp; Languages</div><div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${sheetEsc(profText)}</div></div>`:'';
+
+  // Saves
+  const saveProfList=char.saves?.proficient||[];
+  const saveRows=SHEET_ABILITY_KEYS.map(k=>{
+    const base=Math.floor(((st[k]??10)-10)/2);
+    const prof=saveProfList.includes(k);
+    return `<div class="save-row-item${prof?' prof':''}"><span class="skill-name">${SHEET_ABILITY_LABELS[k]}</span><span class="skill-val">${sheetFmt(base+(prof?profBonus:0))}</span></div>`;
+  }).join('');
+
+  // Senses
+  const sensePills=Object.entries(char.senses||{}).map(([k,v])=>{
+    if(v==null||v===false||v==='')return'';
+    const label=k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    const val=typeof v==='number'?` ${v} ft`:(v===true?'':` ${v}`);
+    return `<div class="sense-pill">${label}${val}</div>`;
+  }).join('');
+
+  const skillPanel=`<div class="expand-panel" id="sk-${char.id}">
+    <div class="sp-section-title">Saving Throws</div><div class="save-grid">${saveRows}</div>
+    ${sensePills?`<div class="sp-section-title">Senses</div><div class="senses-block">${sensePills}</div>`:''}
+    <div class="sp-section-title">Skills</div><div class="skill-grid">${skillRows}</div>
+    ${abilityCards||featuresBlock?`<div class="sp-section-title">Features &amp; Traits</div>${abilityCards}${featuresBlock}`:''}
+    ${profBlock}
+  </div>`;
+
+  const hasTip=!!char.beginner_tip;
+  const tipPanel=hasTip?`<div class="expand-panel" id="tg-${char.id}"><div class="combat-guide-wrap"><div class="combat-guide">${sheetEsc(char.beginner_tip)}</div></div></div>`:'';
+
+  const eq=char.equipped||{};
+  const eqParts=[];
+  if(eq.armor)eqParts.push(`<div class="equipped-badge">🛡 <span>${sheetEsc(eq.armor)}</span></div>`);
+  if(eq.shield)eqParts.push(`<div class="equipped-badge">🔰 <span>Shield</span></div>`);
+  if(eq.offhand)eqParts.push(`<div class="equipped-badge">✋ <span>${sheetEsc(eq.offhand)}</span></div>`);
+
+  const cp=char.coin_purse;
+  const coinRow=cp?`<div class="coin-row"><span class="coin-label">💰</span><div class="coin pp">◈ ${cp.pp??0}pp</div><div class="coin gp">◉ ${cp.gp??0}gp</div><div class="coin ep">◈ ${cp.ep??0}ep</div><div class="coin sp">◎ ${cp.sp??0}sp</div><div class="coin cp">○ ${cp.cp??0}cp</div></div>`:'';
+
+  const card=document.createElement('div');
+  card.className='card';card.id=`card-${char.id}`;
+  card.innerHTML=`
+    <div class="card-header">
+      <div class="char-name">${sheetEsc(char.name||'Unnamed')}</div>
+      <div class="char-sub">${sheetEsc(subLine)}</div>
+      ${char.combat_role?`<div class="char-role-badge">${sheetEsc(char.combat_role)}</div>`:''}
+      <div class="hp-row">
+        <div class="hp-label">HP</div>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${sheetHpColor(hpCur,hpMax)}"></div></div>
+        <div class="hp-val" id="hpval-${char.id}">${hpCur} / ${hpMax}</div>
+        ${tempHp?`<div class="temp-badge">+${tempHp} tmp</div>`:''}
+      </div>
+      <div class="hp-controls">
+        <input class="hp-delta" id="hpdelta-${char.id}" type="number" min="1" placeholder="amt"/>
+        <button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button>
+        <button class="hp-btn dmg" onclick="window.adjustHp('${char.id}',false)">− Dmg</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-cell"><div class="stat-label">AC</div><div class="stat-val">${c.ac??'—'}</div></div>
+      <div class="stat-cell"><div class="stat-label">Speed</div><div class="stat-val">${c.speed??30}</div></div>
+      <div class="stat-cell"><div class="stat-label">Init</div><div class="stat-val">${sheetFmt(initBonus)}</div></div>
+      <div class="stat-cell"><div class="stat-label">Prof</div><div class="stat-val">+${profBonus}</div></div>
+      <div class="stat-cell"><div class="stat-label">Perc</div><div class="stat-val">${passPerc}</div></div>
+    </div>
+    ${eqParts.length?`<div class="equipped-row">${eqParts.join('')}</div>`:''}
+    ${coinRow}
+    <div class="ability-grid">${abilityBoxes}</div>
+    ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
+    <div class="card-footer">
+      ${hasTip?`<button class="panel-btn tip-btn" id="tgbtn-${char.id}" onclick="window.togglePanel('tg-${char.id}','tgbtn-${char.id}')">✦ Combat Guide <span class="chevron">▾</span></button>`:''}
+      ${attacks.length?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">⚔ Weapons &amp; Attacks <span class="chevron">▾</span></button>`:''}
+      <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">📋 Skills &amp; Saves <span class="chevron">▾</span></button>
+      ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">✨ Spells &amp; Cantrips <span class="chevron">▾</span></button>`:''}
+      ${inventory.length?`<button class="panel-btn inv-btn" id="invbtn-${char.id}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="chevron">▾</span></button>`:''}
+    </div>
+    ${tipPanel}${weaponHtml}${skillPanel}${spellHtml}${invHtml}`;
+  return card;
+}
+
+// ── Open character sheet on token click ───────────────────────────────────────
+let sheetWatcher=null;
+async function openCharSheet(charId, charName){
+  await loadSheetApi();
+  const panel=document.getElementById('sheet-panel');
+  const view=document.getElementById('sheet-view');
+  const title=document.getElementById('sheet-panel-title');
+  panel.classList.add('open');
+  view.innerHTML='<div id="sheet-empty">Loading…</div>';
+  title.textContent=`📋 ${charName||'CHARACTER'}`;
+
+  if(sheetWatcher){sheetWatcher();sheetWatcher=null;}
+
+  const path=charId&&charId!=='__npc__'?`characters/pcs/${charId}`:null;
+  if(!path){
+    view.innerHTML=`<div id="sheet-empty">No sheet for<br><strong>${charName||'this token'}</strong></div>`;
+    return;
+  }
+
+  sheetWatcher=onValue(ref(db,path),snap=>{
+    if(!snap.exists()){view.innerHTML=`<div id="sheet-empty">Character not found</div>`;return;}
+    const char={...snap.val(),id:charId};
+    view.innerHTML='';
+    view.appendChild(buildSheetCard(char));
   });
 }
 
-// Follow session/currentMap like index.html does
-onValue(ref(db, "session/currentMap"), snap => {
-  const name = snap.val();
-  if (!name) return;
-  firstLoad = true;
-  subscribeLive(name);
+viewport.addEventListener("contextmenu",e=>{
+  e.preventDefault();const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+  const tokId=tokenAtTile(tokens,tx,ty);
+  if(tokId){ctxTokenId=tokId;ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");}
 });
 
-render();
+viewport.addEventListener("pointerdown",e=>{
+  const[sx,sy]=screenPos(e);
+  if(pingMode){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}
+  if(e.altKey){
+    const[wx,wy]=toWorld(sx,sy);const snap=findSnapPoint(tokens,wx,wy);const point=snap||[wx,wy];
+    if(!rulerActive){rulerStart=point;rulerEnd=point;rulerActive=true;}else{rulerEnd=point;rulerActive=false;}
+    return;
+  }
+  const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+  const tokId=tokenAtTile(tokens,tx,ty);
+  if(tokId){
+    const tok=tokens[tokId];
+    if(tok.type==="pc"&&(tok.name?.toLowerCase()===playerName.toLowerCase()||tok.characterId===myCharacterId)){
+      draggingToken={id:tokId,offsetTX:tx-tok.x,offsetTY:ty-tok.y};viewport.setPointerCapture(e.pointerId);
+      openCharSheet(tok.characterId,tok.name);return;
+    }
+    openCharSheet(tok.characterId,tok.name);return;
+  }
+
+  // Door click — check all doors for proximity to click point
+  const clickedDoor=findDoorAtPoint(wx,wy);
+  if(clickedDoor){
+    const d=doors[clickedDoor];
+    if(d.locked){
+      toast(`🔒 ${d.lockReason||"This door is locked."}`);
+    } else {
+      update(ref(db,`maps/${currentMap}/doors/${clickedDoor}`),{open:!d.open});
+    }
+    return;
+  }
+  isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);
+  panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camera.x;camStartY=camera.y;
+  viewport.setPointerCapture(e.pointerId);
+});
+
+viewport.addEventListener("pointermove",e=>{
+  const[sx,sy]=screenPos(e);
+  if(rulerActive){const[wx,wy]=toWorld(sx,sy);const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
+  if(draggingToken){const[wx,wy]=toWorld(sx,sy);tokens[draggingToken.id].x=Math.floor(wx/TILE)-draggingToken.offsetTX;tokens[draggingToken.id].y=Math.floor(wy/TILE)-draggingToken.offsetTY;return;}
+  if(isHolding&&myLaserRef){const[wx,wy]=toWorld(sx,sy);moveLaser(myLaserRef,wx,wy,playerName);return;}
+  if(panning){camera.x=camStartX+(e.clientX-panStartX);camera.y=camStartY+(e.clientY-panStartY);}
+});
+
+viewport.addEventListener("pointerup",e=>{
+  if(rulerActive)return;
+  if(draggingToken){
+    update(ref(db,`maps/${currentMap}/tokens/${draggingToken.id}`),{x:tokens[draggingToken.id].x,y:tokens[draggingToken.id].y});
+    draggingToken=null;return;
+  }
+  clearTimeout(pingHoldTimer);
+  if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}
+  isHolding=false;panning=false;
+});
+
+viewport.addEventListener("wheel",e=>{
+  e.preventDefault();
+  const[sx,sy]=screenPos(e);
+  applyZoom(e.deltaY<0?1.1:.9,sx,sy);
+  scaleLabel.textContent=`${Math.round(camera.zoom*100)}%`;
+},{passive:false});
+
+window.addEventListener("keydown",e=>{
+  if(e.code==="Escape"){
+    rulerStart=null;rulerEnd=null;rulerActive=false;
+    closeSheetPanel();
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  subscribePassphrase();
+  subscribeTalking();
+  await loadConfig();
+  buildConditionsMap();
+  getDICE().forEach(sides=>{
+    const btn=document.createElement("button");btn.className="die-btn";btn.textContent=`d${sides}`;
+    btn.onclick=async()=>{if(!playerName)return;const result=await rollDie(sides,playerName);sendChat(`rolled d${sides} → ${result}`,playerName,"dice");};
+    document.getElementById("dice-btns").appendChild(btn);
+  });
+  await loadTerrainTextures(getTERRAINS());
+
+  // Check if there's a saved session — show login or restore
+  const saved=loadAuthSession();
+  if(saved&&saved.playerName){
+    playerName=saved.playerName;
+    myCharacterId=saved.characterId||null;
+    myCharacterName=saved.characterName||null;
+    nameDisplay.textContent=playerName+(myCharacterName?` · ${myCharacterName}`:"");
+    setTimeout(()=>{if(hasPassphraseSet())loginPassField.style.display="block";},200);
+    loginModal.classList.add("hidden");
+    writePresence();
+  } else {
+    // Pre-fill passphrase field after subscribe has a moment to resolve
+    setTimeout(()=>{if(hasPassphraseSet())loginPassField.style.display="block";},200);
+  }
+
+  await populateLoginDropdowns();
+
+  // Start map subscription
+  subscribeLive();
+  draw();
+})();
 </script>
 </body>
 </html>
