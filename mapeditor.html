@@ -613,11 +613,17 @@ async function savePropsLocal(){const m=mapInput.value.trim()||"dungeon-1";await
 async function savePropDef(p){await set(ref(db,`propDefs/${p.id}`),p);}
 
 // ── Undo / Redo ───────────────────────────────────────────────────────────────
-function snapshotTiles(){return JSON.stringify(tiles);}
-function pushUndo(){undoStack.push(snapshotTiles());if(undoStack.length>50)undoStack.shift();redoStack.length=0;}
-function restoreTiles(s){for(const k in tiles)delete tiles[k];Object.assign(tiles,JSON.parse(s));}
-function undo(){if(!undoStack.length){toast("Nothing to undo");return;}redoStack.push(snapshotTiles());restoreTiles(undoStack.pop());scheduleSave();}
-function redo(){if(!redoStack.length){toast("Nothing to redo");return;}undoStack.push(snapshotTiles());restoreTiles(redoStack.pop());scheduleSave();}
+function snapshotState(){return JSON.stringify({tiles,wallGroups,darknessGroups,fogGroups});}
+function pushUndo(){undoStack.push(snapshotState());if(undoStack.length>50)undoStack.shift();redoStack.length=0;}
+function restoreState(s){
+  const snap=JSON.parse(s);
+  for(const k in tiles)delete tiles[k];Object.assign(tiles,snap.tiles||{});
+  for(const k in wallGroups)delete wallGroups[k];Object.assign(wallGroups,snap.wallGroups||{});
+  for(const k in darknessGroups)delete darknessGroups[k];Object.assign(darknessGroups,snap.darknessGroups||{});
+  for(const k in fogGroups)delete fogGroups[k];Object.assign(fogGroups,snap.fogGroups||{});
+}
+function undo(){if(!undoStack.length){toast("Nothing to undo");return;}redoStack.push(snapshotState());restoreState(undoStack.pop());scheduleSave();saveWallGroups();saveDarknessGroups();saveFogLocal();}
+function redo(){if(!redoStack.length){toast("Nothing to redo");return;}undoStack.push(snapshotState());restoreState(redoStack.pop());scheduleSave();saveWallGroups();saveDarknessGroups();saveFogLocal();}
 
 // ── Live listener ─────────────────────────────────────────────────────────────
 function subscribeLive(){
@@ -1286,8 +1292,8 @@ canvas.addEventListener("pointerup",e=>{
   if(draggingToken){saveTokenLocal(draggingToken.id,tokens[draggingToken.id]);savePropsLocal();draggingToken=null;return;}
   if(draggingProp){savePropsLocal();draggingProp=null;return;}
   if(fogMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="fog_"+Date.now();fogGroups[gid]={cells};saveFogLocal();return;}
-  if(wallMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="wg_"+Date.now();wallGroups[gid]={cells};saveWallGroups();return;}
-  if(darknessMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="dk_"+Date.now();darknessGroups[gid]={cells};saveDarknessGroups();return;}
+  if(wallMode&&dragging){dragging=false;pushUndo();const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);cells[k]=true;if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain};}const gid="wg_"+Date.now();wallGroups[gid]={cells};saveWallGroups();scheduleSave();return;}
+  if(darknessMode&&dragging){dragging=false;pushUndo();const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);cells[k]=true;if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain};}const gid="dk_"+Date.now();darknessGroups[gid]={cells};saveDarknessGroups();scheduleSave();return;}
   if(roofMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyRoof(x,y);saveRoofs();return;}
   if(currentShape==="select"&&selectPhase==="moving"){selectPhase="selected";canvas.style.cursor="move";return;}
   if(currentShape==="select"&&selectPhase==="marquee"&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);pushUndo();liftSelection(minX,minY,maxX,maxY);selectPhase=Object.keys(selectTiles).length>0?"selected":null;canvas.style.cursor=selectPhase?"move":"crosshair";return;}
