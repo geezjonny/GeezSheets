@@ -569,7 +569,7 @@ let allPcs = [];
 
 function renderCards(campaign) {
   const wrap = $('cardsWrap'); wrap.innerHTML='';
-  const filtered = campaign ? allPcs.filter(c=>(c.campaign||c.vtt_profile?.campaign||'')===campaign) : allPcs;
+  const filtered = campaign ? allPcs.filter(c=>c.campaign===campaign) : allPcs;
   if(!filtered.length){
     wrap.innerHTML='<div style="color:var(--dim);font-family:\'Cinzel\',serif;font-size:.8rem;padding:40px 20px">No characters for this campaign.</div>';
     return;
@@ -583,8 +583,10 @@ async function loadParty() {
     const snap = await get(ref(db,'characters/pcs'));
     $('loadingScreen').style.display='none';
     if(!snap.exists()){$('errorMsg').textContent='No player characters found.';$('errorScreen').style.display='flex';return;}
-    allPcs = Object.values(snap.val()).filter(c=>c&&c.name).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
-    const campaigns = [...new Set(allPcs.map(c=>c.campaign||c.vtt_profile?.campaign||'').filter(Boolean))].sort();
+    allPcs = Object.values(snap.val())
+      .filter(c => c && c.name && c.campaign !== '__oracle__' && c.type !== 'npc' && c.record_type !== 'npc')
+      .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    const campaigns = [...new Set(allPcs.map(c=>c.campaign||'').filter(c=>c&&c!=='__oracle__'))].sort();
     const sel = $('campaignSelect');
     campaigns.forEach(camp=>{const opt=document.createElement('option');opt.value=camp;opt.textContent=camp;sel.appendChild(opt);});
     if(campaigns.length===1) sel.value=campaigns[0];

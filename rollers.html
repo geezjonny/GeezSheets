@@ -134,6 +134,12 @@
   .dgen-btn.gen:hover{filter:brightness(1.18);}
   .dgen-btn.push{background:linear-gradient(135deg,#0d2210,#1a4020);color:#8ad4a0;border:1px solid rgba(100,200,120,0.3);font-size:0.68rem;}
   .dgen-btn.push:hover{filter:brightness(1.2);}
+  .push-row{display:flex;gap:6px;align-items:center;margin:8px 0 4px;padding:0 2px;}
+  .char-push-select{flex:1;background:#1a1a14;border:1px solid rgba(200,168,75,.2);color:#c8a84b;font-family:inherit;font-size:0.72rem;padding:5px 8px;border-radius:4px;outline:none;cursor:pointer;}
+  .char-push-select option{background:#1a1a14;}
+  .push-status{font-size:0.68rem;font-family:monospace;min-height:16px;padding:0 2px;transition:all .2s;}
+  .push-status-ok{color:#8ad4a0;}
+  .push-status-err{color:#e07070;}
   .dgen-btn.exp{background:var(--ink);color:var(--parchment-dark);font-size:0.65rem;}
   .dgen-btn.exp:hover{filter:brightness(1.3);}
 
@@ -270,6 +276,11 @@
         <button class="oracle-roll-btn secondary" onclick="rollLoot('hoard')">Hoard</button>
       </div>
       <div class="oracle-result-area" id="res-loot"><div class="oracle-result-empty">Press Roll Loot to find something worth taking.</div></div>
+      <div class="push-row">
+        <select class="char-push-select"><option value="">— Push to character —</option></select>
+        <button class="dgen-btn push" onclick="pushItemToChar('opanel-loot')">☁ Push to Sheet</button>
+      </div>
+      <div class="push-status"></div>
       <div class="sec-div"><span>Recent</span></div>
       <div class="history-list" id="hist-loot"></div>
     </div>
@@ -307,6 +318,11 @@
         <button class="oracle-roll-btn secondary" onclick="rollTreasure('hoard')">Hoard</button>
       </div>
       <div class="oracle-result-area" id="res-treasure"><div class="oracle-result-empty">Roll to see what glitters in the dark.</div></div>
+      <div class="push-row">
+        <select class="char-push-select"><option value="">— Push to character —</option></select>
+        <button class="dgen-btn push" onclick="pushItemToChar('opanel-treasure')">☁ Push to Sheet</button>
+      </div>
+      <div class="push-status"></div>
       <div class="sec-div"><span>Recent</span></div>
       <div class="history-list" id="hist-treasure"></div>
     </div>
@@ -453,27 +469,148 @@
 <!-- Firebase module -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-const cfg={apiKey:"AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",authDomain:"sheets-e5838.firebaseapp.com",databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",projectId:"sheets-e5838",storageBucket:"sheets-e5838.firebasestorage.app"};
+import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+const cfg={apiKey:"AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",authDomain:"sheets-e5838.firebaseapp.com",databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",projectId:"sheets-e5838",storageBucket:"sheets-e5838.firebasestorage.app"};
 const app=initializeApp(cfg);
 const db=getDatabase(app);
 window._db=db; window._ref=ref; window._set=set; window._get=get;
 
+// ── Load API data from /data ────────────────────────────────────────────────
+let magicItemsDb=[], equipmentDb=[];
+let magicByRarity={common:[],uncommon:[],rare:[],veryRare:[],legendary:[]};
+
+async function loadApiData(){
+  try{
+    const [magic,equip]=await Promise.all([
+      fetch("data/magic_items.json").then(r=>r.json()).catch(()=>[]),
+      fetch("data/equipment.json").then(r=>r.json()).catch(()=>[]),
+    ]);
+    magicItemsDb=magic;
+    equipmentDb=equip;
+    // Index magic items by rarity
+    magic.forEach(m=>{
+      const r=(m.rarity?.name||'').toLowerCase().replace(/\s+/g,'_');
+      if(r==='common')magicByRarity.common.push(m);
+      else if(r==='uncommon')magicByRarity.uncommon.push(m);
+      else if(r==='rare')magicByRarity.rare.push(m);
+      else if(r==='very_rare')magicByRarity.veryRare.push(m);
+      else if(r==='legendary')magicByRarity.legendary.push(m);
+    });
+  }catch(e){console.warn('Could not load API data',e);}
+}
+
+function pickMagicItem(rarity){
+  const pool=magicByRarity[rarity]||[];
+  if(!pool.length)return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function pickEquipment(category){
+  const pool=equipmentDb.filter(e=>
+    e.equipment_category?.name?.toLowerCase()===category.toLowerCase()
+  );
+  if(!pool.length)return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+// ── Character loading ────────────────────────────────────────────────────────
 window.loadCampaigns=async function(){
   const st=document.getElementById('party-status');
   st.textContent='Loading...';
   try{
     const snap=await get(ref(db,'characters/pcs'));
     if(!snap.exists()){st.textContent='No characters found.';return;}
-    const pcs=Object.values(snap.val()).filter(c=>c&&c.name);
-    const camps=[...new Set(pcs.map(c=>c.campaign||c.vtt_profile?.campaign||'').filter(Boolean))].sort();
+    const pcs=Object.values(snap.val()).filter(c=>c&&c.name&&c.campaign!=='__oracle__'&&c.type!=='npc'&&c.record_type!=='npc');
+    // campaign field is now top-level (vtt_profile removed)
+    const camps=[...new Set(pcs.map(c=>c.campaign||'').filter(c=>c&&c!=='__oracle__'))].sort();
     const sel=document.getElementById('campaign-select');
     while(sel.options.length>1)sel.remove(1);
     camps.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
     window._allPcs=pcs;
     st.textContent=`${pcs.length} characters loaded.`;
+    // Build character picker for push UI
+    buildCharPicker(pcs);
   }catch(e){st.textContent='Firebase error.';console.error(e);}
 };
+
+function buildCharPicker(pcs){
+  document.querySelectorAll('.char-push-select').forEach(sel=>{
+    while(sel.options.length>1)sel.remove(1);
+    pcs.forEach(pc=>{
+      const o=document.createElement('option');
+      o.value=pc.id||Object.keys(window._allPcs||{}).find(k=>window._allPcs[k]===pc)||pc.name.toLowerCase();
+      o.textContent=pc.name;
+      sel.appendChild(o);
+    });
+  });
+}
+
+// ── Push item to character inventory in RTDB ─────────────────────────────────
+window.pushItemToChar=async function(panelId){
+  const sel=document.querySelector(`#${panelId} .char-push-select`);
+  if(!sel||!sel.value){showPushStatus(panelId,'Select a character first','err');return;}
+  const charId=sel.value;
+
+  // Find the last rolled result for this panel
+  const lastRoll=window._lastRoll?.[panelId];
+  if(!lastRoll){showPushStatus(panelId,'Roll something first','err');return;}
+
+  const slug=s=>s.replace(/[^a-z0-9]+/g,'_').toLowerCase().replace(/^_+|_+$/g,'');
+  const updates={};
+
+  // Push item to inventory
+  if(lastRoll.item){
+    const itemKey=`characters/pcs/${charId}/inventory/${slug(lastRoll.item)}`;
+    updates[itemKey]={
+      name:lastRoll.item,
+      qty:1,
+      category:lastRoll.itemCategory||'gear',
+      ...(lastRoll.itemDesc?{desc:lastRoll.itemDesc}:{}),
+      notes:`Found: ${lastRoll.tier||''} loot`
+    };
+  }
+
+  // Push coins to coin_purse (additive)
+  if(lastRoll.coins){
+    const cpSnap=await get(ref(db,`characters/pcs/${charId}/coin_purse`));
+    const cp=cpSnap.val()||{pp:0,gp:0,ep:0,sp:0,cp:0};
+    const coins=parseCoins(lastRoll.coins);
+    updates[`characters/pcs/${charId}/coin_purse`]={
+      pp:(cp.pp||0)+(coins.pp||0),
+      gp:(cp.gp||0)+(coins.gp||0),
+      ep:(cp.ep||0)+(coins.ep||0),
+      sp:(cp.sp||0)+(coins.sp||0),
+      cp:(cp.cp||0)+(coins.cp||0),
+    };
+  }
+
+  try{
+    await update(ref(db),updates);
+    const charName=sel.options[sel.selectedIndex].textContent;
+    showPushStatus(panelId,`✓ Pushed to ${charName}`,'ok');
+  }catch(e){
+    showPushStatus(panelId,`✗ ${e.message}`,'err');
+  }
+};
+
+function parseCoins(coinStr){
+  // Parse strings like "3 gp, 12 sp" or "5 cp, 2 sp"
+  const result={pp:0,gp:0,ep:0,sp:0,cp:0};
+  const matches=[...coinStr.matchAll(/(\d+)\s*(pp|gp|ep|sp|cp)/gi)];
+  matches.forEach(m=>{result[m[2].toLowerCase()]+=parseInt(m[1],10);});
+  return result;
+}
+
+function showPushStatus(panelId,msg,cls){
+  const el=document.querySelector(`#${panelId} .push-status`);
+  if(!el)return;
+  el.textContent=msg;
+  el.className=`push-status push-status-${cls}`;
+  setTimeout(()=>{el.textContent='';el.className='push-status';},3000);
+}
+
+// Track last rolls for push
+window._lastRoll={};
 
 window.pushToRTDB=async function(){
   if(!window.lastDungeonJSON){setDgenStatus('Generate a dungeon first.','err');return;}
@@ -509,6 +646,7 @@ window.pushToRTDB=async function(){
 };
 
 loadCampaigns();
+loadApiData();
 </script>
 
 <script>
@@ -792,10 +930,38 @@ function rollLocation(type){
 }
 function rollLoot(tier){
   const t=tier||pick(Object.keys(LOOT));const data=LOOT[t];
-  const coin=data.coin(),item=pick(data.items);
-  const rows=[{label:'Tier',value:t[0].toUpperCase()+t.slice(1),s:'big'},{label:'Coin',value:coin},{label:'Item',value:item}];
+  const coin=data.coin();
+  let item=pick(data.items);
+  let itemDesc='', itemCategory='gear';
+
+  // Rich/hoard tiers: pull a real item from API when available
+  if((t==='rich'||t==='hoard')&&magicItemsDb.length){
+    const rarity=t==='hoard'?pick(['rare','veryRare','legendary']):'uncommon';
+    const apiItem=pickMagicItem(rarity);
+    if(apiItem){
+      item=apiItem.name;
+      itemDesc=(apiItem.desc||[])[0]||'';
+      itemCategory='magic item';
+    }
+  } else if(t==='modest'&&equipmentDb.length){
+    const apiItem=pickEquipment('Adventuring Gear');
+    if(apiItem&&Math.random()>0.5){
+      item=apiItem.name;
+      itemDesc=(apiItem.desc||[])[0]||'';
+      itemCategory='gear';
+    }
+  }
+
+  const rows=[
+    {label:'Tier',value:t[0].toUpperCase()+t.slice(1),s:'big'},
+    {label:'Coin',value:coin},
+    {label:'Item',value:item},
+  ];
   if(d(6)>=4)rows.push({label:'Oddity',value:pick(data.oddities),s:'flavor'});
-  renderOracleResult('res-loot',rows);addHist('loot',`${t}: ${item}`);
+  renderOracleResult('res-loot',rows);
+  addHist('loot',`${t}: ${item}`);
+  // Track for push
+  window._lastRoll['opanel-loot']={item,itemDesc,itemCategory,coins:coin,tier:t};
 }
 function rollMonster(env){
   const e=env||pick(Object.keys(MONSTER));const data=MONSTER[e];
@@ -819,10 +985,32 @@ function askOracle(){
 
 function rollTreasure(tier){
   const t=tier||pick(Object.keys(LOOT));const data=LOOT[t];
-  const coin=data.coin(),item=pick(data.items);
-  const rows=[{label:'Found in',value:'💰 Treasure Cache',s:'big'},{label:'Tier',value:t[0].toUpperCase()+t.slice(1)},{label:'Coin',value:coin},{label:'Item',value:item}];
+  const coin=data.coin();
+  let item=pick(data.items);
+  let itemDesc='', itemCategory='gear';
+
+  // Always try to pull a real magic item for treasure
+  if(magicItemsDb.length){
+    const rarity=t==='hoard'?pick(['rare','veryRare']):t==='rich'?'uncommon':'common';
+    const apiItem=pickMagicItem(rarity);
+    if(apiItem){
+      item=apiItem.name;
+      itemDesc=(apiItem.desc||[])[0]||'';
+      itemCategory='magic item';
+    }
+  }
+
+  const rows=[
+    {label:'Found in',value:'💰 Treasure Cache',s:'big'},
+    {label:'Tier',value:t[0].toUpperCase()+t.slice(1)},
+    {label:'Coin',value:coin},
+    {label:'Item',value:item},
+  ];
   if(d(6)>=3)rows.push({label:'Special',value:pick(TREASURE_SPECIALS),s:'flavor'});
-  renderOracleResult('res-treasure',rows);addHist('treasure',`${t}: ${item}`);
+  renderOracleResult('res-treasure',rows);
+  addHist('treasure',`${t}: ${item}`);
+  // Track for push
+  window._lastRoll['opanel-treasure']={item,itemDesc,itemCategory,coins:coin,tier:t};
 }
 function rollPOI(){
   const entry=pick(POI_TABLE);
