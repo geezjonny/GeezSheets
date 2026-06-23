@@ -8,87 +8,144 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&display=swap');
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Chroma key green — OBS will key this out */
 html, body {
   width: 100%; height: 100%;
   background: #00ff00;
   overflow: hidden;
 }
 
-#stage {
+/* ── Controls bar — hidden when ?obs=1 ── */
+#controls {
+  position: fixed;
+  top: 10px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
   display: flex;
-  align-items: flex-end;
-  gap: 12px;
-  padding: 12px;
-  width: 100%;
-  height: 100%;
-  /* Anchored bottom-left — common OBS layout */
+  align-items: center;
+  gap: 8px;
+  background: rgba(13,11,8,0.85);
+  border: 1px solid rgba(200,168,75,0.35);
+  border-radius: 8px;
+  padding: 7px 12px;
+  backdrop-filter: blur(6px);
+}
+#controls.hidden { display: none; }
+#controls label {
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  color: #7a6228;
+  letter-spacing: .08em;
+  white-space: nowrap;
+}
+#controls select {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(200,168,75,0.25);
+  border-radius: 4px;
+  color: #d4c49a;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+}
+#controls select option { background: #1a1510; }
+.ctrl-sep { width: 1px; height: 16px; background: rgba(200,168,75,0.2); }
+.layout-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(200,168,75,0.2);
+  border-radius: 4px;
+  color: #6b5a38;
+  font-family: 'Cinzel', serif;
+  font-size: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.layout-btn:hover { border-color: rgba(200,168,75,0.5); color: #c8a84b; }
+.layout-btn.active { border-color: #c8a84b; color: #c8a84b; background: rgba(200,168,75,0.08); }
+
+/* ── Stage ── */
+#stage {
   position: absolute;
-  bottom: 0; left: 0;
+  bottom: 12px; left: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  transition: flex-direction 0.2s;
+}
+/* horizontal = row (default), vertical = column */
+#stage.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  bottom: 12px; left: 12px;
+}
+#stage.vertical .token-wrap {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+#stage.vertical .wave {
+  flex-direction: column;
+  height: auto;
+  width: 14px;
+  gap: 2px;
+  align-items: center;
+}
+#stage.vertical .wave span {
+  width: 10px;
+  height: 3px;
+}
+#stage.vertical .wave span:nth-child(1) { width: 4px; }
+#stage.vertical .wave span:nth-child(2) { width: 10px; }
+#stage.vertical .wave span:nth-child(3) { width: 14px; }
+#stage.vertical .wave span:nth-child(4) { width: 10px; }
+#stage.vertical .wave span:nth-child(5) { width: 4px; }
+@keyframes bar-v {
+  from { transform: scaleX(0.4); }
+  to   { transform: scaleX(1.0); }
+}
+#stage.vertical .token-wrap.talking .wave span {
+  animation: bar-v 0.6s ease-in-out infinite alternate;
 }
 
+/* ── Token card ── */
 .token-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  transition: transform 0.1s ease;
-  /* shake applied via JS inline style */
 }
 
 .portrait {
-  width: 72px;
-  height: 72px;
+  width: 72px; height: 72px;
   border-radius: 50%;
   overflow: hidden;
-  border: 2.5px solid rgba(122, 176, 224, 0.5);
+  border: 2.5px solid rgba(122,176,224,0.45);
   background: #3a6aaa;
-  position: relative;
-  transition: border-color 0.15s, box-shadow 0.15s;
   flex-shrink: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
-
-.portrait img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
+.portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .portrait .initial {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'Cinzel', serif;
-  font-size: 28px;
-  font-weight: 600;
-  color: #fff;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Cinzel', serif; font-size: 26px; font-weight: 600; color: #fff;
 }
-
-/* Talking state — gold ring + glow */
 .token-wrap.talking .portrait {
   border-color: #c8a84b;
-  box-shadow: 0 0 0 3px rgba(200, 168, 75, 0.35), 0 0 18px rgba(200, 168, 75, 0.5);
+  box-shadow: 0 0 0 3px rgba(200,168,75,0.35), 0 0 18px rgba(200,168,75,0.5);
 }
 
-/* Sound wave bars — visible only when talking */
+/* ── Wave bars ── */
 .wave {
-  display: flex;
-  gap: 2px;
-  align-items: center;
-  height: 14px;
-  opacity: 0;
-  transition: opacity 0.2s;
+  display: flex; gap: 2px; align-items: center;
+  height: 14px; opacity: 0; transition: opacity 0.2s;
 }
 .token-wrap.talking .wave { opacity: 1; }
 .wave span {
-  display: block;
-  width: 3px;
-  border-radius: 2px;
-  background: #c8a84b;
-  animation: none;
+  display: block; width: 3px; border-radius: 2px;
+  background: #c8a84b; animation: none;
 }
 .token-wrap.talking .wave span { animation: bar 0.6s ease-in-out infinite alternate; }
 .wave span:nth-child(1) { height: 4px;  animation-delay: 0s;    }
@@ -101,30 +158,32 @@ html, body {
   to   { transform: scaleY(1.0); }
 }
 
+/* ── Name label ── */
 .name-label {
-  font-family: 'Cinzel', serif;
-  font-size: 11px;
-  font-weight: 600;
+  font-family: 'Cinzel', serif; font-size: 11px; font-weight: 600;
   color: #d4c49a;
   text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8);
-  letter-spacing: .05em;
-  white-space: nowrap;
-  opacity: 0.75;
-  transition: opacity 0.2s;
+  letter-spacing: .05em; white-space: nowrap;
+  opacity: 0.7; transition: opacity 0.2s, color 0.2s;
 }
-.token-wrap.talking .name-label {
-  opacity: 1;
-  color: #c8a84b;
-}
+.token-wrap.talking .name-label { opacity: 1; color: #c8a84b; }
 </style>
 </head>
 <body>
+
+<div id="controls">
+  <label>Campaign</label>
+  <select id="campaign-select"><option value="">All</option></select>
+  <div class="ctrl-sep"></div>
+  <button class="layout-btn active" id="btn-h" onclick="setLayout('horizontal')">⬌ Horizontal</button>
+  <button class="layout-btn"        id="btn-v" onclick="setLayout('vertical')">⬍ Vertical</button>
+</div>
+
 <div id="stage"></div>
 
 <script type="module">
-import { initializeApp }    from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, onValue, get }
-                            from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
 const FIREBASE_CONFIG = {
   apiKey:        "AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",
@@ -136,31 +195,97 @@ const FIREBASE_CONFIG = {
 const app = initializeApp(FIREBASE_CONFIG);
 const db  = getDatabase(app);
 
-// ── Campaign filter — ?campaign=YourCampaign in the URL ──────────────────────
-const CAMPAIGN_FILTER = new URLSearchParams(window.location.search).get("campaign")?.toLowerCase() || null;
+// ── URL params ────────────────────────────────────────────────────────────────
+const params   = new URLSearchParams(window.location.search);
+const OBS_MODE = params.has("obs");                          // ?obs hides controls
+const INIT_CAM = (params.get("campaign") || "").toLowerCase(); // ?campaign=X preselects
+const INIT_LAY = params.get("layout") || "horizontal";      // ?layout=vertical
+
+// Hide controls in OBS mode
+if (OBS_MODE) document.getElementById("controls").classList.add("hidden");
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const TOKEN_PATH = "./tokens/"; // same as the rest of the VTT
-const players    = {};          // name → { wrap, portrait, nameEl }
-const talking    = {};          // nameKey → bool
+const TOKEN_PATH = "./tokens/";
+const players    = {};   // nameKey → { wrap }
+const talking    = {};   // nameKey → bool
+let   allChars   = {};   // id → char (full snapshot)
+let   campaign   = INIT_CAM;
+let   layout     = INIT_LAY;
 
-// ── Build a token card ────────────────────────────────────────────────────────
+// ── Layout toggle ─────────────────────────────────────────────────────────────
+window.setLayout = function(l) {
+  layout = l;
+  document.getElementById("stage").className = l === "vertical" ? "vertical" : "";
+  document.getElementById("btn-h").classList.toggle("active", l === "horizontal");
+  document.getElementById("btn-v").classList.toggle("active", l === "vertical");
+};
+setLayout(layout);
+
+// ── Campaign dropdown ─────────────────────────────────────────────────────────
+const campSelect = document.getElementById("campaign-select");
+campSelect.addEventListener("change", () => {
+  campaign = campSelect.value.toLowerCase();
+  rebuildStage();
+});
+
+function populateCampaignDropdown(chars) {
+  const campaigns = [...new Set(
+    Object.values(chars)
+      .filter(c => c?.campaign && c.campaign !== "__oracle__" && c.type !== "npc")
+      .map(c => c.campaign)
+  )].sort();
+
+  // Rebuild options preserving selection
+  campSelect.innerHTML = '<option value="">All</option>';
+  campaigns.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c; opt.textContent = c;
+    if (c.toLowerCase() === campaign) opt.selected = true;
+    campSelect.appendChild(opt);
+  });
+}
+
+// ── Build / rebuild stage ─────────────────────────────────────────────────────
+function rebuildStage() {
+  const stage = document.getElementById("stage");
+
+  // Remove cards that no longer match filter
+  for (const [nameKey, card] of Object.entries(players)) {
+    const char = Object.values(allChars).find(c => c?.name?.toLowerCase() === nameKey);
+    const visible = char && (!campaign || (char.campaign||"").toLowerCase() === campaign);
+    if (!visible) { card.wrap.remove(); delete players[nameKey]; }
+  }
+
+  // Add cards for matching chars not yet shown
+  for (const [id, char] of Object.entries(allChars)) {
+    if (!char?.name) continue;
+    if (char.type === "npc" || char.campaign === "__oracle__") continue;
+    if (campaign && (char.campaign||"").toLowerCase() !== campaign) continue;
+
+    const nameKey = char.name.toLowerCase();
+    if (!players[nameKey]) {
+      const card = makeCard(id, char);
+      players[nameKey] = card;
+      stage.appendChild(card.wrap);
+    }
+    // Keep talking state in sync
+    players[nameKey].wrap.classList.toggle("talking", !!talking[nameKey]);
+  }
+}
+
+// ── Build a single token card ─────────────────────────────────────────────────
 function makeCard(id, char) {
   const name = char.name || id;
-
   const wrap = document.createElement("div");
   wrap.className = "token-wrap";
-  wrap.dataset.id = id;
 
   const portrait = document.createElement("div");
   portrait.className = "portrait";
 
-  // Try to load portrait image — same lookup logic as assets.js
   const fname = name.toLowerCase().replace(/\s+/g, "_");
   const img = document.createElement("img");
   img.onload = () => { portrait.innerHTML = ""; portrait.appendChild(img); };
   img.onerror = () => {
-    // Fall back to RTDB base64 upload
     get(ref(db, `assets/uploads/tokens/${id}`)).then(snap => {
       const b64 = snap.val();
       if (b64) {
@@ -168,7 +293,6 @@ function makeCard(id, char) {
         i.onload = () => { portrait.innerHTML = ""; portrait.appendChild(i); };
         i.src = b64;
       } else {
-        // Final fallback: initial letter
         portrait.innerHTML = `<div class="initial">${name[0].toUpperCase()}</div>`;
       }
     }).catch(() => {
@@ -190,69 +314,37 @@ function makeCard(id, char) {
   wrap.appendChild(wave);
   wrap.appendChild(nameEl);
 
-  return { wrap, portrait, nameEl };
+  return { wrap };
 }
 
 // ── Shake loop ────────────────────────────────────────────────────────────────
-function shakeLoop() {
+(function shakeLoop() {
   const t = Date.now() / 50;
   for (const [nameKey, card] of Object.entries(players)) {
     if (talking[nameKey]) {
       const dx = Math.sin(t + nameKey.length) * 2;
       const dy = Math.cos(t * 1.3 + nameKey.length) * 2;
-      card.wrap.style.transform = `translate(${dx}px, ${dy}px)`;
+      card.wrap.style.transform = `translate(${dx}px,${dy}px)`;
     } else {
       card.wrap.style.transform = "";
     }
   }
   requestAnimationFrame(shakeLoop);
-}
-requestAnimationFrame(shakeLoop);
+})();
 
-// ── Subscribe to characters/pcs ───────────────────────────────────────────────
+// ── RTDB subscriptions ────────────────────────────────────────────────────────
 onValue(ref(db, "characters/pcs"), snap => {
-  const stage = document.getElementById("stage");
-  const data  = snap.val() || {};
-
-  // Add new / update existing
-  for (const [id, char] of Object.entries(data)) {
-    if (!char || !char.name) continue;
-    if (char.type === "npc" || char.campaign === "__oracle__") continue;
-    if (CAMPAIGN_FILTER && (char.campaign||"").toLowerCase() !== CAMPAIGN_FILTER) continue;
-
-    const nameKey = char.name.toLowerCase();
-    if (!players[nameKey]) {
-      const card = makeCard(id, char);
-      players[nameKey] = card;
-      stage.appendChild(card.wrap);
-    }
-  }
-
-  // Remove cards for deleted characters
-  for (const nameKey of Object.keys(players)) {
-    const still = Object.values(data).find(c => c?.name?.toLowerCase() === nameKey);
-    if (!still) {
-      players[nameKey].wrap.remove();
-      delete players[nameKey];
-    }
-  }
+  allChars = snap.val() || {};
+  populateCampaignDropdown(allChars);
+  rebuildStage();
 });
 
-// ── Subscribe to cursors/talking ──────────────────────────────────────────────
 onValue(ref(db, "cursors"), snap => {
   const data = snap.val() || {};
-
-  // Clear all
   for (const k in talking) delete talking[k];
-
   for (const [rawKey, info] of Object.entries(data)) {
-    if (info && info.talking) {
-      const nameKey = rawKey.replace(/_/g, " ").toLowerCase();
-      talking[nameKey] = true;
-    }
+    if (info?.talking) talking[rawKey.replace(/_/g, " ").toLowerCase()] = true;
   }
-
-  // Update card states
   for (const [nameKey, card] of Object.entries(players)) {
     card.wrap.classList.toggle("talking", !!talking[nameKey]);
   }
