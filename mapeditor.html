@@ -158,8 +158,6 @@ canvas{display:block;cursor:crosshair}
     <div class="sep"></div>
     <span class="tool-label">Walls</span>
     <button id="wallBtn">🧱 Walls</button>
-    <span class="tool-label">Dark</span>
-    <button id="darknessBtn">🌑 Dark</button>
     <span class="tool-label">Door</span>
     <button id="doorBtn">🚪 Door</button>
     <div class="sep"></div>
@@ -168,7 +166,14 @@ canvas{display:block;cursor:crosshair}
     <button id="roof-opacity-btn" style="font-size:10px;padding:0 8px">👁 50%</button>
     <div class="sep"></div>
     <span class="tool-label">Fog</span>
-    <button id="fogBtn">🌫 Fog</button>
+    <div class="picker-wrap">
+      <button class="picker-btn fog-active" id="fogBtn" style="border-color:inherit">🌫 Fog of War ▾</button>
+      <div class="picker-dropdown" id="fog-type-dropdown" style="grid-template-columns:1fr;min-width:170px">
+        <div class="pd-item fog-type-item" data-fogtype="fog"      style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog of War</div>
+        <div class="pd-item fog-type-item" data-fogtype="darkness" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌑 Darkness</div>
+        <div class="pd-item fog-type-item" data-fogtype="magical"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">✨ Magical Darkness</div>
+      </div>
+    </div>
     <div class="sep"></div>
     <span class="tool-label">Tokens</span>
     <button id="tokenBtn">⚔ Token</button>
@@ -194,10 +199,7 @@ canvas{display:block;cursor:crosshair}
         <div class="pd-item" id="clear-bg"     style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🗺 Background</div>
         <div class="pd-item" id="clear-tokens" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⚔ Tokens</div>
         <div class="pd-item" id="clear-props"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🪣 Props</div>
-        <div class="pd-item" id="clear-fog"    style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog</div>
-        <div class="pd-item" id="clear-walls"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🧱 Walls</div>
-        <div class="pd-item" id="clear-darkness" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌑 Darkness</div>
-        <div class="pd-item" id="clear-doors"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🚪 Doors</div>
+        <div class="pd-item" id="clear-fog"    style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog &amp; Darkness</div>
         <div class="pd-item" id="clear-stamps" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⭐ Stamps</div>
         <div class="pd-item" id="clear-tiles"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🟫 Tiles</div>
         <div class="pd-item" id="clear-roofs"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🏠 Roofs</div>
@@ -208,6 +210,7 @@ canvas{display:block;cursor:crosshair}
     <button id="loadJsonBtn">⬆ Import</button>
     <input type="file" id="jsonFileInput" accept=".json" hidden>
     <div id="status">Connecting…</div>
+    <div id="presence-row" style="display:flex;align-items:center;gap:4px;margin-left:4px;flex-shrink:0"></div>
     <span id="player-name-display" style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);cursor:pointer;flex-shrink:0;padding:0 8px"></span>
   </div>
 
@@ -497,14 +500,15 @@ import { rollAfkDecision, EXPLORE_TABLE } from "./js/afkOracle.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},chains={};
-const wallGroups={},darknessGroups={},doors={};
+const wallGroups={},doors={};
 let bgImage=null,bgUrl="",bgPpi=70,nightMode=false;
 let pcsData={},propDefs={};
 let customProps=[];
 const activePings={},activeLasers={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
 let currentShape="rect",currentTerrain="grass",wallsEnabled=false;
-let fogMode=false,roofMode=false,wallMode=false,darknessMode=false,doorMode=false;
+let currentFogType="fog"; // "fog"|"darkness"|"magical"
+let fogMode=false,roofMode=false,wallMode=false,doorMode=false;
 let currentStamp=null,currentProp=null;
 let dragging=false,startX=0,startY=0,curX=0,curY=0;
 let hoverTileX=0,hoverTileY=0,roofOpacity=0.5;
@@ -530,7 +534,6 @@ const coordsEl  =document.getElementById("coords");
 const toastEl   =document.getElementById("toast");
 const mapInput  =document.getElementById("map-name");
 const wallBtn   =document.getElementById("wallBtn");
-const darknessBtn=document.getElementById("darknessBtn");
 const doorBtn   =document.getElementById("doorBtn");
 const fogBtn    =document.getElementById("fogBtn");
 const roofBtn   =document.getElementById("roofBtn");
@@ -554,7 +557,6 @@ function hasWall(x,y){const t=tiles[key(x,y)];return t&&t.walls;}
 
 // Find which wall group contains a tile
 function wallGroupAtTile(tx,ty){const k=key(tx,ty);for(const gid in wallGroups){if(wallGroups[gid].cells?.[k])return gid;}return null;}
-function darknessGroupAtTile(tx,ty){const k=key(tx,ty);for(const gid in darknessGroups){if(darknessGroups[gid].cells?.[k])return gid;}return null;}
 
 // Find nearest wall-group edge to place a door on
 function nearestWallEdge(tx,ty){
@@ -588,9 +590,11 @@ function showPingToast(msg){pingToastEl.textContent=msg;pingToastEl.classList.ad
 
 // ── Name ─────────────────────────────────────────────────────────────────────
 function showNameModal(){nameInputEl.value=playerName;nameModal.classList.remove("hidden");setTimeout(()=>nameInputEl.focus(),50);}
-function confirmName(){const n=nameInputEl.value.trim();if(!n)return;playerName=n;localStorage.setItem("vtt_player_name",n);nameModal.classList.add("hidden");nameDisplay.textContent=playerName;}
+function writePresence(){if(!playerName)return;const safeKey=playerName.replace(/\./g,"_");set(ref(db,`presence/${safeKey}`),{name:playerName,page:"editor",t:Date.now()});}
+function confirmName(){const n=nameInputEl.value.trim();if(!n)return;playerName=n;localStorage.setItem("vtt_player_name",n);nameModal.classList.add("hidden");nameDisplay.textContent=playerName;writePresence();}
 document.getElementById("name-confirm").onclick=confirmName;
 nameInputEl.addEventListener("keydown",e=>{if(e.key==="Enter")confirmName();});
+window.addEventListener("beforeunload",()=>{if(playerName)set(ref(db,`presence/${playerName.replace(/\./g,"_")}`),null);});
 nameDisplay.onclick=showNameModal;
 
 // ── Resize ────────────────────────────────────────────────────────────────────
@@ -603,7 +607,6 @@ async function saveRoofs(){const m=mapInput.value.trim()||"dungeon-1";await set(
 async function saveFogLocal(){const m=mapInput.value.trim()||"dungeon-1";await saveFog(m,fogGroups);}
 async function deleteFogGroup(id){const m=mapInput.value.trim()||"dungeon-1";await deleteFogGroupRTDB(m,id,fogGroups);}
 async function saveWallGroups(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/wallGroups`),Object.keys(wallGroups).length?wallGroups:null);}
-async function saveDarknessGroups(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/darknessGroups`),Object.keys(darknessGroups).length?darknessGroups:null);}
 async function saveDoors(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/doors`),Object.keys(doors).length?doors:null);}
 async function saveTokenLocal(id,data){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/tokens/${id}`),data);}
 async function deleteToken(id){const m=mapInput.value.trim()||"dungeon-1";await deleteTokenRTDB(m,id,tokens);}
@@ -613,17 +616,16 @@ async function savePropsLocal(){const m=mapInput.value.trim()||"dungeon-1";await
 async function savePropDef(p){await set(ref(db,`propDefs/${p.id}`),p);}
 
 // ── Undo / Redo ───────────────────────────────────────────────────────────────
-function snapshotState(){return JSON.stringify({tiles,wallGroups,darknessGroups,fogGroups});}
+function snapshotState(){return JSON.stringify({tiles,wallGroups,fogGroups});}
 function pushUndo(){undoStack.push(snapshotState());if(undoStack.length>50)undoStack.shift();redoStack.length=0;}
 function restoreState(s){
   const snap=JSON.parse(s);
   for(const k in tiles)delete tiles[k];Object.assign(tiles,snap.tiles||{});
   for(const k in wallGroups)delete wallGroups[k];Object.assign(wallGroups,snap.wallGroups||{});
-  for(const k in darknessGroups)delete darknessGroups[k];Object.assign(darknessGroups,snap.darknessGroups||{});
   for(const k in fogGroups)delete fogGroups[k];Object.assign(fogGroups,snap.fogGroups||{});
 }
-function undo(){if(!undoStack.length){toast("Nothing to undo");return;}redoStack.push(snapshotState());restoreState(undoStack.pop());scheduleSave();saveWallGroups();saveDarknessGroups();saveFogLocal();}
-function redo(){if(!redoStack.length){toast("Nothing to redo");return;}undoStack.push(snapshotState());restoreState(redoStack.pop());scheduleSave();saveWallGroups();saveDarknessGroups();saveFogLocal();}
+function undo(){if(!undoStack.length){toast("Nothing to undo");return;}redoStack.push(snapshotState());restoreState(undoStack.pop());scheduleSave();saveWallGroups();saveFogLocal();}
+function redo(){if(!redoStack.length){toast("Nothing to redo");return;}undoStack.push(snapshotState());restoreState(redoStack.pop());scheduleSave();saveWallGroups();saveFogLocal();}
 
 // ── Live listener ─────────────────────────────────────────────────────────────
 function subscribeLive(){
@@ -639,7 +641,7 @@ function subscribeLive(){
     }
     for(const k in fogGroups)delete fogGroups[k];
     for(const k in wallGroups)delete wallGroups[k];
-    for(const k in darknessGroups)delete darknessGroups[k];
+    
     for(const k in doors)delete doors[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
@@ -647,7 +649,7 @@ function subscribeLive(){
     if(data){
       if(data.fog)Object.assign(fogGroups,data.fog);
       if(data.wallGroups)Object.assign(wallGroups,data.wallGroups);
-      if(data.darknessGroups)Object.assign(darknessGroups,data.darknessGroups);
+      
       if(data.doors)Object.assign(doors,data.doors);
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
@@ -678,6 +680,25 @@ onValue(ref(db,"propDefs"),snap=>{
 // Pings/lasers
 onValue(ref(db,"pings"),snap=>{const data=snap.val()||{};const now=Date.now();for(const[id,ping]of Object.entries(data)){if(!activePings[id]&&now-ping.t<4000){activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);}}});
 onValue(ref(db,"lasers"),snap=>{const data=snap.val()||{};for(const k in activeLasers)delete activeLasers[k];for(const[name,pos]of Object.entries(data)){if(name!==playerName.replace(/\./g,"_"))activeLasers[name]={wx:pos.wx,wy:pos.wy,color:pos.color};}});
+
+// Presence
+onValue(ref(db,"presence"),snap=>{
+  const data=snap.val()||{};
+  const row=document.getElementById("presence-row");if(!row)return;
+  row.innerHTML="";
+  const stale=Date.now()-30000;
+  for(const[,p]of Object.entries(data)){
+    if(!p||p.t<stale)continue;
+    const pill=document.createElement("div");
+    const isMe=p.name===playerName;
+    const pageColor=p.page==="editor"?"#c8a84b":p.page==="map"?"#4a9a4a":"#4a8aaa";
+    pill.style.cssText=`display:flex;align-items:center;gap:3px;padding:2px 7px;border-radius:999px;border:1px solid ${pageColor}40;background:${pageColor}12;font-family:'Cinzel',serif;font-size:9px;color:${isMe?"#fff":pageColor};white-space:nowrap;opacity:${isMe?1:0.8}`;
+    pill.title=`${p.name} — ${p.page}`;
+    const dot=document.createElement("div");dot.style.cssText=`width:5px;height:5px;border-radius:50%;background:${pageColor};flex-shrink:0`;
+    pill.appendChild(dot);pill.appendChild(document.createTextNode(p.name));
+    row.appendChild(pill);
+  }
+});
 
 // Chat
 onValue(ref(db,"chat"),snap=>{renderChat(snap.val(),chatLog,playerName);});
@@ -872,16 +893,15 @@ async function clearSection(section){
   if(section==="bg"||section==="all"){bgImage=null;bgUrl="";bgPpi=70;await set(ref(db,`maps/${mapName}/background`),null);await set(ref(db,`maps/${mapName}/backgroundPpi`),null);}
   if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);for(const k in chains)delete chains[k];await set(ref(db,`maps/${mapName}/chains`),null);}
   if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);}
-  if(section==="fog"||section==="all"){for(const k in fogGroups)delete fogGroups[k];await set(ref(db,`maps/${mapName}/fog`),null);}
+  if(section==="fog"||section==="all"){for(const k in fogGroups)delete fogGroups[k];await set(ref(db,`maps/${mapName}/fog`),null);if(section==="all")await set(ref(db,`maps/${mapName}/darknessGroups`),null);}
   if(section==="walls"||section==="all"){for(const k in wallGroups)delete wallGroups[k];await set(ref(db,`maps/${mapName}/wallGroups`),null);}
-  if(section==="darkness"||section==="all"){for(const k in darknessGroups)delete darknessGroups[k];await set(ref(db,`maps/${mapName}/darknessGroups`),null);}
   if(section==="doors"||section==="all"){for(const k in doors)delete doors[k];await set(ref(db,`maps/${mapName}/doors`),null);}
   if(section==="stamps"||section==="all"){for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
   if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);}
   if(section==="roofs"||section==="all"){for(const k in roofs)delete roofs[k];await set(ref(db,`maps/${mapName}/roofs`),null);}
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
 }
-["bg","tokens","props","fog","walls","darkness","doors","stamps","tiles","roofs","all"].forEach(s=>{document.getElementById(`clear-${s}`).onclick=()=>clearSection(s);});
+["bg","tokens","props","fog","walls","doors","stamps","tiles","roofs","all"].forEach(s=>{document.getElementById(`clear-${s}`).onclick=()=>clearSection(s);});
 
 // ── JSON Import ───────────────────────────────────────────────────────────────
 document.getElementById("loadJsonBtn").onclick=()=>document.getElementById("jsonFileInput").click();
@@ -1025,16 +1045,27 @@ function deactivateLayerModes(){
   fogMode=false;fogBtn.classList.remove("fog-active");
   roofMode=false;roofBtn.classList.remove("roof-active");
   wallMode=false;wallBtn.classList.remove("wall-active");
-  darknessMode=false;darknessBtn.classList.remove("darkness-active");
   doorMode=false;doorBtn.classList.remove("door-active");
   if(selectPhase==="selected"||selectPhase==="moving")commitSelection();
 }
 document.querySelectorAll(".shape").forEach(btn=>{btn.onclick=()=>{deactivateLayerModes();currentStamp=null;currentProp=null;currentShape=btn.dataset.shape;document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));btn.classList.add("active");};});
 wallBtn.onclick=()=>{const on=!wallMode;deactivateLayerModes();wallMode=on;wallBtn.classList.toggle("wall-active",on);};
-darknessBtn.onclick=()=>{const on=!darknessMode;deactivateLayerModes();darknessMode=on;darknessBtn.classList.toggle("darkness-active",on);};
 doorBtn.onclick=()=>{const on=!doorMode;deactivateLayerModes();doorMode=on;doorBtn.classList.toggle("door-active",on);};
 roofBtn.onclick=()=>{const on=!roofMode;deactivateLayerModes();roofMode=on;roofBtn.classList.toggle("roof-active",on);};
 document.getElementById("roof-opacity-btn").onclick=()=>{roofOpacity=roofOpacity<0.9?roofOpacity+0.25:0.25;document.getElementById("roof-opacity-btn").textContent=`👁 ${Math.round(roofOpacity*100)}%`;};
+
+// Fog type picker
+const fogTypeLabels={fog:"🌫 Fog of War",darkness:"🌑 Darkness",magical:"✨ Magical Darkness"};
+document.querySelectorAll(".fog-type-item").forEach(item=>{
+  item.onclick=(e)=>{
+    e.stopPropagation();
+    currentFogType=item.dataset.fogtype;
+    fogBtn.childNodes[0].textContent=fogTypeLabels[currentFogType]+" ▾";
+    document.querySelectorAll(".fog-type-item").forEach(i=>i.classList.remove("active"));
+    item.classList.add("active");
+    deactivateLayerModes();fogMode=true;fogBtn.classList.add("fog-active");
+  };
+});
 fogBtn.onclick=()=>{const on=!fogMode;deactivateLayerModes();fogMode=on;fogBtn.classList.toggle("fog-active",on);};
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
 
@@ -1065,7 +1096,7 @@ function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle
 
 function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/camera.zoom;const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,r=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
-function drawPreview(){if(fogMode||roofMode||wallMode||darknessMode||doorMode)return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
+function drawPreview(){if(fogMode||roofMode||wallMode||doorMode)return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
 
 function drawSelection(){if(currentShape!=="select")return;if(selectPhase==="marquee"&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(100,160,255,0.15)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=1.5/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);return;}if(selectPhase==="selected"||selectPhase==="moving"){const ox=moveOffX,oy=moveOffY;const TERRAINS=getTERRAINS();for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);const{terrain}=selectTiles[k];const px=(tx+ox)*TILE,py=(ty+oy)*TILE;const def=TERRAINS.find(t=>t.id===terrain);if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=def?.color||"#333";ctx.fillRect(px,py,TILE,TILE);}}const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE,pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;ctx.fillStyle="rgba(100,160,255,0.18)";ctx.fillRect(px,py,pw,ph);ctx.strokeStyle="rgba(100,160,255,0.95)";ctx.lineWidth=2/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);}}
 
@@ -1100,7 +1131,6 @@ function render(){
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
-  for(const gid in darknessGroups){const cells=darknessGroups[gid].cells||{};for(const ck in cells){const[x,y]=ck.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}
   ctx.restore();
   // Wall groups — draw perimeter edges
   ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
@@ -1149,7 +1179,6 @@ function render(){
   // Wall mode preview
   if(wallMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(192,57,43,0.2)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
   // Darkness mode preview
-  if(darknessMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(40,10,80,0.35)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
   // Door mode — highlight hovered wall edge
   if(doorMode&&!dragging){
     const{edge,x,y}=nearestWallEdge(hoverTileX,hoverTileY);
@@ -1210,7 +1239,6 @@ canvas.addEventListener("contextmenu",e=>{
   if(pk){ctxPropKey=pk;const isAttached=!!(props[pk]&&props[pk].attachedTo);document.getElementById("prop-ctx-attach").style.display=isAttached?"none":"block";document.getElementById("prop-ctx-detach").style.display=isAttached?"block":"none";propCtxMenu.style.left=e.clientX+"px";propCtxMenu.style.top=e.clientY+"px";propCtxMenu.style.display="block";return;}
   if(roofMode){const k=key(tx,ty);if(roofs[k]){delete roofs[k];saveRoofs();}return;}
   if(wallMode){const gid=wallGroupAtTile(tx,ty);if(gid){delete wallGroups[gid];saveWallGroups();}return;}
-  if(darknessMode){const gid=darknessGroupAtTile(tx,ty);if(gid){delete darknessGroups[gid];saveDarknessGroups();}return;}
   if(doorMode){const did=Object.keys(doors).find(id=>doors[id].x===tx&&doors[id].y===ty);if(did){delete doors[did];saveDoors();}return;}
   const gid=fogGroupAtTile(fogGroups,tx,ty);if(gid){deleteFogGroup(gid);return;}
 });
@@ -1254,7 +1282,6 @@ canvas.addEventListener("pointerdown",e=>{
   if(fogMode){const hitGid=fogGroupXHit(fogGroups,wx,wy,camera.zoom);if(hitGid){deleteFogGroup(hitGid);return;}canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
   if(roofMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
   if(wallMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
-  if(darknessMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
   if(doorMode){
     const{edge,x,y}=nearestWallEdge(tx,ty);
     if(edge){
@@ -1291,9 +1318,8 @@ canvas.addEventListener("pointerup",e=>{
   if(pingMode){clearTimeout(pingHoldTimer);if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}else{const[wx,wy]=toWorld(sx,sy);sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);}isHolding=false;pingMode=false;document.getElementById("pingBtn").classList.remove("active");return;}
   if(draggingToken){saveTokenLocal(draggingToken.id,tokens[draggingToken.id]);savePropsLocal();draggingToken=null;return;}
   if(draggingProp){savePropsLocal();draggingProp=null;return;}
-  if(fogMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)cells[key(x,y)]=true;const gid="fog_"+Date.now();fogGroups[gid]={cells};saveFogLocal();return;}
+  if(fogMode&&dragging){dragging=false;pushUndo();const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);cells[k]=true;if(currentFogType==="darkness"&&currentTerrain!=="erase")tiles[k]={terrain:currentTerrain};}const gid="fog_"+Date.now();fogGroups[gid]={cells,type:currentFogType};saveFogLocal();if(currentFogType==="darkness")scheduleSave();return;}
   if(wallMode&&dragging){dragging=false;pushUndo();const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);cells[k]=true;if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain};}const gid="wg_"+Date.now();wallGroups[gid]={cells};saveWallGroups();scheduleSave();return;}
-  if(darknessMode&&dragging){dragging=false;pushUndo();const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);cells[k]=true;if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain};}const gid="dk_"+Date.now();darknessGroups[gid]={cells};saveDarknessGroups();scheduleSave();return;}
   if(roofMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyRoof(x,y);saveRoofs();return;}
   if(currentShape==="select"&&selectPhase==="moving"){selectPhase="selected";canvas.style.cursor="move";return;}
   if(currentShape==="select"&&selectPhase==="marquee"&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);pushUndo();liftSelection(minX,minY,maxX,maxY);selectPhase=Object.keys(selectTiles).length>0?"selected":null;canvas.style.cursor=selectPhase?"move":"crosshair";return;}
@@ -1430,6 +1456,7 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
   selectTerrain("grass");
   buildWeatherPanel();
   subscribeTalking();
+  writePresence();
   setAfkMode("combat");
   subscribeLive();
   refreshBgStatus();

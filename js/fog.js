@@ -1,32 +1,48 @@
 // Fog — draw, save, delete groups
 // Fog state lives in RTDB maps/<name>/fog/
+// Each group has: { cells: {key: true}, type: "fog"|"darkness"|"magical" }
 
 import { db } from "./firebase.js";
 import { ref, set, remove } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { TILE } from "./config.js";
 
+// Colors per type per mode
+const FOG_COLORS = {
+  fog:      { gm: "rgba(10,20,40,0.55)",   player: "rgba(0,0,0,1)"            },
+  darkness: { gm: "rgba(10,5,20,0.72)",    player: "rgba(0,0,0,1)"            },
+  magical:  { gm: "rgba(60,10,80,0.65)",   player: "rgba(20,0,30,1)"          },
+};
+
 export function drawFog(ctx, fogGroups, zoom, gmMode = false) {
-  ctx.fillStyle = gmMode ? "rgba(10,20,40,0.6)" : "rgba(0,0,0,1)";
+  // Draw each group with its type-appropriate color
   for (const gid in fogGroups) {
-    const cells = fogGroups[gid].cells || {};
+    const group = fogGroups[gid];
+    const cells = group.cells || {};
+    const type  = group.type || "fog";
+    const colors = FOG_COLORS[type] || FOG_COLORS.fog;
+    ctx.fillStyle = gmMode ? colors.gm : colors.player;
     for (const k in cells) {
       const [x, y] = k.split(",").map(Number);
       ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
     }
   }
-  // GM mode: show X delete buttons per fog group
+
+  // GM mode: show × delete buttons per group, colored by type
   if (gmMode) {
     ctx.save();
     ctx.font = `bold 11px sans-serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const gid in fogGroups) {
-      const cells  = fogGroups[gid].cells || {};
+      const group  = fogGroups[gid];
+      const cells  = group.cells || {};
+      const type   = group.type || "fog";
       const coords = Object.keys(cells).map(k => k.split(",").map(Number));
       if (!coords.length) continue;
       const maxX = Math.max(...coords.map(([x]) => x));
       const minY = Math.min(...coords.map(([, y]) => y));
       const bx = (maxX + 1) * TILE - 14 / zoom, by = minY * TILE, bs = 14 / zoom;
-      ctx.fillStyle = "rgba(200,50,50,0.92)"; ctx.fillRect(bx, by, bs, bs);
+      const btnColor = type === "magical" ? "rgba(120,20,160,0.92)" : type === "darkness" ? "rgba(20,10,40,0.92)" : "rgba(200,50,50,0.92)";
+      ctx.fillStyle = btnColor; ctx.fillRect(bx, by, bs, bs);
       ctx.fillStyle = "#fff"; ctx.fillText("×", bx + bs / 2, by + bs / 2);
     }
     ctx.restore();
