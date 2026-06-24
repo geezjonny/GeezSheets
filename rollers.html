@@ -6,27 +6,15 @@
 <title>R.A.G. + Oracle — D&D Session Companion</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --parchment:#f4e8c1; --parchment-dark:#e8d5a3; --parchment-deep:#d4bc82;
-    --ink:#2c1810; --ink-fade:#5a3e2b;
-    --blood:#8b1a1a; --blood-light:#a52020;
-    --navy:#1a2a4a; --navy-light:#253a6a;
-    --gold:#c9a227; --gold-light:#e8c84a;
-    --shadow:rgba(44,24,16,0.45);
-  }
+  :root{--parchment:#f4e8c1;--parchment-dark:#e8d5a3;--parchment-deep:#d4bc82;--ink:#2c1810;--ink-fade:#5a3e2b;--blood:#8b1a1a;--blood-light:#a52020;--navy:#1a2a4a;--navy-light:#253a6a;--gold:#c9a227;--gold-light:#e8c84a;--shadow:rgba(44,24,16,0.45);}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:#120c08;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem 5rem;font-family:'Crimson Text',Georgia,serif;overflow-x:hidden;}
-  body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(ellipse at 15% 10%,#2d1a0e44 0%,transparent 55%),radial-gradient(ellipse at 85% 90%,#0d1a2d44 0%,transparent 55%);z-index:-1;}
-  body::after{content:'';position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);animation:flicker 4s ease-in-out infinite;z-index:10;}
-  @keyframes flicker{0%,100%{opacity:0.5}50%{opacity:1}}
-
   .header{text-align:center;margin-bottom:1.6rem;}
   .header h1{font-family:'Cinzel',serif;font-size:clamp(2rem,6vw,3.6rem);font-weight:900;color:var(--gold);text-shadow:0 0 40px rgba(201,162,39,0.45),2px 2px 0 #3d0a0a;letter-spacing:0.04em;line-height:1;}
   .header .subtitle{font-style:italic;color:var(--parchment-dark);font-size:1rem;margin-top:0.3rem;opacity:0.7;}
   .divider{width:300px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:0.8rem auto;position:relative;}
   .divider::before{content:attr(data-icon);position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#120c08;color:var(--gold);padding:0 0.5rem;font-size:1rem;}
   .section-eyebrow{font-family:'Cinzel',serif;font-size:0.58rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);opacity:0.6;text-align:center;margin-bottom:0.4rem;}
-
   .tab-group{max-width:820px;width:100%;margin-bottom:0;}
   .tabs-rag{display:flex;gap:0;}
   .tab-btn-rag{flex:1;font-family:'Cinzel',serif;font-size:0.8rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:none;cursor:pointer;padding:0.7rem 1rem;transition:all 0.22s;}
@@ -34,24 +22,14 @@
   .tab-btn-rag.character{background:linear-gradient(135deg,#0d1a2d,var(--navy));color:#8aa8d4;border-radius:0 4px 0 0;border-top:2px solid #2a4a8a;}
   .tab-btn-rag.active.creature{background:linear-gradient(135deg,var(--blood),var(--blood-light));color:var(--parchment);}
   .tab-btn-rag.active.character{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#c8daf4;}
-
   .tabs-oracle{display:flex;gap:0;flex-wrap:wrap;margin-top:1.8rem;}
   .tab-btn-oracle{flex:1;min-width:55px;font-family:'Cinzel',serif;font-size:clamp(0.46rem,1.4vw,0.62rem);font-weight:700;letter-spacing:0.05em;text-transform:uppercase;border:none;cursor:pointer;padding:0.6rem 0.2rem;transition:all 0.22s;background:linear-gradient(135deg,#1a1208,#2a1e0a);color:var(--parchment-deep);border-top:2px solid rgba(201,162,39,0.25);border-right:1px solid rgba(201,162,39,0.12);}
-  .tab-btn-oracle:first-child{border-radius:4px 0 0 0;}
-  .tab-btn-oracle:last-child{border-radius:0 4px 0 0;border-right:none;}
+  .tab-btn-oracle:first-child{border-radius:4px 0 0 0;}.tab-btn-oracle:last-child{border-radius:0 4px 0 0;border-right:none;}
   .tab-btn-oracle.active{background:linear-gradient(135deg,#2a1e08,#3d2c0e);color:var(--gold-light);border-top-color:var(--gold);}
   .tab-btn-oracle:hover:not(.active){background:rgba(201,162,39,0.1);color:var(--parchment);}
-
   .scroll{background:var(--parchment);border-radius:0 0 4px 4px;padding:1.8rem 2rem 2.2rem;max-width:820px;width:100%;position:relative;box-shadow:0 0 0 2px var(--gold),0 0 0 5px #1a0f0a,0 0 50px rgba(0,0,0,0.85),inset 0 0 40px rgba(44,24,16,0.1);}
-  .scroll::before,.scroll::after{position:absolute;font-size:1.3rem;color:var(--gold);opacity:0.5;}
-  .scroll::before{content:'❧';top:0.5rem;left:0.7rem;}
-  .scroll::after{content:'❧';bottom:0.5rem;right:0.7rem;transform:rotate(180deg);}
-  .scroll.mode-creature{border-top:3px solid var(--blood);}
-  .scroll.mode-character{border-top:3px solid var(--navy);}
-  .scroll.mode-oracle{border-top:3px solid var(--gold);}
-
+  .scroll.mode-creature{border-top:3px solid var(--blood);}.scroll.mode-character{border-top:3px solid var(--navy);}.scroll.mode-oracle{border-top:3px solid var(--gold);}
   .panel{display:none;}.panel.active{display:block;}
-
   .parts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:1rem;margin-bottom:1.6rem;}
   .part-card{border:1px solid var(--gold);border-radius:3px;background:rgba(244,232,193,0.45);overflow:hidden;box-shadow:2px 2px 0 rgba(44,24,16,0.22);cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;}
   .part-card:hover{transform:translateY(-2px);box-shadow:3px 4px 0 rgba(44,24,16,0.3);}
@@ -64,17 +42,14 @@
   @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
   .part-value.revealed{animation:inkIn 0.4s ease forwards;}
   @keyframes inkIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-
   .btn-row{display:flex;gap:0.7rem;justify-content:center;flex-wrap:wrap;margin-bottom:1.3rem;}
   .btn{font-family:'Cinzel',serif;font-size:0.78rem;letter-spacing:0.1em;font-weight:700;border:none;cursor:pointer;padding:0.62rem 1.5rem;border-radius:2px;transition:all 0.18s;}
   .btn-primary{color:var(--parchment);}
   .mode-creature .btn-primary{background:linear-gradient(135deg,var(--blood),#6b1414);box-shadow:3px 3px 0 #1a0505;}
   .mode-character .btn-primary{background:linear-gradient(135deg,var(--navy),#0d1a2d);box-shadow:3px 3px 0 #060e1a;}
   .btn-primary:hover{transform:translate(-1px,-1px);filter:brightness(1.15);}
-  .btn-primary:active{transform:translate(2px,2px);}
   .btn-secondary{background:transparent;color:var(--ink);border:1px solid var(--ink-fade);box-shadow:2px 2px 0 rgba(44,24,16,0.15);font-size:0.72rem;}
-  .btn-secondary:hover{background:var(--parchment-dark);transform:translate(-1px,-1px);}
-
+  .btn-secondary:hover{background:var(--parchment-dark);}
   .summary-label{font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.1em;color:var(--ink-fade);text-transform:uppercase;margin-bottom:0.4rem;}
   .summary-box{border:1px dashed var(--ink-fade);border-radius:2px;padding:0.85rem 1rem;background:rgba(44,24,16,0.05);min-height:3.6rem;display:flex;align-items:center;justify-content:center;text-align:center;}
   .summary-box p{font-size:0.97rem;color:var(--ink);line-height:1.65;}
@@ -82,17 +57,13 @@
   .dice-indicator{text-align:center;margin-bottom:0.8rem;font-family:'Cinzel',serif;font-size:0.75rem;letter-spacing:0.08em;min-height:1.1rem;opacity:0;transition:opacity 0.3s;}
   .mode-creature .dice-indicator{color:var(--blood);}.mode-character .dice-indicator{color:var(--navy);}
   .dice-indicator.show{opacity:1;}
-
   .oracle-controls{display:flex;flex-wrap:wrap;gap:0.6rem;margin-bottom:1.3rem;align-items:center;}
   .oracle-roll-btn{font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;border:none;border-radius:2px;padding:0.58rem 1.1rem;cursor:pointer;transition:filter 0.15s,transform 0.1s;}
   .oracle-roll-btn:active{transform:scale(0.97);}
   .oracle-roll-btn.primary{background:var(--blood);color:var(--parchment);flex:1;min-width:120px;}
   .oracle-roll-btn.primary:hover{filter:brightness(1.15);}
   .oracle-roll-btn.gold{background:linear-gradient(135deg,#3d2c08,#5a4010);color:var(--gold-light);border:1px solid rgba(201,162,39,0.3);}
-  .oracle-roll-btn.gold:hover{filter:brightness(1.2);}
   .oracle-roll-btn.secondary{background:var(--ink);color:var(--parchment-dark);font-size:0.65rem;}
-  .oracle-roll-btn.secondary:hover{filter:brightness(1.3);}
-
   .oracle-result-area{min-height:140px;display:flex;flex-direction:column;gap:0.85rem;}
   .oracle-result-empty{display:flex;align-items:center;justify-content:center;height:140px;color:var(--ink-fade);font-style:italic;font-size:0.97rem;opacity:0.5;text-align:center;}
   .result-block{display:flex;flex-direction:column;gap:0.45rem;animation:inkIn 0.3s ease;}
@@ -102,82 +73,45 @@
   .result-value{font-size:1.02rem;color:var(--ink);line-height:1.4;}
   .result-value.big{font-size:1.25rem;font-weight:600;color:var(--blood);}
   .result-value.flavor{font-style:italic;color:var(--ink-fade);font-size:0.93rem;}
-
   .oracle-q-bar{display:flex;gap:0.5rem;margin-bottom:1.1rem;flex-wrap:wrap;}
   .oracle-input{flex:1;min-width:180px;font-family:'Crimson Text',serif;font-size:1rem;background:rgba(44,24,16,0.07);border:1px solid rgba(44,24,16,0.25);border-radius:2px;padding:0.48rem 0.75rem;color:var(--ink);}
-  .oracle-input::placeholder{color:var(--ink-fade);opacity:0.5;}
   .oracle-input:focus{outline:none;border-color:var(--gold);}
   .oracle-answer{margin-top:0.7rem;padding:0.85rem 1rem;background:rgba(44,24,16,0.06);border-left:3px solid var(--gold);border-radius:0 2px 2px 0;animation:inkIn 0.25s ease;}
   .oracle-answer-main{font-family:'Cinzel',serif;font-size:1.35rem;color:var(--blood);font-weight:700;}
   .oracle-answer-twist{font-style:italic;color:var(--ink-fade);font-size:0.93rem;margin-top:0.22rem;}
-
   .sec-div{display:flex;align-items:center;gap:0.5rem;margin:1rem 0 0.7rem;}
   .sec-div::before,.sec-div::after{content:'';flex:1;height:1px;background:rgba(44,24,16,0.18);}
   .sec-div span{font-family:'Cinzel',serif;font-size:0.52rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-fade);opacity:0.55;}
   .history-list{display:flex;flex-direction:column;gap:0.28rem;}
   .history-item{font-size:0.87rem;color:var(--ink-fade);font-style:italic;opacity:0.55;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-
-  /* DUNGEON */
   .dgen-wrap{max-width:820px;width:100%;margin-top:0;}
   .dgen-header-tab{display:flex;align-items:center;background:linear-gradient(135deg,#1a1208,#2a1e0a);border-top:2px solid rgba(201,162,39,0.4);border-radius:4px 4px 0 0;overflow:hidden;}
   .dgen-tab-label{font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold-light);padding:0.7rem 1.2rem;border-right:1px solid rgba(201,162,39,0.15);}
   .dgen-scroll{background:var(--parchment);border-radius:0 0 4px 4px;padding:1.6rem 1.8rem 2rem;box-shadow:0 0 0 2px var(--gold),0 0 0 5px #1a0f0a,0 0 50px rgba(0,0,0,0.85),inset 0 0 40px rgba(44,24,16,0.1);border-top:3px solid #5a4010;position:relative;}
-  .dgen-scroll::before{content:'❧';position:absolute;top:0.5rem;left:0.7rem;color:var(--gold);opacity:0.5;font-size:1.2rem;}
-  .dgen-scroll::after{content:'❧';position:absolute;bottom:0.5rem;right:0.7rem;color:var(--gold);opacity:0.5;font-size:1.2rem;transform:rotate(180deg);}
-
   .dgen-controls{display:flex;flex-wrap:wrap;gap:0.7rem;align-items:center;margin-bottom:0.8rem;}
   .dgen-select{font-family:'Cinzel',serif;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;background:rgba(44,24,16,0.08);border:1px solid rgba(44,24,16,0.3);border-radius:2px;color:var(--ink);padding:0.5rem 0.7rem;cursor:pointer;}
-  .dgen-select:focus{outline:none;border-color:var(--gold);}
   .dgen-btn{font-family:'Cinzel',serif;font-size:0.72rem;letter-spacing:0.1em;text-transform:uppercase;border:none;border-radius:2px;cursor:pointer;padding:0.58rem 1.1rem;transition:filter 0.15s,transform 0.1s;}
   .dgen-btn:active{transform:scale(0.97);}
   .dgen-btn.gen{background:linear-gradient(135deg,#3d2c08,#6b4e14);color:var(--gold-light);border:1px solid rgba(201,162,39,0.35);}
   .dgen-btn.gen:hover{filter:brightness(1.18);}
   .dgen-btn.push{background:linear-gradient(135deg,#0d2210,#1a4020);color:#8ad4a0;border:1px solid rgba(100,200,120,0.3);font-size:0.68rem;}
   .dgen-btn.push:hover{filter:brightness(1.2);}
-  .push-row{display:flex;gap:6px;align-items:center;margin:8px 0 4px;padding:0 2px;}
-  .char-push-select{flex:1;background:#1a1a14;border:1px solid rgba(200,168,75,.2);color:#c8a84b;font-family:inherit;font-size:0.72rem;padding:5px 8px;border-radius:4px;outline:none;cursor:pointer;}
-  .char-push-select option{background:#1a1a14;}
-  .push-status{font-size:0.68rem;font-family:monospace;min-height:16px;padding:0 2px;transition:all .2s;}
-  .push-status-ok{color:#8ad4a0;}
-  .push-status-err{color:#e07070;}
-  .dgen-btn.exp{background:var(--ink);color:var(--parchment-dark);font-size:0.65rem;}
-  .dgen-btn.exp:hover{filter:brightness(1.3);}
-
-  /* party row */
-  .party-row{display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center;margin-bottom:0.9rem;padding:0.65rem 0.9rem;background:rgba(44,24,16,0.05);border:1px solid rgba(44,24,16,0.12);border-radius:2px;}
-  .party-label{font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--ink-fade);}
-  .party-status{font-size:0.82rem;font-style:italic;color:var(--ink-fade);}
-
   .dgen-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0.5rem;margin-bottom:0.8rem;}
   .dgen-stat{background:rgba(44,24,16,0.06);border:1px solid rgba(44,24,16,0.12);border-radius:2px;padding:0.5rem 0.7rem;}
   .dgen-stat-label{font-family:'Cinzel',serif;font-size:0.55rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--ink-fade);opacity:0.7;}
   .dgen-stat-value{font-size:1rem;color:var(--ink);margin-top:0.1rem;}
-
-  /* canvas roll result */
+  .dgen-canvas-wrap{position:relative;width:100%;background:#1a1208;border:1px solid rgba(201,162,39,0.25);border-radius:2px;overflow:hidden;margin-bottom:0.9rem;cursor:crosshair;}
+  #dungeonCanvas{display:block;width:100%;height:auto;image-rendering:pixelated;}
+  .dgen-legend{display:flex;flex-wrap:wrap;gap:0.4rem 1rem;margin-bottom:0.6rem;}
+  .dgen-legend-item{display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;color:var(--ink-fade);font-style:italic;}
+  .dgen-swatch{width:13px;height:13px;border-radius:2px;border:1px solid rgba(44,24,16,0.25);flex-shrink:0;}
+  .dgen-status{font-family:'Cinzel',serif;font-size:0.68rem;letter-spacing:0.1em;color:var(--ink-fade);margin-top:0.5rem;min-height:1.2rem;text-align:center;}
+  .dgen-status.ok{color:#2a6030;}.dgen-status.err{color:var(--blood);}
+  .footer-note{margin-top:1.4rem;text-align:center;font-style:italic;font-size:0.8rem;color:var(--parchment-dark);opacity:0.4;}
   .canvas-roll-result{display:none;margin-bottom:0.9rem;padding:0.8rem 1rem;background:rgba(44,24,16,0.06);border-left:3px solid var(--gold);border-radius:0 2px 2px 0;animation:inkIn 0.25s ease;}
   .crr-title{font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--gold);margin-bottom:0.35rem;}
   .crr-body{font-size:1rem;color:var(--ink);line-height:1.5;}
   .crr-flavor{font-style:italic;color:var(--ink-fade);font-size:0.9rem;margin-top:0.2rem;}
-
-  .dgen-canvas-wrap{position:relative;width:100%;background:#1a1208;border:1px solid rgba(201,162,39,0.25);border-radius:2px;overflow:hidden;margin-bottom:0.9rem;cursor:crosshair;}
-  #dungeonCanvas{display:block;width:100%;height:auto;image-rendering:pixelated;}
-
-  /* tooltip */
-  .canvas-tooltip{display:none;position:absolute;pointer-events:none;background:rgba(18,12,8,0.95);border:1px solid rgba(201,162,39,0.5);border-radius:3px;padding:0.5rem 0.75rem;max-width:200px;z-index:20;}
-  .tt-title{font-family:'Cinzel',serif;font-size:0.62rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:0.2rem;}
-  .tt-body{font-size:0.88rem;color:var(--parchment-dark);font-style:italic;line-height:1.4;}
-  .tt-hint{font-size:0.75rem;color:var(--gold);opacity:0.6;margin-top:0.25rem;}
-
-  .dgen-legend{display:flex;flex-wrap:wrap;gap:0.4rem 1rem;margin-bottom:0.6rem;}
-  .dgen-legend-item{display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;color:var(--ink-fade);font-style:italic;}
-  .dgen-swatch{width:13px;height:13px;border-radius:2px;border:1px solid rgba(44,24,16,0.25);flex-shrink:0;}
-
-  .dgen-export-box{background:rgba(44,24,16,0.05);border:1px dashed rgba(44,24,16,0.3);border-radius:2px;padding:0.7rem 0.9rem;font-family:'Courier New',monospace;font-size:0.72rem;color:var(--ink-fade);max-height:140px;overflow-y:auto;white-space:pre;display:none;line-height:1.5;}
-  .dgen-status{font-family:'Cinzel',serif;font-size:0.68rem;letter-spacing:0.1em;color:var(--ink-fade);margin-top:0.5rem;min-height:1.2rem;text-align:center;}
-  .dgen-status.ok{color:#2a6030;}.dgen-status.err{color:var(--blood);}
-
-  .footer-note{margin-top:1.4rem;text-align:center;font-style:italic;font-size:0.8rem;color:var(--parchment-dark);opacity:0.4;}
-  @media(max-width:480px){.scroll{padding:1.3rem 1.1rem 1.5rem;}.result-row{grid-template-columns:100px 1fr;}}
 </style>
 </head>
 <body>
@@ -193,7 +127,7 @@
   <p class="section-eyebrow">Creature &amp; Character Generator</p>
   <div class="tabs-rag">
     <button class="tab-btn-rag creature active" onclick="switchRag('creature',this)">🐉 Creature</button>
-    <button class="tab-btn-rag character" onclick="switchRag('character',this)">🧙 PC / NPC</button>
+    <button class="tab-btn-rag character"        onclick="switchRag('character',this)">🧙 PC / NPC</button>
   </div>
   <div class="scroll mode-creature" id="ragScroll">
     <div class="panel active" id="panel-creature">
@@ -224,8 +158,8 @@
 </div>
 
 <!-- ORACLE -->
-<div class="tab-group" style="margin-top:0;">
-  <p class="section-eyebrow" style="margin-top:0.5rem;">Session Oracle</p>
+<div class="tab-group" style="margin-top:0">
+  <p class="section-eyebrow" style="margin-top:0.5rem">Session Oracle</p>
   <div class="tabs-oracle">
     <button class="tab-btn-oracle active" onclick="switchOracle('npc',this)">NPC</button>
     <button class="tab-btn-oracle" onclick="switchOracle('location',this)">Location</button>
@@ -240,452 +174,270 @@
     <button class="tab-btn-oracle" onclick="switchOracle('enemy',this)">👹 Enemy</button>
   </div>
   <div class="scroll mode-oracle" id="oracleScroll">
-
     <div class="panel active" id="opanel-npc">
       <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollNPC()">Roll NPC</button>
-        <button class="oracle-roll-btn secondary" onclick="rollNPC('commoner')">Commoner</button>
-        <button class="oracle-roll-btn secondary" onclick="rollNPC('merchant')">Merchant</button>
-        <button class="oracle-roll-btn secondary" onclick="rollNPC('guard')">Guard</button>
-        <button class="oracle-roll-btn secondary" onclick="rollNPC('noble')">Noble</button>
+        <button class="oracle-roll-btn primary" onclick="doRoll('npc')">Roll NPC</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('npc','commoner')">Commoner</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('npc','merchant')">Merchant</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('npc','guard')">Guard</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('npc','noble')">Noble</button>
       </div>
       <div class="oracle-result-area" id="res-npc"><div class="oracle-result-empty">Press Roll NPC to conjure a stranger.</div></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-npc"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-npc"></div>
     </div>
-
     <div class="panel" id="opanel-location">
       <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollLocation()">Roll Location</button>
-        <button class="oracle-roll-btn secondary" onclick="rollLocation('tavern')">Tavern</button>
-        <button class="oracle-roll-btn secondary" onclick="rollLocation('wilderness')">Wilderness</button>
-        <button class="oracle-roll-btn secondary" onclick="rollLocation('dungeon')">Dungeon</button>
-        <button class="oracle-roll-btn secondary" onclick="rollLocation('town')">Town</button>
+        <button class="oracle-roll-btn primary" onclick="doRoll('location')">Roll Location</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('location','tavern')">Tavern</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('location','wilderness')">Wilderness</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('location','dungeon')">Dungeon</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('location','town')">Town</button>
       </div>
       <div class="oracle-result-area" id="res-location"><div class="oracle-result-empty">Press Roll Location to discover a place.</div></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-location"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-location"></div>
     </div>
-
     <div class="panel" id="opanel-loot">
       <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollLoot()">Roll Loot</button>
-        <button class="oracle-roll-btn secondary" onclick="rollLoot('poor')">Poor</button>
-        <button class="oracle-roll-btn secondary" onclick="rollLoot('modest')">Modest</button>
-        <button class="oracle-roll-btn secondary" onclick="rollLoot('rich')">Rich</button>
-        <button class="oracle-roll-btn secondary" onclick="rollLoot('hoard')">Hoard</button>
+        <button class="oracle-roll-btn primary" onclick="doRoll('loot')">Roll Loot</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('loot','poor')">Poor</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('loot','modest')">Modest</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('loot','rich')">Rich</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('loot','hoard')">Hoard</button>
       </div>
       <div class="oracle-result-area" id="res-loot"><div class="oracle-result-empty">Press Roll Loot to find something worth taking.</div></div>
-      <div class="push-row">
-        <select class="char-push-select"><option value="">— Push to character —</option></select>
-        <button class="dgen-btn push" onclick="pushItemToChar('opanel-loot')">☁ Push to Sheet</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <select id="loot-char-select" style="flex:1;font-family:'Crimson Text',serif;font-size:0.95rem;background:rgba(44,24,16,0.07);border:1px solid rgba(44,24,16,0.25);border-radius:2px;padding:5px 8px;color:var(--ink);min-width:140px"><option value="">— Push to character —</option></select>
+        <button class="oracle-roll-btn secondary" onclick="pushLastRoll('loot')">☁ Push to Sheet</button>
       </div>
-      <div class="push-status"></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-loot"></div>
+      <div id="loot-push-status" style="font-family:'Cinzel',serif;font-size:0.68rem;min-height:16px;margin-top:4px"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-loot"></div>
     </div>
-
     <div class="panel" id="opanel-monster">
       <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollMonster()">Roll Encounter</button>
-        <button class="oracle-roll-btn secondary" onclick="rollMonster('forest')">Forest</button>
-        <button class="oracle-roll-btn secondary" onclick="rollMonster('road')">Road</button>
-        <button class="oracle-roll-btn secondary" onclick="rollMonster('dungeon')">Dungeon</button>
-        <button class="oracle-roll-btn secondary" onclick="rollMonster('urban')">Urban</button>
+        <button class="oracle-roll-btn primary" onclick="doRoll('monster')">Roll Encounter</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('monster','forest')">Forest</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('monster','road')">Road</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('monster','dungeon')">Dungeon</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('monster','urban')">Urban</button>
       </div>
       <div class="oracle-result-area" id="res-monster"><div class="oracle-result-empty">Press Roll Encounter to see what stirs nearby.</div></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-monster"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-monster"></div>
     </div>
-
     <div class="panel" id="opanel-yesno">
-      <p style="font-style:italic;color:var(--ink-fade);font-size:0.95rem;margin-bottom:0.9rem;">Ask a yes/no question. The dice answer — with a twist.</p>
+      <p style="font-style:italic;color:var(--ink-fade);font-size:0.95rem;margin-bottom:0.9rem">Ask a yes/no question. The dice answer — with a twist.</p>
       <div class="oracle-q-bar">
-        <input class="oracle-input" id="oracle-q" placeholder="Is the guard suspicious?" onkeydown="if(event.key==='Enter')askOracle()">
-        <button class="oracle-roll-btn gold" onclick="askOracle()">Ask the Dice</button>
+        <input class="oracle-input" id="oracle-q" placeholder="Is the guard suspicious?" onkeydown="if(event.key==='Enter')doRoll('yesno')">
+        <button class="oracle-roll-btn gold" onclick="doRoll('yesno')">Ask the Dice</button>
       </div>
       <div id="oracle-ans-area"></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-yesno"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-yesno"></div>
     </div>
-
     <div class="panel" id="opanel-treasure">
       <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollTreasure()">💰 Roll Treasure</button>
-        <button class="oracle-roll-btn secondary" onclick="rollTreasure('poor')">Poor</button>
-        <button class="oracle-roll-btn secondary" onclick="rollTreasure('modest')">Modest</button>
-        <button class="oracle-roll-btn secondary" onclick="rollTreasure('rich')">Rich</button>
-        <button class="oracle-roll-btn secondary" onclick="rollTreasure('hoard')">Hoard</button>
+        <button class="oracle-roll-btn primary" onclick="doRoll('treasure')">💰 Roll Treasure</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('treasure','poor')">Poor</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('treasure','modest')">Modest</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('treasure','rich')">Rich</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('treasure','hoard')">Hoard</button>
       </div>
       <div class="oracle-result-area" id="res-treasure"><div class="oracle-result-empty">Roll to see what glitters in the dark.</div></div>
-      <div class="push-row">
-        <select class="char-push-select"><option value="">— Push to character —</option></select>
-        <button class="dgen-btn push" onclick="pushItemToChar('opanel-treasure')">☁ Push to Sheet</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <select id="treasure-char-select" style="flex:1;font-family:'Crimson Text',serif;font-size:0.95rem;background:rgba(44,24,16,0.07);border:1px solid rgba(44,24,16,0.25);border-radius:2px;padding:5px 8px;color:var(--ink);min-width:140px"><option value="">— Push to character —</option></select>
+        <button class="oracle-roll-btn secondary" onclick="pushLastRoll('treasure')">☁ Push to Sheet</button>
       </div>
-      <div class="push-status"></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-treasure"></div>
+      <div id="treasure-push-status" style="font-family:'Cinzel',serif;font-size:0.68rem;min-height:16px;margin-top:4px"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-treasure"></div>
     </div>
-
     <div class="panel" id="opanel-poi">
-      <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollPOI()">❗ Roll POI</button>
-      </div>
+      <div class="oracle-controls"><button class="oracle-roll-btn primary" onclick="doRoll('poi')">❗ Roll POI</button></div>
       <div class="oracle-result-area" id="res-poi"><div class="oracle-result-empty">Roll to reveal what draws attention here.</div></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-poi"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-poi"></div>
     </div>
-
     <div class="panel" id="opanel-hazard">
       <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollHazard()">🔥 Roll Hazard</button>
-        <button class="oracle-roll-btn secondary" onclick="rollHazard('trap')">Trap</button>
-        <button class="oracle-roll-btn secondary" onclick="rollHazard('environmental')">Environmental</button>
-        <button class="oracle-roll-btn secondary" onclick="rollHazard('magical')">Magical</button>
+        <button class="oracle-roll-btn primary" onclick="doRoll('hazard')">🔥 Roll Hazard</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('hazard','trap')">Trap</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('hazard','environmental')">Environmental</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('hazard','magical')">Magical</button>
       </div>
       <div class="oracle-result-area" id="res-hazard"><div class="oracle-result-empty">Roll to find what threatens the unwary.</div></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-hazard"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-hazard"></div>
     </div>
-
     <div class="panel" id="opanel-danger">
-      <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollDanger()">💀 Roll Danger</button>
-      </div>
+      <div class="oracle-controls"><button class="oracle-roll-btn primary" onclick="doRoll('danger')">💀 Roll Danger</button></div>
       <div class="oracle-result-area" id="res-danger"><div class="oracle-result-empty">Roll to learn what evil stirs here.</div></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-danger"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-danger"></div>
     </div>
-
     <div class="panel" id="opanel-container">
       <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollContainer()">🪣 Roll Contents</button>
-        <button class="oracle-roll-btn secondary" onclick="rollContainer('barrel')">Barrel</button>
-        <button class="oracle-roll-btn secondary" onclick="rollContainer('chest')">Chest</button>
-        <button class="oracle-roll-btn secondary" onclick="rollContainer('sack')">Sack</button>
-        <button class="oracle-roll-btn secondary" onclick="rollContainer('crate')">Crate</button>
+        <button class="oracle-roll-btn primary" onclick="doRoll('container')">🪣 Roll Contents</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('container','barrel')">Barrel</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('container','chest')">Chest</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('container','sack')">Sack</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('container','crate')">Crate</button>
       </div>
       <div class="oracle-result-area" id="res-container"><div class="oracle-result-empty">Roll to see what's inside.</div></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-container"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-container"></div>
     </div>
-
     <div class="panel" id="opanel-enemy">
       <div class="oracle-controls">
-        <button class="oracle-roll-btn primary" onclick="rollEnemy()">👹 Roll Enemy</button>
-        <button class="oracle-roll-btn secondary" onclick="rollEnemy('minion')">Minion</button>
-        <button class="oracle-roll-btn secondary" onclick="rollEnemy('soldier')">Soldier</button>
-        <button class="oracle-roll-btn secondary" onclick="rollEnemy('elite')">Elite</button>
-        <button class="oracle-roll-btn secondary" onclick="rollEnemy('boss')">Boss</button>
+        <button class="oracle-roll-btn primary" onclick="doRoll('enemy')">👹 Roll Enemy</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('enemy','minion')">Minion</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('enemy','soldier')">Soldier</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('enemy','elite')">Elite</button>
+        <button class="oracle-roll-btn secondary" onclick="doRoll('enemy','boss')">Boss</button>
       </div>
       <div class="oracle-result-area" id="res-enemy"><div class="oracle-result-empty">Roll to learn who stands against the party.</div></div>
-      <div class="sec-div"><span>Recent</span></div>
-      <div class="history-list" id="hist-enemy"></div>
+      <div class="sec-div"><span>Recent</span></div><div class="history-list" id="hist-enemy"></div>
     </div>
-
   </div>
 </div>
 
-<!-- DUNGEON GENERATOR -->
+<!-- DUNGEON -->
 <div class="dgen-wrap">
-  <p class="section-eyebrow" style="margin-top:0.5rem;">Dungeon Generator</p>
-  <div class="dgen-header-tab">
-    <span class="dgen-tab-label">🗺 Random Dungeon</span>
-  </div>
+  <p class="section-eyebrow" style="margin-top:0.5rem">Dungeon Generator</p>
+  <div class="dgen-header-tab"><span class="dgen-tab-label">🗺 Random Dungeon</span></div>
   <div class="dgen-scroll">
     <div class="dgen-controls">
-      <select class="dgen-select" id="dgen-size">
-        <option value="small">Small (14×10)</option>
-        <option value="medium" selected>Medium (22×16)</option>
-        <option value="large">Large (32×24)</option>
-      </select>
-      <select class="dgen-select" id="dgen-type">
-        <option value="cave">Cave</option>
-        <option value="ruins" selected>Ruins / Keep</option>
-        <option value="crypt">Crypt</option>
-        <option value="sewer">Sewer</option>
-      </select>
-      <select class="dgen-select" id="dgen-density">
-        <option value="sparse">Sparse</option>
-        <option value="normal" selected>Normal</option>
-        <option value="dense">Dense</option>
-      </select>
-      <button class="dgen-btn gen" onclick="generateDungeon()">⚄ Generate</button>
-      <button class="dgen-btn push" onclick="pushToRTDB()">☁ Push to VTT</button>
-      <button class="dgen-btn exp" onclick="toggleExport()">{ } JSON</button>
-      <button class="dgen-btn exp" onclick="copyExport()">📋 Copy</button>
+      <select class="dgen-select" id="dgen-size"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select>
+      <select class="dgen-select" id="dgen-type"><option value="cave">Cave</option><option value="ruins" selected>Ruins</option><option value="crypt">Crypt</option><option value="sewer">Sewer</option></select>
+      <select class="dgen-select" id="dgen-density"><option value="sparse">Sparse</option><option value="normal" selected>Normal</option><option value="dense">Dense</option></select>
+      <button class="dgen-btn gen" onclick="doGenerate()">⚄ Generate</button>
+      <button class="dgen-btn push" onclick="doPush()">☁ Push to VTT</button>
     </div>
-
-    <div class="party-row">
-      <span class="party-label">Party:</span>
-      <select class="dgen-select" id="campaign-select" style="flex:1;min-width:140px;">
-        <option value="">— No party —</option>
-      </select>
-      <button class="dgen-btn exp" onclick="loadCampaigns()" style="font-size:0.7rem;">↻ Refresh</button>
-      <span class="party-status" id="party-status"></span>
-    </div>
-
-    <div class="dgen-stats" id="dgen-stats">
+    <div class="dgen-stats">
       <div class="dgen-stat"><div class="dgen-stat-label">Rooms</div><div class="dgen-stat-value" id="ds-rooms">—</div></div>
       <div class="dgen-stat"><div class="dgen-stat-label">Tiles</div><div class="dgen-stat-value" id="ds-tiles">—</div></div>
       <div class="dgen-stat"><div class="dgen-stat-label">Tokens</div><div class="dgen-stat-value" id="ds-tokens">—</div></div>
-      <div class="dgen-stat"><div class="dgen-stat-label">Props</div><div class="dgen-stat-value" id="ds-props">—</div></div>
     </div>
-
     <div class="canvas-roll-result" id="canvas-roll-result">
       <div class="crr-title" id="crr-title"></div>
       <div class="crr-body" id="crr-body"></div>
       <div class="crr-flavor" id="crr-flavor"></div>
     </div>
-
-    <div class="dgen-canvas-wrap" id="canvasWrap">
-      <canvas id="dungeonCanvas" width="800" height="608"></canvas>
-      <div class="canvas-tooltip" id="canvasTooltip">
-        <div class="tt-title" id="tt-title"></div>
-        <div class="tt-body" id="tt-body"></div>
-        <div class="tt-hint" id="tt-hint"></div>
-      </div>
-    </div>
-
+    <div class="dgen-canvas-wrap"><canvas id="dungeonCanvas" width="800" height="608"></canvas></div>
     <div class="dgen-legend">
       <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#2a2018"></div>Void</div>
       <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#6b5e4e"></div>Floor</div>
       <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#3a3228;border:2px solid #1a1410"></div>Wall</div>
       <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#7a6e5e"></div>Corridor</div>
       <div class="dgen-legend-item"><div class="dgen-swatch" style="background:#8a5a2a"></div>Door</div>
-      <div class="dgen-legend-item"><div class="dgen-swatch" style="background:rgba(10,14,40,0.75)"></div>Fog</div>
-      <div class="dgen-legend-item"><span>💀❗🔥💰</span>&nbsp;Stamps — click to roll</div>
-      <div class="dgen-legend-item"><span>🪣📦</span>&nbsp;Props — click to roll</div>
-      <div class="dgen-legend-item"><span>👹🧙💂</span>&nbsp;Tokens — click to roll</div>
     </div>
-
-    <div class="dgen-export-box" id="dgen-export-box"></div>
     <div class="dgen-status" id="dgen-status"></div>
   </div>
 </div>
 
-<p class="footer-note">Inspired by RAG by Tuimiz &nbsp;·&nbsp; D&amp;D Edition &nbsp;·&nbsp; Click any RAG card to re-roll that trait</p>
+<p class="footer-note">Inspired by RAG by Tuimiz &nbsp;·&nbsp; D&amp;D Edition</p>
 
-<!-- Firebase module -->
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, set, get, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-const cfg={apiKey:"AIzaSyBJJUrF9ZKt_YGImKUUWwL2hQNbvWl_Ozo",authDomain:"sheets-e5838.firebaseapp.com",databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",projectId:"sheets-e5838",storageBucket:"sheets-e5838.firebasestorage.app"};
-const app=initializeApp(cfg);
-const db=getDatabase(app);
-window._db=db; window._ref=ref; window._set=set; window._get=get;
+import {
+  pick, d,
+  RAG_DATA, rollRAGPart, rollRAGAll, buildRAGSummary,
+  rollNPC, rollLocation, rollLoot, rollTreasure, rollMonster,
+  rollPOI, rollHazard, rollDanger, rollContainer, rollEnemy, askOracle,
+} from "./js/rollers.js";
+import { generateDungeon, renderDungeon, pushDungeonToRTDB, getThingAtClick, rollForThing } from "./js/dungeon.js";
+import { initializeApp }                 from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-// ── Load API data from /data ────────────────────────────────────────────────
-let magicItemsDb=[], equipmentDb=[];
-let magicByRarity={common:[],uncommon:[],rare:[],veryRare:[],legendary:[]};
+// ── Firebase ──────────────────────────────────────────────────────────────────
+const _app = initializeApp({
+  apiKey:"AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",
+  authDomain:"sheets-e5838.firebaseapp.com",
+  databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",
+  projectId:"sheets-e5838", storageBucket:"sheets-e5838.firebasestorage.app",
+});
+const _db = getDatabase(_app);
 
-async function loadApiData(){
-  try{
-    const [magic,equip]=await Promise.all([
-      fetch("data/magic_items.json").then(r=>r.json()).catch(()=>[]),
-      fetch("data/equipment.json").then(r=>r.json()).catch(()=>[]),
-    ]);
-    magicItemsDb=magic;
-    equipmentDb=equip;
-    // Index magic items by rarity
-    magic.forEach(m=>{
-      const r=(m.rarity?.name||'').toLowerCase().replace(/\s+/g,'_');
-      if(r==='common')magicByRarity.common.push(m);
-      else if(r==='uncommon')magicByRarity.uncommon.push(m);
-      else if(r==='rare')magicByRarity.rare.push(m);
-      else if(r==='very_rare')magicByRarity.veryRare.push(m);
-      else if(r==='legendary')magicByRarity.legendary.push(m);
+// ── Load character roster into both pickers ───────────────────────────────────
+let _pcs = [];
+async function loadCharacters() {
+  try {
+    const snap = await get(ref(_db, "characters/pcs"));
+    if (!snap.exists()) return;
+    _pcs = Object.entries(snap.val())
+      .filter(([, c]) => c?.name && c.type !== "npc")
+      .map(([id, c]) => ({ id, name: c.name }));
+    ["loot","treasure"].forEach(type => {
+      const sel = document.getElementById(`${type}-char-select`);
+      if (!sel) return;
+      while (sel.options.length > 1) sel.remove(1);
+      _pcs.forEach(pc => {
+        const opt = document.createElement("option");
+        opt.value = pc.id; opt.textContent = pc.name;
+        sel.appendChild(opt);
+      });
     });
-  }catch(e){console.warn('Could not load API data',e);}
+  } catch(e) { console.warn("Could not load characters:", e); }
 }
+loadCharacters();
 
-function pickMagicItem(rarity){
-  const pool=magicByRarity[rarity]||[];
-  if(!pool.length)return null;
-  return pool[Math.floor(Math.random()*pool.length)];
-}
+// ── Last roll tracking (for push) ─────────────────────────────────────────────
+const _lastRoll = { loot: null, treasure: null };
 
-function pickEquipment(category){
-  const pool=equipmentDb.filter(e=>
-    e.equipment_category?.name?.toLowerCase()===category.toLowerCase()
-  );
-  if(!pool.length)return null;
-  return pool[Math.floor(Math.random()*pool.length)];
-}
-
-// ── Character loading ────────────────────────────────────────────────────────
-window.loadCampaigns=async function(){
-  const st=document.getElementById('party-status');
-  st.textContent='Loading...';
-  try{
-    const snap=await get(ref(db,'characters/pcs'));
-    if(!snap.exists()){st.textContent='No characters found.';return;}
-    const pcs=Object.values(snap.val()).filter(c=>c&&c.name&&c.campaign!=='__oracle__'&&c.type!=='npc'&&c.record_type!=='npc');
-    // campaign field is now top-level (vtt_profile removed)
-    const camps=[...new Set(pcs.map(c=>c.campaign||'').filter(c=>c&&c!=='__oracle__'))].sort();
-    const sel=document.getElementById('campaign-select');
-    while(sel.options.length>1)sel.remove(1);
-    camps.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
-    window._allPcs=pcs;
-    st.textContent=`${pcs.length} characters loaded.`;
-    // Build character picker for push UI
-    buildCharPicker(pcs);
-  }catch(e){st.textContent='Firebase error.';console.error(e);}
-};
-
-function buildCharPicker(pcs){
-  document.querySelectorAll('.char-push-select').forEach(sel=>{
-    while(sel.options.length>1)sel.remove(1);
-    pcs.forEach(pc=>{
-      const o=document.createElement('option');
-      o.value=pc.id||Object.keys(window._allPcs||{}).find(k=>window._allPcs[k]===pc)||pc.name.toLowerCase();
-      o.textContent=pc.name;
-      sel.appendChild(o);
-    });
-  });
-}
-
-// ── Push item to character inventory in RTDB ─────────────────────────────────
-window.pushItemToChar=async function(panelId){
-  const sel=document.querySelector(`#${panelId} .char-push-select`);
-  if(!sel||!sel.value){showPushStatus(panelId,'Select a character first','err');return;}
-  const charId=sel.value;
-
-  // Find the last rolled result for this panel
-  const lastRoll=window._lastRoll?.[panelId];
-  if(!lastRoll){showPushStatus(panelId,'Roll something first','err');return;}
-
-  const slug=s=>s.replace(/[^a-z0-9]+/g,'_').toLowerCase().replace(/^_+|_+$/g,'');
-  const updates={};
-
-  // Push item to inventory
-  if(lastRoll.item){
-    const itemKey=`characters/pcs/${charId}/inventory/${slug(lastRoll.item)}`;
-    updates[itemKey]={
-      name:lastRoll.item,
-      qty:1,
-      category:lastRoll.itemCategory||'gear',
-      ...(lastRoll.itemDesc?{desc:lastRoll.itemDesc}:{}),
-      notes:`Found: ${lastRoll.tier||''} loot`
-    };
-  }
-
-  // Push coins to coin_purse (additive)
-  if(lastRoll.coins){
-    const cpSnap=await get(ref(db,`characters/pcs/${charId}/coin_purse`));
-    const cp=cpSnap.val()||{pp:0,gp:0,ep:0,sp:0,cp:0};
-    const coins=parseCoins(lastRoll.coins);
-    updates[`characters/pcs/${charId}/coin_purse`]={
-      pp:(cp.pp||0)+(coins.pp||0),
-      gp:(cp.gp||0)+(coins.gp||0),
-      ep:(cp.ep||0)+(coins.ep||0),
-      sp:(cp.sp||0)+(coins.sp||0),
-      cp:(cp.cp||0)+(coins.cp||0),
-    };
-  }
-
-  try{
-    await update(ref(db),updates);
-    const charName=sel.options[sel.selectedIndex].textContent;
-    showPushStatus(panelId,`✓ Pushed to ${charName}`,'ok');
-  }catch(e){
-    showPushStatus(panelId,`✗ ${e.message}`,'err');
-  }
-};
-
-function parseCoins(coinStr){
-  // Parse strings like "3 gp, 12 sp" or "5 cp, 2 sp"
-  const result={pp:0,gp:0,ep:0,sp:0,cp:0};
-  const matches=[...coinStr.matchAll(/(\d+)\s*(pp|gp|ep|sp|cp)/gi)];
-  matches.forEach(m=>{result[m[2].toLowerCase()]+=parseInt(m[1],10);});
+// ── Push to character inventory ───────────────────────────────────────────────
+function parseCoins(coinStr) {
+  const result = { pp:0, gp:0, ep:0, sp:0, cp:0 };
+  const matches = [...(coinStr||"").matchAll(/(\d+)\s*(pp|gp|ep|sp|cp)/gi)];
+  matches.forEach(m => { result[m[2].toLowerCase()] += parseInt(m[1], 10); });
   return result;
 }
 
-function showPushStatus(panelId,msg,cls){
-  const el=document.querySelector(`#${panelId} .push-status`);
-  if(!el)return;
-  el.textContent=msg;
-  el.className=`push-status push-status-${cls}`;
-  setTimeout(()=>{el.textContent='';el.className='push-status';},3000);
+async function pushLastRoll(type) {
+  const sel      = document.getElementById(`${type}-char-select`);
+  const statusEl = document.getElementById(`${type}-push-status`);
+  const roll     = _lastRoll[type];
+
+  if (!sel?.value)  { showPushStatus(statusEl, "Select a character first", "#8b1a1a"); return; }
+  if (!roll)        { showPushStatus(statusEl, "Roll something first", "#8b1a1a"); return; }
+
+  const charId = sel.value;
+  const updates = {};
+
+  // Push item to inventory
+  if (roll.item) {
+    const snap = await get(ref(_db, `characters/pcs/${charId}/inventory`));
+    const inv  = snap.exists() ? (Array.isArray(snap.val()) ? [...snap.val()] : Object.values(snap.val())) : [];
+    inv.push({ name: roll.item, qty: 1, category: roll.itemCategory || "gear", notes: `Found: ${roll.tier || type} loot` });
+    updates[`characters/pcs/${charId}/inventory`] = inv;
+  }
+
+  // Add coins to coin_purse (additive)
+  if (roll.coin) {
+    const cpSnap = await get(ref(_db, `characters/pcs/${charId}/coin_purse`));
+    const cp     = cpSnap.val() || { pp:0, gp:0, ep:0, sp:0, cp:0 };
+    const coins  = parseCoins(roll.coin);
+    updates[`characters/pcs/${charId}/coin_purse`] = {
+      pp: (cp.pp||0) + coins.pp,
+      gp: (cp.gp||0) + coins.gp,
+      ep: (cp.ep||0) + coins.ep,
+      sp: (cp.sp||0) + coins.sp,
+      cp: (cp.cp||0) + coins.cp,
+    };
+  }
+
+  try {
+    await update(ref(_db), updates);
+    const name = sel.options[sel.selectedIndex].textContent;
+    showPushStatus(statusEl, `✓ Pushed to ${name}`, "#2a6030");
+  } catch(e) {
+    showPushStatus(statusEl, `✗ ${e.message}`, "#8b1a1a");
+  }
 }
 
-// Track last rolls for push
-window._lastRoll={};
+function showPushStatus(el, msg, color) {
+  if (!el) return;
+  el.textContent = msg; el.style.color = color;
+  setTimeout(() => { el.textContent = ""; }, 3000);
+}
 
-window.pushToRTDB=async function(){
-  if(!window.lastDungeonJSON){setDgenStatus('Generate a dungeon first.','err');return;}
-  setDgenStatus('Pushing...','');
-  const camp=document.getElementById('campaign-select').value;
-  const payload=JSON.parse(JSON.stringify(window.lastDungeonJSON));
-  if(camp&&window._allPcs){
-    const partyPcs=window._allPcs.filter(c=>(c.campaign||c.vtt_profile?.campaign)===camp);
-    const entranceRoom=window._dungeonRooms?.[0];
-    if(entranceRoom&&partyPcs.length){
-      const openTiles=[];
-      for(let cy=entranceRoom.y;cy<entranceRoom.y+entranceRoom.h;cy++){
-        for(let cx=entranceRoom.x;cx<entranceRoom.x+entranceRoom.w;cx++){
-          const key=`${cx},${cy}`;
-          if(payload.tiles[key]&&!payload.tiles[key].walls){
-            if(!Object.values(payload.tokens).some(t=>t.x===cx&&t.y===cy))
-              openTiles.push({x:cx,y:cy});
-          }
-        }
-      }
-      for(let i=openTiles.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[openTiles[i],openTiles[j]]=[openTiles[j],openTiles[i]];}
-      partyPcs.forEach((pc,i)=>{
-        const tile=openTiles[i%Math.max(1,openTiles.length)];
-        if(!tile)return;
-        payload.tokens[`pc_${pc.id||i}`]={x:tile.x,y:tile.y,name:pc.name,type:'pc',hp:pc.hp??pc.currentHp??10,maxHp:pc.maxHp??pc.hp??10,characterId:pc.id||'__npc__'};
-      });
-    }
-  }
-  try{
-    await set(ref(db,`maps/${payload.mapName}`),payload);
-    setDgenStatus(`✓ Pushed as "${payload.mapName}" — load it in your VTT.`,'ok');
-  }catch(e){setDgenStatus(`✗ Push failed: ${e.message}`,'err');}
-};
+window.pushLastRoll = pushLastRoll;
 
-loadCampaigns();
-loadApiData();
-</script>
-
-<script>
-// ══════════════════════════════════════════
-// UTILS
-// ══════════════════════════════════════════
-function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
-function d(n){return Math.floor(Math.random()*n)+1;}
+// ── RAG ───────────────────────────────────────────────────────────────────────
+const ragState = { creature:{}, character:{} };
+const ragRolling = { creature:false, character:false };
 function slug(s){return s.replace(/[^a-z0-9]/gi,'-').toLowerCase();}
-function setDgenStatus(msg,cls){const el=document.getElementById('dgen-status');el.textContent=msg;el.className='dgen-status'+(cls?' '+cls:'');}
 
-// ══════════════════════════════════════════
-// RAG
-// ══════════════════════════════════════════
-const RAG_DATA={
-  creature:{
-    "Body Shape":{die:"d20",options:["Serpentine and coiling","Hulking and quadrupedal","Lithe and bipedal","Bloated and amorphous","Skeletal and towering","Compact and squat","Elongated like a worm","Crablike with many legs","Centipede-segmented","Apelike and hunched","Winged and avian","Gelatinous and shifting","Insectoid with six limbs","Stout as a dwarf-bear","Wispy and translucent","Cephalopod-shaped","Chimeric blend of three","Toad-like and swollen","Spindly as a spider","Enormous as a barn"]},
-    "Head":{die:"d20",options:["Skull of a horned stag","Fanged serpent head","Three-eyed toad face","Beaked like a raven","Long goat snout","No head — just a maw","Crustacean mandibles","Flat shark face","Six-eyed spider face","Bull skull wreathed in fire","Elongated horse face","Floating eyeball cluster","Feathered owl face","Tentacled octopus head","Cyclopean giant eye","Human face stretched wrong","Wolf with too many teeth","Dragonborn-like reptile","Leech mouth ringed with teeth","A second creature's detached head"]},
-    "Skin / Hide":{die:"d12",options:["Iron-hard obsidian scales","Rotting necrotic flesh","Luminescent amphibian skin","Bark-like tree hide","Matted coarse black fur","Translucent showing organs","Crystalline chitinous shell","Mud-encrusted hide","Iridescent feather-scales","Stone-grey rocky plates","Oozing pustule-covered skin","Silver mirror-bright scales"]},
-    "Limbs":{die:"d10",options:["Six crab claws","Two massive gorilla arms","Spider legs from its back","Tentacles where legs should be","Stubby vestigial arms","Two arms ending in blade-bone","Hooves and backward knees","Four wings used as arms","Boneless writhing pseudopods","No limbs — it floats"]},
-    "Tail":{die:"d8",options:["Scorpion stinger tail","Prehensile whip tail","Feathered peacock fan","Tail ending in a second jaw","Bony club tail","No tail — just a stump","Three serpent tails","Spectral ghost tail"]},
-    "Special Trait":{die:"d12",options:["Leaves a trail of ice","Eyes glow like embers","Speaks in stolen voices","Bleeds acid instead of blood","Surrounded by a swarm of flies","Phases through walls","Can detach its own limbs","Regenerates before your eyes","Casts no shadow","Immune to all magic","Smells of rot and copper","Has a second creature fused to its back"]},
-    "Size":{die:"d6",options:["Tiny (cat-sized)","Small (goblin-sized)","Medium (human-sized)","Large (horse-sized)","Huge (elephant-sized)","Gargantuan (fills the room)"]},
-    "CR Hint":{die:"d10",options:["CR 1/4 — an annoyance","CR 1 — real threat to townsfolk","CR 3 — watch out, adventurers","CR 5 — seasoned party challenge","CR 7 — regional menace","CR 9 — legendary local horror","CR 12 — dungeon boss territory","CR 15 — near-mythic terror","CR 18 — demigod-level menace","CR 20+ — end of campaign material"]}
-  },
-  character:{
-    "Race":{die:"d20",options:["Human","Elf (High)","Elf (Wood)","Elf (Drow)","Dwarf (Hill)","Dwarf (Mountain)","Halfling (Lightfoot)","Halfling (Stout)","Gnome (Rock)","Gnome (Forest)","Half-Elf","Half-Orc","Tiefling","Dragonborn","Aasimar","Tabaxi","Firbolg","Goliath","Kenku","Changeling"]},
-    "Class":{die:"d12",options:["Barbarian","Bard","Cleric","Druid","Fighter","Monk","Paladin","Ranger","Rogue","Sorcerer","Warlock","Wizard"]},
-    "Background":{die:"d12",options:["Acolyte","Charlatan","Criminal","Entertainer","Folk Hero","Guild Artisan","Hermit","Noble","Outlander","Sage","Sailor","Soldier"]},
-    "Personality Trait":{die:"d12",options:["Boisterous and prone to tall tales","Speaks only when it matters — then bluntly","Obsessively keeps a journal of every event","Mistrustful of authority, fiercely loyal to allies","Cheerful to a fault, even in dire straits","Constantly quoting obscure proverbs","Haunted by a past mistake they won't discuss","Flirtatious and disarming with everyone","Deeply superstitious, reads omens in everything","Relentlessly competitive about everything","Overly formal, uncomfortable with casual speech","Empathetic to a fault — cries at funerals of strangers"]},
-    "Flaw":{die:"d10",options:["Cannot resist a wager, no matter the stakes","Harbours a secret shame that drives reckless choices","Deeply cowardly when truly alone","Pathologically dishonest, even needlessly","Holds grudges across decades","Addicted to a substance or vice","Arrogant about their own abilities","Freezes up under the scrutiny of authority","Paranoid — believes someone is always watching","Greedy, even with friends"]},
-    "Motivation":{die:"d10",options:["Seek redemption for a past wrong","Protect someone they love at all costs","Amass power or wealth to never feel vulnerable again","Prove themselves to a person who doubted them","Uncover a buried family secret","Serve their deity faithfully","Escape a life they were born into","Avenge a devastating loss","Simply survive another day","Find a place they truly belong"]},
-    "Alignment":{die:"d9",options:["Lawful Good","Neutral Good","Chaotic Good","Lawful Neutral","True Neutral","Chaotic Neutral","Lawful Evil","Neutral Evil","Chaotic Evil"]},
-    "Distinctive Feature":{die:"d12",options:["A long scar across the face with no explanation offered","Eyes of two different colours","Speaks with an unplaceable accent","Always fidgets with a specific trinket","Missing two fingers on the left hand","Unnaturally still — never fidgets, blinks rarely","Hair that shifts colour with mood","Covered in faded tattoos, each with a story","A nervous laugh that undercuts serious moments","Carries a portrait of someone and never speaks of them","Limps slightly — denies it if asked","Hums constantly, stops only in combat"]},
-    "Secret":{die:"d10",options:["Is wanted for a crime in another kingdom","Carries a cursed item they can't discard","Was once a member of the enemy faction","Has a family member who is a villain","Doesn't actually have the skills they claimed","Is being magically compelled by someone","Owes a life-debt to a powerful and dangerous figure","Their real name is famous — or infamous","Has already died once — and remembers it","Is not the race they appear to be"]}
-  }
-};
-const ragState={creature:{},character:{}};
-const ragRolling={creature:false,character:false};
 function buildGrid(mode){
   const grid=document.getElementById('grid-'+mode);grid.innerHTML='';
   Object.entries(RAG_DATA[mode]).forEach(([key,{die}])=>{
@@ -696,11 +448,11 @@ function buildGrid(mode){
 }
 function getEl(mode,key){return document.getElementById('v-'+mode+'-'+slug(key));}
 async function rollPart(mode,key,delay=0){
-  const el=getEl(mode,key);const opts=RAG_DATA[mode][key].options;
+  const el=getEl(mode,key);
   await new Promise(r=>setTimeout(r,delay));
   el.className='part-value rolling';el.textContent='▒▒▒▒▒▒▒';
   await new Promise(r=>setTimeout(r,360));
-  const val=pick(opts);ragState[mode][key]=val;el.textContent=val;el.className='part-value revealed';
+  const val=rollRAGPart(mode,key);ragState[mode][key]=val;el.textContent=val;el.className='part-value revealed';
   updateSummary(mode);
 }
 async function rollAll(mode){
@@ -719,36 +471,10 @@ function resetAll(mode){
 }
 function copySummary(mode){
   const el=document.getElementById('sum-'+mode);if(!el||el.classList.contains('empty'))return;
-  navigator.clipboard.writeText(el.textContent).then(()=>{
-    const ind=document.getElementById('ind-'+mode);ind.textContent='✓ Copied!';ind.classList.add('show');
-    setTimeout(()=>ind.classList.remove('show'),1500);
-  });
+  navigator.clipboard.writeText(el.textContent);
 }
 function updateSummary(mode){
-  const s=ragState[mode];if(!Object.keys(RAG_DATA[mode]).filter(k=>s[k]).length)return;
-  let desc='';
-  if(mode==='creature'){
-    const size=s["Size"]?s["Size"].replace(/\(.*\)/,'').trim().toLowerCase():'';
-    const body=s["Body Shape"]?s["Body Shape"].toLowerCase():'';
-    desc=size&&body?`A ${size}, ${body} creature`:body?`A ${body} creature`:'A creature';
-    if(s["Skin / Hide"])desc+=` covered in ${s["Skin / Hide"].toLowerCase()}`;
-    if(s["Head"])desc+=`, bearing ${s["Head"].toLowerCase()}`;
-    if(s["Limbs"])desc+=`. It moves on ${s["Limbs"].toLowerCase()}`;
-    if(s["Tail"])desc+=` and sports ${s["Tail"].toLowerCase()}`;
-    if(s["Special Trait"])desc+=`. Notably: ${s["Special Trait"].toLowerCase()}`;
-    if(s["CR Hint"])desc+=`. ${s["CR Hint"]}.`;
-  }else{
-    const race=s["Race"]||'',cls=s["Class"]||'',bg=s["Background"]||'',al=s["Alignment"]||'';
-    if(race&&cls)desc=`A ${al?al.toLowerCase()+' ':''}${race} ${cls}`;
-    else if(race)desc=`A ${race}`;else desc='An adventurer';
-    if(bg)desc+=` with the background of a ${bg.toLowerCase()}`;
-    desc+='.';
-    if(s["Personality Trait"])desc+=` ${s["Personality Trait"]}.`;
-    if(s["Flaw"])desc+=` Their flaw: ${s["Flaw"].toLowerCase()}.`;
-    if(s["Motivation"])desc+=` They are driven to: ${s["Motivation"].toLowerCase()}.`;
-    if(s["Distinctive Feature"])desc+=` ${s["Distinctive Feature"]}.`;
-    if(s["Secret"])desc+=` Secret: ${s["Secret"].toLowerCase()}.`;
-  }
+  const desc=buildRAGSummary(mode,ragState[mode]);if(!desc)return;
   const el=document.getElementById('sum-'+mode);el.className='';el.textContent=desc;
 }
 function switchRag(mode,btn){
@@ -757,657 +483,99 @@ function switchRag(mode,btn){
   document.getElementById('panel-'+mode).classList.add('active');
   document.getElementById('ragScroll').className='scroll mode-'+mode;
 }
+window.rollAll=rollAll;window.rollOne=rollOne;window.resetAll=resetAll;window.copySummary=copySummary;window.switchRag=switchRag;
 
-// ══════════════════════════════════════════
-// ORACLE DATA
-// ══════════════════════════════════════════
-const NPC={
-  names:['Aldric','Brina','Calder','Dessa','Emric','Faye','Gorin','Hessa','Ivor','Jarla','Keld','Lira','Marek','Nessa','Orin','Petra','Quen','Rova','Seld','Tava','Ulder','Vessa','Wren','Xara','Yoren','Zola','Bram','Cress','Daven','Elva','Finn','Gilda','Harwin','Isla','Jorin','Kessa','Lorn','Mira','Niall','Oswin'],
-  occupations:{
-    commoner:['miller','farmer','thatcher','shepherd','washerwoman','gravedigger','candlemaker','brewer','carter','hedgewitch'],
-    merchant:['cloth merchant','spice trader','moneylender','fence','jeweler','apothecary','weapon dealer','map seller','horse trader','wine merchant'],
-    guard:['gate guard','city watch','caravan guard','mercenary','bounty hunter','retired soldier','militia captain','dungeon warden','harbor master','bailiff'],
-    noble:['minor lord','tax collector','court advisor','magistrate','guild master','bishop','military officer','ambassador','landlord','chancellor'],
-  },
-  wants:["find a missing relative","recover a stolen item","warn someone of danger","earn enough coin to leave town","protect a secret","prove their innocence","find a buyer for something strange","avoid a debt collector","deliver a message","earn respect they feel they've lost","get revenge quietly","disappear without a trace"],
-  secrets:["owes a large debt to dangerous people","witnessed something they shouldn't have","is not who they claim to be","is in love with someone forbidden","is secretly a spy","has contraband hidden nearby","recently escaped from somewhere","knows where something valuable is buried","is being blackmailed","has a second family elsewhere","used to have a very different life","carries something that doesn't belong to them"],
-  moods:["guarded and watchful","warm but distracted","anxious, keeps looking over their shoulder","boisterous and too friendly","grieving, hollow-eyed","cheerful in a forced way","suspicious of outsiders","drunk or pretending to be","weary beyond their years","righteous and lecture-prone","quietly furious about something","at peace, almost unnervingly so"],
-  quirks:["taps a ring when nervous","won't make eye contact","laughs at the wrong moments","refers to themselves in third person","hums constantly","corrects everyone's grammar","smells strongly of a specific thing","carries a trinket they touch obsessively","speaks very quietly","overexplains everything","is brutally blunt","finishes others' sentences"],
-  appearances:["weathered hands, kind eyes","scar across the jaw","ink-stained fingers","missing an ear","one milky eye","fine clothes that have seen better days","several rings, none matching","braid laced with small bones","immaculately clean despite everything","moves with old military posture","perpetually damp, as if just rained on","too much perfume hiding something"],
-};
-const LOC={
-  tavern:{names:["The Guttered Candle","The Lame Ox","The Drowned Crow","The Copper Flagon","The Salted Heel","The Wanderer's Rest","The Split Log","Two Wolves Inn","The Sunken Barrel","The Empty Net"],details:["sawdust floor, low beams","rushes on the floor, reeks of ale","tapestries of old hunts","mounted beast heads everywhere","roaring fire, too hot","dark corners, private booths","card game in the back","bard tuning up, badly","a dog sleeping under every table","cellar door padlocked shut"],atmospheres:["tense — a recent argument","lively but watchful","nearly empty, oddly so","rowdy, a celebration of some kind","somber, recent bad news","busy, no one talking to strangers","festive but there's an undercurrent","calm, regulars only","someone is crying quietly in the corner","everyone seems to know everyone"]},
-  wilderness:{names:["the Ashwood","the Stillmoor","the Broken Fens","Greywolf Pass","the Pale Hills","the Drowned Valley","the Thornback Ridge","the Oldwood","Saltmarsh Flats","the Sunken Road"],details:["ancient stone marker, worn smooth","smell of rain and rot","a stream crossing, rickety bridge","wagon tracks that end abruptly","bones picked clean nearby","fungal bloom over a dead tree","stone ruins barely visible in undergrowth","campfire ashes, recent","a hanging effigy from a branch","shrine to an unnamed god, fresh offerings"],atmospheres:["unnaturally quiet","birdsong stops when you approach","distant smoke on the horizon","fog rolling in from nowhere","something is watching","tracks cross the path — something large","a distant horn call","feeling of being followed","a path that wasn't there before","wrong time of day — the light feels off"]},
-  dungeon:{names:["the Howling Vault","Thornhold Keep","the Forgotten Warren","the Salt Crypts","the Ember Cells","the Pale Sanctum","the Drowning Halls","the Hollow Spire","the Mourning Gallery","the Cracked Seal"],details:["torches still burning, recently lit","claw marks on the walls","altar with dried offerings","collapsed section, another way around","flood damage, water stains high up","graffiti in multiple languages","chains hanging from the ceiling","a door sealed from the inside","scattered bones but no full skeletons","evidence of a camp, abandoned in haste"],atmospheres:["eerie silence","distant dripping, steady as a heartbeat","something was here recently","air is wrong — too warm or too cold","faint sound of chanting from below","mold and rot everywhere","the dead here are restless","traps, old but some still live","someone has been mapping this place","you feel watched from the dark"]},
-  town:{names:["Ashford","Millhaven","Greybeck","Coldwater","Irongate","Saltern","the Crossing","Dusthallow","Weybridge","Fenwick"],details:["market day, crowded","gates closed, guards doubled","notice board covered in fresh postings","public stocks, occupied","shrine being rebuilt after fire","a new building going up fast","foreign faces, a caravan in town","a funeral procession blocking the road","children's game that seems too adult","empty shop fronts on one street"],atmospheres:["nervous, something happened recently","welcoming but wary","divided — two factions, obvious tension","busy, everyone has somewhere to be","under a quiet kind of pressure","celebratory — a local holiday","recovering from something bad","prosperous and showing it","looks fine from the outside","something is being kept from outsiders"]},
-};
-const LOOT={
-  poor:{coin:()=>`${d(6)} cp, ${d(4)} sp`,items:["worn leather belt pouch","half a loaf of bread and some hard cheese","a clay pipe, cracked","cheap iron ring with no gem","a wanted poster, folded many times","a single boot, still good","fishing line and three hooks","a well-worn lucky stone","a tin whistle, slightly bent","tallow candle, short"],oddities:["a tooth with a note tied to it","a doll with no face","a pebble wrapped in string","a page torn from a book, partially burned","a button that doesn't match anything"]},
-  modest:{coin:()=>`${d(6)} sp, ${d(4)} gp`,items:["silver ring, minor engraving","a good quality belt knife","sealed letter, unaddressed","a flask of decent whiskey","two vials of common healing salve","a small leather journal, half filled","a fine wool cloak, bloodstained","a brass compass that points slightly wrong","a set of loaded dice","a folded map of a local region"],oddities:["a key with no label","a merchant's ledger with names coded in margins","a folded cloth with a crude drawing of a face","a locket with a lock of hair, no portrait","a carved wooden token, faction unknown"]},
-  rich:{coin:()=>`${d(10)} gp, ${d(4)} pp`,items:["a jeweled brooch worth 50 gp","a fine shortsword with an unusual maker's mark","silk clothing tailored for someone specific","a sealed iron chest (locked, something rattles inside)","a ring with a minor enchantment (light, once/day)","a complete set of fine thieves' tools","a deed to a small piece of property, signed","a spyglass with fine lenses","a small painting, valuable and recognizable","a pouch of spell components and a half-written scroll"],oddities:["a book written in a cipher","a severed finger in a ring box","a contract with terms no sane person would sign","a small idol that radiates faint warmth","a bottle of wine sealed with a noble's sigil"]},
-  hoard:{coin:()=>`${d(6)*10} gp, ${d(6)} pp, gems worth ${d(4)*25} gp`,items:["a +1 weapon suited to the party","a set of armor with an unusual crest","a spellbook with 2d4 spells inside","a bag of holding, old and patched","an artifact of minor but obvious power","a map to somewhere significant","a collection of rare alchemical ingredients","a chest of art objects worth 500 gp","a legendary creature's trophy (horn, scale, feather)","a soul coin or other dark currency"],oddities:["a mirror that shows a slightly different reflection","a sealed urn containing ashes and a letter","a weapon that whispers the name of its last owner","a map where one location is marked in blood","something that absolutely should not be here"]},
-};
-const MONSTER={
-  forest:{creatures:["a pack of wolves (3d4)","a lone dire wolf","a giant spider and her brood","a troll, territorial","a green hag, curious","a pair of displacer beasts","a treant, old and angry","a will-o-wisp leading something worse","a sleeping owlbear","a dryad protecting a dying tree"],behaviors:["feeding on something already dead","following the party from a distance","fighting each other","guarding a den or nest","wounded and desperate","curious, not yet hostile","cornered and panicking","answering a call from deeper in","emerging slowly from the dark","circling, assessing"]},
-  road:{creatures:["a bandit ambush (2d6)","a lone highwayman","a desperate refugee family","a broken-down merchant wagon","a messenger with a sealed letter and a crossbow","a patrol of soldiers, not the friendly kind","a traveling carnival in the wrong place","a monk walking barefoot, going the wrong way","a pair of bounty hunters looking for someone","a cart of prisoners being transferred"],behaviors:["blocking the road entirely","watching from cover","flagging the party down frantically","pretending to need help","demanding toll","moving suspiciously fast in the same direction","circling back for a second look","clearly lying about who they are","in worse shape than they're letting on","offering something too good"]},
-  dungeon:{creatures:["a gelatinous cube, slow and silent","a swarm of rats, agitated","three skeletons, still armed","a lone ghoul, starving","a gibbering mouther in a collapsed chamber","a mimic on a door","a shadow following the party's light","a cultist survivor, hiding","an animated armor suit, still at post","a carrion crawler in the ceiling"],behaviors:["already alerted to the party's presence","sleeping / dormant","acting strangely, like it's afraid of something deeper in","standing perfectly still","guarding something specific","wounded from a recent fight","not interested in the party at all — busy with something else","patrolling a very specific route","reacting to light or sound abnormally","has already been bound or trapped by something smarter"]},
-  urban:{creatures:["a city watch patrol (1d4+2)","a cutpurse, mid-attempt","a rival adventuring party","a city official with a grudge","a street gang shaking down a merchant","a disguised doppelganger","a spy following someone nearby","a debtor trying to skip town","a fire cult member distributing pamphlets","a shapeshifter caught mid-change"],behaviors:["pretending everything is normal","fleeing from something","looking for a specific person","trying to start something","about to be arrested","watching the party with too much interest","conducting a deal that's going wrong","asking questions the party was just asking","has overheard something they shouldn't","claiming to be someone they're not"]},
-};
-const HOOKS=["A stranger is asking questions about the party","Something valuable was recently stolen here","An old conflict is about to boil over","There's a job, if you ask the right person","Someone is lying to everyone and doing it well","A rumor is spreading that may or may not be true","Something arrived here that shouldn't have","Someone is about to leave — and they're the only one who knows something important","A strange event happened last night, people are still shaken","There's a door / path / room no one will explain"];
-const TWISTS=["They aren't here by accident","One of them recognizes the party","Something is driving them from behind","They have something the party needs","They're more intelligent than they appear","They're actually fleeing something worse","This isn't their territory — someone sent them","They're protecting something nearby","They're not the apex predator here","They can be reasoned with, if approached right","They've already sprung a trap","Killing them causes a different problem"];
-
-// NEW oracle tables
-const TREASURE_SPECIALS=["A gemstone worth 2d10×10 gp, colour of old blood","A minor magic item — roll on DMG table A","A promissory note signed by a noble","A puzzle box that clicks ominously when shaken","A bottle of wine worth more than most weapons","A map with one location circled in charcoal","A deed to something the previous owner shouldn't have owned","A ring with an inscription in a dead language"];
-const POI_TABLE=[
-  {what:"A shrine",detail:"to a forgotten god, still receiving offerings",hook:"Someone has been here recently — the offerings are fresh"},
-  {what:"A message",detail:"scratched into the wall in three different hands",hook:"The last line was never finished"},
-  {what:"A body",detail:"that shows no cause of death",hook:"Its expression is peaceful. Almost serene."},
-  {what:"A locked door",detail:"with no keyhole — sealed from the inside",hook:"Something scrapes against it when you listen"},
-  {what:"A pool of still water",detail:"that perfectly reflects the wrong sky",hook:"Something moves in it that isn't here"},
-  {what:"A camp",detail:"recently abandoned in haste",hook:"Food still warm. Boot prints in three sizes."},
-  {what:"Strange markings",detail:"regular, deliberate, covering one wall entirely",hook:"Part of it is a map. Part of it is a warning."},
-  {what:"A child's toy",detail:"in a place children should never have been",hook:"It's been here a very long time"},
-  {what:"A trail of something",detail:"dark and deliberate, leading deeper in",hook:"It stops at a wall with nothing behind it"},
-  {what:"A light source",detail:"that shouldn't still be burning",hook:"No fuel source. No explanation."},
-];
-const HAZARD={
-  trap:[
-    {name:"Pressure Plate",effect:"Spike trap. DC 14 Dex or 2d10 piercing.",trigger:"Weight on floor tile",reset:"Manual"},
-    {name:"Arrow Slit",effect:"Darts from walls. DC 13 Dex or 1d6×3 piercing.",trigger:"Tripwire at shin height",reset:"Auto in 1 hour"},
-    {name:"Pit Trap",effect:"10ft drop. DC 14 Dex or 1d6 + restrained.",trigger:"False floor, DC 15 Perception",reset:"Cover resets in 1 min"},
-    {name:"Gas Vent",effect:"Poison gas. DC 14 Con or poisoned 1 hour.",trigger:"Disturbing the alcove",reset:"Exhausts in 3 rounds"},
-    {name:"Rolling Boulder",effect:"DC 15 Dex or 4d10 bludgeoning.",trigger:"Pressure plate at corridor entrance",reset:"Once only"},
-    {name:"Alarm Glyph",effect:"Loud chime — alerts all enemies on this level.",trigger:"Any creature crosses the threshold",reset:"Resets at dawn"},
-  ],
-  environmental:[
-    {name:"Unstable Ceiling",effect:"1d6 bludgeon each round. DC 12 Dex.",trigger:"Loud noise or heavy impact",reset:"Collapses after 3 triggers"},
-    {name:"Rising Water",effect:"1 foot per round. DC 12 Athletics when full.",trigger:"Entering the room",reset:"Drains if valve reset"},
-    {name:"Slick Floor",effect:"Difficult terrain. DC 12 Acrobatics or prone when running.",trigger:"Perpetual — oil seeps from walls",reset:"None"},
-    {name:"Darkness Pulse",effect:"All light out every 1d4 rounds.",trigger:"Perpetual — magic in the walls",reset:"Dispel Magic DC 14"},
-    {name:"Thin Floor",effect:"Collapses under 200+ lbs into room below.",trigger:"Weight",reset:"Once only"},
-    {name:"Extreme Cold",effect:"DC 10 Con each hour or +1 exhaustion.",trigger:"Perpetual — magical cold",reset:"None"},
-  ],
-  magical:[
-    {name:"Confusion Rune",effect:"DC 14 Wis or Confused 1 minute.",trigger:"Reading the inscription",reset:"Recharges at dawn"},
-    {name:"Fear Ward",effect:"DC 13 Wis or Frightened, must flee 1 round.",trigger:"Crossing threshold",reset:"Always active"},
-    {name:"Teleport Trap",effect:"Teleported to random room. No save.",trigger:"Stepping on the marked tile",reset:"Always active"},
-    {name:"Polymorph Glyph",effect:"DC 14 Wis or polymorphed into frog 1 min.",trigger:"Touching the glyph",reset:"Recharges at dawn"},
-    {name:"Curse Circle",effect:"Cursed (Bane) for 24 hours.",trigger:"Resting inside the circle",reset:"Always active"},
-    {name:"Silence Field",effect:"No sound in 20ft. Verbal spells fail.",trigger:"Perpetual zone",reset:"Dispel Magic DC 15"},
-  ],
-};
-const DANGER_TABLE=[
-  {threat:"A countdown",detail:"Something is already in motion. The party has 3 encounters before it completes.",sign:"A ticking sound with no source"},
-  {threat:"Reinforcements",detail:"More enemies are on the way — this group already sent a runner.",sign:"A horn call, distant but clear"},
-  {threat:"A trap already sprung",detail:"Someone came through here before and left it worse.",sign:"A fresh body near the entrance"},
-  {threat:"A hostage",detail:"Someone is being held deeper in. Killing enemies may doom them.",sign:"A muffled voice from below"},
-  {threat:"Corrupted ground",detail:"The dungeon itself is wrong. Magic behaves strangely here.",sign:"Spells that fire the wrong colour"},
-  {threat:"A rival party",detail:"Another group is in here with different goals. They're ahead.",sign:"Boot prints that aren't yours"},
-  {threat:"The door behind you",detail:"Something sealed the entrance. You're not leaving the same way.",sign:"A grinding sound as you descended"},
-  {threat:"Spreading darkness",detail:"Each hour, fog of war expands. The dungeon is waking up.",sign:"Torches dimming without reason"},
-];
-const CONTAINER_TABLE={
-  barrel:{poor:["salted pork, rancid","river water, murky","old nails","sawdust and rags","rotgut spirits — barely drinkable"],rich:["fine ale, still sealed","lamp oil, full","trade spice, wrapped in oilcloth","alchemist's alcohol","a body, preserved in brine"]},
-  chest:{poor:["copper coins (2d6)","old letters, unreadable","a broken lock","moth-eaten clothes","a single candle, burned low"],rich:["silver coins (3d6)","a sealed envelope addressed to someone important","a set of thieves' tools, quality","a small idol wrapped in cloth","a journal with the last entry torn out"]},
-  sack:{poor:["turnips","dirty laundry","a dead rat","gravel","trail rations, stale"],rich:["grain — more than one person could carry","a hood and some rope","spell components, scattered","stolen silverware","a sleeping animal inside"]},
-  crate:{poor:["straw packing, nothing inside","broken pottery","cheap candles","empty bottles","iron nails"],rich:["trade goods (silk, spice)","a disassembled weapon","stolen artwork, wrapped carefully","a locked metal box inside the crate","medical supplies, still sealed"]},
-};
-const ENEMY_TABLE={
-  minion:{behaviors:["guarding the door without thinking about it","eating something they shouldn't","arguing with another minion","asleep on the job","terrified of whoever is in charge"],secrets:["doesn't actually want to be here","is being coerced","has information the party needs","has a family somewhere","is the only one who knows the way out"],tactics:["rush the nearest target","hang back and throw things","scatter when bloodied","call for help immediately","fight defensively around a fixed point"]},
-  soldier:{behaviors:["running a patrol route","sharpening weapons, alert","coordinating with others by signal","guarding something specific","waiting in ambush"],secrets:["answers to someone the party hasn't met yet","was hired very recently","has orders that conflict with what they're doing","knows there's a traitor in their group","is the traitor"],tactics:["focus fire on the biggest threat","flank while allies distract","use terrain — chokepoints, high ground","protect the one who can call reinforcements","fight to disable, not kill — they want prisoners"]},
-  elite:{behaviors:["overseeing others from a distance","interrogating someone","inspecting the dungeon like they own it","performing a ritual","waiting — patiently, deliberately"],secrets:["has a personal grievance with someone in the party","is under orders they privately disagree with","holds a trump card they haven't played","is more powerful than they appear","is protecting someone"],tactics:["let minions absorb the first round","target spellcasters and healers first","use the environment as a weapon","has an escape route already planned","negotiate only to buy time"]},
-  boss:{behaviors:["aware the party is coming — has been for a while","conducting business as if nothing is wrong","at the height of completing their plan","in a moment of rare vulnerability","testing the party before showing their full strength"],secrets:["their true goal isn't what it appears","they were once something else entirely","they could be reasoned with, under the right circumstances","something here is more important to them than victory","they're afraid of something the party hasn't encountered yet"],tactics:["has already studied the party's weaknesses","opens with a show of overwhelming force","has a contingency for being reduced to half HP","will sacrifice everything else to complete the objective","the real threat is something they trigger, not themselves"]},
-};
-
-const hist={npc:[],location:[],loot:[],monster:[],yesno:[],treasure:[],poi:[],hazard:[],danger:[],container:[],enemy:[]};
+// ── Oracle ────────────────────────────────────────────────────────────────────
+const hist={};
 function addHist(type,text){
-  hist[type].unshift(text);if(hist[type].length>4)hist[type].pop();
+  if(!hist[type])hist[type]=[];hist[type].unshift(text);if(hist[type].length>4)hist[type].pop();
   const el=document.getElementById('hist-'+type);
   if(el)el.innerHTML=hist[type].map(t=>`<div class="history-item">— ${t}</div>`).join('');
 }
-function renderOracleResult(id,rows){
+function renderResult(id,rows){
   document.getElementById(id).innerHTML=`<div class="result-block">${rows.map(r=>`<div class="result-row"><span class="result-label">${r.label}</span><span class="result-value ${r.s||''}">${r.value}</span></div>`).join('')}</div>`;
 }
-
-let _lastNPC=null;
-
-function rollNPC(type){
-  const t=type||pick(Object.keys(NPC.occupations));
-  const name=pick(NPC.names),occ=pick(NPC.occupations[t]||NPC.occupations.commoner);
-  _lastNPC={name,occupation:occ,looks:pick(NPC.appearances),mood:pick(NPC.moods),quirk:pick(NPC.quirks),wants:pick(NPC.wants),secret:pick(NPC.secrets)};
-  renderOracleResult('res-npc',[
-    {label:'Name',value:name,s:'big'},
-    {label:'Role',value:occ},
-    {label:'Looks',value:_lastNPC.looks},
-    {label:'Mood',value:_lastNPC.mood},
-    {label:'Quirk',value:_lastNPC.quirk},
-    {label:'Wants',value:_lastNPC.wants},
-    {label:'Secret',value:_lastNPC.secret,s:'flavor'},
-  ]);
-  // inject send button
-  const res=document.getElementById('res-npc');
-  const btn=document.createElement('button');
-  btn.className='oracle-roll-btn gold';
-  btn.style.cssText='margin-top:0.8rem;width:100%;font-size:0.68rem;';
-  btn.textContent='☁ Send to VTT as Token';
-  btn.onclick=pushNPCToRTDB;
-  res.appendChild(btn);
-  addHist('npc',`${name}, ${occ}`);
-}
-
-async function pushNPCToRTDB(){
-  if(!_lastNPC)return;
-  if(!window._db){alert('Firebase not ready — wait a moment.');return;}
-  const btn=event.target;
-  btn.textContent='Pushing...';btn.disabled=true;
-  try{
-    const uid='oracle_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-    await window._set(window._ref(window._db,'characters/pcs/'+uid),{
-      name:_lastNPC.name,
-      type:'npc',
-      campaign:'__oracle__',
-      hp:10,maxHp:10,currentHp:10,
-      vtt_profile:{
-        occupation:_lastNPC.occupation,
-        looks:_lastNPC.looks,
-        mood:_lastNPC.mood,
-        quirk:_lastNPC.quirk,
-        wants:_lastNPC.wants,
-        secret:_lastNPC.secret,
-      }
-    });
-    btn.textContent='✓ In RTDB — find in token modal under __oracle__';
-    btn.style.cssText+='background:linear-gradient(135deg,#0d2210,#1a4020);color:#8ad4a0;border-color:rgba(100,200,120,0.3);';
-  }catch(e){
-    btn.textContent='✗ '+e.message;btn.disabled=false;
+async function doRoll(type,sub){
+  switch(type){
+    case 'npc':{const r=rollNPC(sub);renderResult('res-npc',[{label:'Name',value:r.name,s:'big'},{label:'Role',value:r.occupation},{label:'Looks',value:r.looks},{label:'Mood',value:r.mood},{label:'Quirk',value:r.quirk},{label:'Wants',value:r.wants},{label:'Secret',value:r.secret,s:'flavor'}]);addHist('npc',`${r.name}, ${r.occupation}`);break;}
+    case 'location':{const r=rollLocation(sub);renderResult('res-location',[{label:'Name',value:r.name,s:'big'},{label:'Type',value:r.type},{label:'Detail',value:r.detail},{label:'Atmosphere',value:r.atmosphere},{label:'Hook',value:r.hook,s:'flavor'}]);addHist('location',r.name);break;}
+    case 'loot':{const r=await rollLoot(sub);_lastRoll.loot=r;const rows=[{label:'Tier',value:r.tier,s:'big'},{label:'Coin',value:r.coin},{label:'Item',value:r.item}];if(r.oddity)rows.push({label:'Oddity',value:r.oddity,s:'flavor'});renderResult('res-loot',rows);addHist('loot',r.item);break;}
+    case 'treasure':{const r=await rollTreasure(sub);_lastRoll.treasure=r;const rows=[{label:'Found',value:'💰 Treasure Cache',s:'big'},{label:'Tier',value:r.tier},{label:'Coin',value:r.coin},{label:'Item',value:r.item}];if(r.special)rows.push({label:'Special',value:r.special,s:'flavor'});renderResult('res-treasure',rows);addHist('treasure',r.item);break;}
+    case 'monster':{const r=rollMonster(sub);const rows=[{label:'Environment',value:r.environment,s:'big'},{label:'Encounter',value:r.creature},{label:'Behavior',value:r.behavior}];if(r.twist)rows.push({label:'Twist',value:r.twist,s:'flavor'});renderResult('res-monster',rows);addHist('monster',r.creature);break;}
+    case 'poi':{const r=rollPOI();renderResult('res-poi',[{label:'What',value:r.what,s:'big'},{label:'Detail',value:r.detail},{label:'Hook',value:r.hook,s:'flavor'}]);addHist('poi',r.what);break;}
+    case 'hazard':{const r=rollHazard(sub);renderResult('res-hazard',[{label:'Type',value:r.type,s:'big'},{label:'Name',value:r.name},{label:'Effect',value:r.effect},{label:'Trigger',value:r.trigger},{label:'Reset',value:r.reset,s:'flavor'}]);addHist('hazard',r.name);break;}
+    case 'danger':{const r=rollDanger();renderResult('res-danger',[{label:'Threat',value:r.threat,s:'big'},{label:'Detail',value:r.detail},{label:'Sign',value:r.sign,s:'flavor'}]);addHist('danger',r.threat);break;}
+    case 'container':{const r=rollContainer(sub);renderResult('res-container',[{label:'Container',value:r.container,s:'big'},{label:'Tier',value:r.tier},{label:'Contents',value:r.contents,s:'flavor'}]);addHist('container',r.contents);break;}
+    case 'enemy':{const r=rollEnemy(sub);renderResult('res-enemy',[{label:'Rank',value:r.rank,s:'big'},{label:'Behavior',value:r.behavior},{label:'Secret',value:r.secret},{label:'Tactics',value:r.tactics,s:'flavor'}]);addHist('enemy',r.rank);break;}
+    case 'yesno':{const q=document.getElementById('oracle-q')?.value.trim()||'';const r=askOracle(q);document.getElementById('oracle-ans-area').innerHTML=`<div class="oracle-answer"><div class="oracle-answer-main">${r.answer}</div>${r.twist?`<div class="oracle-answer-twist">${r.twist}</div>`:''}</div>`;addHist('yesno',`${q?`"${q}" → `:''}${r.answer}`);if(q)document.getElementById('oracle-q').value='';break;}
   }
 }
-function rollLocation(type){
-  const t=type||pick(Object.keys(LOC));const data=LOC[t]||LOC.town;
-  const name=pick(data.names);
-  renderOracleResult('res-location',[{label:'Name',value:name,s:'big'},{label:'Type',value:t[0].toUpperCase()+t.slice(1)},{label:'Detail',value:pick(data.details)},{label:'Atmosphere',value:pick(data.atmospheres)},{label:'Hook',value:pick(HOOKS),s:'flavor'}]);
-  addHist('location',`${name} — ${t}`);
-}
-function rollLoot(tier){
-  const t=tier||pick(Object.keys(LOOT));const data=LOOT[t];
-  const coin=data.coin();
-  let item=pick(data.items);
-  let itemDesc='', itemCategory='gear';
-
-  // Rich/hoard tiers: pull a real item from API when available
-  if((t==='rich'||t==='hoard')&&magicItemsDb.length){
-    const rarity=t==='hoard'?pick(['rare','veryRare','legendary']):'uncommon';
-    const apiItem=pickMagicItem(rarity);
-    if(apiItem){
-      item=apiItem.name;
-      itemDesc=(apiItem.desc||[])[0]||'';
-      itemCategory='magic item';
-    }
-  } else if(t==='modest'&&equipmentDb.length){
-    const apiItem=pickEquipment('Adventuring Gear');
-    if(apiItem&&Math.random()>0.5){
-      item=apiItem.name;
-      itemDesc=(apiItem.desc||[])[0]||'';
-      itemCategory='gear';
-    }
-  }
-
-  const rows=[
-    {label:'Tier',value:t[0].toUpperCase()+t.slice(1),s:'big'},
-    {label:'Coin',value:coin},
-    {label:'Item',value:item},
-  ];
-  if(d(6)>=4)rows.push({label:'Oddity',value:pick(data.oddities),s:'flavor'});
-  renderOracleResult('res-loot',rows);
-  addHist('loot',`${t}: ${item}`);
-  // Track for push
-  window._lastRoll['opanel-loot']={item,itemDesc,itemCategory,coins:coin,tier:t};
-}
-function rollMonster(env){
-  const e=env||pick(Object.keys(MONSTER));const data=MONSTER[e];
-  const creature=pick(data.creatures),behavior=pick(data.behaviors);
-  const rows=[{label:'Environment',value:e[0].toUpperCase()+e.slice(1),s:'big'},{label:'Encounter',value:creature},{label:'Behavior',value:behavior}];
-  if(d(6)>=3)rows.push({label:'Twist',value:pick(TWISTS),s:'flavor'});
-  renderOracleResult('res-monster',rows);addHist('monster',`${creature} — ${behavior}`);
-}
-
-const YES_POOL=['Yes','Yes','Yes — and','Yes — and','Yes — but','Yes — but'];
-const NO_POOL=['No','No','No — and','No — and','No — but','No — but'];
-const TWIST_MAP={'Yes — and':["...and it's worse than expected","...and someone else sees it happen","...and it creates a new problem","...and it costs something","...and it draws attention"],'Yes — but':["...but only briefly","...but with strings attached","...but someone is watching","...but at a cost","...but it's not what it seems"],'No — and':["...and now they're suspicious","...and things just got harder","...and something else happens too","...and the party is noticed","...and a door closes permanently"],'No — but':["...but there's another way","...but they don't act on it yet","...but the party can change that","...but something interesting happens instead","...but information surfaces"]};
-function askOracle(){
-  const q=document.getElementById('oracle-q').value.trim();
-  const roll=d(6),isYes=roll>=4,answer=pick(isYes?YES_POOL:NO_POOL);
-  const twist=TWIST_MAP[answer]?pick(TWIST_MAP[answer]):null;
-  document.getElementById('oracle-ans-area').innerHTML=`<div class="oracle-answer"><div class="oracle-answer-main">${answer}</div>${twist?`<div class="oracle-answer-twist">${twist}</div>`:''}</div>`;
-  addHist('yesno',q?`"${q}" → ${answer}`:`Roll ${roll} → ${answer}`);
-  document.getElementById('oracle-q').value='';
-}
-
-function rollTreasure(tier){
-  const t=tier||pick(Object.keys(LOOT));const data=LOOT[t];
-  const coin=data.coin();
-  let item=pick(data.items);
-  let itemDesc='', itemCategory='gear';
-
-  // Always try to pull a real magic item for treasure
-  if(magicItemsDb.length){
-    const rarity=t==='hoard'?pick(['rare','veryRare']):t==='rich'?'uncommon':'common';
-    const apiItem=pickMagicItem(rarity);
-    if(apiItem){
-      item=apiItem.name;
-      itemDesc=(apiItem.desc||[])[0]||'';
-      itemCategory='magic item';
-    }
-  }
-
-  const rows=[
-    {label:'Found in',value:'💰 Treasure Cache',s:'big'},
-    {label:'Tier',value:t[0].toUpperCase()+t.slice(1)},
-    {label:'Coin',value:coin},
-    {label:'Item',value:item},
-  ];
-  if(d(6)>=3)rows.push({label:'Special',value:pick(TREASURE_SPECIALS),s:'flavor'});
-  renderOracleResult('res-treasure',rows);
-  addHist('treasure',`${t}: ${item}`);
-  // Track for push
-  window._lastRoll['opanel-treasure']={item,itemDesc,itemCategory,coins:coin,tier:t};
-}
-function rollPOI(){
-  const entry=pick(POI_TABLE);
-  renderOracleResult('res-poi',[{label:'What',value:entry.what,s:'big'},{label:'Detail',value:entry.detail},{label:'Hook',value:entry.hook,s:'flavor'}]);
-  addHist('poi',entry.what);
-}
-function rollHazard(type){
-  const t=type||pick(Object.keys(HAZARD));const data=HAZARD[t];
-  const h=pick(data);
-  renderOracleResult('res-hazard',[{label:'Type',value:t[0].toUpperCase()+t.slice(1),s:'big'},{label:'Name',value:h.name},{label:'Effect',value:h.effect},{label:'Trigger',value:h.trigger},{label:'Reset',value:h.reset,s:'flavor'}]);
-  addHist('hazard',`${h.name} (${t})`);
-}
-function rollDanger(){
-  const entry=pick(DANGER_TABLE);
-  renderOracleResult('res-danger',[{label:'Threat',value:entry.threat,s:'big'},{label:'Detail',value:entry.detail},{label:'Sign',value:entry.sign,s:'flavor'}]);
-  addHist('danger',entry.threat);
-}
-function rollContainer(type){
-  const t=type||pick(Object.keys(CONTAINER_TABLE));
-  const data=CONTAINER_TABLE[t];
-  const tier=d(6)>=4?'rich':'poor';
-  const contents=pick(data[tier]);
-  renderOracleResult('res-container',[{label:'Container',value:t[0].toUpperCase()+t.slice(1),s:'big'},{label:'Condition',value:tier==='rich'?'Intact / promising':'Worn / disappointing'},{label:'Contents',value:contents,s:'flavor'}]);
-  addHist('container',`${t}: ${contents}`);
-}
-function rollEnemy(tier){
-  const t=tier||pick(Object.keys(ENEMY_TABLE));const data=ENEMY_TABLE[t];
-  renderOracleResult('res-enemy',[{label:'Rank',value:t[0].toUpperCase()+t.slice(1),s:'big'},{label:'Behavior',value:pick(data.behaviors)},{label:'Secret',value:pick(data.secrets)},{label:'Tactics',value:pick(data.tactics),s:'flavor'}]);
-  addHist('enemy',t);
-}
-
 function switchOracle(name,btn){
   document.querySelectorAll('.tab-btn-oracle').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   document.querySelectorAll('#oracleScroll .panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('opanel-'+name).classList.add('active');
 }
+window.doRoll=doRoll;window.switchOracle=switchOracle;
 
-// ══════════════════════════════════════════
-// DUNGEON GENERATOR
-// ══════════════════════════════════════════
-const DGEN={
-  VOID:0,FLOOR:1,WALL:2,CORRIDOR:3,DOOR:4,
-  palette:{
-    ruins:{floor:'#6b5e4e',wall:'#3a3228',wallStroke:'#1a1410',corridor:'#7a6e5e',door:'#8a5a2a',void:'#2a2018',fog:'rgba(10,14,40,0.78)'},
-    cave: {floor:'#5a5040',wall:'#2e2820',wallStroke:'#141008',corridor:'#6a604e',door:'#7a5020',void:'#1e1a10',fog:'rgba(5,10,5,0.80)'},
-    crypt:{floor:'#5a5560',wall:'#2a2830',wallStroke:'#0e0c14',corridor:'#6a6572',door:'#7a3838',void:'#18161e',fog:'rgba(10,5,25,0.82)'},
-    sewer:{floor:'#4a5848',wall:'#282e28',wallStroke:'#101410',corridor:'#5a6858',door:'#6a5838',void:'#141a12',fog:'rgba(5,15,5,0.80)'},
-  },
-  tokenTables:{
-    ruins: {npcs:['Guard','Scout','Bandit','Mercenary'],monsters:['Goblin','Skeleton','Zombie','Rat Swarm','Cultist'],bosses:['Bandit Lord','Undead Knight','Mage']},
-    cave:  {npcs:['Lost Miner','Hermit'],monsters:['Giant Spider','Bat Swarm','Kobold','Troglodyte','Cave Bear'],bosses:['Troll','Basilisk','Dragon Wyrmling']},
-    crypt: {npcs:['Grave Robber','Cleric'],monsters:['Skeleton','Zombie','Shadow','Ghoul','Specter'],bosses:['Lich','Death Knight','Mummy Lord']},
-    sewer: {npcs:['Urchin','Spy'],monsters:['Giant Rat','Otyugh','Troglodyte','Were-rat','Crocodile'],bosses:['Thieves Guild Master','Aboleth','Sewer Hag']},
-  },
-  stampTables:{
-    ruins:['💀','⚔️','🛡️','🔥','💰','🗝️','📜','🗡️','⭐','❗'],
-    cave: ['💀','🦴','🕷️','🌿','💎','❄️','🍄','🐍','⭐','🔒'],
-    crypt:['💀','⚰️','🕯️','☠️','📜','🗝️','👁️','🧪','❗','🔒'],
-    sewer:['💀','🪣','🐀','🍄','⛓️','🔥','🗝️','💧','❗','🔒'],
-  },
-  stampMeanings:{'💀':'Danger — death nearby','⚔️':'Combat likely','🛡️':'Former defender','🔥':'Fire hazard','💰':'Treasure here','🗝️':'A key — to something','📜':'Important text or clue','🗡️':'Weapon or violence','⭐':'Point of interest','❗':'Warning','🦴':'Old bones — something died here','🕷️':'Spider territory','🌿':'Unusual growth','💎':'Gemstone or mineral','❄️':'Magical cold','🍄':'Fungal growth — may be toxic','🐍':'Snake or reptile','🔒':'Sealed / locked','⚰️':'A sarcophagus','🕯️':'Ritual or shrine','☠️':'Skull — death magic','👁️':'Being watched','🧪':'Alchemical remnants','🪣':'Container','🐀':'Rats — infestation','⛓️':'Someone was restrained here','💧':'Water — flooding risk'},
-  propTables:{
-    ruins:['barrel','chest','barrel','chest','chest'],
-    cave: ['barrel','chest','barrel','chest','barrel'],
-    crypt:['chest','chest','barrel','chest','barrel'],
-    sewer:['barrel','barrel','chest','barrel','chest'],
-  },
-  sizes:{small:{w:14,h:10,tileSize:40},medium:{w:22,h:16,tileSize:34},large:{w:32,h:24,tileSize:25}},
-  densityConfig:{sparse:{minRooms:3,maxRooms:5,minW:3,maxW:5,minH:3,maxH:4},normal:{minRooms:5,maxRooms:9,minW:3,maxW:6,minH:3,maxH:5},dense:{minRooms:8,maxRooms:14,minW:2,maxW:4,minH:2,maxH:4}},
-};
+// ── Dungeon ───────────────────────────────────────────────────────────────────
+let _dungeon=null;
+const dgenCanvas=document.getElementById('dungeonCanvas');
+const canvasWrap=document.querySelector('.dgen-canvas-wrap');
+const tooltip=document.createElement('div');
+tooltip.style.cssText='display:none;position:absolute;pointer-events:none;background:rgba(18,12,8,.95);border:1px solid rgba(201,162,39,.5);border-radius:3px;padding:8px 12px;max-width:200px;z-index:20;font-family:Crimson Text,serif';
+canvasWrap.style.position='relative';
+canvasWrap.appendChild(tooltip);
 
-let lastDungeonJSON=null;
-let _dungeonGrid=null,_dungeonStamps={},_dungeonTokens={},_dungeonProps={},_dungeonRooms=[];
-let _tileSize=34,_dungeonW=22,_dungeonH=16,_dungeonType='ruins';
-
-function dRand(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
-function dPick(arr){return arr[Math.floor(Math.random()*arr.length)];}
-
-function generateDungeon(){
-  const sizeKey=document.getElementById('dgen-size').value;
-  const typeKey=document.getElementById('dgen-type').value;
-  const densityKey=document.getElementById('dgen-density').value;
-  const {w,h,tileSize}=DGEN.sizes[sizeKey];
-  const dc=DGEN.densityConfig[densityKey];
-  const pal=DGEN.palette[typeKey];
-  const {npcs,monsters,bosses}=DGEN.tokenTables[typeKey];
-  const stampPool=DGEN.stampTables[typeKey];
-  const propPool=DGEN.propTables[typeKey];
-
-  _tileSize=tileSize;_dungeonW=w;_dungeonH=h;_dungeonType=typeKey;
-
-  const grid=Array.from({length:h},()=>Array(w).fill(DGEN.VOID));
-  const rooms=[];
-  const numRooms=dRand(dc.minRooms,dc.maxRooms);
-
-  for(let r=0;r<numRooms;r++){
-    for(let a=0;a<200;a++){
-      const rw=dRand(dc.minW,dc.maxW),rh=dRand(dc.minH,dc.maxH);
-      const rx=dRand(1,w-rw-2),ry=dRand(1,h-rh-2);
-      let ok=true;
-      for(const rm of rooms){if(rx<rm.x+rm.w+1&&rx+rw>rm.x-1&&ry<rm.y+rm.h+1&&ry+rh>rm.y-1){ok=false;break;}}
-      if(ok){rooms.push({x:rx,y:ry,w:rw,h:rh});for(let cy=ry;cy<ry+rh;cy++)for(let cx=rx;cx<rx+rw;cx++)grid[cy][cx]=DGEN.FLOOR;break;}
-    }
-  }
-
-  const shuffled=[...rooms].sort(()=>Math.random()-0.5);
-  for(let i=1;i<shuffled.length;i++){
-    const a=shuffled[i-1],b=shuffled[i];
-    const ax=Math.floor(a.x+a.w/2),ay=Math.floor(a.y+a.h/2);
-    const bx=Math.floor(b.x+b.w/2),by=Math.floor(b.y+b.h/2);
-    const midX=Math.random()<0.5?ax:bx,midY=Math.random()<0.5?ay:by;
-    for(let cx=Math.min(ax,midX);cx<=Math.max(ax,midX);cx++)if(grid[ay][cx]===DGEN.VOID)grid[ay][cx]=DGEN.CORRIDOR;
-    for(let cy=Math.min(ay,midY);cy<=Math.max(ay,midY);cy++)if(grid[cy][midX]===DGEN.VOID)grid[cy][midX]=DGEN.CORRIDOR;
-    for(let cx=Math.min(midX,bx);cx<=Math.max(midX,bx);cx++)if(grid[by][cx]===DGEN.VOID)grid[by][cx]=DGEN.CORRIDOR;
-    for(let cy=Math.min(midY,by);cy<=Math.max(midY,by);cy++)if(grid[cy][bx]===DGEN.VOID)grid[cy][bx]=DGEN.CORRIDOR;
-  }
-
-  const dirs8=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
-  for(let cy=0;cy<h;cy++)for(let cx=0;cx<w;cx++){
-    if(grid[cy][cx]===DGEN.VOID)for(const[dy,dx]of dirs8){const ny=cy+dy,nx=cx+dx;if(ny>=0&&ny<h&&nx>=0&&nx<w&&(grid[ny][nx]===DGEN.FLOOR||grid[ny][nx]===DGEN.CORRIDOR)){grid[cy][cx]=DGEN.WALL;break;}}
-  }
-
-  for(const rm of rooms){
-    const perim=[];
-    for(let cx=rm.x;cx<rm.x+rm.w;cx++)perim.push([rm.y,cx],[rm.y+rm.h-1,cx]);
-    for(let cy=rm.y;cy<rm.y+rm.h;cy++)perim.push([cy,rm.x],[cy,rm.x+rm.w-1]);
-    for(const[cy,cx]of perim)for(const[dy,dx]of[[0,1],[0,-1],[1,0],[-1,0]]){
-      const ny=cy+dy,nx=cx+dx;
-      if(ny>=0&&ny<h&&nx>=0&&nx<w&&grid[ny][nx]===DGEN.CORRIDOR&&Math.random()<0.5)grid[ny][nx]=DGEN.DOOR;
-    }
-  }
-
-  const tilesOut={},fogCells={},tokensOut={},stampsOut={},propsOut={};
-  let tileCount=0;
-  for(let cy=0;cy<h;cy++)for(let cx=0;cx<w;cx++){
-    const t=grid[cy][cx];if(t===DGEN.VOID)continue;
-    const key=`${cx},${cy}`;
-    tilesOut[key]={terrain:t===DGEN.DOOR?'wood':'stone',walls:t===DGEN.WALL};
-    tileCount++;fogCells[key]=true;
-  }
-
-  let tokId=1;
-  for(let i=0;i<rooms.length;i++){
-    const rm=rooms[i];
-    const cx=Math.floor(rm.x+rm.w/2),cy=Math.floor(rm.y+rm.h/2);
-    let name,hp=10,maxHp=10;
-    if(i===rooms.length-1&&rooms.length>1){name=dPick(bosses);hp=dRand(40,80);maxHp=hp;}
-    else if(i===0){name=dPick(npcs);hp=dRand(6,14);maxHp=hp;}
-    else if(Math.random()<0.65){name=dPick(monsters);hp=dRand(8,25);maxHp=hp;}
-    else continue;
-    tokensOut[`tok_${tokId++}`]={x:cx,y:cy,name,type:'npc',hp,maxHp,characterId:'__npc__'};
-  }
-
-  for(const rm of rooms){
-    const n=dRand(0,2);
-    for(let s=0;s<n;s++){
-      const sx=dRand(rm.x,rm.x+rm.w-1),sy=dRand(rm.y,rm.y+rm.h-1);
-      if(grid[sy][sx]===DGEN.FLOOR)stampsOut[`${sx}_${sy}`]=dPick(stampPool);
-    }
-  }
-  for(const rm of rooms){
-    if(Math.random()<0.5){
-      const px=dRand(rm.x,rm.x+rm.w-1),py=dRand(rm.y,rm.y+rm.h-1);
-      if(grid[py][px]===DGEN.FLOOR)propsOut[`${px},${py}`]={propId:dPick(propPool),w:1,h:1};
-    }
-  }
-
-  const mapName=`${typeKey}-${Math.floor(Math.random()*9000)+1000}`;
-  lastDungeonJSON={mapName,tiles:tilesOut,fog:{fog_1:{cells:fogCells}},tokens:tokensOut,stamps:stampsOut,props:propsOut};
-  window.lastDungeonJSON=lastDungeonJSON;
-  window._dungeonRooms=rooms;
-  _dungeonGrid=grid;_dungeonStamps=stampsOut;_dungeonTokens=tokensOut;_dungeonProps=propsOut;_dungeonRooms=rooms;
-
-  document.getElementById('ds-rooms').textContent=rooms.length;
-  document.getElementById('ds-tiles').textContent=tileCount;
-  document.getElementById('ds-tokens').textContent=Object.keys(tokensOut).length;
-  document.getElementById('ds-props').textContent=Object.keys(propsOut).length;
-
-  renderDungeon(grid,w,h,tileSize,pal,stampsOut,tokensOut,fogCells);
-  document.getElementById('dgen-export-box').style.display='none';
+function doGenerate(){
+  _dungeon=generateDungeon(
+    document.getElementById('dgen-size').value,
+    document.getElementById('dgen-type').value,
+    document.getElementById('dgen-density').value,
+  );
+  renderDungeon(dgenCanvas,_dungeon);
+  document.getElementById('ds-rooms').textContent=_dungeon.stats.rooms;
+  document.getElementById('ds-tiles').textContent=_dungeon.stats.tiles;
+  document.getElementById('ds-tokens').textContent=_dungeon.stats.tokens;
+  document.getElementById('dgen-status').textContent='';
   document.getElementById('canvas-roll-result').style.display='none';
-  setDgenStatus('');
 }
-
-function renderDungeon(grid,w,h,tileSize,pal,stamps,tokens,fogCells){
-  const canvas=document.getElementById('dungeonCanvas');
-  canvas.width=w*tileSize;canvas.height=h*tileSize;
-  const ctx=canvas.getContext('2d');
-  ctx.fillStyle=pal.void;ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  for(let cy=0;cy<h;cy++)for(let cx=0;cx<w;cx++){
-    const t=grid[cy][cx];const px=cx*tileSize,py=cy*tileSize;
-    if(t===DGEN.VOID)continue;
-    if(t===DGEN.WALL){
-      ctx.fillStyle=pal.wall;ctx.fillRect(px,py,tileSize,tileSize);
-      ctx.strokeStyle=pal.wallStroke;ctx.lineWidth=1;ctx.strokeRect(px+0.5,py+0.5,tileSize-1,tileSize-1);
-      ctx.strokeStyle='rgba(0,0,0,0.15)';ctx.lineWidth=0.5;
-      ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px+tileSize,py+tileSize);ctx.moveTo(px+tileSize,py);ctx.lineTo(px,py+tileSize);ctx.stroke();
-    }else if(t===DGEN.FLOOR){
-      ctx.fillStyle=pal.floor;ctx.fillRect(px,py,tileSize,tileSize);
-      ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=0.5;ctx.strokeRect(px+0.5,py+0.5,tileSize-1,tileSize-1);
-      if(tileSize>=30){ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;ctx.strokeRect(px+2,py+2,tileSize-4,tileSize-4);}
-    }else if(t===DGEN.CORRIDOR){
-      ctx.fillStyle=pal.corridor;ctx.fillRect(px,py,tileSize,tileSize);
-    }else if(t===DGEN.DOOR){
-      ctx.fillStyle=pal.floor;ctx.fillRect(px,py,tileSize,tileSize);
-      ctx.fillStyle=pal.door;
-      const dw=Math.max(4,tileSize*0.55),dh=Math.max(4,tileSize*0.7);
-      ctx.fillRect(px+(tileSize-dw)/2,py+(tileSize-dh)/2,dw,dh);
-      ctx.strokeStyle='rgba(0,0,0,0.5)';ctx.lineWidth=1;
-      ctx.strokeRect(px+(tileSize-dw)/2+0.5,py+(tileSize-dh)/2+0.5,dw-1,dh-1);
-    }
-  }
-
-  ctx.fillStyle=pal.fog.replace(/[\d.]+\)$/,'0.42)');
-  for(const key in fogCells){const[fx,fy]=key.split(',').map(Number);ctx.fillRect(fx*tileSize,fy*tileSize,tileSize,tileSize);}
-
-  const sfs=Math.max(10,tileSize*0.55);
-  ctx.font=`${sfs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-  for(const[key,emoji]of Object.entries(stamps)){
-    const[sx,sy]=key.split('_').map(Number);
-    ctx.fillText(emoji,sx*tileSize+tileSize/2,sy*tileSize+tileSize/2);
-  }
-
-  // props as emoji
-  const propEmoji={barrel:'🛢',chest:'📦'};
-  for(const[key,prop]of Object.entries(_dungeonProps)){
-    const[px2,py2]=key.split(',').map(Number);
-    const em=propEmoji[prop.propId]||'📦';
-    ctx.font=`${sfs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(em,px2*tileSize+tileSize/2,py2*tileSize+tileSize/2);
-  }
-
-  const tfs=Math.max(8,tileSize*0.48);
-  const tokEmoji={guard:'💂',goblin:'👹',skeleton:'💀',zombie:'🧟',shadow:'👤',bandit:'🗡️',mage:'🧙',troll:'👺',spider:'🕷️',lich:'💀',death:'⚔️',mummy:'⚰️',rat:'🐀',default:'👾'};
-  for(const[,tok]of Object.entries(tokens)){
-    const tx=tok.x*tileSize,ty=tok.y*tileSize;
-    ctx.beginPath();ctx.arc(tx+tileSize/2,ty+tileSize/2,tileSize*0.38,0,Math.PI*2);
-    ctx.fillStyle=tok.type==='pc'?'rgba(10,30,10,0.8)':'rgba(10,10,30,0.75)';ctx.fill();
-    ctx.strokeStyle=tok.type==='pc'?'rgba(100,220,120,0.9)':'rgba(201,162,39,0.8)';ctx.lineWidth=1.5;ctx.stroke();
-    const nl=tok.name.toLowerCase();let em='👾';
-    for(const[k,v]of Object.entries(tokEmoji)){if(nl.includes(k)){em=v;break;}}
-    ctx.font=`${tfs}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(em,tx+tileSize/2,ty+tileSize/2);
-    if(tileSize>=28){
-      ctx.font=`bold ${Math.max(7,tileSize*0.22)}px sans-serif`;
-      ctx.fillStyle=tok.type==='pc'?'rgba(180,255,180,0.9)':'rgba(255,240,180,0.9)';
-      ctx.textBaseline='bottom';ctx.fillText(tok.name.split(' ')[0],tx+tileSize/2,ty+tileSize-2);
-    }
-  }
-
-  ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=0.5;
-  for(let cx=0;cx<=w;cx++){ctx.beginPath();ctx.moveTo(cx*tileSize,0);ctx.lineTo(cx*tileSize,h*tileSize);ctx.stroke();}
-  for(let cy=0;cy<=h;cy++){ctx.beginPath();ctx.moveTo(0,cy*tileSize);ctx.lineTo(w*tileSize,cy*tileSize);ctx.stroke();}
+async function doPush(){
+  if(!_dungeon){document.getElementById('dgen-status').textContent='Generate a dungeon first.';return;}
+  document.getElementById('dgen-status').textContent='Pushing…';
+  try{
+    const mapName=await pushDungeonToRTDB(_dungeon,[]);
+    document.getElementById('dgen-status').textContent=`✓ Pushed as "${mapName}"`;
+  }catch(e){document.getElementById('dgen-status').textContent='✗ '+e.message;}
 }
-
-// ── Canvas interactivity ────────────────────────────────
-function getCanvasTile(e){
-  const canvas=document.getElementById('dungeonCanvas');
-  const rect=canvas.getBoundingClientRect();
-  const scaleX=canvas.width/rect.width;
-  const mx=(e.clientX-rect.left)*scaleX;
-  const my=(e.clientY-rect.top)*scaleX;
-  return{tx:Math.floor(mx/_tileSize),ty:Math.floor(my/_tileSize)};
-}
-
-function getThingAt(tx,ty){
-  // check token
-  for(const[id,tok]of Object.entries(_dungeonTokens)){if(tok.x===tx&&tok.y===ty)return{kind:'token',id,tok};}
-  // check prop
-  const pk=`${tx},${ty}`;
-  if(_dungeonProps[pk])return{kind:'prop',key:pk,prop:_dungeonProps[pk]};
-  // check stamp
-  const sk=`${tx}_${ty}`;
-  if(_dungeonStamps[sk])return{kind:'stamp',key:sk,emoji:_dungeonStamps[sk]};
-  // door
-  if(_dungeonGrid&&_dungeonGrid[ty]&&_dungeonGrid[ty][tx]===DGEN.DOOR)return{kind:'door'};
-  return null;
-}
-
-const canvasWrap=document.getElementById('canvasWrap');
-const tooltip=document.getElementById('canvasTooltip');
-
 canvasWrap.addEventListener('mousemove',e=>{
-  if(!_dungeonGrid){tooltip.style.display='none';return;}
-  const{tx,ty}=getCanvasTile(e);
-  const thing=getThingAt(tx,ty);
+  if(!_dungeon){tooltip.style.display='none';return;}
+  const thing=getThingAtClick(dgenCanvas,_dungeon,e.clientX,e.clientY);
   if(!thing){tooltip.style.display='none';return;}
-
-  let title='',body='',hint='Click to roll';
-  if(thing.kind==='token'){
-    title=thing.tok.type==='pc'?'Party Member':'Enemy';
-    body=`${thing.tok.name}  ·  HP ${thing.tok.hp}/${thing.tok.maxHp}`;
-    hint=thing.tok.type==='pc'?'Party member':'Click to roll enemy';
-    if(thing.tok.type==='pc')hint='';
-  }else if(thing.kind==='prop'){
-    title='Prop';body=thing.prop.propId[0].toUpperCase()+thing.prop.propId.slice(1);hint='Click to roll contents';
-  }else if(thing.kind==='stamp'){
-    title='Stamp';
-    body=`${thing.emoji}  ${DGEN.stampMeanings[thing.emoji]||'Point of interest'}`;
-    hint='Click to roll';
-  }else if(thing.kind==='door'){
-    title='Door';body='A sealed entrance';hint='';
-  }
-
-  document.getElementById('tt-title').textContent=title;
-  document.getElementById('tt-body').textContent=body;
-  document.getElementById('tt-hint').textContent=hint;
-
+  const kind=thing.kind,data=thing.tok||thing.prop||thing;
+  let text=kind==='token'?`${data.name} — ${data.hp||'?'} HP`:kind==='prop'?data.propId||'Prop':kind==='stamp'?`${thing.emoji}`:kind==='door'?'Door':'?';
+  tooltip.innerHTML=`<div style="font-size:.75rem;color:#c9a227;font-family:Cinzel,serif">${text}</div><div style="font-size:.7rem;color:#d4bc82;margin-top:2px">Click to roll</div>`;
   const rect=canvasWrap.getBoundingClientRect();
-  let left=e.clientX-rect.left+12,top=e.clientY-rect.top+12;
-  tooltip.style.display='block';
-  if(left+210>rect.width)left=e.clientX-rect.left-220;
-  tooltip.style.left=left+'px';tooltip.style.top=top+'px';
+  tooltip.style.left=(e.clientX-rect.left+12)+'px';tooltip.style.top=(e.clientY-rect.top+12)+'px';tooltip.style.display='block';
 });
 canvasWrap.addEventListener('mouseleave',()=>tooltip.style.display='none');
-
 canvasWrap.addEventListener('click',e=>{
-  if(!_dungeonGrid)return;
-  const{tx,ty}=getCanvasTile(e);
-  const thing=getThingAt(tx,ty);
+  if(!_dungeon)return;
+  const thing=getThingAtClick(dgenCanvas,_dungeon,e.clientX,e.clientY);
   if(!thing)return;
   tooltip.style.display='none';
-
+  const result=rollForThing(thing,_dungeon);if(!result)return;
   const resEl=document.getElementById('canvas-roll-result');
-  const titleEl=document.getElementById('crr-title');
-  const bodyEl=document.getElementById('crr-body');
-  const flavorEl=document.getElementById('crr-flavor');
-
-  if(thing.kind==='token'&&thing.tok.type==='pc')return;
-
-  if(thing.kind==='token'){
-    // roll enemy
-    const tier=_dungeonRooms.length>1&&thing.tok.name===Object.values(_dungeonTokens).find((t,i,arr)=>i===arr.length-1)?.name?'boss':d(6)>=4?'soldier':'minion';
-    const safeKeys=Object.keys(ENEMY_TABLE);
-    const t=safeKeys.includes(tier)?tier:'minion';
-    const data=ENEMY_TABLE[t];
-    titleEl.textContent=`👹 ${thing.tok.name}`;
-    bodyEl.textContent=`Behavior: ${pick(data.behaviors)}\nSecret: ${pick(data.secrets)}`;
-    flavorEl.textContent=`Tactics: ${pick(data.tactics)}`;
-  }else if(thing.kind==='prop'){
-    const propId=thing.prop.propId;
-    const ct=CONTAINER_TABLE[propId]||CONTAINER_TABLE.chest;
-    const tier=d(6)>=4?'rich':'poor';
-    const contents=pick(ct[tier]);
-    titleEl.textContent=`📦 ${propId[0].toUpperCase()+propId.slice(1)} Contents`;
-    bodyEl.textContent=contents;
-    flavorEl.textContent=tier==='rich'?'Well-stocked.':'Mostly empty.';
-  }else if(thing.kind==='stamp'){
-    const emoji=thing.emoji;
-    const meaning=DGEN.stampMeanings[emoji]||'Point of interest';
-    // pick relevant roll based on emoji
-    if(['💰'].includes(emoji)){
-      const tier=pick(['poor','modest','rich']);const data2=LOOT[tier];
-      titleEl.textContent=`💰 Treasure`;
-      bodyEl.textContent=`${data2.coin()} · ${pick(data2.items)}`;
-      flavorEl.textContent=d(6)>=4?pick(TREASURE_SPECIALS):'';
-    }else if(['❗','⭐'].includes(emoji)){
-      const poi=pick(POI_TABLE);
-      titleEl.textContent=`❗ ${poi.what}`;
-      bodyEl.textContent=poi.detail;flavorEl.textContent=poi.hook;
-    }else if(['🔥','⚔️','🗡️','🛡️'].includes(emoji)){
-      const t2=pick(Object.keys(HAZARD));const hz=pick(HAZARD[t2]);
-      titleEl.textContent=`🔥 Hazard: ${hz.name}`;
-      bodyEl.textContent=hz.effect;flavorEl.textContent=`Trigger: ${hz.trigger}`;
-    }else if(['💀','☠️','👁️'].includes(emoji)){
-      const dng=pick(DANGER_TABLE);
-      titleEl.textContent=`💀 ${dng.threat}`;
-      bodyEl.textContent=dng.detail;flavorEl.textContent=dng.sign;
-    }else{
-      // generic POI
-      const poi2=pick(POI_TABLE);
-      titleEl.textContent=`${emoji} ${meaning}`;
-      bodyEl.textContent=poi2.detail;flavorEl.textContent=poi2.hook;
-    }
-  }
-
+  document.getElementById('crr-title').textContent=result.title;
+  document.getElementById('crr-body').textContent=result.body;
+  document.getElementById('crr-flavor').textContent=result.flavor||'';
   resEl.style.display='block';
   resEl.scrollIntoView({behavior:'smooth',block:'nearest'});
 });
 
-function toggleExport(){
-  if(!lastDungeonJSON)return;
-  const box=document.getElementById('dgen-export-box');
-  box.style.display=box.style.display==='block'?'none':'block';
-  if(box.style.display==='block')box.textContent=JSON.stringify(lastDungeonJSON,null,2);
-}
-function copyExport(){
-  if(!lastDungeonJSON)return;
-  navigator.clipboard.writeText(JSON.stringify(lastDungeonJSON,null,2)).then(()=>{
-    const btn=event.target;const orig=btn.textContent;btn.textContent='✓ Copied!';
-    setTimeout(()=>btn.textContent=orig,1500);
-  });
-}
+window.doGenerate=doGenerate;window.doPush=doPush;
 
-// INIT
-buildGrid('creature');buildGrid('character');generateDungeon();
+// Init
+buildGrid('creature');buildGrid('character');doGenerate();
 </script>
 </body>
 </html>

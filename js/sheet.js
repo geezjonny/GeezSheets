@@ -1,0 +1,466 @@
+// Sheet — character sheet card builder
+// Used by both index.html (read-only player view) and mapeditor.html (GM editable)
+// Depends on: firebase.js, light.js, config.js
+
+import { db } from "./firebase.js";
+import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import {
+  LIGHT_SOURCES, HEAL_ITEMS, CONDITION_REMOVERS,
+  itemKey, getLightDef, useItem, removeItem, addItem, giveLight, extinguishLight,
+} from "./light.js";
+
+// ── Ability score helpers ─────────────────────────────────────────────────────
+export const ABILITY_KEYS   = ["str","dex","con","int","wis","cha"];
+export const ABILITY_LABELS = { str:"STR", dex:"DEX", con:"CON", int:"INT", wis:"WIS", cha:"CHA" };
+
+export const SKILLS = [
+  {key:"acrobatics",     label:"Acrobatics",     stat:"dex"},
+  {key:"animal_handling",label:"Animal Handling", stat:"wis"},
+  {key:"arcana",         label:"Arcana",          stat:"int"},
+  {key:"athletics",      label:"Athletics",       stat:"str"},
+  {key:"deception",      label:"Deception",       stat:"cha"},
+  {key:"history",        label:"History",         stat:"int"},
+  {key:"insight",        label:"Insight",         stat:"wis"},
+  {key:"intimidation",   label:"Intimidation",    stat:"cha"},
+  {key:"investigation",  label:"Investigation",   stat:"int"},
+  {key:"medicine",       label:"Medicine",        stat:"wis"},
+  {key:"nature",         label:"Nature",          stat:"int"},
+  {key:"perception",     label:"Perception",      stat:"wis"},
+  {key:"performance",    label:"Performance",     stat:"cha"},
+  {key:"persuasion",     label:"Persuasion",      stat:"cha"},
+  {key:"religion",       label:"Religion",        stat:"int"},
+  {key:"sleight_of_hand",label:"Sleight of Hand", stat:"dex"},
+  {key:"stealth",        label:"Stealth",         stat:"dex"},
+  {key:"survival",       label:"Survival",        stat:"wis"},
+];
+
+// ── Formatting helpers ────────────────────────────────────────────────────────
+export function sMod(s) { const m = Math.floor((s-10)/2); return (m>=0?"+":"")+m; }
+export function sFmt(n) { return (n>=0?"+":"")+n; }
+export function sEsc(str) {
+  return String(str)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+export function sSpellLevel(lvl) {
+  if (lvl===0) return "Cantrip";
+  return lvl + (["th","st","nd","rd","th","th","th","th","th","th"][lvl]||"th") + " Level";
+}
+export function sHpColor(cur,max) {
+  if (!max) return "#c8a84b";
+  const p = cur/max;
+  return p > .5 ? "#5a9a5a" : p > .25 ? "#aaaa30" : "#e04040";
+}
+
+// ── Spell/item API data cache ─────────────────────────────────────────────────
+// These are lazy-loaded when the sheet is first opened
+let spellsDb = {}, equipDb = {}, magicDb = {}, skillsDb = null, apiLoaded = false;
+
+export async function loadSheetApi() {
+  if (apiLoaded) return;
+  apiLoaded = true;
+  try {
+    const [spells, skills, equip, magic] = await Promise.all([
+      fetch("data/spells.json").then(r=>r.json()),
+      fetch("data/skills.json").then(r=>r.json()),
+      fetch("data/equipment.json").then(r=>r.json()).catch(()=>[]),
+      fetch("data/magic_items.json").then(r=>r.json()).catch(()=>[]),
+    ]);
+    spells.forEach(s => { spellsDb[s.name.toLowerCase()] = s; });
+    equip.forEach(e  => { equipDb[e.name.toLowerCase()]  = e; });
+    magic.forEach(m  => { magicDb[m.name.toLowerCase()]  = m; });
+    skillsDb = skills.map(s => ({
+      key:   s.index.replace(/-/g,"_"),
+      label: s.name,
+      stat:  s.ability_score?.index?.slice(0,3) ?? "str",
+    }));
+  } catch {
+    skillsDb = SKILLS;
+  }
+}
+
+function getSkillsDb() { return skillsDb || SKILLS; }
+
+function sheetGetItem(name) {
+  if (!name) return null;
+  const k = name.toLowerCase();
+  return equipDb[k] ?? magicDb[k] ?? null;
+}
+function sheetItemDesc(item) {
+  if (!item) return "";
+  const d = item.desc ?? item.special ?? [];
+  return Array.isArray(d) ? d[0] ?? "" : `${d}`;
+}
+function sheetItemCat(item) {
+  if (!item) return null;
+  return item.equipment_category?.name ?? item.gear_category?.name ?? item.rarity?.name ?? null;
+}
+function sheetSpellDesc(name) {
+  const s = spellsDb[name?.toLowerCase()];
+  if (!s) return "";
+  const d = s.desc ?? [];
+  return Array.isArray(d) ? d[0] ?? "" : `${d}`;
+}
+function sheetSpellMeta(name) {
+  const s = spellsDb[name?.toLowerCase()];
+  if (!s) return "";
+  const parts = [];
+  if (s.casting_time) parts.push(`Cast: <span>${s.casting_time}</span>`);
+  if (s.range)        parts.push(`Range: <span>${s.range}</span>`);
+  if (s.duration)     parts.push(`Duration: <span>${s.duration}</span>`);
+  return parts.length ? `<div class="spell-meta">${parts.map(p=>`<span>${p}</span>`).join("")}</div>` : "";
+}
+
+// ── Global window handlers (set once, safe to call from HTML) ─────────────────
+let _toastFn = null;
+export function setSheetToastFn(fn) { _toastFn = fn; }
+
+function toast(msg) { _toastFn?.(msg); }
+
+window.togglePanel = function(panelId, btnId) {
+  const p = document.getElementById(panelId), b = document.getElementById(btnId);
+  if (!p || !b) return;
+  const open = p.classList.toggle("open");
+  b.classList.toggle("open", open);
+};
+
+window.toggleSlot = function(pip) {
+  const { charid, lvl, idx, max } = pip.dataset;
+  const pips = [...pip.parentElement.querySelectorAll(".slot-pip")];
+  const clamped = Math.max(0, Math.min(+max, pip.classList.contains("used") ? +idx : +idx+1));
+  pips.forEach((p,i) => p.classList.toggle("used", i < clamped));
+  set(ref(db, `characters/pcs/${charid}/spellcasting/slots_used/${lvl}`), clamped).catch(console.error);
+};
+
+window.toggleCharge = function(pip) {
+  const { charid, abkey, idx, max } = pip.dataset;
+  const pips = [...pip.parentElement.querySelectorAll(".charge-pip")];
+  const clamped = Math.max(0, Math.min(+max, pip.classList.contains("used") ? +idx : +idx+1));
+  pips.forEach((p,i) => p.classList.toggle("used", i < clamped));
+  set(ref(db, `characters/pcs/${charid}/abilities/${abkey}/current`), +max-clamped).catch(console.error);
+};
+
+window.adjustHp = async function(charId, isHeal) {
+  const deltaEl = document.getElementById(`hpdelta-${charId}`);
+  const delta   = parseInt(deltaEl?.value, 10) || 1;
+  if (!deltaEl || delta <= 0) return;
+  try {
+    const snap = await get(ref(db, `characters/pcs/${charId}/combat`));
+    if (!snap.exists()) return;
+    const c = snap.val(), max = c.hp_max ?? 1;
+    let cur = c.hp_current ?? 0;
+    cur = isHeal ? Math.min(max, cur+delta) : Math.max(0, cur-delta);
+    await update(ref(db, `characters/pcs/${charId}/combat`), { hp_current: cur });
+    deltaEl.value = "";
+  } catch(e) { console.error("HP save failed:", e); }
+};
+
+window.useItem = (charId, idx) => useItem(charId, idx, toast);
+
+window.removeItem = (charId, idx) => removeItem(charId, idx);
+
+window.addItem = async (charId) => {
+  const name = prompt("Item name:");
+  if (!name?.trim()) return;
+  const qty  = parseInt(prompt("Quantity:", "1")) || 1;
+  await addItem(charId, name, qty);
+};
+
+window.giveLight = async (charId) => {
+  const name    = prompt("Light source name (e.g. 'Flaming Sword'):");
+  if (!name?.trim()) return;
+  const bright  = parseInt(prompt("Bright radius (tiles):", "4")) || 4;
+  const dim     = parseInt(prompt("Dim radius (tiles):",    "8")) || 8;
+  const consume = prompt("Consume item from inventory? (leave blank to skip):");
+  await giveLight(charId, name.trim(), bright, dim, consume?.trim() || null);
+  toast(`🕯 ${name} lit`);
+};
+
+window.extinguishLight = async (charId) => {
+  await extinguishLight(charId);
+  toast("Light extinguished");
+};
+
+// ── buildSheetCard ────────────────────────────────────────────────────────────
+// char:     full character object with .id set
+// editable: true = GM view (remove/add inventory, give light), false = player view
+export function buildSheetCard(char, editable = false) {
+  const c  = char.combat || {}, st = char.stats || {};
+  const sp = char.spellcasting || null, sk = char.skills || {};
+  const conds   = c.conditions || [];
+  const hpCur   = c.hp_current ?? 0, hpMax = c.hp_max ?? 1;
+  const hpPct   = Math.max(0, Math.min(1, hpCur/hpMax));
+  const tempHp  = c.temp_hp ?? 0;
+  const initBonus  = c.initiative_bonus ?? Math.floor(((st.dex??10)-10)/2);
+  const profBonus  = c.proficiency_bonus ?? 2;
+  const passPerc   = char.senses?.passive_perception ?? (10+Math.floor(((st.wis??10)-10)/2));
+  const subLine    = `Lv ${char.level??'?'} ${char.class||''}${char.subclass?` (${char.subclass})`:''}${char.species?` · ${char.species}`:''}`;
+
+  const abilityBoxes = ABILITY_KEYS.map(k => {
+    const score = st[k] ?? 10;
+    return `<div class="ab-box"><div class="ab-name">${ABILITY_LABELS[k]}</div><div class="ab-score">${score}</div><div class="ab-mod">${sMod(score)}</div></div>`;
+  }).join('');
+
+  const condPills = conds.map(cd => `<div class="cond-pill">${cd}</div>`).join('');
+
+  // ── Light banner ──
+  const lightActive = char.light?.active;
+  const lightBanner = lightActive
+    ? `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:rgba(200,168,75,.08);border-bottom:1px solid rgba(200,168,75,.2)">
+         <span style="font-family:'Cinzel',serif;font-size:.65rem;color:var(--gold)">🕯 ${sEsc(char.light.source||'Light')} — ${char.light.bright}ft bright</span>
+         <button onclick="window.extinguishLight('${char.id}')" style="font-family:'Cinzel',serif;font-size:.58rem;padding:1px 6px;border-radius:3px;border:1px solid rgba(224,64,64,.3);background:transparent;color:#fca5a5;cursor:pointer">Extinguish</button>
+       </div>` : '';
+
+  // ── Weapons ──
+  const attacks = char.attacks || [];
+  let weaponHtml = '';
+  if (attacks.length) {
+    const items = attacks.map(a => {
+      const raw = a.to_hit != null && a.to_hit !== '' ? a.to_hit : (a.attack_bonus ?? 0);
+      const atk = sFmt(parseInt(String(raw).replace(/[^0-9\-]/g,""),10) || 0);
+      const notes = [a.properties, a.notes].filter(Boolean).join(' · ');
+      return `<div class="weapon-item">
+        <div class="weapon-top"><div class="weapon-name">${sEsc(a.name||'Unnamed')}</div>${a.damage_type?`<div class="weapon-type">${sEsc(a.damage_type)}</div>`:''}</div>
+        <div class="weapon-stats">
+          <div class="wstat"><div class="wstat-label">Attack</div><div class="wstat-val">${atk}</div></div>
+          <div class="wstat"><div class="wstat-label">Damage</div><div class="wstat-val">${sEsc(a.damage||'—')}</div></div>
+          ${a.range?`<div class="wstat"><div class="wstat-label">Range</div><div class="wstat-val">${sEsc(a.range)}</div></div>`:''}
+        </div>${notes?`<div class="weapon-notes">${sEsc(notes)}</div>`:''}</div>`;
+    }).join('');
+    weaponHtml = `<div class="expand-panel" id="wp-${char.id}"><div class="weapon-list">${items}</div></div>`;
+  }
+
+  // ── Inventory ──
+  const invRaw   = char.inventory ?? {};
+  const inventory = Array.isArray(invRaw) ? invRaw : Object.values(invRaw);
+  let invHtml = '';
+  if (inventory.length || editable) {
+    const items = inventory.map((item, idx) => {
+      const api      = sheetGetItem(item.name);
+      const rarity   = api?.rarity?.name?.toLowerCase().replace(/\s+/g,'-') ?? null;
+      const rc       = rarity && rarity!=='none' ? ` inv-rarity-${rarity}` : '';
+      const key      = itemKey(item.name);
+      const lightDef = LIGHT_SOURCES[key];
+      const isHeal   = !!HEAL_ITEMS[key];
+      const litNow   = char.light?.active && char.light?.source === item.name;
+      const useLabel = lightDef ? (litNow ? '🕯 Extinguish' : '🕯 Light') : (isHeal ? '❤️ Use' : '✨ Use');
+      const useBtnStyle = litNow ? 'color:#c8a84b;border-color:rgba(200,168,75,.4)' : '';
+      return `<div class="inv-item${rc}">
+        <div class="inv-item-top">
+          <span class="inv-name">${sEsc(item.name||'Unnamed')}</span>
+          <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+            ${(item.qty??1)>1?`<span class="inv-qty">×${item.qty}</span>`:''}
+            <button onclick="window.useItem('${char.id}',${idx})" style="font-family:'Cinzel',serif;font-size:.56rem;padding:2px 5px;border-radius:3px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:var(--dim,#6b5a38);cursor:pointer;${useBtnStyle}">${useLabel}</button>
+            ${editable?`<button onclick="window.removeItem('${char.id}',${idx})" style="font-family:'Cinzel',serif;font-size:.6rem;padding:2px 5px;border-radius:3px;border:1px solid rgba(224,64,64,.3);background:rgba(224,64,64,.06);color:#fca5a5;cursor:pointer">✕</button>`:''}
+          </div>
+        </div>
+        ${sheetItemCat(api)?`<span class="inv-cat">${sEsc(sheetItemCat(api))}</span>`:''}
+        ${item.desc||sheetItemDesc(api)?`<div class="inv-desc">${sEsc(item.desc||sheetItemDesc(api))}</div>`:''}
+        ${item.notes?`<div class="inv-notes">${sEsc(item.notes)}</div>`:''}
+      </div>`;
+    }).join('');
+
+    const addRow  = editable
+      ? `<button onclick="window.addItem('${char.id}')" style="width:100%;margin-top:6px;font-family:'Cinzel',serif;font-size:.65rem;padding:6px;border-radius:4px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.06);color:var(--gold-dim,#7a6228);cursor:pointer">+ Add Item</button>` : '';
+    const giveRow = editable
+      ? `<button onclick="window.giveLight('${char.id}')" style="width:100%;margin-top:4px;font-family:'Cinzel',serif;font-size:.65rem;padding:6px;border-radius:4px;border:1px solid rgba(200,168,75,.2);background:transparent;color:var(--dim,#6b5a38);cursor:pointer">🕯 Give Custom Light</button>` : '';
+
+    invHtml = `<div class="expand-panel" id="inv-${char.id}">${items}${addRow}${giveRow}</div>`;
+  }
+
+  // ── Spells ──
+  let spellHtml = '', hasSpells = false;
+  if (sp) {
+    const spMeta = [
+      sp.ability        ? `Ability: <span>${sp.ability.toUpperCase()}</span>` : null,
+      sp.spell_save_dc  ? `DC <span>${sp.spell_save_dc}</span>`               : null,
+      sp.spell_attack_bonus != null ? `Atk <span>${sFmt(sp.spell_attack_bonus)}</span>` : null,
+    ].filter(Boolean).map(s=>`<div class="sp-meta-item">${s}</div>`).join('');
+
+    let slotRows = '';
+    for (let lvl = 1; lvl <= 9; lvl++) {
+      const maxS  = sp.slots?.[String(lvl)] ?? sp.slots?.[lvl] ?? 0;
+      if (!maxS) continue;
+      const usedS = sp.slots_used?.[String(lvl)] ?? sp.slots_used?.[lvl] ?? 0;
+      let pips = '';
+      for (let i = 0; i < maxS; i++) {
+        pips += `<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;
+      }
+      slotRows += `<div class="slot-level-row"><div class="slot-level-label">${sSpellLevel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;
+    }
+
+    const spells   = sp.spells || [];
+    const cantrips = spells.filter(s => s.prepared_type==='cantrip' || s.level===0);
+    const prepared = spells.filter(s => s.prepared_type!=='cantrip' && s.level!==0);
+
+    const renderSpell = s => `<div class="spell-item">
+      <div class="spell-item-top">
+        <span class="spell-name">${sEsc(s.name)}</span>
+        <span class="spell-level-tag">${s.level===0||s.prepared_type==='cantrip'?'Cantrip':sSpellLevel(s.level||1)}</span>
+      </div>
+      ${sheetSpellDesc(s.name)?`<div class="spell-desc">${sEsc(sheetSpellDesc(s.name))}</div>`:''}
+      ${sheetSpellMeta(s.name)}
+      ${s.beginner_tip?`<div class="spell-tip"><span class="spell-tip-text">✦ ${sEsc(s.beginner_tip)}</span></div>`:''}
+    </div>`;
+
+    hasSpells = !!(cantrips.length || prepared.length || slotRows);
+    spellHtml = `<div class="expand-panel" id="sp-${char.id}">
+      ${spMeta?`<div class="sp-meta">${spMeta}</div>`:''}
+      ${slotRows?`<div class="slot-levels">${slotRows}</div>`:''}
+      ${cantrips.length?`<div class="sp-section-title">Cantrips</div><div class="spell-list">${cantrips.map(renderSpell).join('')}</div>`:''}
+      ${prepared.length?`<div class="sp-section-title">Prepared</div><div class="spell-list">${prepared.map(renderSpell).join('')}</div>`:''}
+      ${!cantrips.length&&!prepared.length?`<div class="empty-panel">No spells recorded.</div>`:''}
+    </div>`;
+  }
+
+  // ── Skills ──
+  const skillRows = getSkillsDb().map(s => {
+    const d    = sk[s.key] || {};
+    const base = Math.floor(((st[s.stat]??10)-10)/2);
+    const bonus = d.bonus != null ? d.bonus : (base + (d.proficient?profBonus:0) + (d.expertise?profBonus:0));
+    const cls  = d.expertise ? 'expert' : d.proficient ? 'prof' : '';
+    return `<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${sFmt(bonus)}</span></div>`;
+  }).join('');
+
+  // ── Saves ──
+  const saveProfList = char.saves?.proficient || [];
+  const saveRows = ABILITY_KEYS.map(k => {
+    const base = Math.floor(((st[k]??10)-10)/2);
+    const prof = saveProfList.includes(k);
+    return `<div class="save-row-item${prof?' prof':''}"><span class="skill-name">${ABILITY_LABELS[k]}</span><span class="skill-val">${sFmt(base+(prof?profBonus:0))}</span></div>`;
+  }).join('');
+
+  // ── Senses ──
+  const sensePills = Object.entries(char.senses||{}).map(([k,v]) => {
+    if (v==null||v===false||v==='') return '';
+    const label = k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+    const val   = typeof v==='number' ? ` ${v} ft` : (v===true ? '' : ` ${v}`);
+    return `<div class="sense-pill">${label}${val}</div>`;
+  }).join('');
+
+  // ── Abilities/Features ──
+  const abilityCards = Object.entries(char.abilities||{}).map(([abKey,ab]) => {
+    if (!ab||!ab.label) return '';
+    if (ab.kind==='charge' && ab.max) {
+      const used = ab.max - (ab.current ?? ab.max);
+      const meta = [ab.die?`${ab.die}`:null, ab.recharge?`recharge: ${ab.recharge}`:null].filter(Boolean).join(' · ');
+      const pips = Array.from({length:ab.max},(_,i)=>`<div class="charge-pip${i<used?' used':''}" data-charid="${char.id}" data-abkey="${abKey}" data-idx="${i}" data-max="${ab.max}" onclick="window.toggleCharge(this)"></div>`).join('');
+      return `<div class="ability-charge">
+        <div class="ability-charge-top"><span class="ability-charge-name">${sEsc(ab.label)}</span>${meta?`<span class="ability-charge-meta">${sEsc(meta)}</span>`:''}</div>
+        <div class="charge-pips">${pips}</div>
+        ${ab.effect_desc?`<div class="feat-desc" style="margin-top:4px">${sEsc(ab.effect_desc)}</div>`:''}
+      </div>`;
+    }
+    return `<div class="feat-item"><div class="feat-name">${sEsc(ab.label)}</div>${ab.effect_desc?`<div class="feat-desc">${sEsc(ab.effect_desc)}</div>`:''}</div>`;
+  }).join('');
+
+  const featuresText = char.text_blocks?.features_traits || '';
+  const profText     = char.text_blocks?.proficiencies_languages || '';
+  const featuresBlock = featuresText ? `<div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${sEsc(featuresText)}</div></div>` : '';
+  const profBlock     = profText ? `<div class="sp-section-title">Proficiencies &amp; Languages</div><div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${sEsc(profText)}</div></div>` : '';
+
+  const skillPanel = `<div class="expand-panel" id="sk-${char.id}">
+    <div class="sp-section-title">Saving Throws</div><div class="save-grid">${saveRows}</div>
+    ${sensePills?`<div class="sp-section-title">Senses</div><div class="senses-block">${sensePills}</div>`:''}
+    <div class="sp-section-title">Skills</div><div class="skill-grid">${skillRows}</div>
+    ${abilityCards||featuresBlock?`<div class="sp-section-title">Features &amp; Traits</div>${abilityCards}${featuresBlock}`:''}
+    ${profBlock}
+  </div>`;
+
+  const hasTip  = !!char.beginner_tip;
+  const tipPanel = hasTip ? `<div class="expand-panel" id="tg-${char.id}"><div class="combat-guide-wrap"><div class="combat-guide">${sEsc(char.beginner_tip)}</div></div></div>` : '';
+
+  // ── Equipped & coins ──
+  const eq = char.equipped || {}, eqParts = [];
+  if (eq.armor)   eqParts.push(`<div class="equipped-badge">🛡 <span>${sEsc(eq.armor)}</span></div>`);
+  if (eq.shield)  eqParts.push(`<div class="equipped-badge">🔰 <span>Shield</span></div>`);
+  if (eq.offhand) eqParts.push(`<div class="equipped-badge">✋ <span>${sEsc(eq.offhand)}</span></div>`);
+
+  const cp = char.coin_purse;
+  const coinRow = cp ? `<div class="coin-row"><span class="coin-label">💰</span>
+    <div class="coin pp">◈ ${cp.pp??0}pp</div><div class="coin gp">◉ ${cp.gp??0}gp</div>
+    <div class="coin ep">◈ ${cp.ep??0}ep</div><div class="coin sp">◎ ${cp.sp??0}sp</div>
+    <div class="coin cp">○ ${cp.cp??0}cp</div></div>` : '';
+
+  // ── Assemble card ──
+  const card = document.createElement('div');
+  card.className = 'card'; card.id = `card-${char.id}`;
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="char-name">${sEsc(char.name||'Unnamed')}</div>
+      <div class="char-sub">${sEsc(subLine)}</div>
+      ${char.combat_role?`<div class="char-role-badge">${sEsc(char.combat_role)}</div>`:''}
+      <div class="hp-row">
+        <div class="hp-label">HP</div>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${sHpColor(hpCur,hpMax)}"></div></div>
+        <div class="hp-val" id="hpval-${char.id}">${hpCur} / ${hpMax}</div>
+        ${tempHp?`<div class="temp-badge">+${tempHp} tmp</div>`:''}
+      </div>
+      <div class="hp-controls">
+        <input class="hp-delta" id="hpdelta-${char.id}" type="number" min="1" placeholder="amt"/>
+        <button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button>
+        <button class="hp-btn dmg"  onclick="window.adjustHp('${char.id}',false)">− Dmg</button>
+      </div>
+    </div>
+    ${lightBanner}
+    <div class="stats-row">
+      <div class="stat-cell"><div class="stat-label">AC</div><div class="stat-val">${c.ac??'—'}</div></div>
+      <div class="stat-cell"><div class="stat-label">Speed</div><div class="stat-val">${c.speed??30}</div></div>
+      <div class="stat-cell"><div class="stat-label">Init</div><div class="stat-val">${sFmt(initBonus)}</div></div>
+      <div class="stat-cell"><div class="stat-label">Prof</div><div class="stat-val">+${profBonus}</div></div>
+      <div class="stat-cell"><div class="stat-label">Perc</div><div class="stat-val">${passPerc}</div></div>
+    </div>
+    ${eqParts.length?`<div class="equipped-row">${eqParts.join('')}</div>`:''}
+    ${coinRow}
+    <div class="ability-grid">${abilityBoxes}</div>
+    ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
+    <div class="card-footer">
+      ${hasTip?`<button class="panel-btn tip-btn" id="tgbtn-${char.id}" onclick="window.togglePanel('tg-${char.id}','tgbtn-${char.id}')">✦ Combat Guide <span class="chevron">▾</span></button>`:''}
+      ${attacks.length?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">⚔ Weapons &amp; Attacks <span class="chevron">▾</span></button>`:''}
+      <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">📋 Skills &amp; Saves <span class="chevron">▾</span></button>
+      ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">✨ Spells <span class="chevron">▾</span></button>`:''}
+      ${inventory.length||editable?`<button class="panel-btn inv-btn" id="invbtn-${char.id}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="chevron">▾</span></button>`:''}
+    </div>
+    ${tipPanel}
+    ${attacks.length?weaponHtml:''}
+    ${skillPanel}
+    ${hasSpells?spellHtml:''}
+    ${inventory.length||editable?invHtml:''}
+  `;
+  return card;
+}
+
+// ── Sheet panel controller ────────────────────────────────────────────────────
+let _sheetWatcher = null;
+
+export function closeSheetPanel() {
+  document.getElementById('sheet-panel')?.classList.remove('open');
+  if (_sheetWatcher) { _sheetWatcher(); _sheetWatcher = null; }
+}
+
+export async function openCharSheet(charId, charName, editable = false) {
+  await loadSheetApi();
+  const panel = document.getElementById('sheet-panel');
+  const view  = document.getElementById('sheet-view');
+  const title = document.getElementById('sheet-panel-title');
+  if (!panel || !view) return;
+
+  panel.classList.add('open');
+  view.innerHTML = '<div id="sheet-empty">Loading…</div>';
+  if (title) title.textContent = `📋 ${charName || 'CHARACTER'}`;
+
+  if (_sheetWatcher) { _sheetWatcher(); _sheetWatcher = null; }
+
+  const path = charId && charId !== '__npc__' ? `characters/pcs/${charId}` : null;
+  if (!path) {
+    view.innerHTML = `<div id="sheet-empty">No sheet for<br><strong>${charName || 'this token'}</strong></div>`;
+    return;
+  }
+
+  _sheetWatcher = onValue(ref(db, path), snap => {
+    if (!snap.exists()) { view.innerHTML = `<div id="sheet-empty">Character not found</div>`; return; }
+    const char = { ...snap.val(), id: charId };
+    view.innerHTML = '';
+    view.appendChild(buildSheetCard(char, editable));
+  });
+}
