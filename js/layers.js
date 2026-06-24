@@ -71,9 +71,9 @@ export function setWallSub(sub) {
   ["paint","door","erase"].forEach(s => {
     document.getElementById(`walls-sub-${s}`)?.classList.toggle("active", s===sub);
   });
-  document.getElementById("walls-paint-opts").style.display = sub==="paint" ? "" : "none";
-  document.getElementById("walls-door-opts").style.display  = sub==="door"  ? "" : "none";
-  document.getElementById("walls-erase-opts").style.display = sub==="erase" ? "" : "none";
+  document.getElementById("walls-paint-opts")?.style && (document.getElementById("walls-paint-opts").style.display = sub==="paint" ? "" : "none");
+  document.getElementById("walls-door-opts")?.style  && (document.getElementById("walls-door-opts").style.display  = sub==="door"  ? "" : "none");
+  document.getElementById("walls-erase-opts")?.style && (document.getElementById("walls-erase-opts").style.display = sub==="erase" ? "" : "none");
 }
 
 export function setObjSub(sub) {
@@ -81,9 +81,9 @@ export function setObjSub(sub) {
   ["token","prop","stamp"].forEach(s => {
     document.getElementById(`obj-sub-${s}`)?.classList.toggle("active", s===sub);
   });
-  document.getElementById("obj-token-opts").style.display = sub==="token" ? "" : "none";
-  document.getElementById("obj-prop-opts").style.display  = sub==="prop"  ? "" : "none";
-  document.getElementById("obj-stamp-opts").style.display = sub==="stamp" ? "" : "none";
+  document.getElementById("obj-token-opts")?.style && (document.getElementById("obj-token-opts").style.display = sub==="token" ? "" : "none");
+  document.getElementById("obj-prop-opts")?.style  && (document.getElementById("obj-prop-opts").style.display  = sub==="prop"  ? "" : "none");
+  document.getElementById("obj-stamp-opts")?.style && (document.getElementById("obj-stamp-opts").style.display = sub==="stamp" ? "" : "none");
 }
 
 export function setFogType(type) {

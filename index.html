@@ -379,7 +379,7 @@ canvas{display:block;width:100%;height:100%}
 <div id="sheet-panel">
   <div id="sheet-panel-header">
     <div id="sheet-panel-title">📋 CHARACTER</div>
-    <button id="sheet-panel-close" onclick="closeSheetPanel()">✕</button>
+    <button id="sheet-panel-close" onclick="document.getElementById('sheet-panel').classList.remove('open')">✕</button>
   </div>
   <div id="sheet-view">
     <div id="sheet-empty">Click a token<br>to view their sheet</div>
@@ -828,7 +828,7 @@ document.getElementById("chat-input").addEventListener("keydown",e=>{
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
 document.getElementById("fitBtn").onclick=()=>fitCamera(tiles,TILE,canvas.width,canvas.height);
-document.getElementById("sheetsBtn").onclick=()=>{const p=document.getElementById("sheet-panel");if(p)p.classList.toggle("open");};
+const _sheetToggleBtn=document.getElementById("sheet-toggle-btn");if(_sheetToggleBtn)_sheetToggleBtn.onclick=()=>{const p=document.getElementById("sheet-panel");if(p)p.classList.toggle("open");};
 document.getElementById("pingBtn").onclick=()=>{
   if(!playerName)return;
   pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);

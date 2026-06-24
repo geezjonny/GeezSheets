@@ -230,6 +230,8 @@ export async function registerTerms(containerEl) {
   const termPattern = /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/g;
 
   for (const node of nodes) {
+    // Node may have been removed from DOM during async lookups
+    if (!node.parentNode || !node.parentElement) continue;
     const text = node.nodeValue;
     if (!text.trim() || node.parentElement.closest(".glossary-term")) continue;
 
@@ -270,8 +272,9 @@ export async function registerTerms(containerEl) {
       fragments.push(document.createTextNode(text.slice(lastIdx)));
     }
 
-    // Replace text node with fragments
+    // Replace text node with fragments — re-check parent still in DOM
     const parent = node.parentNode;
+    if (!parent) continue;
     for (const frag of fragments) parent.insertBefore(frag, node);
     parent.removeChild(node);
   }

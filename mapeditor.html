@@ -11,13 +11,62 @@
   --bg:#0d0b08;--panel:#1a1510;--panel2:#151208;--border:#3d2e1a;
   --gold:#c8a84b;--gold-dim:#7a6228;--red:#8b2020;--red-bright:#e04040;
   --text:#d4c49a;--text-dim:#6b5a38;--green:#5a9a5a;
-  --sidebar:280px;--toolbar:56px;--initiative:56px;
 }
+:root{--layer-palette:160px;--tool-strip:44px;--options-bar:40px;--chat-collapsed:36px;--initiative:56px}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
-#app{display:grid;grid-template-columns:1fr var(--sidebar);grid-template-rows:var(--toolbar) 1fr var(--initiative);width:100vw;height:100vh}
-#toolbar{grid-column:1/3;grid-row:1;background:var(--panel);border-bottom:2px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px;overflow-x:auto;overflow-y:hidden;z-index:10}
-#toolbar::-webkit-scrollbar{height:4px}
-#toolbar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── Top bar (map name, ping, weather, etc.) ── */
+#topbar{position:fixed;top:0;left:0;right:0;height:44px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;z-index:30}
+
+/* ── Tool strip (left of canvas, below topbar) ── */
+#tool-strip{position:fixed;top:44px;left:0;bottom:0;width:var(--tool-strip);background:var(--panel2);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:4px;z-index:25}
+.tool-btn{width:36px;height:36px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--dim);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;flex-shrink:0;position:relative}
+.tool-btn:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.tool-btn.active{background:rgba(200,168,75,.12);border-color:var(--gold);color:var(--gold)}
+.tool-btn[title]:hover::after{content:attr(title);position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:'Cinzel',serif;font-size:9px;letter-spacing:.06em;padding:4px 8px;border-radius:4px;white-space:nowrap;z-index:100;pointer-events:none}
+.tool-sep{width:24px;height:1px;background:var(--border);margin:4px 0}
+
+/* ── Layer palette (right side) ── */
+#layer-palette{position:fixed;top:44px;right:0;bottom:0;width:var(--layer-palette);background:var(--panel2);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:25;overflow:hidden}
+#layer-palette-header{font-family:'Cinzel',serif;font-size:9px;color:var(--gold-dim);letter-spacing:.12em;text-transform:uppercase;padding:8px 10px 4px;flex-shrink:0;border-bottom:1px solid var(--border)}
+.layer-row{display:flex;align-items:center;gap:6px;padding:0 8px;height:36px;cursor:pointer;transition:background .1s;flex-shrink:0;border-bottom:1px solid rgba(61,46,26,.4)}
+.layer-row:hover{background:rgba(255,255,255,.03)}
+.layer-row.active{background:rgba(200,168,75,.08);border-left:2px solid var(--gold)}
+.layer-row.active .layer-name{color:var(--gold)}
+.layer-vis,.layer-lock{width:16px;height:16px;border:none;background:transparent;color:var(--dim);font-size:11px;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;border-radius:3px;flex-shrink:0;transition:color .1s}
+.layer-vis:hover,.layer-lock:hover{color:var(--text)}
+.layer-vis.hidden{opacity:.3}
+.layer-icon{font-size:13px;flex-shrink:0}
+.layer-name{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.04em;color:var(--dim);flex:1}
+.layer-row.active .layer-name{color:var(--text)}
+
+/* ── Options bar (below topbar, context-sensitive) ── */
+#options-bar{position:fixed;top:44px;left:var(--tool-strip);right:var(--layer-palette);height:var(--options-bar);background:var(--panel);border-bottom:1px solid var(--border);border-right:1px solid var(--border);border-left:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 10px;z-index:24;overflow:hidden}
+.opt-section{display:none;align-items:center;gap:6px}
+.opt-section.active{display:flex}
+.opt-btn{height:26px;padding:0 10px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--dim);font-family:'Cinzel',serif;font-size:9px;letter-spacing:.05em;cursor:pointer;white-space:nowrap;transition:all .12s;flex-shrink:0}
+.opt-btn:hover{border-color:var(--gold-dim);color:var(--text)}
+.opt-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
+.opt-label{font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;flex-shrink:0}
+.opt-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
+
+/* ── Canvas area ── */
+#canvas-wrap{position:fixed;top:calc(44px + var(--options-bar));left:var(--tool-strip);right:var(--layer-palette);bottom:calc(var(--initiative) + var(--chat-collapsed));overflow:hidden}
+
+/* ── Initiative bar ── */
+#initiative-bar{position:fixed;bottom:var(--chat-collapsed);left:var(--tool-strip);right:var(--layer-palette);height:var(--initiative);background:rgba(13,11,8,.95);border-top:1px solid var(--border);display:flex;align-items:center;overflow:hidden;z-index:20}
+#init-track{flex:1;display:flex;align-items:center;gap:6px;padding:0 8px;overflow-x:auto}
+#init-track::-webkit-scrollbar{height:3px}
+#init-track::-webkit-scrollbar-thumb{background:var(--border)}
+
+/* ── Chat strip ── */
+#chat-strip-ed{position:fixed;bottom:0;left:var(--tool-strip);right:var(--layer-palette);height:var(--chat-collapsed);background:var(--panel);border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 12px;cursor:pointer;z-index:20}
+#chat-strip-ed:hover{background:var(--panel2)}
+#chat-drawer-ed{position:fixed;bottom:var(--chat-collapsed);left:var(--tool-strip);right:var(--layer-palette);height:300px;background:var(--panel);border-top:1px solid var(--border);z-index:19;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:0 -8px 32px rgba(0,0,0,.5)}
+#chat-drawer-ed.open{transform:translateY(0)}
+
+/* Sheet panel pushes from left — over tool strip */
+#sheet-panel.open{transform:translateX(0)}
 .sep{width:1px;height:30px;background:var(--border);flex-shrink:0;margin:0 4px}
 .tool-label{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;flex-shrink:0}
 button{flex-shrink:0;height:36px;padding:0 14px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.05em;cursor:pointer;transition:all .15s;white-space:nowrap}
@@ -31,7 +80,7 @@ button.door-active{border-color:#aa8a4a;color:#d4b870;background:rgba(170,138,74
 .picker-wrap{position:relative;flex-shrink:0}
 .picker-btn{display:flex;align-items:center;gap:6px;padding:0 10px;height:36px;cursor:pointer}
 .picker-swatch{width:18px;height:18px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.15);background-size:cover}
-.picker-dropdown{position:fixed;top:56px;z-index:500;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px;display:none;grid-template-columns:repeat(4,1fr);gap:6px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.picker-dropdown{position:fixed;top:84px;z-index:500;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:8px;display:none;grid-template-columns:repeat(4,1fr);gap:6px;min-width:220px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
 .picker-dropdown.open{display:grid}
 .pd-item{width:40px;height:40px;border-radius:4px;border:2px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:border-color .12s}
 .pd-item:hover{border-color:var(--gold-dim)}
@@ -46,14 +95,12 @@ button.door-active{border-color:#aa8a4a;color:#d4b870;background:rgba(170,138,74
 #status.live{color:var(--green);border-color:#2a5a2a}
 #status.error{color:var(--red-bright);border-color:var(--red)}
 #map-name{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--gold);font-family:'Cinzel',serif;font-size:12px;width:120px;padding:2px 4px;outline:none}
-#canvas-wrap{grid-column:1;grid-row:2;position:relative;overflow:hidden}
 canvas{display:block;cursor:crosshair}
 #coords{position:absolute;bottom:8px;left:8px;font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);pointer-events:none;background:rgba(13,11,8,.7);padding:3px 8px;border-radius:3px;border:1px solid var(--border)}
 #toast{position:absolute;bottom:36px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:11px;padding:6px 16px;border-radius:4px;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #ping-toast{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid #4a8aaa;color:#7ac0e0;font-family:'Cinzel',serif;font-size:11px;padding:5px 14px;border-radius:4px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:25}
 #ping-toast.show{opacity:1}
-#session{grid-column:2;grid-row:2;display:flex;flex-direction:column;background:var(--panel2);border-left:1px solid var(--border);overflow:hidden}
 #session-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
 .session-tab{flex:1;height:32px;border:none;border-radius:0;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;letter-spacing:.08em;cursor:pointer;border-bottom:2px solid transparent}
 .session-tab:hover{color:var(--text)}
@@ -89,7 +136,6 @@ canvas{display:block;cursor:crosshair}
 #chat-input{flex:1;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:12px;padding:5px 8px;border-radius:4px;outline:none;min-width:0}
 #chat-input:focus{border-color:var(--gold-dim)}
 #chat-send{padding:0 10px;height:28px;font-size:10px}
-#initiative-bar{grid-column:1/3;grid-row:3;background:rgba(13,11,8,.95);border-top:1px solid var(--border);display:flex;align-items:center;overflow:hidden}
 #init-label{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);letter-spacing:.1em;padding:0 10px;flex-shrink:0;text-transform:uppercase}
 #init-controls{display:flex;flex-direction:column;gap:4px;padding:4px 8px;border-right:1px solid var(--border);flex-shrink:0}
 #init-controls button{height:22px;font-size:9px;padding:0 8px}
@@ -116,7 +162,7 @@ canvas{display:block;cursor:crosshair}
 .modal-btns{display:flex;gap:8px}
 .modal-btns button{flex:1;height:36px}
 .modal-btns button.primary{border-color:var(--gold);color:var(--gold)}
-#weather-panel{position:fixed;top:56px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+#weather-panel{position:fixed;top:44px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
 #weather-panel.open{display:flex}
 #dice-popup-ed{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.8);z-index:1000;background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:20px 32px;text-align:center;box-shadow:0 0 60px rgba(200,168,75,.25),0 16px 48px rgba(0,0,0,.8);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;min-width:160px}
 #dice-popup-ed.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
@@ -145,7 +191,11 @@ canvas{display:block;cursor:crosshair}
 .drop-type-btn:hover{border-color:var(--gold-dim);color:var(--text)}
 .drop-type-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
 /* ── Character sheet slide-in panel ── */
-#sheet-panel{position:fixed;top:56px;left:0;bottom:0;width:300px;background:var(--panel);border-right:1px solid var(--border);z-index:50;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,.5)}
+#sheet-panel.open{transform:translateX(0)}
+
+/* ── Chat strip (bottom, like index) ── */
+#chat-last-msg-ed{flex:1;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'IM Fell English',serif}
+#chat-unread-ed{background:var(--gold);color:#0d0b08;font-family:'Cinzel',serif;font-size:9px;font-weight:700;border-radius:999px;padding:1px 7px;flex-shrink:0;display:none}
 #sheet-panel.open{transform:translateX(0)}
 #sheet-panel-header{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--panel2)}
 #sheet-panel-title{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;flex:1}
@@ -276,97 +326,185 @@ canvas{display:block;cursor:crosshair}
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="toolbar">
-    <span class="tool-label">Map</span>
-    <input id="map-name" type="text" placeholder="map-name" value="dungeon-1" spellcheck="false">
-    <div class="sep"></div>
-    <span class="tool-label">Shape</span>
-    <button class="shape active" data-shape="rect">▭ Rect</button>
-    <button class="shape" data-shape="circle">◯ Ellipse</button>
-    <button class="shape" data-shape="line">╱ Line</button>
-    <button class="shape" data-shape="select">⬚ Select</button>
-    <div class="sep"></div>
-    <span class="tool-label">Terrain</span>
-    <div class="picker-wrap">
-      <button class="picker-btn" id="terrain-picker-btn"><div class="picker-swatch" id="terrain-preview-swatch"></div><span id="terrain-preview-label">Grass</span> ▾</button>
-      <div class="picker-dropdown" id="terrain-dropdown"></div>
+<!-- ── Top bar ── -->
+<div id="topbar">
+  <input id="map-name" type="text" placeholder="map-name" value="dungeon-1" spellcheck="false" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 8px;width:120px;outline:none">
+  <div style="width:1px;height:20px;background:var(--border)"></div>
+  <button id="pingBtn" style="height:28px;padding:0 10px;font-size:10px">📍 Ping</button>
+  <button id="weatherBtn" style="height:28px;padding:0 10px;font-size:10px">🌦 Weather</button>
+  <button id="nightBtn" style="height:28px;padding:0 10px;font-size:10px">🌙 Night</button>
+  <div class="picker-wrap" id="clear-wrap" style="height:28px">
+    <button class="picker-btn" id="clearBtn" style="height:28px;font-size:10px">✕ Clear ▾</button>
+    <div class="picker-dropdown" id="clear-dropdown" style="grid-template-columns:1fr;min-width:150px;top:36px">
+      <div class="pd-item" id="clear-bg"     style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🗺 Background</div>
+      <div class="pd-item" id="clear-tokens" style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⚔ Tokens</div>
+      <div class="pd-item" id="clear-props"  style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🪣 Props</div>
+      <div class="pd-item" id="clear-fog"    style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog</div>
+      <div class="pd-item" id="clear-walls"  style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🧱 Walls</div>
+      <div class="pd-item" id="clear-doors"  style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🚪 Doors</div>
+      <div class="pd-item" id="clear-stamps" style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⭐ Stamps</div>
+      <div class="pd-item" id="clear-tiles"  style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🟫 Tiles</div>
+      <div style="height:1px;background:var(--border);margin:2px 0"></div>
+      <div class="pd-item" id="clear-all"    style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--red-bright)">💥 Clear All</div>
     </div>
-    <div class="sep"></div>
-    <span class="tool-label">Walls</span>
-    <button id="wallBtn">🧱 Walls</button>
-    <span class="tool-label">Door</span>
-    <button id="doorBtn">🚪 Door</button>
-    <div class="sep"></div>
-    <span class="tool-label">Roof</span>
-    <button id="roofBtn">🏠 Roof</button>
-    <button id="roof-opacity-btn" style="font-size:10px;padding:0 8px">👁 50%</button>
-    <div class="sep"></div>
-    <span class="tool-label">Fog</span>
-    <div class="picker-wrap">
-      <button class="picker-btn fog-active" id="fogBtn" style="border-color:inherit">🌫 Fog of War ▾</button>
-      <div class="picker-dropdown" id="fog-type-dropdown" style="grid-template-columns:1fr;min-width:170px">
-        <div class="pd-item fog-type-item" data-fogtype="fog"      style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog of War</div>
-        <div class="pd-item fog-type-item" data-fogtype="darkness" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌑 Darkness</div>
-        <div class="pd-item fog-type-item" data-fogtype="magical"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">✨ Magical Darkness</div>
-      </div>
-    </div>
-    <div class="sep"></div>
-    <span class="tool-label">Tokens</span>
-    <button id="tokenBtn">⚔ Token</button>
-    <div class="sep"></div>
-    <span class="tool-label">Props</span>
-    <div class="picker-wrap">
-      <button class="picker-btn" id="prop-picker-btn"><span id="prop-preview-label">None</span> ▾</button>
-      <div class="picker-dropdown" id="prop-dropdown"></div>
-    </div>
-    <div class="sep"></div>
-    <span class="tool-label">Stamps</span>
-    <div class="picker-wrap">
-      <button class="picker-btn" id="stamp-picker-btn"><span id="stamp-preview-label">None</span> ▾</button>
-      <div class="picker-dropdown" id="stamp-dropdown"></div>
-    </div>
-    <div class="sep"></div>
-    <button id="pingBtn">📍 Ping</button>
-    <button id="weatherBtn">🌦 Weather</button>
-    <div class="sep"></div>
-    <div class="picker-wrap" id="clear-wrap">
-      <button class="picker-btn" id="clearBtn">✕ Clear ▾</button>
-      <div class="picker-dropdown" id="clear-dropdown" style="grid-template-columns:1fr;min-width:160px">
-        <div class="pd-item" id="clear-bg"     style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🗺 Background</div>
-        <div class="pd-item" id="clear-tokens" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⚔ Tokens</div>
-        <div class="pd-item" id="clear-props"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🪣 Props</div>
-        <div class="pd-item" id="clear-fog"    style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog &amp; Darkness</div>
-        <div class="pd-item" id="clear-walls"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🧱 Walls</div>
-        <div class="pd-item" id="clear-doors"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🚪 Doors</div>
-        <div class="pd-item" id="clear-stamps" style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⭐ Stamps</div>
-        <div class="pd-item" id="clear-tiles"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🟫 Tiles</div>
-        <div class="pd-item" id="clear-roofs"  style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🏠 Roofs</div>
-        <div style="height:1px;background:var(--border);margin:2px 0"></div>
-        <div class="pd-item" id="clear-all"    style="width:100%;height:32px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--red-bright)">💥 Clear All</div>
-      </div>
-    </div>
-    <button id="loadJsonBtn">⬆ Import</button>
-    <input type="file" id="jsonFileInput" accept=".json" hidden>
-    <button title="Almanac" onclick="toggleGlossarySearch()" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">📖</button>
-    <div id="status">Connecting…</div>
-    <div id="presence-row" style="display:flex;align-items:center;gap:4px;margin-left:4px;flex-shrink:0"></div>
-    <span id="player-name-display" style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);cursor:pointer;flex-shrink:0;padding:0 8px"></span>
   </div>
+  <button id="loadJsonBtn" style="height:28px;padding:0 10px;font-size:10px">⬆ Import</button>
+  <input type="file" id="jsonFileInput" accept=".json" hidden>
+  <button onclick="toggleGlossarySearch()" style="height:28px;padding:0 10px;font-size:10px">📖</button>
+  <div style="flex:1"></div>
+  <span id="status" style="font-family:'Cinzel',serif;font-size:10px;color:var(--dim)">Connecting…</span>
+  <div id="presence-row" style="display:flex;align-items:center;gap:4px;margin-left:4px;flex-shrink:0"></div>
+  <span id="player-name-display" style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);cursor:pointer;flex-shrink:0;padding:0 8px"></span>
+</div>
+
+<!-- ── Tool strip (left) ── -->
+<div id="tool-strip">
+  <button class="tool-btn active" id="tool-mouse"   title="Mouse — Move/Interact (V)">🖱</button>
+  <button class="tool-btn"        id="tool-pencil"  title="Pencil — Single cell (P)">✏</button>
+  <button class="tool-btn"        id="tool-rect"    title="Rectangle (R)">⬜</button>
+  <button class="tool-btn"        id="tool-ellipse" title="Ellipse (E)">⭕</button>
+  <button class="tool-btn"        id="tool-eraser"  title="Eraser (X)">◻</button>
+  <div class="tool-sep"></div>
+  <button class="tool-btn" id="tokenBtn" title="Spawn Token (T)">⚔</button>
+</div>
+
+<!-- ── Options bar (context-sensitive, below topbar) ── -->
+<div id="options-bar">
+  <!-- Ground layer options -->
+  <div class="opt-section" id="opt-ground">
+    <span class="opt-label">Terrain</span>
+    <div class="picker-wrap">
+      <button class="picker-btn" id="terrain-picker-btn" style="height:26px"><div class="picker-swatch" id="terrain-preview-swatch"></div><span id="terrain-preview-label">Grass</span> ▾</button>
+      <div class="picker-dropdown" id="terrain-dropdown" style="top:34px"></div>
+    </div>
+  </div>
+  <!-- Walls layer options -->
+  <div class="opt-section" id="opt-walls">
+    <span class="opt-label">Mode</span>
+    <button class="opt-btn active" id="wall-sub-wall">🧱 Wall</button>
+    <button class="opt-btn"        id="wall-sub-door">🚪 Door</button>
+    <div class="opt-sep"></div>
+    <span class="opt-label">Terrain</span>
+    <div class="picker-wrap">
+      <button class="picker-btn" id="wall-terrain-btn" style="height:26px"><span id="wall-terrain-label">Stone</span> ▾</button>
+      <div class="picker-dropdown" id="wall-terrain-dropdown" style="top:34px"></div>
+    </div>
+  </div>
+  <!-- Fog layer options -->
+  <div class="opt-section" id="opt-fog">
+    <span class="opt-label">Type</span>
+    <button class="opt-btn active" data-fogtype="fog">🌫 Fog</button>
+    <button class="opt-btn"        data-fogtype="darkness">🌑 Darkness</button>
+    <button class="opt-btn"        data-fogtype="magical">✨ Magical</button>
+  </div>
+  <!-- Objects layer options -->
+  <div class="opt-section" id="opt-objects">
+    <span class="opt-label">Place</span>
+    <button class="opt-btn active" id="obj-sub-token">⚔ Token</button>
+    <button class="opt-btn"        id="obj-sub-prop">🪣 Prop</button>
+    <button class="opt-btn"        id="obj-sub-stamp">⭐ Stamp</button>
+    <div class="opt-sep"></div>
+    <div class="picker-wrap" id="prop-picker-wrap" style="display:none">
+      <button class="picker-btn" id="prop-picker-btn" style="height:26px"><span id="prop-preview-label">None</span> ▾</button>
+      <div class="picker-dropdown" id="prop-dropdown" style="top:34px"></div>
+    </div>
+    <div class="picker-wrap" id="stamp-picker-wrap" style="display:none">
+      <button class="picker-btn" id="stamp-picker-btn" style="height:26px"><span id="stamp-preview-label">None</span> ▾</button>
+      <div class="picker-dropdown" id="stamp-dropdown" style="top:34px"></div>
+    </div>
+  </div>
+  <!-- BG layer options -->
+  <div class="opt-section" id="opt-bg">
+    <span class="opt-label">URL</span>
+    <input id="bg-url-input" type="text" placeholder="https://…" style="height:26px;width:200px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'IM Fell English',serif;font-size:11px;padding:0 8px;outline:none">
+    <span class="opt-label">PPI</span>
+    <input id="bg-ppi-input" type="number" value="70" min="10" max="300" style="height:26px;width:56px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 6px;outline:none;text-align:center">
+    <button class="opt-btn" id="bg-set-btn">Set</button>
+    <button class="opt-btn" id="bg-clear-btn">Clear</button>
+    <span id="bg-status-text" style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim)"></span>
+  </div>
+</div>
+
+<!-- ── Layer palette (right) ── -->
+<div id="layer-palette">
+  <div id="layer-palette-header">Layers</div>
+  <div class="layer-row" data-layer="bg">
+    <button class="layer-vis" data-layer="bg">👁</button>
+    <button class="layer-lock" data-layer="bg">🔓</button>
+    <span class="layer-icon">🗺</span>
+    <span class="layer-name">Background</span>
+  </div>
+  <div class="layer-row active" data-layer="ground">
+    <button class="layer-vis" data-layer="ground">👁</button>
+    <button class="layer-lock" data-layer="ground">🔓</button>
+    <span class="layer-icon">🟫</span>
+    <span class="layer-name">Ground</span>
+  </div>
+  <div class="layer-row" data-layer="walls">
+    <button class="layer-vis" data-layer="walls">👁</button>
+    <button class="layer-lock" data-layer="walls">🔓</button>
+    <span class="layer-icon">🧱</span>
+    <span class="layer-name">Walls</span>
+  </div>
+  <div class="layer-row" data-layer="fog">
+    <button class="layer-vis" data-layer="fog">👁</button>
+    <button class="layer-lock" data-layer="fog">🔓</button>
+    <span class="layer-icon">🌫</span>
+    <span class="layer-name">Fog</span>
+  </div>
+  <div class="layer-row" data-layer="objects">
+    <button class="layer-vis" data-layer="objects">👁</button>
+    <button class="layer-lock" data-layer="objects">🔓</button>
+    <span class="layer-icon">⚔</span>
+    <span class="layer-name">Objects</span>
+  </div>
+</div>
+
+<!-- ── App container (just for grid children that need it) ── -->
+<div id="app">
 
 <!-- ── Character sheet panel ── -->
 <div id="sheet-panel">
   <div id="sheet-panel-header">
     <div id="sheet-panel-title">📋 CHARACTER</div>
-    <button id="sheet-panel-close" onclick="closeSheetPanel()">✕</button>
+    <button id="sheet-panel-close" onclick="closeSheetPanelEd()" style="border:none;background:transparent;color:var(--dim);font-size:14px;cursor:pointer;padding:2px 6px">✕</button>
   </div>
-  <div id="sheet-view">
-    <div id="sheet-empty">Right-click a PC token<br>to view their sheet</div>
+
+  <!-- Token controls strip — GM only, shown when a token is selected -->
+  <div id="sheet-token-controls" style="display:none;flex-direction:column;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--panel2)">
+    <!-- HP row -->
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="gm-tool-btn" id="stc-hp-minus" style="width:32px;padding:0;font-size:14px">−</button>
+      <input id="stc-hp-val" type="number" min="1" value="5" style="width:44px;height:28px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:12px;text-align:center;outline:none">
+      <button class="gm-tool-btn" id="stc-hp-plus" style="width:32px;padding:0;font-size:14px">+</button>
+      <div id="stc-hp-display" style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-left:4px">— / —</div>
+    </div>
+    <!-- Action buttons -->
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="gm-tool-btn" id="stc-edit"    style="flex:1;min-width:60px">✏ Edit</button>
+      <button class="gm-tool-btn" id="stc-chain"   style="flex:1;min-width:60px">🔗 Chain</button>
+      <button class="gm-tool-btn" id="stc-hide-hp" style="flex:1;min-width:60px">👁 HP</button>
+      <button class="gm-tool-btn" id="stc-delete"  style="flex:1;min-width:60px;color:var(--red-bright);border-color:rgba(224,64,64,.3)">🗑</button>
+    </div>
+    <!-- Conditions -->
+    <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
+      <span style="font-family:'Cinzel',serif;font-size:8px;color:var(--text-dim);letter-spacing:.06em;text-transform:uppercase">Cond:</span>
+      <button class="gm-tool-btn" style="height:22px;font-size:8px;padding:0 7px;color:#5aaa5a;border-color:rgba(90,170,90,.3)" data-stc-cond="poisoned">☠</button>
+      <button class="gm-tool-btn" style="height:22px;font-size:8px;padding:0 7px;color:#aaaa30;border-color:rgba(170,170,48,.3)" data-stc-cond="stunned">⚡</button>
+      <button class="gm-tool-btn" style="height:22px;font-size:8px;padding:0 7px" data-stc-cond="prone">⬇</button>
+      <button class="gm-tool-btn" style="height:22px;font-size:8px;padding:0 7px;color:#e07030;border-color:rgba(224,112,48,.3)" data-stc-cond="burning">🔥</button>
+      <button class="gm-tool-btn" style="height:22px;font-size:8px;padding:0 7px;color:#50c0e0;border-color:rgba(80,192,224,.3)" data-stc-cond="frozen">❄</button>
+      <button class="gm-tool-btn" style="height:22px;font-size:8px;padding:0 7px;color:var(--red-bright);border-color:rgba(224,64,64,.3)" id="stc-clear-cond">✕</button>
+    </div>
+  </div>
+
+  <div id="sheet-view" style="flex:1;overflow-y:auto">
+    <div id="sheet-empty" style="padding:24px 16px;font-family:'Cinzel',serif;font-size:10px;color:var(--dim);text-align:center;line-height:2">Click a token<br>to inspect</div>
   </div>
 </div>
 
   <div id="canvas-wrap">
-    <canvas id="canvas"></canvas>
+    <canvas id="canvas" style="width:100%;height:100%;display:block"></canvas>
     <div id="coords">0, 0</div>
     <div id="toast"></div>
     <div id="ping-toast"></div>
@@ -374,148 +512,32 @@ canvas{display:block;cursor:crosshair}
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cinzel',serif;font-size:18px;color:var(--gold);letter-spacing:.15em">🖼 Drop PNG here</div>
     </div>
   </div>
-
-  <div id="session">
-    <div id="session-tabs">
-      <button class="session-tab active" data-tab="chat">⚔ SESSION</button>
-      <button class="session-tab" data-tab="gm">🛠 GM TOOLS</button>
-    </div>
-
-    <div class="session-panel active" id="panel-chat">
-      <div id="chat-log"></div>
-      <div id="dice-section">
-        <div id="dice-section-label">DICE ROLLER</div>
-        <div id="dice-btns"></div>
-        <div id="dice-result-inline"></div>
-      </div>
-      <div id="chat-input-row">
-        <input id="chat-input" type="text" placeholder="Message…" maxlength="300" spellcheck="false">
-        <button id="chat-send">Send</button>
-      </div>
-    </div>
-
-    <div class="session-panel" id="panel-gm">
-      <!-- Spawn NPC -->
-      <div class="gm-tool-section">
-        <div class="gm-tool-title">Spawn NPC</div>
-        <div class="gm-tool-row">
-          <input id="spawn-npc-name" type="text" placeholder="Display name (e.g. Goblin Brute 3)" spellcheck="false">
-          <input id="spawn-npc-hp" type="number" placeholder="HP" value="10" min="1" style="max-width:64px">
-        </div>
-        <div class="gm-tool-row">
-          <input id="spawn-npc-lookup" type="text" placeholder="Portrait lookup name (optional, e.g. goblin)" spellcheck="false">
-        </div>
-        <button class="gm-tool-btn" style="width:100%" id="spawn-npc-btn">⚔ Spawn — click map to place</button>
-      </div>
-
-      <!-- Background Image -->
-      <div class="gm-tool-section">
-        <div class="gm-tool-title">Background Image</div>
-        <div class="gm-tool-row">
-          <input id="bg-url-input" type="text" placeholder="https://raw.githubusercontent.com/…/map.png">
-        </div>
-        <div class="gm-tool-row">
-          <input id="bg-ppi-input" type="number" placeholder="PPI (e.g. 70)" value="70" min="1" style="max-width:110px">
-          <button class="gm-tool-btn" style="flex:1" id="bg-set-btn">Set</button>
-          <button class="gm-tool-btn" style="flex:1" id="bg-clear-btn">Clear</button>
-        </div>
-        <div class="gm-tool-row">
-          <button class="gm-tool-btn" style="width:100%" id="night-toggle-btn">🌙 Night Mode: Off</button>
-        </div>
-        <div class="gm-tool-result" id="bg-status-text"></div>
-      </div>
-
-      <!-- AFK PC Oracle -->
-      <div class="gm-tool-section">
-        <div class="gm-tool-title">AFK PC Oracle</div>
-        <div class="gm-tool-row">
-          <input id="afk-name-input" type="text" placeholder="PC name">
-          <select id="afk-class-select">
-            <option value="">— Class —</option>
-            <option value="fighter">Fighter</option>
-            <option value="barbarian">Barbarian</option>
-            <option value="rogue">Rogue</option>
-            <option value="monk">Monk</option>
-            <option value="paladin">Paladin</option>
-            <option value="ranger">Ranger</option>
-            <option value="wizard">Wizard</option>
-            <option value="sorcerer">Sorcerer</option>
-            <option value="warlock">Warlock</option>
-            <option value="druid">Druid</option>
-            <option value="cleric">Cleric</option>
-            <option value="bard">Bard</option>
-          </select>
-        </div>
-        <div class="gm-tool-row">
-          <input id="afk-target-input" type="text" placeholder="Target (optional, e.g. Kobold 2)">
-        </div>
-        <div class="gm-tool-row">
-          <button class="gm-tool-btn" id="afk-mode-combat" style="flex:1">⚔ Combat</button>
-          <button class="gm-tool-btn" id="afk-mode-explore" style="flex:1">🌿 Exploring</button>
-        </div>
-        <div id="afk-combat-btns" class="gm-tool-row" style="display:none">
-          <button class="gm-tool-btn" style="flex:1" id="afk-roll-style">🎭 Style</button>
-          <button class="gm-tool-btn" style="flex:1" id="afk-roll-main">⚔ Main</button>
-          <button class="gm-tool-btn" style="flex:1" id="afk-roll-bonus">✨ Bonus</button>
-        </div>
-        <div id="afk-explore-btns" style="display:none">
-          <button class="gm-tool-btn" style="width:100%" id="afk-roll-explore">🎲 Roll Idle Behavior (d20)</button>
-        </div>
-        <div class="gm-tool-result" id="afk-result-text"></div>
-      </div>
-
-      <!-- Oracle quick-roll -->
-      <div class="gm-tool-section">
-        <div class="gm-tool-title">🎲 Oracle</div>
-        <div class="gm-tool-row" style="flex-wrap:wrap;gap:4px">
-          <button class="gm-tool-btn" id="oracle-npc-btn"     style="flex:1">👤 NPC</button>
-          <button class="gm-tool-btn" id="oracle-loot-btn"    style="flex:1">💰 Loot</button>
-          <button class="gm-tool-btn" id="oracle-monster-btn" style="flex:1">👹 Encounter</button>
-        </div>
-        <div class="gm-tool-row" style="flex-wrap:wrap;gap:4px;margin-top:0">
-          <button class="gm-tool-btn" id="oracle-poi-btn"     style="flex:1">❗ POI</button>
-          <button class="gm-tool-btn" id="oracle-hazard-btn"  style="flex:1">🔥 Hazard</button>
-          <button class="gm-tool-btn" id="oracle-danger-btn"  style="flex:1">💀 Danger</button>
-        </div>
-        <div class="gm-tool-result" id="oracle-result-text" style="font-size:9px;line-height:1.6;white-space:pre-wrap"></div>
-      </div>
-
-      <!-- Dungeon Generator -->
-      <div class="gm-tool-section">
-        <div class="gm-tool-title">🗺 Dungeon</div>
-        <div class="gm-tool-row">
-          <select class="gm-tool-btn" id="dgen-size-gm" style="flex:1;cursor:pointer">
-            <option value="small">Small</option>
-            <option value="medium" selected>Medium</option>
-            <option value="large">Large</option>
-          </select>
-          <select class="gm-tool-btn" id="dgen-type-gm" style="flex:1;cursor:pointer">
-            <option value="ruins" selected>Ruins</option>
-            <option value="cave">Cave</option>
-            <option value="crypt">Crypt</option>
-            <option value="sewer">Sewer</option>
-          </select>
-        </div>
-        <div class="gm-tool-row">
-          <button class="gm-tool-btn" id="dgen-gen-btn"  style="flex:1">⚄ Generate</button>
-          <button class="gm-tool-btn" id="dgen-push-btn" style="flex:1">☁ Push to VTT</button>
-        </div>
-        <canvas id="dgen-preview-canvas" style="width:100%;border-radius:4px;border:1px solid var(--border);margin-top:4px;display:none"></canvas>
-        <div class="gm-tool-result" id="dgen-status-text"></div>
-      </div>
-
-      <!-- GM Notes -->
-      <div class="gm-tool-section" style="flex:1;display:flex;flex-direction:column">
-        <div class="gm-tool-title">GM Notes</div>
-        <textarea id="gm-notes-area" placeholder="Session notes, reminders, NPC names…"></textarea>
-        <div id="gm-notes-status">saved</div>
-      </div>
-    </div>
-  </div>
-
-  <div id="initiative-bar">
+<div id="initiative-bar">
     <div id="init-track"></div>
   </div>
+  <div id="chat-strip-ed" onclick="toggleChatEd()">
+    <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--gold-dim);letter-spacing:.08em;flex-shrink:0">💬</span>
+    <div id="chat-last-msg-ed">Chat</div>
+    <div id="chat-unread-ed">0</div>
+    <span id="chat-toggle-icon-ed" style="font-size:10px;color:var(--dim);transition:transform .2s">▲</span>
+  </div>
+</div>
+
+<!-- Chat drawer -->
+<div id="chat-drawer-ed">
+  <div id="chat-log" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px"></div>
+  <div style="display:flex;gap:6px;padding:6px 8px;border-top:1px solid var(--border);flex-shrink:0">
+    <input id="chat-input" type="text" placeholder="Message…" maxlength="300" spellcheck="false" style="flex:1;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:12px;padding:4px 8px;border-radius:4px;outline:none">
+    <button id="chat-send" style="padding:0 10px;height:26px;font-size:9px">Send</button>
+  </div>
+</div>
+
+<!-- OBR-style dice button + tray -->
+<div id="dice-fab" title="Dice" onclick="toggleDiceTray()" style="position:fixed;bottom:52px;right:calc(var(--layer-palette) + 16px);width:44px;height:44px;border-radius:50%;background:var(--panel);border:1px solid var(--gold);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:100;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.6);transition:transform .12s">🎲</div>
+<div id="dice-tray" style="position:fixed;bottom:104px;right:calc(var(--layer-palette) + 12px);background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px;display:none;flex-direction:column;gap:6px;z-index:99;box-shadow:0 8px 32px rgba(0,0,0,.7);min-width:160px">
+  <div style="font-family:'Cinzel',serif;font-size:9px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px">Roll Dice</div>
+  <div id="dice-tray-btns" style="display:grid;grid-template-columns:1fr 1fr;gap:4px"></div>
+  <div id="dice-tray-result" style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);text-align:center;min-height:16px;margin-top:2px"></div>
 </div>
 
 <!-- Dice popup -->
@@ -689,6 +711,7 @@ import { sendChat, renderChat } from "./js/chat.js";
 import { rollDie, animateDiceResult } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, startCombat, endCombat, lockInitiativeOrder, addToInitiative, nextTurn, clearInitiative } from "./js/initiative.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
+window.toggleGlossarySearch = toggleGlossarySearch;
 import { rollNPC, rollLoot, rollMonster, rollHazard, rollDanger, rollEnemy, rollPOI, rollContainer, rollLocation, askOracle, rollTreasure } from "./js/rollers.js";
 import { generateDungeon, renderDungeon, pushDungeonToRTDB } from "./js/dungeon.js";
 import { rollAfkDecision, EXPLORE_TABLE } from "./js/afkOracle.js";
@@ -723,7 +746,6 @@ let initiative={order:[],active:null};
 let ctxTokenId=null,ctxPropKey=null;
 let liveUnsub=null,saveTimer=null,isSavingTiles=false;
 let dropBase64=null,dropFilename="",dropTileX=0,dropTileY=0,dropType="map";
-const undoStack=[],redoStack=[];
 let CONDITIONS={};
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
@@ -733,10 +755,11 @@ const statusEl  =document.getElementById("status");
 const coordsEl  =document.getElementById("coords");
 const toastEl   =document.getElementById("toast");
 const mapInput  =document.getElementById("map-name");
-const wallBtn   =document.getElementById("wallBtn");
+function getMapName(){return mapInput?.value.trim()||"dungeon-1";}
+const wallBtn   =document.getElementById("wallBtn"); // kept for compat
 const doorBtn   =document.getElementById("doorBtn");
-const fogBtn    =document.getElementById("fogBtn");
-const roofBtn   =document.getElementById("roofBtn");
+const fogBtn    =null; // removed — use layer palette
+const roofBtn   =null; // removed
 const tokenBtn  =document.getElementById("tokenBtn");
 const pingToastEl=document.getElementById("ping-toast");
 const chatLog   =document.getElementById("chat-log");
@@ -797,34 +820,28 @@ window.addEventListener("beforeunload",()=>{if(playerName)set(ref(db,`presence/$
 nameDisplay.onclick=showNameModal;
 
 // ── Resize ────────────────────────────────────────────────────────────────────
-function resize(){const w=canvasWrap;canvas.width=w.clientWidth;canvas.height=w.clientHeight;initParticles(canvas.width,canvas.height);}
-resize();window.addEventListener("resize",resize);
+function resize(){
+  const w=canvasWrap;
+  if(!w||w.clientWidth===0||w.clientHeight===0) return;
+  canvas.width=w.clientWidth;
+  canvas.height=w.clientHeight;
+  initParticles(canvas.width,canvas.height);
+}
+// Defer first resize until after browser layout
+requestAnimationFrame(()=>requestAnimationFrame(resize));
+window.addEventListener("resize",resize);
+// ResizeObserver catches CSS-driven size changes
+new ResizeObserver(resize).observe(canvasWrap);
 
 // ── RTDB save helpers ─────────────────────────────────────────────────────────
 function scheduleSave(){clearTimeout(saveTimer);setStatus("saving","Saving…");saveTimer=setTimeout(async()=>{const mapName=mapInput.value.trim()||"dungeon-1";try{isSavingTiles=true;await set(ref(db,`maps/${mapName}/tiles`),Object.keys(tiles).length?tiles:null);await set(ref(db,`maps/${mapName}/updatedAt`),Date.now());setStatus("live","Live ✓");}catch(e){setStatus("error","Error");}finally{isSavingTiles=false;}},600);}
 async function saveRoofs(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/roofs`),Object.keys(roofs).length?roofs:null);}
 async function saveFogLocal(){const m=mapInput.value.trim()||"dungeon-1";await saveFog(m,fogGroups);}
 async function deleteFogGroup(id){const m=mapInput.value.trim()||"dungeon-1";await deleteFogGroupRTDB(m,id,fogGroups);}
-async function saveWallGroups(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/wallGroups`),Object.keys(wallGroups).length?wallGroups:null);}
-async function saveDoors(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/doors`),Object.keys(doors).length?doors:null);}
-async function saveTokenLocal(id,data){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/tokens/${id}`),data);}
-async function deleteToken(id){const m=mapInput.value.trim()||"dungeon-1";await deleteTokenRTDB(m,id,tokens);}
-async function saveStamp(k,emoji){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/stamps/${k.replace(",","_")}`),emoji||null);}
 async function deleteStamp(k){const m=mapInput.value.trim()||"dungeon-1";await remove(ref(db,`maps/${m}/stamps/${k.replace(",","_")}`));delete stamps[k];}
-async function savePropsLocal(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/props`),Object.keys(props).length?props:null);}
 async function savePropDef(p){await set(ref(db,`propDefs/${p.id}`),p);}
 
 // ── Undo / Redo ───────────────────────────────────────────────────────────────
-function snapshotState(){return JSON.stringify({tiles,wallGroups,fogGroups});}
-function pushUndo(){undoStack.push(snapshotState());if(undoStack.length>50)undoStack.shift();redoStack.length=0;}
-function restoreState(s){
-  const snap=JSON.parse(s);
-  for(const k in tiles)delete tiles[k];Object.assign(tiles,snap.tiles||{});
-  for(const k in wallGroups)delete wallGroups[k];Object.assign(wallGroups,snap.wallGroups||{});
-  for(const k in fogGroups)delete fogGroups[k];Object.assign(fogGroups,snap.fogGroups||{});
-}
-function undo(){if(!undoStack.length){toast("Nothing to undo");return;}redoStack.push(snapshotState());restoreState(undoStack.pop());scheduleSave();saveWallGroups();saveFogLocal();}
-function redo(){if(!redoStack.length){toast("Nothing to redo");return;}undoStack.push(snapshotState());restoreState(redoStack.pop());scheduleSave();saveWallGroups();saveFogLocal();}
 
 // ── Live listener ─────────────────────────────────────────────────────────────
 function subscribeLive(){
@@ -860,9 +877,16 @@ function subscribeLive(){
       bgPpi=data.backgroundPpi||70;
       nightMode=!!data.nightMode;
     }
-    if(typeof refreshBgStatus==="function")refreshBgStatus();
-    if(typeof refreshNightBtn==="function")refreshNightBtn();
+    // refreshBgStatus removed with bg panel
+    // refreshNightBtn removed with bg panel
     setStatus("live","Live ✓");
+    if(_firstMapLoad){
+      _firstMapLoad=false;
+      // Defer fitCamera until after resize() has set canvas dimensions
+      requestAnimationFrame(()=>{
+        fitCamera(tiles,TILE,canvas.width,canvas.height);
+      });
+    }
   },()=>setStatus("error","RTDB error"));
 }
 
@@ -914,8 +938,7 @@ onValue(ref(db,"dice/last"),snap=>{
   showDicePopupEd(data.sides,data.result,data.roller);
   // Still update inline result in chat panel
   const resultEl=document.getElementById("dice-result-inline");
-  if(resultEl)resultEl.textContent=`${data.roller}: d${data.sides} → ${data.result}`;
-});
+  if(resultEl)resultEl.textContent=`${data.roller}: d${data.sides} → ${data.result}`; // legacy inline
 });
 
 // Initiative — manual, ordered list, drag to reorder
@@ -931,7 +954,7 @@ function rewireStrip() {
   });
 }
 
-mapInput.addEventListener("change", subscribeLive);
+mapInput.addEventListener("change", ()=>{_firstMapLoad=true;subscribeLive();});
 
 // ── Weather ───────────────────────────────────────────────────────────────────
 function buildWeatherPanel(){
@@ -952,14 +975,7 @@ weatherPanel.addEventListener("pointerup",e=>e.stopPropagation());
 document.getElementById("chat-send").onclick=()=>{if(!playerName){showNameModal();return;}sendChat(chatInput.value,playerName);chatInput.value="";};
 chatInput.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!playerName){showNameModal();return;}sendChat(chatInput.value,playerName);chatInput.value="";}});
 
-// ── Initiative UI ─────────────────────────────────────────────────────────────
-document.getElementById("init-add-btn").onclick=()=>{
-  const name=prompt("Add to initiative — name:");
-  if(!name||!name.trim())return;
-  addToInitiative(initiative,name.trim(),playerName||"GM");
-};
-document.getElementById("init-next-btn").onclick=()=>nextTurn(initiative,playerName||"GM");
-document.getElementById("init-clear-btn").onclick=()=>{if(confirm("Clear initiative order?"))clearInitiative();};
+// ── Initiative UI handled by token strip ─────────────────────────────────────
 
 // ── Conditions / Chains / HP ──────────────────────────────────────────────────
 document.querySelectorAll(".ctx-item").forEach(item=>{
@@ -967,7 +983,7 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
     const cond=item.dataset.condition,action=item.dataset.action;
     if(cond)applyCondition(mapInput.value.trim()||"dungeon-1",ctxTokenId,cond,tokens);
-    if(action==="delete")deleteToken(ctxTokenId);
+    if(action==="delete")deleteTokenRTDB(getMapName(),ctxTokenId);
     if(action==="edit"){ctxMenu.classList.remove("open");openEditTokenModal(ctxTokenId);return;}
     if(action==="chain")openChainModal(ctxTokenId);
     if(action==="unchain")removeChainsForToken(ctxTokenId);
@@ -1077,12 +1093,12 @@ function propAtTile(tx,ty){for(const[k,p]of Object.entries(props)){let px,py;if(
 document.getElementById("prop-ctx-attach").onclick=()=>{
   propCtxMenu.style.display="none";if(!ctxPropKey)return;
   const list=document.getElementById("attach-token-list");list.innerHTML="";
-  for(const[id,tok]of Object.entries(tokens)){const btn=document.createElement("button");btn.style.cssText="width:100%;height:36px;text-align:left;padding:0 12px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text);cursor:pointer";btn.textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;btn.onmouseenter=()=>btn.style.borderColor="var(--gold-dim)";btn.onmouseleave=()=>btn.style.borderColor="var(--border)";btn.onclick=async()=>{const p=props[ctxPropKey];if(!p)return;const[px,py]=ctxPropKey.split(",").map(Number);p.attachedTo=id;p.offsetX=px-tok.x;p.offsetY=py-tok.y;await savePropsLocal();document.getElementById("attach-modal").classList.add("hidden");toast(`Prop attached to ${tok.name}`);};list.appendChild(btn);}
+  for(const[id,tok]of Object.entries(tokens)){const btn=document.createElement("button");btn.style.cssText="width:100%;height:36px;text-align:left;padding:0 12px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text);cursor:pointer";btn.textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;btn.onmouseenter=()=>btn.style.borderColor="var(--gold-dim)";btn.onmouseleave=()=>btn.style.borderColor="var(--border)";btn.onclick=async()=>{const p=props[ctxPropKey];if(!p)return;const[px,py]=ctxPropKey.split(",").map(Number);p.attachedTo=id;p.offsetX=px-tok.x;p.offsetY=py-tok.y;await savePropsLocal(getMapName(),props);document.getElementById("attach-modal").classList.add("hidden");toast(`Prop attached to ${tok.name}`);};list.appendChild(btn);}
   if(!Object.keys(tokens).length)list.innerHTML=`<p style="font-size:12px;color:var(--text-dim)">No tokens on map</p>`;
   document.getElementById("attach-modal").classList.remove("hidden");
 };
-document.getElementById("prop-ctx-detach").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey||!props[ctxPropKey])return;const p=props[ctxPropKey];if(p.attachedTo&&tokens[p.attachedTo]){const nk=key(tokens[p.attachedTo].x+(p.offsetX||0),tokens[p.attachedTo].y+(p.offsetY||0));props[nk]={propId:p.propId,w:p.w,h:p.h};delete props[ctxPropKey];}await savePropsLocal();toast("Prop detached");};
-document.getElementById("prop-ctx-delete").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey)return;delete props[ctxPropKey];await savePropsLocal();toast("Prop deleted");};
+document.getElementById("prop-ctx-detach").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey||!props[ctxPropKey])return;const p=props[ctxPropKey];if(p.attachedTo&&tokens[p.attachedTo]){const nk=key(tokens[p.attachedTo].x+(p.offsetX||0),tokens[p.attachedTo].y+(p.offsetY||0));props[nk]={propId:p.propId,w:p.w,h:p.h};delete props[ctxPropKey];}await savePropsLocal(getMapName(),props);toast("Prop detached");};
+document.getElementById("prop-ctx-delete").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey)return;delete props[ctxPropKey];await savePropsLocal(getMapName(),props);toast("Prop deleted");};
 document.getElementById("attach-cancel").onclick=()=>document.getElementById("attach-modal").classList.add("hidden");
 
 // ── Clear dropdown ────────────────────────────────────────────────────────────
@@ -1105,7 +1121,7 @@ async function clearSection(section){
   if(section==="roofs"||section==="all"){for(const k in roofs)delete roofs[k];await set(ref(db,`maps/${mapName}/roofs`),null);}
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
 }
-["bg","tokens","props","fog","walls","doors","stamps","tiles","roofs","all"].forEach(s=>{document.getElementById(`clear-${s}`).onclick=()=>clearSection(s);});
+["bg","tokens","props","fog","walls","doors","stamps","tiles","all"].forEach(s=>{const el=document.getElementById(`clear-${s}`);if(el)el.onclick=()=>clearSection(s);});
 
 // ── JSON Import ───────────────────────────────────────────────────────────────
 document.getElementById("loadJsonBtn").onclick=()=>document.getElementById("jsonFileInput").click();
@@ -1134,8 +1150,8 @@ document.getElementById("drop-cancel").onclick=()=>{dropModal.classList.add("hid
 document.getElementById("drop-confirm").onclick=async()=>{
   if(!dropBase64)return;const mapName=mapInput.value.trim()||"dungeon-1";
   if(dropType==="map"){await set(ref(db,`maps/${mapName}/background`),dropBase64);bgUrl=dropBase64;bgImage=null;const img=new Image();img.onload=()=>bgImage=img;img.src=dropBase64;toast("Map background set");}
-  else if(dropType==="token"){const name=document.getElementById("drop-tok-name").value.trim()||"Token";const type=document.getElementById("drop-tok-type").value;const hp=parseInt(document.getElementById("drop-tok-hp").value)||10;const maxHp=parseInt(document.getElementById("drop-tok-maxhp").value)||hp;const safeId="drop_"+Date.now();await set(ref(db,`assets/uploads/tokens/${safeId}`),dropBase64);const tokId="tok_"+Date.now();const tokData={id:tokId,name,type,hp,maxHp,characterId:safeId,x:dropTileX,y:dropTileY,conditions:[]};tokens[tokId]=tokData;const img=new Image();img.onload=()=>{tokenTextures[safeId]=img;};img.src=dropBase64;tokenTextures[safeId]=null;await saveTokenLocal(tokId,tokData);toast(`Token "${name}" placed`);}
-  else if(dropType==="prop"){const id=document.getElementById("drop-prop-name").value.trim().toLowerCase().replace(/\s+/g,"_")||"prop_"+Date.now();const label=document.getElementById("drop-prop-label").value.trim()||id;const w=parseInt(document.getElementById("drop-prop-w").value)||1;const h=parseInt(document.getElementById("drop-prop-h").value)||1;await set(ref(db,`assets/uploads/props/${id}`),dropBase64);const newProp={id,label,emoji:"📦",w,h,uploadedBase64:true};if(!customProps.find(p=>p.id===id))customProps.push(newProp);const img=new Image();img.onload=()=>{propTextures[id]=img;};img.src=dropBase64;await savePropDef(newProp);const k=key(dropTileX,dropTileY);props[k]={propId:id,w,h};await savePropsLocal();buildPropDropdown();toast(`Prop "${label}" placed`);}
+  else if(dropType==="token"){const name=document.getElementById("drop-tok-name").value.trim()||"Token";const type=document.getElementById("drop-tok-type").value;const hp=parseInt(document.getElementById("drop-tok-hp").value)||10;const maxHp=parseInt(document.getElementById("drop-tok-maxhp").value)||hp;const safeId="drop_"+Date.now();await set(ref(db,`assets/uploads/tokens/${safeId}`),dropBase64);const tokId="tok_"+Date.now();const tokData={id:tokId,name,type,hp,maxHp,characterId:safeId,x:dropTileX,y:dropTileY,conditions:[]};tokens[tokId]=tokData;const img=new Image();img.onload=()=>{tokenTextures[safeId]=img;};img.src=dropBase64;tokenTextures[safeId]=null;await saveTokenRTDB(getMapName(),tokId,tokData);toast(`Token "${name}" placed`);}
+  else if(dropType==="prop"){const id=document.getElementById("drop-prop-name").value.trim().toLowerCase().replace(/\s+/g,"_")||"prop_"+Date.now();const label=document.getElementById("drop-prop-label").value.trim()||id;const w=parseInt(document.getElementById("drop-prop-w").value)||1;const h=parseInt(document.getElementById("drop-prop-h").value)||1;await set(ref(db,`assets/uploads/props/${id}`),dropBase64);const newProp={id,label,emoji:"📦",w,h,uploadedBase64:true};if(!customProps.find(p=>p.id===id))customProps.push(newProp);const img=new Image();img.onload=()=>{propTextures[id]=img;};img.src=dropBase64;await savePropDef(newProp);const k=key(dropTileX,dropTileY);props[k]={propId:id,w,h};await savePropsLocal(getMapName(),props);buildPropDropdown();toast(`Prop "${label}" placed`);}
   dropModal.classList.add("hidden");dropBase64=null;
 };
 canvasWrap.addEventListener("dragenter",e=>{e.preventDefault();dropOverlay.style.display="block";});
@@ -1182,7 +1198,7 @@ document.getElementById("tok-place").onclick=async()=>{
   if(editingTokenId){
     // Edit existing token in place
     const tok=tokens[editingTokenId];
-    if(tok){Object.assign(tok,{name,lookupName,type,hp,maxHp,size,characterId:charId});tryLoadTokenTexture(charId,lookupName);await saveTokenLocal(editingTokenId,tok);}
+    if(tok){Object.assign(tok,{name,lookupName,type,hp,maxHp,size,characterId:charId});tryLoadTokenTexture(charId,lookupName);await saveTokenRTDB(getMapName(),editingTokenId,tok);}
     editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";
     document.getElementById("token-modal").classList.add("hidden");toast("Token updated");
   }else{
@@ -1245,33 +1261,22 @@ document.addEventListener("click",()=>{
 });
 
 // Mode buttons
-function deactivateLayerModes(){
-  fogMode=false;fogBtn.classList.remove("fog-active");
-  roofMode=false;roofBtn.classList.remove("roof-active");
-  wallMode=false;wallBtn.classList.remove("wall-active");
-  doorMode=false;doorBtn.classList.remove("door-active");
-  if(selectPhase==="selected"||selectPhase==="moving")commitSelection();
-}
-document.querySelectorAll(".shape").forEach(btn=>{btn.onclick=()=>{deactivateLayerModes();currentStamp=null;currentProp=null;currentShape=btn.dataset.shape;document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));btn.classList.add("active");};});
-wallBtn.onclick=()=>{const on=!wallMode;deactivateLayerModes();wallMode=on;wallBtn.classList.toggle("wall-active",on);};
-doorBtn.onclick=()=>{const on=!doorMode;deactivateLayerModes();doorMode=on;doorBtn.classList.toggle("door-active",on);};
-roofBtn.onclick=()=>{const on=!roofMode;deactivateLayerModes();roofMode=on;roofBtn.classList.toggle("roof-active",on);};
-document.getElementById("roof-opacity-btn").onclick=()=>{roofOpacity=roofOpacity<0.9?roofOpacity+0.25:0.25;document.getElementById("roof-opacity-btn").textContent=`👁 ${Math.round(roofOpacity*100)}%`;};
-
+// function deactivateLayerModes( removeddocument.querySelectorAll(".shape").forEach(btn=>{btn.onclick=()=>{deactivateLayerModes();currentStamp=null;currentProp=null;currentShape=btn.dataset.shape;document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));btn.classList.add("active");};});
+// wallBtn.onclick= removed// doorBtn.onclick= removed
 // Fog type picker
 const fogTypeLabels={fog:"🌫 Fog of War",darkness:"🌑 Darkness",magical:"✨ Magical Darkness"};
 document.querySelectorAll(".fog-type-item").forEach(item=>{
   item.onclick=(e)=>{
     e.stopPropagation();
     currentFogType=item.dataset.fogtype;
-    fogBtn.textContent=fogTypeLabels[currentFogType]+" ▾";
+    // fogBtn removed
     document.querySelectorAll(".fog-type-item").forEach(i=>i.classList.remove("active"));
     item.classList.add("active");
-    deactivateLayerModes();fogMode=true;fogBtn.classList.add("fog-active");
+    deactivateLayerModes();fogMode=true;
     document.getElementById("fog-type-dropdown").classList.remove("open");
   };
 });
-fogBtn.onclick=(e)=>{e.stopPropagation();const r=fogBtn.getBoundingClientRect();const dd=document.getElementById("fog-type-dropdown");dd.style.left=r.left+"px";dd.classList.toggle("open");};
+// fogBtn.onclick removed
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
@@ -1301,7 +1306,7 @@ function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle
 
 function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/camera.zoom;const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,r=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
-function drawPreview(){if(fogMode||roofMode||wallMode||doorMode)return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
+function drawPreview(){if(activeTool==="mouse")return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
 
 function drawSelection(){if(currentShape!=="select")return;if(selectPhase==="marquee"&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(100,160,255,0.15)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=1.5/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);return;}if(selectPhase==="selected"||selectPhase==="moving"){const ox=moveOffX,oy=moveOffY;const TERRAINS=getTERRAINS();for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);const{terrain}=selectTiles[k];const px=(tx+ox)*TILE,py=(ty+oy)*TILE;const def=TERRAINS.find(t=>t.id===terrain);if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=def?.color||"#333";ctx.fillRect(px,py,TILE,TILE);}}const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE,pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;ctx.fillStyle="rgba(100,160,255,0.18)";ctx.fillRect(px,py,pw,ph);ctx.strokeStyle="rgba(100,160,255,0.95)";ctx.lineWidth=2/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);}}
 
@@ -1310,7 +1315,7 @@ function inSelection(wx,wy){if(!selectPhase||selectPhase==="marquee")return fals
 
 function liftSelection(minX,minY,maxX,maxY){selectTiles={};selMinX=minX;selMinY=minY;selMaxX=maxX;selMaxY=maxY;selStamps={};selProps={};selTokenIds=[];for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);if(tiles[k])selectTiles[k]={...tiles[k]};if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain,walls:wallsEnabled};else delete tiles[k];if(stamps[k]){selStamps[k]=stamps[k];delete stamps[k];}if(props[k]){selProps[k]={...props[k]};delete props[k];}}for(const[id,tok]of Object.entries(tokens)){if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY)selTokenIds.push(id);}moveOffX=0;moveOffY=0;scheduleSave();}
 
-function commitSelection(){pushUndo();const ox=moveOffX,oy=moveOffY;for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);tiles[key(tx+ox,ty+oy)]={...selectTiles[k]};}for(const k in selStamps){const[tx,ty]=k.split(",").map(Number);const nk=key(tx+ox,ty+oy);stamps[nk]=selStamps[k];saveStamp(nk,selStamps[k]);}for(const k in selProps){const[tx,ty]=k.split(",").map(Number);props[key(tx+ox,ty+oy)]={...selProps[k]};}for(const id of selTokenIds){if(tokens[id]){tokens[id].x+=ox;tokens[id].y+=oy;saveTokenLocal(id,tokens[id]);}}selectTiles={};selStamps={};selProps={};selTokenIds=[];selectPhase=null;moveOffX=0;moveOffY=0;scheduleSave();savePropsLocal();}
+function commitSelection(){pushUndo();const ox=moveOffX,oy=moveOffY;for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);tiles[key(tx+ox,ty+oy)]={...selectTiles[k]};}for(const k in selStamps){const[tx,ty]=k.split(",").map(Number);const nk=key(tx+ox,ty+oy);stamps[nk]=selStamps[k];saveStamp(getMapName(),nk,selStamps[k]);}for(const k in selProps){const[tx,ty]=k.split(",").map(Number);props[key(tx+ox,ty+oy)]={...selProps[k]};}for(const id of selTokenIds){if(tokens[id]){tokens[id].x+=ox;tokens[id].y+=oy;saveTokenRTDB(getMapName(),id,tokens[id]);}}selectTiles={};selStamps={};selProps={};selTokenIds=[];selectPhase=null;moveOffX=0;moveOffY=0;scheduleSave();savePropsLocal(getMapName(),props);}
 
 // ── Main render loop ──────────────────────────────────────────────────────────
 function render(){
@@ -1423,31 +1428,263 @@ window.addEventListener("keyup",e=>{if(e.code==="Space"){spaceDown=false;canvas.
 canvas.addEventListener("wheel",e=>{e.preventDefault();const[sx,sy]=screenPos(e);applyZoom(e.deltaY<0?1.1:.9,sx,sy);},{passive:false});
 
 let lastCtxX=0,lastCtxY=0;
-canvas.addEventListener("contextmenu",e=>{
-  e.preventDefault();const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
-  const tokId=tokenAtTile(tokens,tx,ty);
-  if(tokId){
-    const tok=tokens[tokId];
-    // PC token — open sheet panel
-    if(tok.type==="pc"&&tok.characterId){
-      openCharSheet(tok.characterId,tok.name,true);return;
-    }
-    ctxTokenId=tokId;
-    lastCtxX=e.clientX;lastCtxY=e.clientY;
-    const hasChain=chainsForToken(chains,tokId).length>0;
-    document.querySelector('.ctx-item[data-action="chain"]').style.display=hasChain?"none":"flex";
-    document.querySelector('.ctx-item[data-action="unchain"]').style.display=hasChain?"flex":"none";
-    document.querySelector('.ctx-item[data-action="hide-hp"]').style.display=tok.hideHp?"none":"flex";
-    document.querySelector('.ctx-item[data-action="show-hp"]').style.display=tok.hideHp?"flex":"none";
-    document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display=tok.type==="pc"?"flex":"none";
-    ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");return;
+canvas.addEventListener("contextmenu",e=>e.preventDefault());
+
+// Left-click on token → open sheet panel (skip if placing token or in a mode)
+// ═══════════════════════════════════════════════════════════════════════════════
+// TOOL + LAYER SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── State ────────────────────────────────────────────────────────────────────
+let activeTool  = "mouse";   // mouse | pencil | rect | ellipse | eraser
+let activeLayer = "ground";  // bg | ground | walls | fog | objects
+let wallSub     = "wall";    // wall | door
+let objSub      = "token";   // token | prop | stamp
+let layerVisible = {bg:true,ground:true,walls:true,fog:true,objects:true};
+let layerLocked  = {bg:false,ground:false,walls:false,fog:false,objects:false};
+
+// ── Switch tool ───────────────────────────────────────────────────────────────
+function setTool(t) {
+  activeTool = t;
+  document.querySelectorAll(".tool-btn").forEach(b=>b.classList.remove("active"));
+  const btn = document.getElementById("tool-"+t);
+  if(btn) btn.classList.add("active");
+  // Cursor
+  const cursors = {mouse:"default",pencil:"crosshair",rect:"crosshair",ellipse:"crosshair",eraser:"cell"};
+  canvas.style.cursor = cursors[t] || "crosshair";
+}
+
+// ── Switch layer ──────────────────────────────────────────────────────────────
+function setActiveLayer(l) {
+  activeLayer = l;
+  document.querySelectorAll(".layer-row").forEach(r=>{
+    r.classList.toggle("active", r.dataset.layer === l);
+  });
+  // Show correct options bar section
+  document.querySelectorAll(".opt-section").forEach(s=>s.classList.remove("active"));
+  const optEl = document.getElementById("opt-"+l);
+  if(optEl) optEl.classList.add("active");
+  
+  // Auto-set sensible tool defaults per layer to prevent accidental drawing
+  if(l==="bg" || l==="objects") {
+    setTool("mouse");
+  } else if(l==="ground" || l==="walls" || l==="fog") {
+    setTool("pencil");
   }
-  const pk=propAtTile(tx,ty);
-  if(pk){ctxPropKey=pk;const isAttached=!!(props[pk]&&props[pk].attachedTo);document.getElementById("prop-ctx-attach").style.display=isAttached?"none":"block";document.getElementById("prop-ctx-detach").style.display=isAttached?"block":"none";propCtxMenu.style.left=e.clientX+"px";propCtxMenu.style.top=e.clientY+"px";propCtxMenu.style.display="block";return;}
-  if(roofMode){const k=key(tx,ty);if(roofs[k]){delete roofs[k];saveRoofs();}return;}
-  if(wallMode){const gid=wallGroupAtTile(tx,ty);if(gid){delete wallGroups[gid];saveWallGroups();}return;}
-  if(doorMode){const did=Object.keys(doors).find(id=>doors[id].x===tx&&doors[id].y===ty);if(did){delete doors[did];saveDoors();}return;}
-  const gid=fogGroupAtTile(fogGroups,tx,ty);if(gid){deleteFogGroup(gid);return;}
+}
+
+// Wire layer palette rows
+document.querySelectorAll(".layer-row").forEach(row=>{
+  row.addEventListener("click", e=>{
+    if(e.target.classList.contains("layer-vis")||e.target.classList.contains("layer-lock")) return;
+    setActiveLayer(row.dataset.layer);
+  });
+});
+
+// Wire eye/lock buttons
+document.querySelectorAll(".layer-vis").forEach(btn=>{
+  btn.addEventListener("click", e=>{
+    e.stopPropagation();
+    const l = btn.dataset.layer;
+    layerVisible[l] = !layerVisible[l];
+    btn.classList.toggle("hidden", !layerVisible[l]);
+    btn.title = layerVisible[l] ? "Hide layer" : "Show layer";
+  });
+});
+document.querySelectorAll(".layer-lock").forEach(btn=>{
+  btn.addEventListener("click", e=>{
+    e.stopPropagation();
+    const l = btn.dataset.layer;
+    layerLocked[l] = !layerLocked[l];
+    btn.textContent = layerLocked[l] ? "🔒" : "🔓";
+    btn.title = layerLocked[l] ? "Unlock layer" : "Lock layer";
+  });
+});
+
+// Wire tool strip buttons
+["mouse","pencil","rect","ellipse","eraser"].forEach(t=>{
+  const btn=document.getElementById("tool-"+t);
+  if(btn) btn.onclick=()=>setTool(t);
+});
+
+// Keyboard shortcuts
+window.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA") return;
+  if(e.key==="v"||e.key==="V") setTool("mouse");
+  if(e.key==="p"||e.key==="P") setTool("pencil");
+  if(e.key==="r"||e.key==="R") setTool("rect");
+  if(e.key==="e"||e.key==="E") setTool("ellipse");
+  if(e.key==="x"||e.key==="X") setTool("eraser");
+  if(e.key==="Escape"){
+    if(placingToken){placingToken=null;toast("Cancelled");}
+    if(selectPhase&&selectPhase!=="marquee")commitSelection();
+    rulerStart=null;rulerEnd=null;rulerActive=false;
+    closeSheetPanelEd();
+  }
+  if(e.key==="z"&&(e.ctrlKey||e.metaKey)&&!e.shiftKey){e.preventDefault();undo();}
+  if(e.key==="z"&&(e.ctrlKey||e.metaKey)&&e.shiftKey){e.preventDefault();redo();}
+  if(e.key==="y"&&(e.ctrlKey||e.metaKey)){e.preventDefault();redo();}
+  if(e.key==="Delete"||e.key==="Backspace"){
+    if(selectPhase==="selected"){
+      for(const k in selectTiles) delete tiles[k];
+      selectTiles={};selectPhase=null;scheduleSave();
+    }
+  }
+  spaceDown = e.code==="Space";
+  if(spaceDown) canvas.style.cursor="grab";
+});
+window.addEventListener("keyup",e=>{
+  if(e.code==="Space"){spaceDown=false;canvas.style.cursor={mouse:"default",pencil:"crosshair",rect:"crosshair",ellipse:"crosshair",eraser:"cell"}[activeTool]||"crosshair";}
+});
+
+// Wire fog type options bar buttons
+document.querySelectorAll("[data-fogtype]").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    currentFogType = btn.dataset.fogtype;
+    document.querySelectorAll("[data-fogtype]").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+// Wire wall sub-mode
+document.getElementById("wall-sub-wall")?.addEventListener("click",()=>{
+  wallSub="wall";doorMode=false;wallMode=true;
+  document.getElementById("wall-sub-wall").classList.add("active");
+  document.getElementById("wall-sub-door").classList.remove("active");
+});
+document.getElementById("wall-sub-door")?.addEventListener("click",()=>{
+  wallSub="door";wallMode=false;doorMode=true;
+  document.getElementById("wall-sub-door").classList.add("active");
+  document.getElementById("wall-sub-wall").classList.remove("active");
+});
+
+// Wire object sub-mode
+["token","prop","stamp"].forEach(sub=>{
+  document.getElementById("obj-sub-"+sub)?.addEventListener("click",()=>{
+    objSub=sub;
+    ["token","prop","stamp"].forEach(s=>document.getElementById("obj-sub-"+s)?.classList.remove("active"));
+    document.getElementById("obj-sub-"+sub)?.classList.add("active");
+    document.getElementById("prop-picker-wrap").style.display=sub==="prop"?"flex":"none";
+    document.getElementById("stamp-picker-wrap").style.display=sub==="stamp"?"flex":"none";
+  });
+});
+
+// ── Background layer controls ────────────────────────────────────────────────
+const bgUrlInput = document.getElementById("bg-url-input");
+const bgPpiInput = document.getElementById("bg-ppi-input");
+const bgStatusText = document.getElementById("bg-status-text");
+function refreshBgStatus(){
+  if(bgStatusText) bgStatusText.textContent = bgUrl ? `✓ ${bgUrl.split("/").pop().slice(0,20)}` : "No background";
+  if(bgUrlInput) bgUrlInput.value = bgUrl || "";
+  if(bgPpiInput) bgPpiInput.value = bgPpi || 70;
+}
+document.getElementById("bg-set-btn")?.addEventListener("click", async()=>{
+  const url=(bgUrlInput?.value||"").trim();
+  const ppi=parseInt(bgPpiInput?.value)||70;
+  if(!url){toast("Enter a URL");return;}
+  await set(ref(db,`maps/${getMapName()}/background`),url);
+  await set(ref(db,`maps/${getMapName()}/backgroundPpi`),ppi);
+  toast(`Background set ✓`);
+  refreshBgStatus();
+});
+document.getElementById("bg-clear-btn")?.addEventListener("click", async()=>{
+  await set(ref(db,`maps/${getMapName()}/background`),null);
+  await set(ref(db,`maps/${getMapName()}/backgroundPpi`),null);
+  bgUrl="";bgImage=null;bgPpi=70;
+  toast("Background cleared");refreshBgStatus();
+});
+
+// ── Marquee select state ──────────────────────────────────────────────────────
+let marqueeActive=false,marqueeStartX=0,marqueeStartY=0,marqueeEndX=0,marqueeEndY=0;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POINTER EVENTS — unified tool/layer dispatch
+// ═══════════════════════════════════════════════════════════════════════════════
+
+canvas.addEventListener("pointerdown",e=>{
+  const[sx,sy]=screenPos(e);
+  // Middle mouse / space = pan
+  if(e.button===1||spaceDown){canvas.setPointerCapture(e.pointerId);panning=true;panStartX=sx;panStartY=sy;camStartX=camera.x;camStartY=camera.y;canvas.style.cursor="grabbing";return;}
+  if(e.button!==0) return;
+  const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+
+  // Ruler (alt+click)
+  if(e.altKey){const snap=findSnapPoint(tokens,wx,wy);const pt=snap||[wx,wy];if(!rulerActive){rulerStart=pt;rulerEnd=pt;rulerActive=true;}else{rulerEnd=pt;rulerActive=false;}return;}
+
+  // Ping mode
+  if(pingMode){isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);canvas.setPointerCapture(e.pointerId);return;}
+
+  // Placing token (from spawn modal)
+  if(placingToken){placingToken.x=tx;placingToken.y=ty;tokens[placingToken.id]={...placingToken};saveTokenRTDB(getMapName(),placingToken.id,placingToken);placingToken=null;toast("Token placed");return;}
+
+  // Locked layer — block all painting
+  if(layerLocked[activeLayer]) return;
+
+  // ── MOUSE TOOL ──────────────────────────────────────────────────────────────
+  if(activeTool==="mouse"){
+    // Fog × button
+    const hitGid=fogGroupXHit(fogGroups,wx,wy,camera.zoom);
+    if(hitGid){deleteFogGroupRTDB(getMapName(),hitGid,fogGroups);return;}
+
+    // Door toggle (walls layer or mouse tool near a door)
+    const nearDoor=findDoorAtPoint(doors,wx,wy,TILE);
+    if(nearDoor){
+      const d=doors[nearDoor];
+      if(d.locked){delete doors[nearDoor];}
+      else if(d.open){doors[nearDoor]={...d,open:false,locked:true};}
+      else{doors[nearDoor]={...d,open:true};}
+      saveDoors(getMapName(),doors);return;
+    }
+
+    // Token drag
+    const tokId=tokenAtTile(tokens,tx,ty);
+    if(tokId){
+      // Short click → inspect; hold → drag (handled in pointermove)
+      canvas.setPointerCapture(e.pointerId);
+      draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y,startTX:tx,startTY:ty,moved:false};
+      return;
+    }
+
+    // Prop drag
+    const pk=propAtTile(tx,ty);
+    if(pk){canvas.setPointerCapture(e.pointerId);const p=props[pk];let ox,oy;if(p.attachedTo&&tokens[p.attachedTo]){ox=tokens[p.attachedTo].x+(p.offsetX||0);oy=tokens[p.attachedTo].y+(p.offsetY||0);}else{[ox,oy]=pk.split(",").map(Number);}draggingProp={oldKey:pk,offsetTX:tx-ox,offsetTY:ty-oy};return;}
+
+    // Marquee select (hold — started after 200ms in pointermove)
+    canvas.setPointerCapture(e.pointerId);
+    marqueeActive=false;
+    marqueeStartX=wx;marqueeStartY=wy;marqueeEndX=wx;marqueeEndY=wy;
+    if(selectPhase==="selected"||selectPhase==="moving"){
+      if(inSelection(wx,wy)){selectPhase="moving";moveStartWorldX=wx-moveOffX*TILE;moveStartWorldY=wy-moveOffY*TILE;return;}
+      commitSelection();
+    }
+    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
+    return;
+  }
+
+  // ── ERASER TOOL ─────────────────────────────────────────────────────────────
+  if(activeTool==="eraser"){
+    canvas.setPointerCapture(e.pointerId);
+    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
+    // Erase single on click
+    eraseAt(tx,ty);
+    return;
+  }
+
+  // ── PENCIL TOOL ─────────────────────────────────────────────────────────────
+  if(activeTool==="pencil"){
+    pushUndo();
+    paintAt(tx,ty);
+    canvas.setPointerCapture(e.pointerId);
+    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
+    return;
+  }
+
+  // ── RECT / ELLIPSE TOOLS ────────────────────────────────────────────────────
+  if(activeTool==="rect"||activeTool==="ellipse"){
+    canvas.setPointerCapture(e.pointerId);
+    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
+    return;
+  }
 });
 
 canvas.addEventListener("pointermove",e=>{
@@ -1456,87 +1693,205 @@ canvas.addEventListener("pointermove",e=>{
   const[wx,wy]=toWorld(sx,sy);hoverTileX=Math.floor(wx/TILE);hoverTileY=Math.floor(wy/TILE);
   coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
   if(rulerActive){const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
-  if(draggingToken){const newTX=Math.floor(wx/TILE)-draggingToken.offsetTX;const newTY=Math.floor(wy/TILE)-draggingToken.offsetTY;tokens[draggingToken.id].x=newTX;tokens[draggingToken.id].y=newTY;return;}
-  if(draggingProp){
-    const newTX=Math.floor(wx/TILE)-draggingProp.offsetTX;
-    const newTY=Math.floor(wy/TILE)-draggingProp.offsetTY;
-    const p=props[draggingProp.oldKey];
-    if(p){
-      if(p.attachedTo){p.offsetX=newTX-tokens[p.attachedTo]?.x;p.offsetY=newTY-tokens[p.attachedTo]?.y;}
-      else{const nk=key(newTX,newTY);if(nk!==draggingProp.oldKey){props[nk]={...p};delete props[draggingProp.oldKey];draggingProp.oldKey=nk;}}
-    }
-    return;
-  }
-  if(isHolding&&myLaserRef){moveLaser(myLaserRef,wx,wy,playerName);return;}
-  if(currentShape==="select"&&selectPhase==="moving"){moveOffX=Math.round((wx-moveStartWorldX)/TILE);moveOffY=Math.round((wy-moveStartWorldY)/TILE);canvas.style.cursor="grabbing";return;}
-  if(dragging){curX=wx;curY=wy;}
-});
+  if(pingMode&&isHolding&&myLaserRef){moveLaser(myLaserRef,wx,wy,playerName);return;}
 
-canvas.addEventListener("pointerdown",e=>{
-  const[sx,sy]=screenPos(e);
-  if(e.button===1||spaceDown){canvas.setPointerCapture(e.pointerId);panning=true;panStartX=sx;panStartY=sy;camStartX=camera.x;camStartY=camera.y;canvas.style.cursor="grabbing";return;}
-  if(e.button!==0)return;
-  const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
-  if(e.altKey){
-    const snap=findSnapPoint(tokens,wx,wy);const point=snap||[wx,wy];
-    if(!rulerActive){rulerStart=point;rulerEnd=point;rulerActive=true;}else{rulerEnd=point;rulerActive=false;}
+  // Token drag
+  if(draggingToken){
+    const[tx,ty]=worldToTile(wx,wy,TILE);
+    if(!draggingToken.moved&&(tx!==draggingToken.startTX||ty!==draggingToken.startTY)) draggingToken.moved=true;
+    tokens[draggingToken.id].x=tx-draggingToken.offsetTX;
+    tokens[draggingToken.id].y=ty-draggingToken.offsetTY;
+    // Move attached props
+    for(const k in props){if(props[k].attachedTo===draggingToken.id){/* rendered dynamically */}}
     return;
   }
-  if(pingMode){isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);canvas.setPointerCapture(e.pointerId);return;}
-  if(currentProp){if(currentProp==="erase"){const k=key(tx,ty);if(props[k]){delete props[k];savePropsLocal();}return;}const k=key(tx,ty);props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h};savePropsLocal();return;}
-  if(currentStamp){const k=key(tx,ty);pushUndo();if(currentStamp==="erase")deleteStamp(k);else{stamps[k]=currentStamp;saveStamp(k,currentStamp);}return;}
-  if(placingToken){placingToken.x=tx;placingToken.y=ty;tokens[placingToken.id]={...placingToken};saveTokenLocal(placingToken.id,placingToken);placingToken=null;toast("Token placed");return;}
-  if(fogMode){const hitGid=fogGroupXHit(fogGroups,wx,wy,camera.zoom);if(hitGid){deleteFogGroup(hitGid);return;}canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
-  if(roofMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
-  if(wallMode){canvas.setPointerCapture(e.pointerId);dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;return;}
-  if(doorMode){
-    const{edge,x,y}=nearestWallEdge(tx,ty);
-    if(edge){
-      // Toggle existing door or place new
-      const existingId=Object.keys(doors).find(id=>doors[id].x===x&&doors[id].y===y&&doors[id].edge===edge);
-      if(existingId){
-        // Cycle: closed → open → locked → remove
-        const d=doors[existingId];
-        if(d.locked){delete doors[existingId];}
-        else if(d.open){doors[existingId]={...d,open:false,locked:true};}
-        else{doors[existingId]={...d,open:true};}
-      } else {
-        const did="door_"+Date.now();
-        doors[did]={x,y,edge,open:false,locked:false};
-      }
-      saveDoors();
-    }
+
+  // Prop drag
+  if(draggingProp){
+    const[tx,ty]=worldToTile(wx,wy,TILE);
+    const nk=key(tx-draggingProp.offsetTX,ty-draggingProp.offsetTY);
+    if(nk!==draggingProp.oldKey){props[nk]={...props[draggingProp.oldKey]};delete props[draggingProp.oldKey];draggingProp.oldKey=nk;}
     return;
   }
-  const tokId=tokenAtTile(tokens,tx,ty);if(tokId){canvas.setPointerCapture(e.pointerId);draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y};return;}
-  // Prop drag — check if clicking a placed prop with no active tool
-  if(!currentProp&&!currentStamp&&currentShape!=="select"){
-    const pk=propAtTile(tx,ty);
-    if(pk){canvas.setPointerCapture(e.pointerId);const p=props[pk];let ox,oy;if(p.attachedTo&&tokens[p.attachedTo]){ox=tokens[p.attachedTo].x+(p.offsetX||0);oy=tokens[p.attachedTo].y+(p.offsetY||0);}else{[ox,oy]=pk.split(",").map(Number);}draggingProp={oldKey:pk,offsetTX:tx-ox,offsetTY:ty-oy};return;}
+
+  if(!dragging) return;
+  curX=wx;curY=wy;
+
+  // Pencil — paint as you drag
+  if(activeTool==="pencil"){
+    const[tx,ty]=worldToTile(wx,wy,TILE);paintAt(tx,ty);
   }
-  if(currentShape==="select"){if((selectPhase==="selected"||selectPhase==="moving")&&inSelection(wx,wy)){selectPhase="moving";moveStartWorldX=wx-moveOffX*TILE;moveStartWorldY=wy-moveOffY*TILE;canvas.style.cursor="grabbing";return;}if(selectPhase==="selected"||selectPhase==="moving")commitSelection();selectPhase="marquee";dragging=true;canvas.setPointerCapture(e.pointerId);startX=wx;startY=wy;curX=wx;curY=wy;return;}
-  dragging=true;canvas.setPointerCapture(e.pointerId);startX=wx;startY=wy;curX=wx;curY=wy;
+  // Eraser — erase as you drag
+  if(activeTool==="eraser"){
+    const[tx,ty]=worldToTile(wx,wy,TILE);eraseAt(tx,ty);
+  }
+  // Moving selection
+  if(activeTool==="mouse"&&selectPhase==="moving"){
+    moveOffX=Math.round((wx-moveStartWorldX)/TILE);
+    moveOffY=Math.round((wy-moveStartWorldY)/TILE);
+  }
 });
 
 canvas.addEventListener("pointerup",e=>{
   const[sx,sy]=screenPos(e);
-  if(rulerActive)return;
-  if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":"crosshair";return;}
-  if(pingMode){clearTimeout(pingHoldTimer);if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}else{const[wx,wy]=toWorld(sx,sy);sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);}isHolding=false;pingMode=false;document.getElementById("pingBtn").classList.remove("active");return;}
-  if(draggingToken){saveTokenLocal(draggingToken.id,tokens[draggingToken.id]);savePropsLocal();draggingToken=null;return;}
-  if(draggingProp){savePropsLocal();draggingProp=null;return;}
-  if(fogMode&&dragging){dragging=false;pushUndo();const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);cells[k]=true;if(currentFogType==="darkness"&&currentTerrain!=="erase")tiles[k]={terrain:currentTerrain};}const gid="fog_"+Date.now();fogGroups[gid]={cells,type:currentFogType};saveFogLocal();if(currentFogType==="darkness")scheduleSave();return;}
-  if(wallMode&&dragging){dragging=false;pushUndo();const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);const cells={};for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);cells[k]=true;if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain};}const gid="wg_"+Date.now();wallGroups[gid]={cells};saveWallGroups();scheduleSave();return;}
-  if(roofMode&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyRoof(x,y);saveRoofs();return;}
-  if(currentShape==="select"&&selectPhase==="moving"){selectPhase="selected";canvas.style.cursor="move";return;}
-  if(currentShape==="select"&&selectPhase==="marquee"&&dragging){dragging=false;const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);pushUndo();liftSelection(minX,minY,maxX,maxY);selectPhase=Object.keys(selectTiles).length>0?"selected":null;canvas.style.cursor=selectPhase?"move":"crosshair";return;}
-  if(!dragging)return;dragging=false;pushUndo();
-  const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);
-  if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)applyTile(x,y);}
-  else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)applyTile(x,y);}}
-  else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){applyTile(x0,y0);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}
-  scheduleSave();
+  if(rulerActive) return;
+  if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":{mouse:"default",pencil:"crosshair",rect:"crosshair",ellipse:"crosshair",eraser:"cell"}[activeTool]||"crosshair";return;}
+  if(pingMode){clearTimeout(pingHoldTimer);if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}else{const[wx,wy]=toWorld(sx,sy);sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);}isHolding=false;pingMode=false;document.getElementById("pingBtn")?.classList.remove("active");return;}
+
+  // Token drag end
+  if(draggingToken){
+    if(!draggingToken.moved){
+      // Was a click — open inspector
+      openTokenInspector(draggingToken.id);
+    } else {
+      saveTokenRTDB(getMapName(),draggingToken.id,tokens[draggingToken.id]);
+      savePropsLocal(getMapName(),props);
+    }
+    draggingToken=null;return;
+  }
+
+  // Prop drag end
+  if(draggingProp){savePropsLocal(getMapName(),props);draggingProp=null;return;}
+
+  if(!dragging) return;
+  dragging=false;
+
+  const[wx,wy]=toWorld(sx,sy);
+  const minTX=Math.floor(Math.min(startX,curX)/TILE),maxTX=Math.floor(Math.max(startX,curX)/TILE);
+  const minTY=Math.floor(Math.min(startY,curY)/TILE),maxTY=Math.floor(Math.max(startY,curY)/TILE);
+
+  // Mouse marquee select end
+  if(activeTool==="mouse"){
+    const dist=Math.hypot(curX-startX,curY-startY);
+    if(dist>TILE*0.5){
+      pushUndo();liftSelection(minTX,minTY,maxTX,maxTY);
+      selectPhase=Object.keys(selectTiles).length?"selected":null;
+      canvas.style.cursor=selectPhase?"move":"default";
+    }
+    return;
+  }
+
+  // Pencil — already painted on move
+  if(activeTool==="pencil"){scheduleSave();return;}
+
+  // Eraser — already erased on move, do group erase on drag
+  if(activeTool==="eraser"){
+    if(Math.hypot(curX-startX,curY-startY)>TILE*0.5){
+      pushUndo();
+      for(let x=minTX;x<=maxTX;x++)for(let y=minTY;y<=maxTY;y++)eraseAt(x,y);
+    }
+    scheduleSave();return;
+  }
+
+  // Rect fill
+  if(activeTool==="rect"){
+    pushUndo();
+    for(let x=minTX;x<=maxTX;x++)for(let y=minTY;y<=maxTY;y++)paintAt(x,y);
+    scheduleSave();return;
+  }
+
+  // Ellipse fill
+  if(activeTool==="ellipse"){
+    pushUndo();
+    const cx=(minTX+maxTX)/2,cy=(minTY+maxTY)/2,rx=(maxTX-minTX)/2||0.5,ry=(maxTY-minTY)/2||0.5;
+    for(let x=minTX;x<=maxTX;x++)for(let y=minTY;y<=maxTY;y++){
+      const dx=(x-cx)/rx,dy=(y-cy)/ry;
+      if(dx*dx+dy*dy<=1)paintAt(x,y);
+    }
+    scheduleSave();return;
+  }
 });
+
+// Right-click — erase/context depending on tool
+canvas.addEventListener("contextmenu",e=>{
+  e.preventDefault();
+  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+  // Prop context menu always available
+  const pk=propAtTile(tx,ty);
+  if(pk){ctxPropKey=pk;const isAttached=!!(props[pk]&&props[pk].attachedTo);document.getElementById("prop-ctx-attach").style.display=isAttached?"none":"block";document.getElementById("prop-ctx-detach").style.display=isAttached?"block":"none";propCtxMenu.style.left=e.clientX+"px";propCtxMenu.style.top=e.clientY+"px";propCtxMenu.style.display="block";return;}
+  // Layer-specific right-click erase
+  if(activeLayer==="ground"){const k=key(tx,ty);delete tiles[k];scheduleSave();return;}
+  if(activeLayer==="walls"){const gid=wallGroupAtTile(tx,ty);if(gid){delete wallGroups[gid];saveWallGroups(getMapName(),wallGroups);}return;}
+  if(activeLayer==="fog"){const gid=fogGroupAtTile(fogGroups,tx,ty);if(gid){deleteFogGroupRTDB(getMapName(),gid,fogGroups);}return;}
+  if(activeLayer==="objects"){
+    const tokId=tokenAtTile(tokens,tx,ty);
+    if(tokId&&confirm(`Delete ${tokens[tokId]?.name}?`)){deleteTokenRTDB(getMapName(),tokId);delete tokens[tokId];closeSheetPanelEd();}
+    return;
+  }
+});
+
+// ── paintAt / eraseAt — dispatch by layer + tool ─────────────────────────────
+function paintAt(tx,ty){
+  if(layerLocked[activeLayer]) return;
+  if(activeLayer==="ground"){applyTile(tx,ty);}
+  else if(activeLayer==="walls"){
+    if(wallSub==="wall"){const k=key(tx,ty);if(!wallGroups.__current){wallGroups.__current={cells:{}};};wallGroups.__current.cells[k]=true;}
+    else if(wallSub==="door"){
+      const{edge,x,y}=nearestWallEdge(tx,ty);
+      if(edge){const did="door_"+Date.now();doors[did]={x,y,edge,open:false,locked:false};saveDoors(getMapName(),doors);}
+    }
+  }
+  else if(activeLayer==="fog"){
+    // Fog painted on drag, committed on pointerup
+    const k=key(tx,ty);
+    if(!fogGroups.__painting){fogGroups.__painting={cells:{},type:currentFogType};}
+    fogGroups.__painting.cells[k]=true;
+  }
+  else if(activeLayer==="objects"){
+    if(objSub==="prop"&&currentProp&&currentProp!=="erase"){const k=key(tx,ty);props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h};savePropsLocal(getMapName(),props);}
+    else if(objSub==="stamp"&&currentStamp&&currentStamp!=="erase"){stamps[key(tx,ty)]=currentStamp;saveStamp(getMapName(),key(tx,ty),currentStamp);}
+  }
+}
+
+function eraseAt(tx,ty){
+  if(layerLocked[activeLayer]) return;
+  const k=key(tx,ty);
+  if(activeLayer==="ground"){delete tiles[k];}
+  else if(activeLayer==="walls"){
+    // 1. Delete standard wall groups
+    const gid=wallGroupAtTile(tx,ty);
+    if(gid) delete wallGroups[gid];
+    
+    // 2. Fixed Door Deletion: Find the door nearest to the clicked tile coordinates
+    const did = Object.keys(doors).find(id => {
+      // Check if the door's coordinates are close to the clicked tile center (within 0.6 units)
+      return Math.abs(doors[id].x - tx) <= 0.6 && Math.abs(doors[id].y - ty) <= 0.6;
+    });
+    
+    if(did) {
+      delete doors[did];
+      // Sync the deletion back to Firebase RTDB!
+      if (typeof saveDoors === "function") {
+        saveDoors(getMapName(), doors);
+      }
+    }
+  }
+  else if(activeLayer==="fog"){
+    const gid=fogGroupAtTile(fogGroups,tx,ty);
+    if(gid) deleteFogGroupRTDB(getMapName(),gid,fogGroups);
+  }
+  else if(activeLayer==="objects"){
+    const tokId=tokenAtTile(tokens,tx,ty);
+    if(tokId){deleteTokenRTDB(getMapName(),tokId);delete tokens[tokId];}
+    if(props[k]){delete props[k];savePropsLocal(getMapName(),props);}
+    const sk=Object.keys(stamps).find(sk=>{const[sx,sy]=sk.split(",").map(Number);return sx===tx&&sy===ty;});
+    if(sk) deleteStamp(sk);
+  }
+}
+
+// Commit wall/fog painting groups on pointerup
+canvas.addEventListener("pointerup",e=>{
+  // Wall group commit
+  if(wallGroups.__current&&Object.keys(wallGroups.__current.cells).length){
+    const gid="wg_"+Date.now();wallGroups[gid]=wallGroups.__current;delete wallGroups.__current;
+    saveWallGroups(getMapName(),wallGroups);
+  }
+  // Fog group commit
+  if(fogGroups.__painting&&Object.keys(fogGroups.__painting.cells).length){
+    const gid="fog_"+Date.now();fogGroups[gid]=fogGroups.__painting;delete fogGroups.__painting;
+    saveFogLocal();
+  }
+},{passive:true});
 
 // ── Session sidebar tabs ──────────────────────────────────────────────────────
 document.querySelectorAll(".session-tab").forEach(tab=>{
@@ -1548,97 +1903,12 @@ document.querySelectorAll(".session-tab").forEach(tab=>{
   };
 });
 
-// ── GM Notes — synced via RTDB gm/notes ──────────────────────────────────────
-const gmNotesArea=document.getElementById("gm-notes-area");
-const gmNotesStatus=document.getElementById("gm-notes-status");
-let gmNotesTimer=null;
-onValue(ref(db,"gm/notes"),snap=>{
-  const val=snap.val()||"";
-  if(gmNotesArea!==document.activeElement)gmNotesArea.value=val;
-  gmNotesStatus.textContent="saved";
-});
-gmNotesArea.addEventListener("input",()=>{
-  gmNotesStatus.textContent="unsaved…";
-  clearTimeout(gmNotesTimer);
-  gmNotesTimer=setTimeout(async()=>{await set(ref(db,"gm/notes"),gmNotesArea.value);gmNotesStatus.textContent="saved";},1200);
-});
+// GM notes panel removed
 
-// ── Spawn NPC — name+HP, then click map to place ─────────────────────────────
-document.getElementById("spawn-npc-btn").onclick=()=>{
-  const name=document.getElementById("spawn-npc-name").value.trim();
-  const hp=parseInt(document.getElementById("spawn-npc-hp").value)||10;
-  const lookupName=document.getElementById("spawn-npc-lookup").value.trim()||name;
-  if(!name){toast("Enter an NPC name");return;}
-  placingToken={id:"tok_"+Date.now(),characterId:"__npc__",name,lookupName,type:"npc",hp,maxHp:hp,size:1,x:0,y:0};
-  tryLoadTokenTexture("__npc__",lookupName);
-  toast(`Click the map to place ${name}`);
-};
 
 // ── Background Image control ─────────────────────────────────────────────────
-const bgUrlInput=document.getElementById("bg-url-input");
-const bgPpiInput=document.getElementById("bg-ppi-input");
-const bgStatusText=document.getElementById("bg-status-text");
-
-function refreshBgStatus(){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  bgStatusText.textContent=bgUrl?`Background set for ${mapName} · ${bgPpi} PPI`:`No background for ${mapName}`;
-  if(bgUrl&&!bgUrl.startsWith("data:"))bgUrlInput.value=bgUrl;
-  bgPpiInput.value=bgPpi;
-}
-document.getElementById("bg-set-btn").onclick=async()=>{
-  const url=bgUrlInput.value.trim();if(!url){toast("Enter a URL");return;}
-  const ppi=parseFloat(bgPpiInput.value)||70;
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  await set(ref(db,`maps/${mapName}/background`),url);
-  await set(ref(db,`maps/${mapName}/backgroundPpi`),ppi);
-  bgUrl=url;bgPpi=ppi;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=url;
-  refreshBgStatus();toast(`Background set ✓ (${ppi} PPI)`);
-};
-document.getElementById("bg-clear-btn").onclick=async()=>{
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  await set(ref(db,`maps/${mapName}/background`),null);
-  await set(ref(db,`maps/${mapName}/backgroundPpi`),null);
-  bgUrl="";bgPpi=70;bgImage=null;bgUrlInput.value="";
-  refreshBgStatus();toast("Background cleared");
-};
-
-const nightToggleBtn=document.getElementById("night-toggle-btn");
-function refreshNightBtn(){
-  nightToggleBtn.textContent=`🌙 Night Mode: ${nightMode?"On":"Off"}`;
-  nightToggleBtn.classList.toggle("on",nightMode);
-}
-nightToggleBtn.onclick=async()=>{
-  nightMode=!nightMode;
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  await set(ref(db,`maps/${mapName}/nightMode`),nightMode);
-  refreshNightBtn();
-  toast(`Night Mode ${nightMode?"enabled":"disabled"}`);
-};
 
 // ── AFK PC Oracle — manual name + class entry ────────────────────────────────
-let afkMode="combat";
-function setAfkMode(mode){
-  afkMode=mode;
-  document.getElementById("afk-combat-btns").style.display=mode==="combat"?"flex":"none";
-  document.getElementById("afk-explore-btns").style.display=mode==="explore"?"block":"none";
-  document.getElementById("afk-mode-combat").classList.toggle("on",mode==="combat");
-  document.getElementById("afk-mode-explore").classList.toggle("on",mode==="explore");
-}
-document.getElementById("afk-mode-combat").onclick=()=>setAfkMode("combat");
-document.getElementById("afk-mode-explore").onclick=()=>setAfkMode("explore");
-
-async function doAfkRoll(kind){
-  const name=document.getElementById("afk-name-input").value.trim();
-  if(!name){toast("Enter the PC's name");return;}
-  const cls=document.getElementById("afk-class-select").value;
-  const target=document.getElementById("afk-target-input").value.trim();
-  const res=await rollAfkDecision(kind,name,cls,target);
-  if(res)document.getElementById("afk-result-text").textContent=res.line.replace(/\*\*/g,"");
-}
-document.getElementById("afk-roll-style").onclick=()=>doAfkRoll("style");
-document.getElementById("afk-roll-main").onclick=()=>doAfkRoll("mainAction");
-document.getElementById("afk-roll-bonus").onclick=()=>doAfkRoll("bonusAction");
-document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
@@ -1652,10 +1922,7 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
   const sizeSelect=document.getElementById("tok-size");
   getSIZES().forEach(s=>{const opt=document.createElement("option");opt.value=s.value;opt.textContent=s.label;if(s.value===1)opt.selected=true;sizeSelect.appendChild(opt);});
 
-  // Build dice
-  const diceContainer=document.getElementById("dice-btns");
-  getDICE().forEach(sides=>{const btn=document.createElement("button");btn.className="die-btn";btn.textContent=`d${sides}`;btn.onclick=async()=>{if(!playerName){showNameModal();return;}const result=await rollDie(sides,playerName);sendChat(`rolled d${sides} → ${result}`,playerName,"dice");};diceContainer.appendChild(btn);});
-
+  // Dice buttons built in HUD after loadConfig (see bottom of init)
   await loadTerrainTextures(getTERRAINS());
   customProps=[...getPROPS()];
   customProps.forEach(p=>tryLoadPropTexture(p.id));
@@ -1665,8 +1932,10 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
   subscribeTalking();
 
   // New modules
-  initLayers();
-  initUndo({tiles,wallGroups,fogGroups}, getMapName, toast);
+  // initLayers() — using custom layer system
+  setActiveLayer("ground");
+  setTool("mouse");
+    initUndo({tiles,wallGroups,fogGroups}, getMapName, toast);
   setSheetToastFn(toast);
   subscribePresence(document.getElementById("presence-row"));
 
@@ -1675,10 +1944,7 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
   if(_savedName){playerName=_savedName;nameDisplay.textContent=playerName;writePresence(playerName,"editor");startPresenceHeartbeat(playerName,"editor");}
   else {document.getElementById("name-modal")?.classList.remove("hidden");}
 
-  setAfkMode("combat");
   subscribeLive();
-  refreshBgStatus();
-  refreshNightBtn();
   rewireStrip();
   render();
 
@@ -1689,8 +1955,7 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
   // ── Oracle quick-roll buttons ──
   let _lastDungeon = null;
   function oracleResult(data) {
-    const el = document.getElementById("oracle-result-text");
-    if (!el) return;
+    const el = document.getElementById("oracle-result-text"); if (!el) return; // oracle panel not in DOM
     el.textContent = Object.entries(data).filter(([k])=>k!=="type"&&k!=="tier").map(([k,v])=>v?`${k}: ${v}`:"").filter(Boolean).join("\n");
   }
   document.getElementById("oracle-npc-btn")?.addEventListener("click", () => {
@@ -1720,8 +1985,8 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
 
   // ── Dungeon generator ──
   document.getElementById("dgen-gen-btn")?.addEventListener("click", () => {
-    const size    = document.getElementById("dgen-size-gm").value;
-    const type    = document.getElementById("dgen-type-gm").value;
+    const size    = document.getElementById("dgen-size-gm")?.value || "medium";
+    const type    = document.getElementById("dgen-type-gm")?.value || "ruins";
     _lastDungeon  = generateDungeon(size, type, "normal");
     const canvas  = document.getElementById("dgen-preview-canvas");
     canvas.style.display = "block";
@@ -1752,6 +2017,176 @@ document.getElementById("afk-roll-explore").onclick=()=>doAfkRoll("explore");
     new MutationObserver(() => registerTerms(sheetEl))
       .observe(sheetEl, { childList: true, subtree: true });
   }
+
+  // ── OBR-style dice tray ───────────────────────────────────────────────────
+  const diceTrayBtns = document.getElementById("dice-tray-btns");
+  const diceTrayResult = document.getElementById("dice-tray-result");
+  getDICE().forEach(sides=>{
+    const btn=document.createElement("button");
+    btn.style.cssText="height:30px;font-family:'Cinzel',serif;font-size:10px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text-dim);cursor:pointer;transition:all .12s";
+    btn.textContent=`d${sides}`;
+    btn.onmouseenter=()=>{btn.style.borderColor="var(--gold-dim)";btn.style.color="var(--text)";};
+    btn.onmouseleave=()=>{btn.style.borderColor="var(--border)";btn.style.color="var(--text-dim)";};
+    btn.onclick=async()=>{
+      if(!playerName)return;
+      const r=await rollDie(sides,playerName);
+      diceTrayResult.textContent=`d${sides} → ${r}`;
+      sendChat(`rolled d${sides} → **${r}**`,playerName,"dice");
+    };
+    diceTrayBtns?.appendChild(btn);
+  });
+  window.toggleDiceTray=function(){
+    const tray=document.getElementById("dice-tray");
+    const fab=document.getElementById("dice-fab");
+    const open=tray.style.display==="flex";
+    tray.style.display=open?"none":"flex";
+    fab.style.transform=open?"":"rotate(15deg)";
+  };
+  // Close tray on outside click
+  document.addEventListener("click",e=>{
+    const tray=document.getElementById("dice-tray");
+    const fab=document.getElementById("dice-fab");
+    if(tray&&!tray.contains(e.target)&&!fab.contains(e.target)){
+      tray.style.display="none";
+      fab.style.transform="";
+    }
+  });
+
+  // ── Night Mode button ─────────────────────────────────────────────────────
+  const nightBtn2=document.getElementById("nightBtn");
+  if(nightBtn2){
+    nightBtn2.onclick=async()=>{
+      nightMode=!nightMode;
+      await set(ref(db,`maps/${getMapName()}/nightMode`),nightMode);
+      nightBtn2.classList.toggle("active",nightMode);
+      toast(nightMode?"🌙 Night mode on":"☀ Night mode off");
+    };
+    // Sync with RTDB
+    onValue(ref(db,`maps/${getMapName()}/nightMode`),snap=>{
+      nightMode=!!snap.val();
+      nightBtn2.classList.toggle("active",nightMode);
+    });
+  }
+
+  // ── Chat strip ──────────────────────────────────────────────────────────
+  let _edChatOpen=false,_edUnread=0;
+  window.toggleChatEd=function(){
+    _edChatOpen=!_edChatOpen;
+    document.getElementById("chat-drawer-ed").classList.toggle("open",_edChatOpen);
+    document.getElementById("chat-strip-ed").classList.toggle("open",_edChatOpen);
+    document.getElementById("chat-toggle-icon-ed").style.transform=_edChatOpen?"rotate(180deg)":"";
+    if(_edChatOpen){_edUnread=0;const u=document.getElementById("chat-unread-ed");u.style.display="none";}
+  };
+  document.getElementById("chat-send").onclick=()=>{
+    if(!playerName)return;
+    const inp=document.getElementById("chat-input");
+    sendChat(inp.value,playerName);inp.value="";
+  };
+  document.getElementById("chat-input").addEventListener("keydown",e=>{
+    if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!playerName)return;const inp=document.getElementById("chat-input");sendChat(inp.value,playerName);inp.value="";}
+  });
+  onValue(ref(db,"chat"),snap=>{
+    renderChat(snap.val(),document.getElementById("chat-log"),playerName);
+    if(!_edChatOpen&&snap.val()){
+      _edUnread++;const u=document.getElementById("chat-unread-ed");
+      if(u){u.textContent=_edUnread>9?"9+":_edUnread;u.style.display="block";}
+      const msgs=Object.values(snap.val()).sort((a,b)=>a.t-b.t);
+      const last=msgs[msgs.length-1];
+      if(last){const m=document.getElementById("chat-last-msg-ed");if(m)m.textContent=`${last.sender}: ${last.text?.slice(0,50)||""}`;}
+    }
+  });
+
+  // ── Push layout when sheet opens ────────────────────────────────────────
+  window.closeSheetPanelEd=function(){
+    document.getElementById("sheet-panel").classList.remove("open");
+    document.getElementById("app").classList.remove("sheet-open");
+  };
+
+  // ── Token inspector — click token → sheet panel with GM controls ─────
+  let _inspectedTokId=null;
+  window.openTokenInspector=function(tokId){
+    _inspectedTokId=tokId;
+    const tok=tokens[tokId];if(!tok)return;
+    const panel=document.getElementById("sheet-panel");
+    const ctrl=document.getElementById("sheet-token-controls");
+    ctrl.style.display="flex";
+    document.getElementById("sheet-panel-title").textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;
+    // Update HP display
+    const hpDisplay=document.getElementById("stc-hp-display");
+    if(hpDisplay)hpDisplay.textContent=`${tok.hp??'—'} / ${tok.maxHp??'—'}`;
+    panel.classList.add("open");
+    document.getElementById("app").classList.add("sheet-open");
+    if(tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__"){
+      openCharSheet(tok.characterId,tok.name,true);
+    } else {
+      document.getElementById("sheet-view").innerHTML=`<div style="padding:16px 12px"><div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:8px">${tok.name}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)">${tok.type.toUpperCase()}<br>HP: ${tok.hp??'?'}/${tok.maxHp??'?'}<br>${tok.conditions?.length?'Conditions: '+tok.conditions.join(', '):'No conditions'}</div></div>`;
+    }
+  };
+
+  // GM token control buttons
+  document.getElementById("stc-hp-plus").onclick=async()=>{
+    if(!_inspectedTokId)return;
+    const tok=tokens[_inspectedTokId];if(!tok)return;
+    const delta=parseInt(document.getElementById("stc-hp-val").value)||5;
+    const newHp=Math.min(tok.maxHp,tok.hp+delta);
+    tokens[_inspectedTokId].hp=newHp;
+    await saveTokenRTDB(getMapName(),_inspectedTokId,tokens[_inspectedTokId]);
+    if(tok.characterId&&tok.characterId!=="__npc__")
+      await update(ref(db,`characters/pcs/${tok.characterId}/combat`),{hp_current:newHp});
+    toast(`❤ ${tok.name} +${delta} HP`);
+  };
+  document.getElementById("stc-hp-minus").onclick=async()=>{
+    if(!_inspectedTokId)return;
+    const tok=tokens[_inspectedTokId];if(!tok)return;
+    const delta=parseInt(document.getElementById("stc-hp-val").value)||5;
+    const newHp=Math.max(0,tok.hp-delta);
+    tokens[_inspectedTokId].hp=newHp;
+    await saveTokenRTDB(getMapName(),_inspectedTokId,tokens[_inspectedTokId]);
+    if(tok.characterId&&tok.characterId!=="__npc__")
+      await update(ref(db,`characters/pcs/${tok.characterId}/combat`),{hp_current:newHp});
+    toast(`💔 ${tok.name} −${delta} HP`);
+  };
+  document.getElementById("stc-edit").onclick=()=>{if(_inspectedTokId)openEditTokenModal(_inspectedTokId);};
+  document.getElementById("stc-chain").onclick=()=>{if(_inspectedTokId)openChainModal(_inspectedTokId);};
+  document.getElementById("stc-delete").onclick=async()=>{
+    if(!_inspectedTokId)return;
+    if(!confirm(`Delete ${tokens[_inspectedTokId]?.name}?`))return;
+    await deleteTokenRTDB(getMapName(),_inspectedTokId);
+    delete tokens[_inspectedTokId];
+    closeSheetPanelEd();
+  };
+  document.getElementById("stc-hide-hp").onclick=async()=>{
+    if(!_inspectedTokId)return;
+    const tok=tokens[_inspectedTokId];if(!tok)return;
+    tok.hideHp=!tok.hideHp;
+    await saveTokenRTDB(getMapName(),_inspectedTokId,tok);
+    toast(tok.hideHp?"HP bar hidden":"HP bar shown");
+  };
+  document.getElementById("stc-clear-cond").onclick=async()=>{
+    if(!_inspectedTokId)return;
+    tokens[_inspectedTokId].conditions=[];
+    await saveTokenRTDB(getMapName(),_inspectedTokId,tokens[_inspectedTokId]);
+    toast("Conditions cleared");
+  };
+  document.querySelectorAll("[data-stc-cond]").forEach(btn=>{
+    btn.onclick=async()=>{
+      if(!_inspectedTokId)return;
+      const cond=btn.dataset.stcCond;
+      applyCondition(getMapName(),_inspectedTokId,cond,tokens);
+      toast(`Applied: ${cond}`);
+    };
+  });
+
+  // ── Wire toolbar mode buttons to layers.js setLayer ──────────────────
+  const layerBtnMap={
+    "ground-mode-btn":"ground","wall-mode-btn":"walls",
+    "fog-mode-btn":"fog","roof-mode-btn":"objects",
+    "token-mode-btn":"objects","stamp-mode-btn":"objects",
+  };
+  Object.entries(layerBtnMap).forEach(([id,layer])=>{
+    document.getElementById(id)?.addEventListener("click",()=>setLayer(layer));
+  });
+
 })();
 
 </script>
