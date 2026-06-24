@@ -702,7 +702,7 @@ import { camera, toWorld, toScreen, worldToTile, applyZoom } from "./js/camera.j
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
-import { drawFog, fogGroupXHit, fogGroupAtTile, saveFog, deleteFogGroup as deleteFogGroupRTDB } from "./js/fog.js";
+import { drawFog, fogGroupAtTile, saveFog, deleteFogGroup as deleteFogGroupRTDB } from "./js/fog.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { saveChain, deleteChain, chainsForToken, drawChains } from "./js/chains.js";
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
@@ -1622,10 +1622,6 @@ canvas.addEventListener("pointerdown",e=>{
 
   // ── MOUSE TOOL ──────────────────────────────────────────────────────────────
   if(activeTool==="mouse"){
-    // Fog × button
-    const hitGid=fogGroupXHit(fogGroups,wx,wy,camera.zoom);
-    if(hitGid){deleteFogGroupRTDB(getMapName(),hitGid,fogGroups);return;}
-
     // Door toggle (walls layer or mouse tool near a door)
     const nearDoor=findDoorAtPoint(doors,wx,wy,TILE);
     if(nearDoor){

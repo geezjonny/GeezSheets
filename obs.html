@@ -178,18 +178,6 @@ function render() {
       const [x, y] = ck.split(",").map(Number);
       ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
     }
-    // × delete button (visual only — no interaction in OBS view)
-    const coords = Object.keys(cells).map(k => k.split(",").map(Number));
-    if (!coords.length) continue;
-    const maxX = Math.max(...coords.map(([x]) => x));
-    const minY = Math.min(...coords.map(([, y]) => y));
-    const bx = (maxX + 1) * TILE - 14 / camera.zoom, by = minY * TILE, bs = 14 / camera.zoom;
-    const btnColor = type === "magical" ? "rgba(120,20,160,0.92)" : type === "darkness" ? "rgba(20,10,40,0.92)" : "rgba(200,50,50,0.92)";
-    ctx.fillStyle = btnColor; ctx.fillRect(bx, by, bs, bs);
-    ctx.fillStyle = "#fff";
-    ctx.font = `bold ${Math.round(11 / camera.zoom)}px sans-serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("×", bx + bs / 2, by + bs / 2);
   }
 
   // Stamps
