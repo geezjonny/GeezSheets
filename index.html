@@ -838,8 +838,6 @@ document.getElementById("pingBtn").onclick=()=>{
 // ── Draw ──────────────────────────────────────────────────────────────────────
 const CONDITIONS={};
 function buildConditionsMap(){getCONDITIONS().forEach(c=>CONDITIONS[c.id]=c.color);}
-// Find door within click range of a world point
-}
 function drawTileAt(x,y,terrain){
   const TERRAINS=getTERRAINS();const def=TERRAINS.find(t=>t.id===terrain);
   const px=x*TILE,py=y*TILE;
