@@ -24,7 +24,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .tool-btn:hover{background:rgba(255,255,255,.05);color:var(--text)}
 .tool-btn.active{background:rgba(200,168,75,.12);border-color:var(--gold);color:var(--gold)}
 .tool-btn[title]:hover::after{content:attr(title);position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);background:var(--panel);border:1px solid var(--border);color:var(--text);font-family:'Cinzel',serif;font-size:9px;letter-spacing:.06em;padding:4px 8px;border-radius:4px;white-space:nowrap;z-index:100;pointer-events:none}
-.tool-sep{width:24px;height:1px;background:var(--border);margin:4px 0}
+.tod-btn{transition:all .12s}
+.tod-btn.active{background:rgba(200,168,75,.15);border-color:var(--gold)!important;color:var(--gold)}
 
 /* ── Layer palette (right side) ── */
 #layer-palette{position:fixed;top:44px;right:0;bottom:0;width:var(--layer-palette);background:var(--panel2);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:25;overflow:hidden}
@@ -332,7 +333,7 @@ canvas{display:block;cursor:crosshair}
   <div style="width:1px;height:20px;background:var(--border)"></div>
   <button id="pingBtn" style="height:28px;padding:0 10px;font-size:10px">📍 Ping</button>
   <button id="weatherBtn" style="height:28px;padding:0 10px;font-size:10px">🌦 Weather</button>
-  <button id="nightBtn" style="height:28px;padding:0 10px;font-size:10px">🌙 Night</button>
+  <button data-tod="day"   style="height:28px;padding:0 10px;font-size:10px" class="tod-btn active">☀</button><button data-tod="dawn"  style="height:28px;padding:0 10px;font-size:10px" class="tod-btn">🌅</button><button data-tod="dusk"  style="height:28px;padding:0 10px;font-size:10px" class="tod-btn">🌇</button><button data-tod="night" style="height:28px;padding:0 10px;font-size:10px" class="tod-btn">🌙</button>
   <div class="picker-wrap" id="clear-wrap" style="height:28px">
     <button class="picker-btn" id="clearBtn" style="height:28px;font-size:10px">✕ Clear ▾</button>
     <div class="picker-dropdown" id="clear-dropdown" style="grid-template-columns:1fr;min-width:150px;top:36px">
@@ -698,7 +699,7 @@ import { getDatabase, ref, set, get, child, onValue, remove, push, update }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { db }                from "./js/firebase.js";
 import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, TILE, TEXTURE_PATH, PROP_PATH, TOKEN_PATH } from "./js/config.js";
-import { camera, toWorld, toScreen, worldToTile, applyZoom } from "./js/camera.js";
+import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
@@ -724,7 +725,7 @@ import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},chains={};
 const wallGroups={},doors={};
-let bgImage=null,bgUrl="",bgPpi=70,nightMode=false;
+let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
 let customProps=[];
 const activePings={},activeLasers={};
@@ -745,6 +746,7 @@ let rulerStart=null,rulerEnd=null,rulerActive=false;
 let initiative={order:[],active:null};
 let ctxTokenId=null,ctxPropKey=null;
 let liveUnsub=null,saveTimer=null,isSavingTiles=false;
+let _firstMapLoad=true;
 let dropBase64=null,dropFilename="",dropTileX=0,dropTileY=0,dropType="map";
 let CONDITIONS={};
 
@@ -875,7 +877,7 @@ function subscribeLive(){
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;
-      nightMode=!!data.nightMode;
+      timeOfDay=data.timeOfDay!=="day"||"day";
     }
     // refreshBgStatus removed with bg panel
     // refreshNightBtn removed with bg panel
@@ -937,8 +939,7 @@ onValue(ref(db,"dice/last"),snap=>{
   const data=snap.val();if(!data||Date.now()-data.t>10000)return;
   showDicePopupEd(data.sides,data.result,data.roller);
   // Still update inline result in chat panel
-  const resultEl=document.getElementById("dice-result-inline");
-  if(resultEl)resultEl.textContent=`${data.roller}: d${data.sides} → ${data.result}`; // legacy inline
+  const resultEl=document.getElementById("dice-result-inline");if(resultEl)resultEl.textContent=`${data.roller}: d${data.sides} → ${data.result}`; // legacy inline
 });
 
 // Initiative — manual, ordered list, drag to reorder
@@ -1260,23 +1261,8 @@ document.addEventListener("click",()=>{
   propCtxMenu.style.display="none";
 });
 
-// Mode buttons
-// function deactivateLayerModes( removeddocument.querySelectorAll(".shape").forEach(btn=>{btn.onclick=()=>{deactivateLayerModes();currentStamp=null;currentProp=null;currentShape=btn.dataset.shape;document.querySelectorAll(".shape").forEach(b=>b.classList.remove("active"));btn.classList.add("active");};});
-// wallBtn.onclick= removed// doorBtn.onclick= removed
-// Fog type picker
-const fogTypeLabels={fog:"🌫 Fog of War",darkness:"🌑 Darkness",magical:"✨ Magical Darkness"};
-document.querySelectorAll(".fog-type-item").forEach(item=>{
-  item.onclick=(e)=>{
-    e.stopPropagation();
-    currentFogType=item.dataset.fogtype;
-    // fogBtn removed
-    document.querySelectorAll(".fog-type-item").forEach(i=>i.classList.remove("active"));
-    item.classList.add("active");
-    deactivateLayerModes();fogMode=true;
-    document.getElementById("fog-type-dropdown").classList.remove("open");
-  };
-});
-// fogBtn.onclick removed
+// Mode buttons — handled by new tool/layer system
+// // wallBtn removed
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
@@ -1324,7 +1310,7 @@ function render(){
   if(bgImage){
     const s=TILE/(bgPpi||70);
     const bw=bgImage.width*s,bh=bgImage.height*s;
-    if(nightMode){
+    if(timeOfDay!=="day"){
       ctx.save();
       ctx.filter="saturate(0.55) brightness(0.55)";
       ctx.drawImage(bgImage,0,0,bw,bh);
@@ -1906,6 +1892,27 @@ document.querySelectorAll(".session-tab").forEach(tab=>{
 
 // ── AFK PC Oracle — manual name + class entry ────────────────────────────────
 
+function toggleChatEd(){
+    _edChatOpen=!_edChatOpen;
+    document.getElementById("chat-drawer-ed").classList.toggle("open",_edChatOpen);
+    document.getElementById("chat-strip-ed").classList.toggle("open",_edChatOpen);
+    document.getElementById("chat-toggle-icon-ed").style.transform=_edChatOpen?"rotate(180deg)":"";
+    if(_edChatOpen){_edUnread=0;const u=document.getElementById("chat-unread-ed");u.style.display="none";}
+}
+
+function toggleDiceTray(){
+    const tray=document.getElementById("dice-tray");
+    const fab=document.getElementById("dice-fab");
+    const open=tray.style.display==="flex";
+    tray.style.display=open?"none":"flex";
+    fab.style.transform=open?"":"rotate(15deg)";
+}
+
+function closeSheetPanelEd(){
+    document.getElementById("sheet-panel").classList.remove("open");
+    document.getElementById("app").classList.remove("sheet-open");
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
   if(!playerName)showNameModal();else nameDisplay.textContent=playerName;
@@ -1984,10 +1991,9 @@ document.querySelectorAll(".session-tab").forEach(tab=>{
     const size    = document.getElementById("dgen-size-gm")?.value || "medium";
     const type    = document.getElementById("dgen-type-gm")?.value || "ruins";
     _lastDungeon  = generateDungeon(size, type, "normal");
-    const canvas  = document.getElementById("dgen-preview-canvas");
-    canvas.style.display = "block";
-    renderDungeon(canvas, _lastDungeon);
-    document.getElementById("dgen-status-text").textContent =
+    const dgenCanvas = document.getElementById("dgen-preview-canvas");
+    if(dgenCanvas){dgenCanvas.style.display="block";renderDungeon(dgenCanvas,_lastDungeon);}
+    const _dgenStatus=document.getElementById("dgen-status-text");if(_dgenStatus)_dgenStatus.textContent =
       `${_lastDungeon.stats.rooms} rooms · ${_lastDungeon.stats.tiles} tiles · ${_lastDungeon.stats.tokens} tokens`;
   });
   document.getElementById("dgen-push-btn")?.addEventListener("click", async () => {
@@ -2031,13 +2037,6 @@ document.querySelectorAll(".session-tab").forEach(tab=>{
     };
     diceTrayBtns?.appendChild(btn);
   });
-  window.toggleDiceTray=function(){
-    const tray=document.getElementById("dice-tray");
-    const fab=document.getElementById("dice-fab");
-    const open=tray.style.display==="flex";
-    tray.style.display=open?"none":"flex";
-    fab.style.transform=open?"":"rotate(15deg)";
-  };
   // Close tray on outside click
   document.addEventListener("click",e=>{
     const tray=document.getElementById("dice-tray");
@@ -2049,30 +2048,23 @@ document.querySelectorAll(".session-tab").forEach(tab=>{
   });
 
   // ── Night Mode button ─────────────────────────────────────────────────────
-  const nightBtn2=document.getElementById("nightBtn");
-  if(nightBtn2){
-    nightBtn2.onclick=async()=>{
-      nightMode=!nightMode;
-      await set(ref(db,`maps/${getMapName()}/nightMode`),nightMode);
-      nightBtn2.classList.toggle("active",nightMode);
-      toast(nightMode?"🌙 Night mode on":"☀ Night mode off");
+  // Time of day picker wired via topbar buttons
+  document.querySelectorAll("[data-tod]").forEach(btn=>{
+    btn.onclick=async()=>{
+      const tod=btn.dataset.tod;
+      timeOfDay=tod;
+      await set(ref(db,`maps/${getMapName()}/timeOfDay!=="day"`),tod);
+      document.querySelectorAll("[data-tod]").forEach(b=>b.classList.toggle("active",b.dataset.tod===tod));
+      toast({day:"☀ Day",dawn:"🌅 Dawn",dusk:"🌇 Dusk",night:"🌙 Night"}[tod]);
     };
-    // Sync with RTDB
-    onValue(ref(db,`maps/${getMapName()}/nightMode`),snap=>{
-      nightMode=!!snap.val();
-      nightBtn2.classList.toggle("active",nightMode);
-    });
-  }
+  });
+  onValue(ref(db,`maps/${getMapName()}/timeOfDay!=="day"`),snap=>{
+    timeOfDay=snap.val()||"day";
+    document.querySelectorAll("[data-tod]").forEach(b=>b.classList.toggle("active",b.dataset.tod===timeOfDay));
+  });
 
   // ── Chat strip ──────────────────────────────────────────────────────────
   let _edChatOpen=false,_edUnread=0;
-  window.toggleChatEd=function(){
-    _edChatOpen=!_edChatOpen;
-    document.getElementById("chat-drawer-ed").classList.toggle("open",_edChatOpen);
-    document.getElementById("chat-strip-ed").classList.toggle("open",_edChatOpen);
-    document.getElementById("chat-toggle-icon-ed").style.transform=_edChatOpen?"rotate(180deg)":"";
-    if(_edChatOpen){_edUnread=0;const u=document.getElementById("chat-unread-ed");u.style.display="none";}
-  };
   document.getElementById("chat-send").onclick=()=>{
     if(!playerName)return;
     const inp=document.getElementById("chat-input");
@@ -2093,10 +2085,6 @@ document.querySelectorAll(".session-tab").forEach(tab=>{
   });
 
   // ── Push layout when sheet opens ────────────────────────────────────────
-  window.closeSheetPanelEd=function(){
-    document.getElementById("sheet-panel").classList.remove("open");
-    document.getElementById("app").classList.remove("sheet-open");
-  };
 
   // ── Token inspector — click token → sheet panel with GM controls ─────
   let _inspectedTokId=null;

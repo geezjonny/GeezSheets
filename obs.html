@@ -35,7 +35,7 @@ const TILE = 32;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={}, fogGroups={}, tokens={}, stamps={}, roofs={}, props={}, wallGroups={}, doors={};
-let bgImage=null, bgUrl="", bgPpi=70, nightMode=false;
+let bgImage=null, bgUrl="", bgPpi=70, timeOfDay="day";
 const tokenTextures={}, propTextures={}, terrainTextures={};
 let firstLoad=true;
 
@@ -148,14 +148,19 @@ function render() {
   if (bgImage) {
     const s = TILE / (bgPpi || 70);
     const bw = bgImage.width * s, bh = bgImage.height * s;
-    if (nightMode) {
+    if (timeOfDay!=="day") {
       ctx.save();
-      ctx.filter = "saturate(0.55) brightness(0.55)";
-      ctx.drawImage(bgImage, 0, 0, bw, bh);
-      ctx.filter = "none";
-      ctx.globalCompositeOperation = "multiply";
-      ctx.fillStyle = "rgba(40,60,110,0.55)"; ctx.fillRect(0, 0, bw, bh);
-      ctx.globalCompositeOperation = "source-over";
+      const _todFilter=(timeOfDay==="dawn"?"saturate(0.8) brightness(0.85) sepia(0.25) hue-rotate(-10deg)":(timeOfDay==="dusk"?"saturate(0.9) brightness(0.75) sepia(0.4) hue-rotate(10deg)":(timeOfDay==="night"?"saturate(0.35) brightness(0.45) hue-rotate(200deg)":"none")));
+      ctx.filter=_todFilter;
+      ctx.drawImage(bgImage,0,0,bw,bh);
+      ctx.filter="none";
+      if(timeOfDay!=="day"){
+        const _ovColors={dawn:"rgba(255,160,80,0.18)",dusk:"rgba(200,100,40,0.28)",night:"rgba(20,40,100,0.55)"};
+        ctx.globalCompositeOperation="multiply";
+        ctx.fillStyle=_ovColors[timeOfDay]||"rgba(0,0,0,0)";
+        ctx.fillRect(0,0,bw,bh);
+        ctx.globalCompositeOperation="source-over";
+      }
       ctx.restore();
     } else {
       ctx.drawImage(bgImage, 0, 0, bw, bh);
@@ -281,7 +286,7 @@ function subscribeLive(mapName) {
         img.onload = () => bgImage = img; img.src = bgUrl;
       } else if (!data.background) { bgUrl = ""; bgImage = null; }
       bgPpi = data.backgroundPpi || 70;
-      nightMode = !!data.nightMode;
+      timeOfDay = data.timeOfDay!=="day" || "day";
     }
     if (firstLoad) { firstLoad = false; fitCamera(); }
   });
