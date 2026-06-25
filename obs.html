@@ -251,6 +251,16 @@ function render() {
   for (let x = Math.floor(l/TILE)*TILE; x < rr; x += TILE) { ctx.beginPath(); ctx.moveTo(x,t); ctx.lineTo(x,b); ctx.stroke(); }
   for (let y = Math.floor(t/TILE)*TILE; y < b; y += TILE) { ctx.beginPath(); ctx.moveTo(l,y); ctx.lineTo(rr,y); ctx.stroke(); }
 
+
+  // ── Time of day overlay ────────────────────────────────────────────────────
+  if(timeOfDay!=="day"){
+    const _todOverlay={dawn:"rgba(255,140,60,0.18)",dusk:"rgba(180,80,20,0.28)",night:"rgba(10,20,60,0.6)"};
+    ctx.save();
+    ctx.globalCompositeOperation="multiply";
+    ctx.fillStyle=_todOverlay[timeOfDay]||"rgba(0,0,0,0)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+  }
   ctx.restore();
   requestAnimationFrame(render);
 }
@@ -286,7 +296,7 @@ function subscribeLive(mapName) {
         img.onload = () => bgImage = img; img.src = bgUrl;
       } else if (!data.background) { bgUrl = ""; bgImage = null; }
       bgPpi = data.backgroundPpi || 70;
-      timeOfDay = data.timeOfDay!=="day" || "day";
+      timeOfDay = data.nightMode||"day";
     }
     if (firstLoad) { firstLoad = false; fitCamera(); }
   });

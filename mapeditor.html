@@ -713,9 +713,6 @@ import { rollDie, animateDiceResult } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, startCombat, endCombat, lockInitiativeOrder, addToInitiative, nextTurn, clearInitiative } from "./js/initiative.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 window.toggleGlossarySearch = toggleGlossarySearch;
-import { rollNPC, rollLoot, rollMonster, rollHazard, rollDanger, rollEnemy, rollPOI, rollContainer, rollLocation, askOracle, rollTreasure } from "./js/rollers.js";
-import { generateDungeon, renderDungeon, pushDungeonToRTDB } from "./js/dungeon.js";
-import { rollAfkDecision, EXPLORE_TABLE } from "./js/afkOracle.js";
 import { subscribeMap, saveWallGroups, saveDoors, saveStamp, savePropsLocal, saveTokenLocal as saveTokenRTDB, findDoorAtPoint, tileInFog } from "./js/map.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
@@ -877,7 +874,7 @@ function subscribeLive(){
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;
-      timeOfDay=data.timeOfDay!=="day"||"day";
+      timeOfDay=data.nightMode||"day";
     }
     // refreshBgStatus removed with bg panel
     // refreshNightBtn removed with bg panel
@@ -1396,6 +1393,19 @@ function render(){
   drawGrid();
   if(currentShape==="select")drawSelection();else drawPreview();
   ctx.restore();
+
+  // ── Time of day full-canvas overlay ──────────────────────────────────────
+  if(timeOfDay!=="day"){
+    const _todOverlay={dawn:"rgba(255,140,60,0.18)",dusk:"rgba(180,80,20,0.28)",night:"rgba(10,20,60,0.6)"};
+    const _todFilter={dawn:"saturate(0.8) brightness(0.88)",dusk:"saturate(0.85) brightness(0.72)",night:"saturate(0.25) brightness(0.45)"};
+    // Apply filter to canvas content via offscreen composite
+    ctx.save();
+    ctx.globalCompositeOperation="multiply";
+    ctx.fillStyle=_todOverlay[timeOfDay]||"rgba(0,0,0,0)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+  }
+
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
@@ -1956,62 +1966,10 @@ function closeSheetPanelEd(){
   if(_sheetEl){new MutationObserver(()=>registerTerms(_sheetEl)).observe(_sheetEl,{childList:true,subtree:true});}
 
   // ── Oracle quick-roll buttons ──
-  let _lastDungeon = null;
-  function oracleResult(data) {
-    const el = document.getElementById("oracle-result-text"); if (!el) return; // oracle panel not in DOM
-    el.textContent = Object.entries(data).filter(([k])=>k!=="type"&&k!=="tier").map(([k,v])=>v?`${k}: ${v}`:"").filter(Boolean).join("\n");
-  }
-  document.getElementById("oracle-npc-btn")?.addEventListener("click", () => {
-    const { name, occupation, mood, wants, secret } = rollNPC();
-    oracleResult({ name, occupation, mood, wants, secret });
-  });
-  document.getElementById("oracle-loot-btn")?.addEventListener("click", async () => {
-    const r = await rollLoot();
-    oracleResult({ coin: r.coin, item: r.item, oddity: r.oddity });
-  });
-  document.getElementById("oracle-monster-btn")?.addEventListener("click", () => {
-    const r = rollMonster();
-    oracleResult({ encounter: r.creature, behavior: r.behavior, twist: r.twist });
-  });
-  document.getElementById("oracle-poi-btn")?.addEventListener("click", () => {
-    const r = rollPOI();
-    oracleResult({ what: r.what, detail: r.detail, hook: r.hook });
-  });
-  document.getElementById("oracle-hazard-btn")?.addEventListener("click", () => {
-    const r = rollHazard();
-    oracleResult({ name: r.name, effect: r.effect, trigger: r.trigger });
-  });
-  document.getElementById("oracle-danger-btn")?.addEventListener("click", () => {
-    const r = rollDanger();
-    oracleResult({ threat: r.threat, detail: r.detail, sign: r.sign });
-  });
+
 
   // ── Dungeon generator ──
-  document.getElementById("dgen-gen-btn")?.addEventListener("click", () => {
-    const size    = document.getElementById("dgen-size-gm")?.value || "medium";
-    const type    = document.getElementById("dgen-type-gm")?.value || "ruins";
-    _lastDungeon  = generateDungeon(size, type, "normal");
-    const dgenCanvas = document.getElementById("dgen-preview-canvas");
-    if(dgenCanvas){dgenCanvas.style.display="block";renderDungeon(dgenCanvas,_lastDungeon);}
-    const _dgenStatus=document.getElementById("dgen-status-text");if(_dgenStatus)_dgenStatus.textContent =
-      `${_lastDungeon.stats.rooms} rooms · ${_lastDungeon.stats.tiles} tiles · ${_lastDungeon.stats.tokens} tokens`;
-  });
-  document.getElementById("dgen-push-btn")?.addEventListener("click", async () => {
-    if (!_lastDungeon) { toast("Generate a dungeon first"); return; }
-    const statusEl = document.getElementById("dgen-status-text");
-    statusEl.textContent = "Pushing…";
-    try {
-      const partyPcs = Object.values(pcsData).filter(c => c.type !== "npc");
-      const mapName  = await pushDungeonToRTDB(_lastDungeon, partyPcs);
-      await set(ref(db, "session/currentMap"), mapName);
-      mapInput.value = mapName;
-      subscribeLive();
-      statusEl.textContent = `✓ Pushed as "${mapName}"`;
-      toast(`Dungeon loaded: ${mapName}`);
-    } catch(e) {
-      statusEl.textContent = `✗ ${e.message}`;
-    }
-  });
+
 
   // ── Glossary on sheet view updates ──
   const sheetEl = document.getElementById("sheet-view");
@@ -2053,13 +2011,13 @@ function closeSheetPanelEd(){
     btn.onclick=async()=>{
       const tod=btn.dataset.tod;
       timeOfDay=tod;
-      await set(ref(db,`maps/${getMapName()}/timeOfDay!=="day"`),tod);
+      await set(ref(db,`maps/${getMapName()}/nightMode`),tod);
       document.querySelectorAll("[data-tod]").forEach(b=>b.classList.toggle("active",b.dataset.tod===tod));
       toast({day:"☀ Day",dawn:"🌅 Dawn",dusk:"🌇 Dusk",night:"🌙 Night"}[tod]);
     };
   });
-  onValue(ref(db,`maps/${getMapName()}/timeOfDay!=="day"`),snap=>{
-    timeOfDay=snap.val()||"day";
+  onValue(ref(db,`maps/${getMapName()}/nightMode`),snap=>{
+    const _sv=snap.val();timeOfDay=(_sv===true?"night":_sv===false||_sv===null?"day":_sv)||"day";
     document.querySelectorAll("[data-tod]").forEach(b=>b.classList.toggle("active",b.dataset.tod===timeOfDay));
   });
 
