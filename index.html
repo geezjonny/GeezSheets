@@ -793,7 +793,7 @@ function subscribeLive(){
       if(data.chains)Object.assign(chains,data.chains);
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
-      bgPpi=data.backgroundPpi||70;timeOfDay=data.nightMode||"day"||"day";
+      bgPpi=data.backgroundPpi||70;const _nm=data.nightMode;timeOfDay=(_nm===true?"night":_nm===false||_nm===null||_nm===undefined?"day":_nm)||"day";
     }
     setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
     if(firstLoad){firstLoad=false;fitCamera(tiles,TILE,canvas.width,canvas.height);overlayEl.classList.add("hidden");}
@@ -1081,6 +1081,12 @@ window.addEventListener("keydown",e=>{
 
   // Start map subscription
   subscribeLive();
+  // Dedicated nightMode subscription so TOD updates without full map reload
+  onValue(ref(db,`maps/${currentMap}/nightMode`),snap=>{
+    const _nm=snap.val();
+    timeOfDay=(_nm===true?"night":_nm===false||_nm===null||_nm===undefined?"day":_nm)||"day";
+    document.querySelectorAll("[data-tod]").forEach(b=>b.classList.toggle("active",b.dataset.tod===timeOfDay));
+  });
   draw();
 })();
 </script>

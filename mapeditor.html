@@ -165,14 +165,14 @@ canvas{display:block;cursor:crosshair}
 .modal-btns button.primary{border-color:var(--gold);color:var(--gold)}
 #weather-panel{position:fixed;top:44px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
 #weather-panel.open{display:flex}
-#dice-popup-ed{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.8);z-index:1000;background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:20px 32px;text-align:center;box-shadow:0 0 60px rgba(200,168,75,.25),0 16px 48px rgba(0,0,0,.8);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;min-width:160px}
-#dice-popup-ed.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
-#dice-popup-ed.hide{opacity:0;transform:translate(-50%,-50%) scale(0.9)}
-#dice-popup-ed .dp-roller{font-family:'Cinzel',serif;font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
-#dice-popup-ed .dp-face{width:80px;height:80px;margin:0 auto 12px}
-#dice-popup-ed .dp-face svg{width:100%;height:100%}
-#dice-popup-ed .dp-number{font-family:'Cinzel',serif;font-size:48px;font-weight:700;color:var(--gold);line-height:1}
-#dice-popup-ed .dp-label{font-family:'Cinzel',serif;font-size:10px;color:var(--dim);margin-top:4px}
+#dice-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.8);z-index:1000;background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:20px 32px;text-align:center;box-shadow:0 0 60px rgba(200,168,75,.25),0 16px 48px rgba(0,0,0,.8);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;min-width:160px}
+#dice-popup.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#dice-popup.hide{opacity:0;transform:translate(-50%,-50%) scale(0.9)}
+#dice-popup #dice-roller-name{font-family:'Cinzel',serif;font-size:10px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+#dice-popup .dp-face{width:80px;height:80px;margin:0 auto 12px}
+#dice-popup .dp-face svg{width:100%;height:100%}
+#dice-popup #dice-number{font-family:'Cinzel',serif;font-size:48px;font-weight:700;color:var(--gold);line-height:1}
+#dice-popup #dice-label{font-family:'Cinzel',serif;font-size:10px;color:var(--dim);margin-top:4px}
 .wx-row{display:flex;align-items:center;gap:10px}
 .wx-label{font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);width:52px;flex-shrink:0}
 .wx-slider{flex:1;accent-color:var(--gold);cursor:pointer}
@@ -197,6 +197,7 @@ canvas{display:block;cursor:crosshair}
 /* ── Chat strip (bottom, like index) ── */
 #chat-last-msg-ed{flex:1;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'IM Fell English',serif}
 #chat-unread-ed{background:var(--gold);color:#0d0b08;font-family:'Cinzel',serif;font-size:9px;font-weight:700;border-radius:999px;padding:1px 7px;flex-shrink:0;display:none}
+#sheet-panel{position:fixed;top:0;left:0;bottom:0;width:300px;background:var(--panel);border-right:1px solid var(--border);z-index:50;display:flex;flex-direction:column;transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);box-shadow:4px 0 24px rgba(0,0,0,.5);overflow:hidden}
 #sheet-panel.open{transform:translateX(0)}
 #sheet-panel-header{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--panel2)}
 #sheet-panel-title{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;flex:1}
@@ -542,11 +543,11 @@ canvas{display:block;cursor:crosshair}
 </div>
 
 <!-- Dice popup -->
-<div id="dice-popup-ed">
-  <div class="dp-roller"></div>
-  <div class="dp-face"><svg viewBox="0 0 80 80"></svg></div>
-  <div class="dp-number">20</div>
-  <div class="dp-label">d20</div>
+<div id="dice-popup">
+  <div id="dice-roller-name"></div>
+  <div class="dp-face"><svg id="dice-svg" viewBox="0 0 80 80"></svg></div>
+  <div id="dice-number">20</div>
+  <div id="dice-label">d20</div>
 </div>
 
 <!-- Weather panel -->
@@ -737,6 +738,7 @@ let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
 let moveOffX=0,moveOffY=0,moveStartWorldX=0,moveStartWorldY=0;
 let selStamps={},selProps={},selTokenIds=[];
 let draggingToken=null,draggingProp=null,placingToken=null;
+let _inspectedTokId=null;
 let pingMode=false,isHolding=false,pingHoldTimer=null,myLaserRef=null;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0,spaceDown=false;
 let rulerStart=null,rulerEnd=null,rulerActive=false;
@@ -927,17 +929,7 @@ onValue(ref(db,"chat"),snap=>{renderChat(snap.val(),chatLog,playerName);});
 
 // Dice
 // ── Dice popup (shared with index) ────────────────────────────────────────────
-const DICE_SHAPES_ED={4:{shape:'triangle',color:'#8b2020'},6:{shape:'square',color:'#1a3a6a'},8:{shape:'diamond',color:'#2a6030'},10:{shape:'pentagon',color:'#5a2a6a'},12:{shape:'hexagon',color:'#6a4a10'},20:{shape:'icosahedron',color:'#1a4a5a'},100:{shape:'circle',color:'#4a1a4a'}};
-function drawDiceFaceEd(svgEl,sides){const cfg=DICE_SHAPES_ED[sides]||DICE_SHAPES_ED[20];const cx=40,cy=40,s=30;let shape='';if(cfg.shape==='square')shape=`<rect x="${cx-s}" y="${cy-s}" width="${s*2}" height="${s*2}" rx="4" fill="url(#dge)" stroke="var(--gold)" stroke-width="1.5"/>`;else if(cfg.shape==='triangle')shape=`<polygon points="${cx},${cy-s*1.2} ${cx+s*1.1},${cy+s*0.7} ${cx-s*1.1},${cy+s*0.7}" fill="url(#dge)" stroke="var(--gold)" stroke-width="1.5"/>`;else if(cfg.shape==='diamond')shape=`<polygon points="${cx},${cy-s*1.2} ${cx+s},${cy} ${cx},${cy+s*1.2} ${cx-s},${cy}" fill="url(#dge)" stroke="var(--gold)" stroke-width="1.5"/>`;else if(cfg.shape==='icosahedron'){const pts=Array.from({length:10},(_,i)=>{const a=i*36-90;const r=i%2===0?s:s*0.6;return `${cx+r*Math.cos(a*Math.PI/180)},${cy+r*Math.sin(a*Math.PI/180)}`;});shape=`<polygon points="${pts.join(' ')}" fill="url(#dge)" stroke="var(--gold)" stroke-width="1.5"/>`;}else shape=`<circle cx="${cx}" cy="${cy}" r="${s}" fill="url(#dge)" stroke="var(--gold)" stroke-width="1.5"/>`;svgEl.innerHTML=`<defs><radialGradient id="dge" cx="35%" cy="35%"><stop offset="0%" stop-color="${cfg.color}"/><stop offset="100%" stop-color="#0d0b08"/></radialGradient></defs>${shape}`;}
-let _edDiceTimer=null,_edRollTimer=null;
-function showDicePopupEd(sides,result,rollerName){const popup=document.getElementById('dice-popup-ed');if(!popup)return;clearTimeout(_edDiceTimer);clearInterval(_edRollTimer);popup.querySelector('.dp-roller').textContent=rollerName||'—';popup.querySelector('.dp-label').textContent=`d${sides}`;const numEl=popup.querySelector('.dp-number');const svgEl=popup.querySelector('svg');popup.classList.remove('hide');popup.classList.add('show');drawDiceFaceEd(svgEl,sides);let ticks=0;_edRollTimer=setInterval(()=>{ticks++;numEl.textContent=Math.ceil(Math.random()*sides);numEl.style.color='var(--dim)';if(ticks>=20){clearInterval(_edRollTimer);numEl.textContent=result;numEl.style.color=result===sides?'#ffd700':result===1?'#e04040':'var(--gold)';drawDiceFaceEd(svgEl,sides);_edDiceTimer=setTimeout(()=>{popup.classList.add('hide');setTimeout(()=>popup.classList.remove('show','hide'),220);},3000);}},55);}
 
-onValue(ref(db,"dice/last"),snap=>{
-  const data=snap.val();if(!data||Date.now()-data.t>10000)return;
-  showDicePopupEd(data.sides,data.result,data.roller);
-  // Still update inline result in chat panel
-  const resultEl=document.getElementById("dice-result-inline");if(resultEl)resultEl.textContent=`${data.roller}: d${data.sides} → ${data.result}`; // legacy inline
-});
 
 // Initiative — manual, ordered list, drag to reorder
 // ── Token strip / initiative ──────────────────────────────────────────────────
@@ -1261,6 +1253,59 @@ document.addEventListener("click",()=>{
 // Mode buttons — handled by new tool/layer system
 // // wallBtn removed
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
+
+const DICE_SHAPES={4:{shape:'triangle',color:'#8b2020'},6:{shape:'square',color:'#1a3a6a'},8:{shape:'diamond',color:'#2a6030'},10:{shape:'pentagon',color:'#5a2a6a'},12:{shape:'hexagon',color:'#6a4a10'},20:{shape:'icosahedron',color:'#1a4a5a'},100:{shape:'circle',color:'#4a1a4a'}};
+
+function drawDiceFace(svgEl,sides,rolling){
+  const cfg=DICE_SHAPES[sides]||DICE_SHAPES[20];
+  const cx=40,cy=40,s=30;
+  let shape='';
+  if(cfg.shape==='square') shape=`<rect x="${cx-s}" y="${cy-s}" width="${s*2}" height="${s*2}" rx="4" fill="url(#dg)" stroke="var(--gold)" stroke-width="1.5"/>`;
+  else if(cfg.shape==='triangle') shape=`<polygon points="${cx},${cy-s*1.2} ${cx+s*1.1},${cy+s*0.7} ${cx-s*1.1},${cy+s*0.7}" fill="url(#dg)" stroke="var(--gold)" stroke-width="1.5"/>`;
+  else if(cfg.shape==='diamond') shape=`<polygon points="${cx},${cy-s*1.2} ${cx+s},${cy} ${cx},${cy+s*1.2} ${cx-s},${cy}" fill="url(#dg)" stroke="var(--gold)" stroke-width="1.5"/>`;
+  else if(cfg.shape==='hexagon'){const pts=Array.from({length:6},(_,i)=>{const a=i*60-30;return `${cx+s*Math.cos(a*Math.PI/180)},${cy+s*Math.sin(a*Math.PI/180)}`;});shape=`<polygon points="${pts.join(' ')}" fill="url(#dg)" stroke="var(--gold)" stroke-width="1.5"/>`;}
+  else if(cfg.shape==='pentagon'){const pts=Array.from({length:5},(_,i)=>{const a=i*72-90;return `${cx+s*Math.cos(a*Math.PI/180)},${cy+s*Math.sin(a*Math.PI/180)}`;});shape=`<polygon points="${pts.join(' ')}" fill="url(#dg)" stroke="var(--gold)" stroke-width="1.5"/>`;}
+  else if(cfg.shape==='icosahedron'){const pts=Array.from({length:10},(_,i)=>{const a=i*36-90;const r=i%2===0?s:s*0.6;return `${cx+r*Math.cos(a*Math.PI/180)},${cy+r*Math.sin(a*Math.PI/180)}`;});shape=`<polygon points="${pts.join(' ')}" fill="url(#dg)" stroke="var(--gold)" stroke-width="1.5"/>`;}
+  else shape=`<circle cx="${cx}" cy="${cy}" r="${s}" fill="url(#dg)" stroke="var(--gold)" stroke-width="1.5"/>`;
+  svgEl.innerHTML=`<defs><radialGradient id="dg" cx="35%" cy="35%"><stop offset="0%" stop-color="${cfg.color}"/><stop offset="100%" stop-color="#0d0b08"/></radialGradient></defs>${shape}`;
+}
+
+let _diceTimer=null,_diceRollTimer=null;
+function showDicePopup(sides,result,rollerName){
+  const popup=document.getElementById('dice-popup');
+  const numEl=document.getElementById('dice-number');
+  const svgEl=document.getElementById('dice-svg');
+  if(!popup)return;
+  clearTimeout(_diceTimer);clearInterval(_diceRollTimer);
+  document.getElementById('dice-roller-name').textContent=rollerName||'—';
+  document.getElementById('dice-label').textContent=`d${sides}`;
+  popup.classList.remove('hide');popup.classList.add('show');
+  drawDiceFace(svgEl,sides,true);
+  let ticks=0;
+  _diceRollTimer=setInterval(()=>{
+    ticks++;
+    numEl.textContent=Math.ceil(Math.random()*sides);
+    numEl.style.color='var(--dim)';
+    if(ticks>=20){
+      clearInterval(_diceRollTimer);
+      numEl.textContent=result;
+      numEl.style.color=result===sides?'#ffd700':result===1?'#e04040':'var(--gold)';
+      numEl.style.transform='scale(1.15)';
+      drawDiceFace(svgEl,sides,false);
+      setTimeout(()=>numEl.style.transform='scale(1)',80);
+      _diceTimer=setTimeout(()=>{popup.classList.add('hide');setTimeout(()=>popup.classList.remove('show','hide'),220);},3000);
+    }
+  },55);
+}
+document.getElementById('dice-popup')?.addEventListener('click',()=>{
+  clearTimeout(_diceTimer);clearInterval(_diceRollTimer);
+  const p=document.getElementById('dice-popup');p.classList.add('hide');setTimeout(()=>p.classList.remove('show','hide'),220);
+});
+
+onValue(ref(db,"dice/last"),snap=>{
+  const data=snap.val();if(!data||Date.now()-data.t>10000)return;
+  showDicePopup(data.sides,data.result,data.roller);
+});
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
 function drawTileAt(x,y,terrain){
@@ -1616,9 +1661,18 @@ canvas.addEventListener("pointerdown",e=>{
   // Locked layer — block all painting
   if(layerLocked[activeLayer]) return;
 
+  // ── TOKEN INTERACTION — always active regardless of tool ─────────────────
+  // (tokens live on objects layer but are always clickable/draggable)
+  const tokId=tokenAtTile(tokens,tx,ty);
+  if(tokId&&activeTool!=="eraser"){
+    canvas.setPointerCapture(e.pointerId);
+    draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y,startTX:tx,startTY:ty,moved:false};
+    return;
+  }
+
   // ── MOUSE TOOL ──────────────────────────────────────────────────────────────
   if(activeTool==="mouse"){
-    // Door toggle (walls layer or mouse tool near a door)
+    // Door toggle
     const nearDoor=findDoorAtPoint(doors,wx,wy,TILE);
     if(nearDoor){
       const d=doors[nearDoor];
@@ -1626,15 +1680,6 @@ canvas.addEventListener("pointerdown",e=>{
       else if(d.open){doors[nearDoor]={...d,open:false,locked:true};}
       else{doors[nearDoor]={...d,open:true};}
       saveDoors(getMapName(),doors);return;
-    }
-
-    // Token drag
-    const tokId=tokenAtTile(tokens,tx,ty);
-    if(tokId){
-      // Short click → inspect; hold → drag (handled in pointermove)
-      canvas.setPointerCapture(e.pointerId);
-      draggingToken={id:tokId,offsetTX:tx-tokens[tokId].x,offsetTY:ty-tokens[tokId].y,startTX:tx,startTY:ty,moved:false};
-      return;
     }
 
     // Prop drag
@@ -1918,10 +1963,35 @@ function toggleDiceTray(){
     fab.style.transform=open?"":"rotate(15deg)";
 }
 
+function openTokenInspector(tokId){
+    _inspectedTokId=tokId;
+    const tok=tokens[tokId];if(!tok)return;
+    const panel=document.getElementById("sheet-panel");
+    const ctrl=document.getElementById("sheet-token-controls");
+    ctrl.style.display="flex";
+    document.getElementById("sheet-panel-title").textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;
+    // Update HP display
+    const hpDisplay=document.getElementById("stc-hp-display");
+    if(hpDisplay)hpDisplay.textContent=`${tok.hp??'—'} / ${tok.maxHp??'—'}`;
+    panel.classList.add("open");
+    document.getElementById("app").classList.add("sheet-open");
+    if(tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__"){
+      openCharSheet(tok.characterId,tok.name,true);
+    } else {
+      document.getElementById("sheet-view").innerHTML=`<div style="padding:16px 12px"><div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:8px">${tok.name}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)">${tok.type.toUpperCase()}<br>HP: ${tok.hp??'?'}/${tok.maxHp??'?'}<br>${tok.conditions?.length?'Conditions: '+tok.conditions.join(', '):'No conditions'}</div></div>`;
+    }
+}
+
 function closeSheetPanelEd(){
     document.getElementById("sheet-panel").classList.remove("open");
     document.getElementById("app").classList.remove("sheet-open");
 }
+// Expose to inline onclick handlers
+window.closeSheetPanelEd  = closeSheetPanelEd;
+window.toggleDiceTray     = toggleDiceTray;
+window.toggleChatEd       = toggleChatEd;
+window.openTokenInspector = openTokenInspector;
+window.toggleGlossarySearch = toggleGlossarySearch;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
@@ -1987,11 +2057,12 @@ function closeSheetPanelEd(){
     btn.textContent=`d${sides}`;
     btn.onmouseenter=()=>{btn.style.borderColor="var(--gold-dim)";btn.style.color="var(--text)";};
     btn.onmouseleave=()=>{btn.style.borderColor="var(--border)";btn.style.color="var(--text-dim)";};
-    btn.onclick=async()=>{
-      if(!playerName)return;
-      const r=await rollDie(sides,playerName);
+    btn.onclick=async(e)=>{
+      e.stopPropagation();
+      const _roller=playerName||"GM";
+      const r=await rollDie(sides,_roller);
       diceTrayResult.textContent=`d${sides} → ${r}`;
-      sendChat(`rolled d${sides} → **${r}**`,playerName,"dice");
+      sendChat(`rolled d${sides} → **${r}**`,_roller,"dice");
     };
     diceTrayBtns?.appendChild(btn);
   });
@@ -2045,25 +2116,7 @@ function closeSheetPanelEd(){
   // ── Push layout when sheet opens ────────────────────────────────────────
 
   // ── Token inspector — click token → sheet panel with GM controls ─────
-  let _inspectedTokId=null;
-  window.openTokenInspector=function(tokId){
-    _inspectedTokId=tokId;
-    const tok=tokens[tokId];if(!tok)return;
-    const panel=document.getElementById("sheet-panel");
-    const ctrl=document.getElementById("sheet-token-controls");
-    ctrl.style.display="flex";
-    document.getElementById("sheet-panel-title").textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;
-    // Update HP display
-    const hpDisplay=document.getElementById("stc-hp-display");
-    if(hpDisplay)hpDisplay.textContent=`${tok.hp??'—'} / ${tok.maxHp??'—'}`;
-    panel.classList.add("open");
-    document.getElementById("app").classList.add("sheet-open");
-    if(tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__"){
-      openCharSheet(tok.characterId,tok.name,true);
-    } else {
-      document.getElementById("sheet-view").innerHTML=`<div style="padding:16px 12px"><div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:8px">${tok.name}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)">${tok.type.toUpperCase()}<br>HP: ${tok.hp??'?'}/${tok.maxHp??'?'}<br>${tok.conditions?.length?'Conditions: '+tok.conditions.join(', '):'No conditions'}</div></div>`;
-    }
-  };
+  // openTokenInspector defined at module scope
 
   // GM token control buttons
   document.getElementById("stc-hp-plus").onclick=async()=>{
