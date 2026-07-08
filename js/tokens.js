@@ -1,10 +1,9 @@
 // Tokens — draw, save, delete, condition apply
 // Token state lives in RTDB maps/<name>/tokens/
 
-import { db } from "./firebase.js";
-import { ref, set, remove, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-import { TILE } from "./config.js";
-import { tokenTextures, tokenCacheKey } from "./assets.js";
+import { db, ref, remove, set, update } from "./firebase.js";
+import { tokenTextures } from "./assets.js";
+const TILE = 32;
 
 // Draw a single token onto ctx
 export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake = { dx: 0, dy: 0 }) {
@@ -13,7 +12,7 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
   const px  = tok.x * TILE + (shake.dx || 0), py = tok.y * TILE + (shake.dy || 0);
   const sw  = s * TILE,     sh = s * TILE;
   const r   = sw * 0.42,    cx = px + sw / 2, cy = py + sh / 2;
-  const img = tokenTextures[tokenCacheKey(tok.characterId, tok.lookupName || tok.name)];
+  const img = tokenTextures[tok.characterId];
 
   const allConds = tok.conditions || [];
   const isProne  = allConds.includes("prone");

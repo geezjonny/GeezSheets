@@ -2,9 +2,9 @@
 // Fog state lives in RTDB maps/<name>/fog/
 // Each group has: { cells: {key: true}, type: "fog"|"darkness"|"magical" }
 
-import { db } from "./firebase.js";
-import { ref, set, remove } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-import { TILE } from "./config.js";
+import { db, ref, remove, set } from "./firebase.js";
+const TILE = 32;
+
 
 // Colors per type per mode
 const FOG_COLORS = {
@@ -27,8 +27,40 @@ export function drawFog(ctx, fogGroups, zoom, gmMode = false) {
     }
   }
 
+  // GM mode: show × delete buttons per group, colored by type
+  if (gmMode) {
+    ctx.save();
+    ctx.font = `bold 11px sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for (const gid in fogGroups) {
+      const group  = fogGroups[gid];
+      const cells  = group.cells || {};
+      const type   = group.type || "fog";
+      const coords = Object.keys(cells).map(k => k.split(",").map(Number));
+      if (!coords.length) continue;
+      const maxX = Math.max(...coords.map(([x]) => x));
+      const minY = Math.min(...coords.map(([, y]) => y));
+      const bx = (maxX + 1) * TILE - 14 / zoom, by = minY * TILE, bs = 14 / zoom;
+      const btnColor = type === "magical" ? "rgba(120,20,160,0.92)" : type === "darkness" ? "rgba(20,10,40,0.92)" : "rgba(200,50,50,0.92)";
+      ctx.fillStyle = btnColor; ctx.fillRect(bx, by, bs, bs);
+      ctx.fillStyle = "#fff"; ctx.fillText("×", bx + bs / 2, by + bs / 2);
+    }
+    ctx.restore();
+  }
 }
 
+export function fogGroupXHit(fogGroups, wx, wy, zoom) {
+  for (const gid in fogGroups) {
+    const cells  = fogGroups[gid].cells || {};
+    const coords = Object.keys(cells).map(k => k.split(",").map(Number));
+    if (!coords.length) continue;
+    const maxX = Math.max(...coords.map(([x]) => x));
+    const minY = Math.min(...coords.map(([, y]) => y));
+    const bx = (maxX + 1) * TILE - 14 / zoom, by = minY * TILE, bs = 14 / zoom;
+    if (wx >= bx && wx <= bx + bs && wy >= by && wy <= by + bs) return gid;
+  }
+  return null;
+}
 
 export function fogGroupAtTile(fogGroups, tx, ty) {
   const k = `${tx},${ty}`;

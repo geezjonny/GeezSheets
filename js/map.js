@@ -2,8 +2,8 @@
 // Manages the live map data: tiles, fog, wallGroups, doors, tokens, stamps, props, chains
 // Used by both mapeditor.html and index.html
 
-import { db } from "./firebase.js";
-import { ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import { db, onValue, ref, set, update } from "./firebase.js";
+
 import { tryLoadTokenTexture, tryLoadPropTexture } from "./assets.js";
 
 // ── Save helpers ──────────────────────────────────────────────────────────────
@@ -13,11 +13,11 @@ export async function saveTiles(mapName, tiles) {
 }
 
 export async function saveWallGroups(mapName, wallGroups) {
-  await set(ref(db, `maps/${mapName}/wallGroups`), Object.keys(wallGroups).length ? wallGroups : null);
+  await set(ref(db, `maps/${mapName}/wallGroups`), wallGroups && Object.keys(wallGroups).length ? wallGroups : null);
 }
 
 export async function saveDoors(mapName, doors) {
-  await set(ref(db, `maps/${mapName}/doors`), Object.keys(doors).length ? doors : null);
+  await set(ref(db, `maps/${mapName}/doors`), doors && Object.keys(doors).length ? doors : null);
 }
 
 export async function saveStamp(mapName, key, emoji) {

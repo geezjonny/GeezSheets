@@ -330,6 +330,7 @@
 <p class="footer-note">Inspired by RAG by Tuimiz &nbsp;·&nbsp; D&amp;D Edition</p>
 
 <script type="module">
+import { db, ref, onValue, set, push, remove, update, get } from "./js/firebase.js";
 import {
   pick, d,
   RAG_DATA, rollRAGPart, rollRAGAll, buildRAGSummary,
@@ -337,16 +338,7 @@ import {
   rollPOI, rollHazard, rollDanger, rollContainer, rollEnemy, askOracle,
 } from "./js/rollers.js";
 import { generateDungeon, renderDungeon, pushDungeonToRTDB, getThingAtClick, rollForThing } from "./js/dungeon.js";
-import { initializeApp }                 from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, get, set, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-
 // ── Firebase ──────────────────────────────────────────────────────────────────
-const _app = initializeApp({
-  apiKey:"AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",
-  authDomain:"sheets-e5838.firebaseapp.com",
-  databaseURL:"https://sheets-e5838-default-rtdb.firebaseio.com",
-  projectId:"sheets-e5838", storageBucket:"sheets-e5838.firebasestorage.app",
-});
 const _db = getDatabase(_app);
 
 // ── Load character roster into both pickers ───────────────────────────────────

@@ -1,8 +1,8 @@
 // Chat — send and render messages
 // All messages live in RTDB chat/
 
-import { db } from "./firebase.js";
-import { ref, push } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+import { db, push, ref } from "./firebase.js";
 
 export async function sendChat(text, sender, type = "chat") {
   if (!text.trim()) return;

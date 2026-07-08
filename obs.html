@@ -35,7 +35,7 @@ const TILE = 32;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={}, fogGroups={}, tokens={}, stamps={}, roofs={}, props={}, wallGroups={}, doors={};
-let bgImage=null, bgUrl="", bgPpi=70, timeOfDay="day";
+let bgImage=null, bgUrl="", bgPpi=70, nightMode=false;
 const tokenTextures={}, propTextures={}, terrainTextures={};
 let firstLoad=true;
 
@@ -148,19 +148,14 @@ function render() {
   if (bgImage) {
     const s = TILE / (bgPpi || 70);
     const bw = bgImage.width * s, bh = bgImage.height * s;
-    if (timeOfDay!=="day") {
+    if (nightMode) {
       ctx.save();
-      const _todFilter=(timeOfDay==="dawn"?"saturate(0.8) brightness(0.85) sepia(0.25) hue-rotate(-10deg)":(timeOfDay==="dusk"?"saturate(0.9) brightness(0.75) sepia(0.4) hue-rotate(10deg)":(timeOfDay==="night"?"saturate(0.35) brightness(0.45) hue-rotate(200deg)":"none")));
-      ctx.filter=_todFilter;
-      ctx.drawImage(bgImage,0,0,bw,bh);
-      ctx.filter="none";
-      if(timeOfDay!=="day"){
-        const _ovColors={dawn:"rgba(255,160,80,0.18)",dusk:"rgba(200,100,40,0.28)",night:"rgba(20,40,100,0.55)"};
-        ctx.globalCompositeOperation="multiply";
-        ctx.fillStyle=_ovColors[timeOfDay]||"rgba(0,0,0,0)";
-        ctx.fillRect(0,0,bw,bh);
-        ctx.globalCompositeOperation="source-over";
-      }
+      ctx.filter = "saturate(0.55) brightness(0.55)";
+      ctx.drawImage(bgImage, 0, 0, bw, bh);
+      ctx.filter = "none";
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = "rgba(40,60,110,0.55)"; ctx.fillRect(0, 0, bw, bh);
+      ctx.globalCompositeOperation = "source-over";
       ctx.restore();
     } else {
       ctx.drawImage(bgImage, 0, 0, bw, bh);
@@ -183,6 +178,18 @@ function render() {
       const [x, y] = ck.split(",").map(Number);
       ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
     }
+    // × delete button (visual only — no interaction in OBS view)
+    const coords = Object.keys(cells).map(k => k.split(",").map(Number));
+    if (!coords.length) continue;
+    const maxX = Math.max(...coords.map(([x]) => x));
+    const minY = Math.min(...coords.map(([, y]) => y));
+    const bx = (maxX + 1) * TILE - 14 / camera.zoom, by = minY * TILE, bs = 14 / camera.zoom;
+    const btnColor = type === "magical" ? "rgba(120,20,160,0.92)" : type === "darkness" ? "rgba(20,10,40,0.92)" : "rgba(200,50,50,0.92)";
+    ctx.fillStyle = btnColor; ctx.fillRect(bx, by, bs, bs);
+    ctx.fillStyle = "#fff";
+    ctx.font = `bold ${Math.round(11 / camera.zoom)}px sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("×", bx + bs / 2, by + bs / 2);
   }
 
   // Stamps
@@ -251,16 +258,6 @@ function render() {
   for (let x = Math.floor(l/TILE)*TILE; x < rr; x += TILE) { ctx.beginPath(); ctx.moveTo(x,t); ctx.lineTo(x,b); ctx.stroke(); }
   for (let y = Math.floor(t/TILE)*TILE; y < b; y += TILE) { ctx.beginPath(); ctx.moveTo(l,y); ctx.lineTo(rr,y); ctx.stroke(); }
 
-
-  // ── Time of day overlay ────────────────────────────────────────────────────
-  if(timeOfDay!=="day"){
-    const _todOverlay={dawn:"rgba(255,140,60,0.18)",dusk:"rgba(180,80,20,0.28)",night:"rgba(10,20,60,0.6)"};
-    ctx.save();
-    ctx.globalCompositeOperation="multiply";
-    ctx.fillStyle=_todOverlay[timeOfDay]||"rgba(0,0,0,0)";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.restore();
-  }
   ctx.restore();
   requestAnimationFrame(render);
 }
@@ -296,7 +293,7 @@ function subscribeLive(mapName) {
         img.onload = () => bgImage = img; img.src = bgUrl;
       } else if (!data.background) { bgUrl = ""; bgImage = null; }
       bgPpi = data.backgroundPpi || 70;
-      timeOfDay = data.nightMode||"day";
+      nightMode = !!data.nightMode;
     }
     if (firstLoad) { firstLoad = false; fitCamera(); }
   });

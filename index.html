@@ -379,7 +379,7 @@ canvas{display:block;width:100%;height:100%}
 <div id="sheet-panel">
   <div id="sheet-panel-header">
     <div id="sheet-panel-title">📋 CHARACTER</div>
-    <button id="sheet-panel-close" onclick="document.getElementById('sheet-panel').classList.remove('open')">✕</button>
+    <button id="sheet-panel-close">✕</button>
   </div>
   <div id="sheet-view">
     <div id="sheet-empty">Click a token<br>to view their sheet</div>
@@ -468,11 +468,20 @@ import { subscribeMap, findDoorAtPoint, tileInFog } from "./js/map.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
+import { computeVisibilityPolygon, activeOccluders, drawDoorsGeometry, TIME_OF_DAY_PRESETS, isPathBlocked, toggleDoor as geomToggleDoor } from "./js/geometry.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
 const wallGroups={},doors={};
-let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
+let bgImage=null,bgUrl="",bgPpi=70,nightMode=false;
+const geometry={walls:[],doors:[],lights:[],timeOfDay:"day",lightingParams:{tintAlpha:1.0,blackAlpha:0.88,dvPunch:0.79,lightPunch:0.79}};
+let _lightingCanvas=null,_lightingCtx=null;
+function getLightingCanvas(w,h){if(!_lightingCanvas||_lightingCanvas.width!==w||_lightingCanvas.height!==h){_lightingCanvas=document.createElement("canvas");_lightingCanvas.width=w;_lightingCanvas.height=h;_lightingCtx=_lightingCanvas.getContext("2d");}return{off:_lightingCanvas,oCtx:_lightingCtx};}
+let _losCanvas=null,_losCtx=null;
+function getLosCanvas(w,h){if(!_losCanvas||_losCanvas.width!==w||_losCanvas.height!==h){_losCanvas=document.createElement("canvas");_losCanvas.width=w;_losCanvas.height=h;_losCtx=_losCanvas.getContext("2d");}return{losOff:_losCanvas,lCtx:_losCtx};}
+// LOS cache — recompute only when token moves or doors change
+let _losPoly=null,_losCacheTX=null,_losCacheTY=null,_losDoorsVer=0;
+function invalidateLOS(){_losPoly=null;}
 let pcsData={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
 let currentMap="dungeon-1";
@@ -791,9 +800,18 @@ function subscribeLive(){
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
       if(data.chains)Object.assign(chains,data.chains);
+      if(data.geometry){
+        geometry.walls.length=0;geometry.doors.length=0;geometry.lights=[];
+        if(data.geometry.walls)geometry.walls.push(...Object.values(data.geometry.walls));
+        if(data.geometry.doors)geometry.doors.push(...Object.values(data.geometry.doors));
+        if(data.geometry.lights)geometry.lights=Object.values(data.geometry.lights);
+        geometry.timeOfDay=data.geometry.timeOfDay||"day";
+        if(data.geometry.lightingParams)Object.assign(geometry.lightingParams,data.geometry.lightingParams);
+        invalidateLOS();
+      }
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
-      bgPpi=data.backgroundPpi||70;const _nm=data.nightMode;timeOfDay=(_nm===true?"night":_nm===false||_nm===null||_nm===undefined?"day":_nm)||"day";
+      bgPpi=data.backgroundPpi||70;nightMode=!!data.nightMode;
     }
     setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
     if(firstLoad){firstLoad=false;fitCamera(tiles,TILE,canvas.width,canvas.height);overlayEl.classList.add("hidden");}
@@ -828,7 +846,7 @@ document.getElementById("chat-input").addEventListener("keydown",e=>{
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
 document.getElementById("fitBtn").onclick=()=>fitCamera(tiles,TILE,canvas.width,canvas.height);
-const _sheetToggleBtn=document.getElementById("sheet-toggle-btn");if(_sheetToggleBtn)_sheetToggleBtn.onclick=()=>{const p=document.getElementById("sheet-panel");if(p)p.classList.toggle("open");};
+// sheet-toggle-btn uses inline onclick in HTML
 document.getElementById("pingBtn").onclick=()=>{
   if(!playerName)return;
   pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);
@@ -852,7 +870,7 @@ function draw(){
 
   if(bgImage){
     const s=TILE/(bgPpi||70);const bw=bgImage.width*s,bh=bgImage.height*s;
-    if(timeOfDay!=="day"){
+    if(nightMode){
       ctx.save();ctx.filter="saturate(0.55) brightness(0.55)";ctx.drawImage(bgImage,0,0,bw,bh);
       ctx.filter="none";ctx.globalCompositeOperation="multiply";
       ctx.fillStyle="rgba(40,60,110,0.55)";ctx.fillRect(0,0,bw,bh);
@@ -913,9 +931,17 @@ function draw(){
   }
 
   drawChains(ctx,chains,tokens,camera.zoom);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+  // Subtle door indicators only (no wall lines for players)
+  for(const d of geometry.doors){
+    const mx=(d.x1+d.x2)/2*TILE, my=(d.y1+d.y2)/2*TILE;
+    ctx.save();
+    ctx.fillStyle=d.locked?"rgba(192,80,80,0.7)":d.closed?"rgba(58,138,58,0.7)":"rgba(138,170,58,0.7)";
+    ctx.beginPath();ctx.arc(mx,my,4/camera.zoom,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  }
+  for(const[id,tok]of Object.entries(tokens))if((tok.type||"pc")==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   drawFog(ctx,fog,camera.zoom,false);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+  for(const[id,tok]of Object.entries(tokens))if(!tok.type||(tok.type||"pc")==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
 
   ctx.save();ctx.globalAlpha=1;
   for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}
@@ -925,18 +951,101 @@ function draw(){
   const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,rr=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;
   for(let x=Math.floor(l/TILE)*TILE;x<rr;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}
   for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(rr,y);ctx.stroke();}
-  ctx.restore();
+  ctx.restore(); // end camera transform
 
-
-  // ── Time of day overlay ────────────────────────────────────────────────────
-  if(timeOfDay!=="day"){
-    const _todOverlay={dawn:"rgba(255,140,60,0.18)",dusk:"rgba(180,80,20,0.28)",night:"rgba(10,20,60,0.6)"};
-    ctx.save();
-    ctx.globalCompositeOperation="multiply";
-    ctx.fillStyle=_todOverlay[timeOfDay]||"rgba(0,0,0,0)";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.restore();
+  // Lighting pass
+  {
+    const preset=TIME_OF_DAY_PRESETS[geometry.timeOfDay]||TIME_OF_DAY_PRESETS.day;
+    const lp=geometry.lightingParams;
+    if(preset&&preset.darkness>0){
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);
+      ctx.fillStyle=`rgba(${preset.tint},${preset.darkness*lp.tintAlpha})`;
+      ctx.fillRect(0,0,canvas.width,canvas.height);ctx.restore();
+      const{off,oCtx}=getLightingCanvas(canvas.width,canvas.height);
+      oCtx.clearRect(0,0,off.width,off.height);
+      oCtx.fillStyle=`rgba(0,0,0,${lp.blackAlpha})`;oCtx.fillRect(0,0,off.width,off.height);
+      if(geometry.lights.length){
+        oCtx.save();oCtx.translate(camera.x,camera.y);oCtx.scale(camera.zoom,camera.zoom);
+        const occluders=activeOccluders(geometry.walls,geometry.doors);
+        for(const light of geometry.lights){
+          const poly=computeVisibilityPolygon(light.x,light.y,light.shadows?occluders:[],light.range);
+          if(!poly.length)continue;
+          oCtx.globalCompositeOperation="destination-out";
+          oCtx.fillStyle=`rgba(0,0,0,${lp.lightPunch})`;
+          oCtx.beginPath();oCtx.moveTo(poly[0].x*TILE,poly[0].y*TILE);
+          for(let i=1;i<poly.length;i++)oCtx.lineTo(poly[i].x*TILE,poly[i].y*TILE);
+          oCtx.closePath();oCtx.fill();
+        }
+        oCtx.restore();
+      }
+      // Darkvision: show light around the logged-in player's token, or all PC tokens if not logged in
+      const dvTokens = myCharacterId
+        ? Object.values(tokens).filter(t => t.characterId === myCharacterId)
+        : Object.values(tokens).filter(t => t.type === "pc" || !t.type);
+      if(dvTokens.length){
+        oCtx.save();oCtx.translate(camera.x,camera.y);oCtx.scale(camera.zoom,camera.zoom);
+        oCtx.globalCompositeOperation = "destination-out";
+        for(const myTok of dvTokens){
+          const cx=(myTok.x+0.5)*TILE, cy=(myTok.y+0.5)*TILE, dvRange=6*TILE;
+          const grad=oCtx.createRadialGradient(cx,cy,0,cx,cy,dvRange);
+          grad.addColorStop(0,"rgba(0,0,0,1)");
+          grad.addColorStop(0.7,"rgba(0,0,0,0.6)");
+          grad.addColorStop(1,"rgba(0,0,0,0)");
+          oCtx.fillStyle=grad;
+          oCtx.beginPath();oCtx.arc(cx,cy,dvRange,0,Math.PI*2);oCtx.fill();
+        }
+        oCtx.restore();
+      }
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(off,0,0);ctx.restore();
+    }
   }
+
+  // ── LOS masking pass ────────────────────────────────────────────────────────
+  // Only runs when geometry walls exist — no walls means open world, no masking needed
+  if(geometry.walls.length>0){
+    const myTokLos=myCharacterId
+      ?Object.values(tokens).find(t=>t.characterId===myCharacterId)
+      :Object.values(tokens).filter(t=>t.type==="pc"||!t.type)[0];
+    if(myTokLos){
+      const tokTX=myTokLos.x, tokTY=myTokLos.y;
+      // Recompute LOS polygon only when player moved or doors changed
+      if(!_losPoly||_losCacheTX!==tokTX||_losCacheTY!==tokTY){
+        _losCacheTX=tokTX;_losCacheTY=tokTY;
+        const occluders=activeOccluders(geometry.walls,geometry.doors);
+        _losPoly=computeVisibilityPolygon(tokTX+0.5,tokTY+0.5,occluders,80);
+      }
+      const{losOff,lCtx}=getLosCanvas(canvas.width,canvas.height);
+      lCtx.clearRect(0,0,losOff.width,losOff.height);
+      lCtx.fillStyle="rgba(0,0,0,0.94)";
+      lCtx.fillRect(0,0,losOff.width,losOff.height);
+      lCtx.save();
+      lCtx.translate(camera.x,camera.y);lCtx.scale(camera.zoom,camera.zoom);
+      lCtx.globalCompositeOperation="destination-out";
+      // Punch player LOS polygon
+      if(_losPoly.length>2){
+        lCtx.fillStyle="rgba(0,0,0,1)";
+        lCtx.beginPath();
+        lCtx.moveTo(_losPoly[0].x*TILE,_losPoly[0].y*TILE);
+        for(let i=1;i<_losPoly.length;i++)lCtx.lineTo(_losPoly[i].x*TILE,_losPoly[i].y*TILE);
+        lCtx.closePath();lCtx.fill();
+      }
+      // Also punch light source LOS so illuminated rooms visible even outside player LOS
+      if(geometry.lights.length){
+        const occluders=activeOccluders(geometry.walls,geometry.doors);
+        for(const light of geometry.lights){
+          const lp2=computeVisibilityPolygon(light.x,light.y,occluders,light.range||8);
+          if(lp2.length<3)continue;
+          lCtx.fillStyle="rgba(0,0,0,0.65)";
+          lCtx.beginPath();lCtx.moveTo(lp2[0].x*TILE,lp2[0].y*TILE);
+          for(let i=1;i<lp2.length;i++)lCtx.lineTo(lp2[i].x*TILE,lp2[i].y*TILE);
+          lCtx.closePath();lCtx.fill();
+        }
+      }
+      lCtx.restore();
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(losOff,0,0);ctx.restore();
+    }
+  }
+
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
@@ -964,21 +1073,42 @@ viewport.addEventListener("pointerdown",e=>{
   if(tokId){
     const tok=tokens[tokId];
     if(tok.type==="pc"&&(tok.name?.toLowerCase()===playerName.toLowerCase()||tok.characterId===myCharacterId)){
-      draggingToken={id:tokId,offsetTX:tx-tok.x,offsetTY:ty-tok.y};viewport.setPointerCapture(e.pointerId);
       openCharSheet(tok.characterId,tok.name,false);return;
     }
     openCharSheet(tok.characterId,tok.name,false);return;
   }
 
   // Door click — check all doors for proximity to click point
+  // Geometry door interaction
+  const gx=wx/TILE, gy=wy/TILE;
+  const nearDoor=geometry.doors.find(d=>{
+    const mx=(d.x1+d.x2)/2, my=(d.y1+d.y2)/2;
+    return Math.hypot(gx-mx,gy-my)<0.7;
+  });
+  if(nearDoor){
+    // Check player is standing within 1.5 tiles of the door
+    const myTok=myCharacterId
+      ?Object.values(tokens).find(t=>t.characterId===myCharacterId)
+      :null;
+    if(myTok){
+      const doorMx=(nearDoor.x1+nearDoor.x2)/2, doorMy=(nearDoor.y1+nearDoor.y2)/2;
+      const dist=Math.hypot((myTok.x+0.5)-doorMx,(myTok.y+0.5)-doorMy);
+      if(dist>1.5){toast("You need to be closer to the door.");return;}
+    }
+    if(nearDoor.locked){toast("🔒 This door is locked.");return;}
+    geomToggleDoor(geometry.doors,nearDoor.id);
+    invalidateLOS();
+    const mapName=mapInput.value.trim()||"dungeon-1";
+    const doorData=[...geometry.doors];
+    set(ref(db,`maps/${mapName}/geometry/doors`),doorData.length?doorData:null).catch(()=>{});
+    return;
+  }
+  // Legacy tile-based door
   const clickedDoor=findDoorAtPoint(doors,wx,wy,TILE);
   if(clickedDoor){
     const d=doors[clickedDoor];
-    if(d.locked){
-      toast(`🔒 ${d.lockReason||"This door is locked."}`);
-    } else {
-      update(ref(db,`maps/${currentMap}/doors/${clickedDoor}`),{open:!d.open});
-    }
+    if(d.locked){toast(`🔒 ${d.lockReason||"This door is locked."}`);}
+    else{update(ref(db,`maps/${currentMap}/doors/${clickedDoor}`),{open:!d.open});}
     return;
   }
   isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);
@@ -989,7 +1119,7 @@ viewport.addEventListener("pointerdown",e=>{
 viewport.addEventListener("pointermove",e=>{
   const[sx,sy]=screenPos(e);
   if(rulerActive){const[wx,wy]=toWorld(sx,sy);const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
-  if(draggingToken){const[wx,wy]=toWorld(sx,sy);tokens[draggingToken.id].x=Math.floor(wx/TILE)-draggingToken.offsetTX;tokens[draggingToken.id].y=Math.floor(wy/TILE)-draggingToken.offsetTY;return;}
+  // token dragging disabled — use arrow keys or WASD to move
   if(isHolding&&myLaserRef){const[wx,wy]=toWorld(sx,sy);moveLaser(myLaserRef,wx,wy,playerName);return;}
   if(panning){camera.x=camStartX+(e.clientX-panStartX);camera.y=camStartY+(e.clientY-panStartY);}
 });
@@ -997,12 +1127,29 @@ viewport.addEventListener("pointermove",e=>{
 viewport.addEventListener("pointerup",e=>{
   if(rulerActive)return;
   if(draggingToken){
-    update(ref(db,`maps/${currentMap}/tokens/${draggingToken.id}`),{x:tokens[draggingToken.id].x,y:tokens[draggingToken.id].y});
     draggingToken=null;return;
   }
   clearTimeout(pingHoldTimer);
   if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}
   isHolding=false;panning=false;
+});
+
+// Arrow key movement with wall collision
+const ARROW_DIRS={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0],W:[0,-1],S:[0,1],A:[-1,0],D:[1,0]};
+window.addEventListener("keydown",e=>{
+  if(document.activeElement&&["INPUT","TEXTAREA"].includes(document.activeElement.tagName))return;
+  const dir=ARROW_DIRS[e.key];if(!dir)return;
+  e.preventDefault();
+  if(!myCharacterId)return;
+  const myTok=Object.values(tokens).find(t=>t.characterId===myCharacterId);
+  if(!myTok)return;
+  const[dx,dy]=dir;
+  const fromX=myTok.x+0.5,fromY=myTok.y+0.5;
+  const toX=fromX+dx,toY=fromY+dy;
+  if(isPathBlocked(fromX,fromY,toX,toY,geometry.walls,geometry.doors))return;
+  myTok.x+=dx;myTok.y+=dy;
+  update(ref(db,`maps/${currentMap}/tokens/${myTok.id||Object.keys(tokens).find(k=>tokens[k]===myTok)}`),{x:myTok.x,y:myTok.y});
+invalidateLOS();
 });
 
 viewport.addEventListener("wheel",e=>{
@@ -1044,6 +1191,7 @@ window.addEventListener("keydown",e=>{
   await loadTerrainTextures(getTERRAINS());
 
   // Wire sheet toast function
+  document.getElementById("sheet-panel-close")?.addEventListener("click", closeSheetPanel);
   setSheetToastFn(msg=>{const el=document.getElementById("ping-toast");if(!el)return;el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2500);});
 
   // Subscribe presence pills
@@ -1075,18 +1223,13 @@ window.addEventListener("keydown",e=>{
     isGM: false,
     playerName,
     myCharacterId,
+    getMapName: () => mapInput.value.trim() || "dungeon-1",
     onOpenSheet: (charId, name) => openCharSheet(charId, name, false),
     onRollInitiative: rollInitiative,
   });
 
   // Start map subscription
   subscribeLive();
-  // Dedicated nightMode subscription so TOD updates without full map reload
-  onValue(ref(db,`maps/${currentMap}/nightMode`),snap=>{
-    const _nm=snap.val();
-    timeOfDay=(_nm===true?"night":_nm===false||_nm===null||_nm===undefined?"day":_nm)||"day";
-    document.querySelectorAll("[data-tod]").forEach(b=>b.classList.toggle("active",b.dataset.tod===timeOfDay));
-  });
   draw();
 })();
 </script>
