@@ -351,6 +351,8 @@ canvas{display:block;cursor:crosshair}
   </div>
   <button id="loadJsonBtn" style="height:28px;padding:0 10px;font-size:10px">⬆ Import</button>
   <input type="file" id="jsonFileInput" accept=".json" hidden>
+  <button id="loadVttBtn" style="height:28px;padding:0 10px;font-size:10px">🗺 DD2VTT</button>
+  <input type="file" id="vttFileInput" accept=".dd2vtt,.json" hidden>
   <button onclick="toggleGlossarySearch()" style="height:28px;padding:0 10px;font-size:10px">📖</button>
   <div style="flex:1"></div>
   <span id="status" style="font-family:'Cinzel',serif;font-size:10px;color:var(--dim)">Connecting…</span>
@@ -1120,6 +1122,25 @@ async function clearSection(section){
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
 }
 ["bg","tokens","props","fog","walls","doors","stamps","tiles","all"].forEach(s=>{const el=document.getElementById(`clear-${s}`);if(el)el.onclick=()=>clearSection(s);});
+
+// ── DD2VTT Import (background image only — no geometry) ─────────────────────
+document.getElementById("loadVttBtn").onclick=()=>document.getElementById("vttFileInput").click();
+document.getElementById("vttFileInput").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;e.target.value="";
+  try{
+    const json=JSON.parse(await file.text());
+    // DD2VTT stores the map image as a base64 PNG in json.image
+    if(!json.image){toast("No image found in DD2VTT file");return;}
+    const dataUrl=`data:image/png;base64,${json.image}`;
+    const mapName=mapInput.value.trim()||"dungeon-1";
+    // Save background to Firebase
+    await set(ref(db,`maps/${mapName}/background`),dataUrl);
+    // Also save PPI if available (pixels per grid unit)
+    const ppi=json.resolution?.pixels_per_grid||70;
+    await set(ref(db,`maps/${mapName}/backgroundPpi`),ppi);
+    toast(`DD2VTT background imported (${ppi} PPI)`);
+  }catch(err){toast("DD2VTT import failed: "+err.message);}
+});
 
 // ── JSON Import ───────────────────────────────────────────────────────────────
 document.getElementById("loadJsonBtn").onclick=()=>document.getElementById("jsonFileInput").click();
@@ -1913,7 +1934,8 @@ document.querySelectorAll(".session-tab").forEach(tab=>{
 
 // ── AFK PC Oracle — manual name + class entry ────────────────────────────────
 
-function toggleChatEd(){
+let _edChatOpen=false,_edUnread=0;
+window.toggleChatEd=function toggleChatEd(){
     _edChatOpen=!_edChatOpen;
     document.getElementById("chat-drawer-ed").classList.toggle("open",_edChatOpen);
     document.getElementById("chat-strip-ed").classList.toggle("open",_edChatOpen);
@@ -1921,7 +1943,7 @@ function toggleChatEd(){
     if(_edChatOpen){_edUnread=0;const u=document.getElementById("chat-unread-ed");u.style.display="none";}
 }
 
-function toggleDiceTray(){
+window.toggleDiceTray=function toggleDiceTray(){
     const tray=document.getElementById("dice-tray");
     const fab=document.getElementById("dice-fab");
     const open=tray.style.display==="flex";
@@ -2033,7 +2055,7 @@ function closeSheetPanelEd(){
   });
 
   // ── Chat strip ──────────────────────────────────────────────────────────
-  let _edChatOpen=false,_edUnread=0;
+  // _edChatOpen/_edUnread hoisted to module scope
   document.getElementById("chat-send").onclick=()=>{
     if(!playerName)return;
     const inp=document.getElementById("chat-input");
