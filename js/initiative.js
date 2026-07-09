@@ -9,10 +9,12 @@
 //   initiative/active: tokenId
 //   initiative/rolls:  { [safeTokenId]: {tokenId, name, roll, dexMod, total} }
 
-import { db, onValue, push, ref, remove, set, update } from "./firebase.js";
+import { db }                       from "./firebase.js";
+import { ref, set, update, remove, onValue, push }
+                                    from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { tokenTextures, tokenCacheKey } from "./assets.js";
 import { sendChat }                 from "./chat.js";
-const TILE = 32;
+import { TILE }                     from "./config.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function sFmt(n) { return (n >= 0 ? "+" : "") + n; }
@@ -327,29 +329,6 @@ export function subscribeTokenStrip(containerEl, mapTokensRef, pcsDataRef, optio
   unsubs.push(onValue(ref(db, "presence"), snap => {
     stripState.presence = snap.val() || {}; render();
   }));
-
-  // Subscribe to current map tokens so the strip updates when tokens change
-  const getMapName = options.getMapName || (() => "dungeon-1");
-  function subscribeTokens() {
-    const mapName = getMapName();
-    return onValue(ref(db, `maps/${mapName}/tokens`), snap => {
-      const data = snap.val() || {};
-      // Clear and repopulate the shared tokens object
-      for (const k in mapTokensRef) delete mapTokensRef[k];
-      Object.assign(mapTokensRef, data);
-      render();
-    });
-  }
-  let tokenUnsub = subscribeTokens();
-  unsubs.push(() => tokenUnsub());
-
-  // Re-subscribe when map changes
-  if (options.onMapChange) {
-    options.onMapChange(() => {
-      tokenUnsub();
-      tokenUnsub = subscribeTokens();
-    });
-  }
 
   render();
   return () => unsubs.forEach(u => u());

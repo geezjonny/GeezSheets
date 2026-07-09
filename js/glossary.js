@@ -218,14 +218,7 @@ export function hideGlossaryTooltip() {
 
 // Register a 🔍 icon next to known terms in a container
 // Known terms are wrapped in <span class="glossary-term"> with hover behaviour
-// Debounce registry to avoid mid-mutation crashes
-const _regDebounce = new WeakMap();
-export function registerTerms(containerEl) {
-  if (!containerEl) return;
-  clearTimeout(_regDebounce.get(containerEl));
-  _regDebounce.set(containerEl, setTimeout(() => _registerTermsImpl(containerEl), 150));
-}
-async function _registerTermsImpl(containerEl) {
+export async function registerTerms(containerEl) {
   if (!containerEl) return;
 
   // Find all text nodes
@@ -237,8 +230,10 @@ async function _registerTermsImpl(containerEl) {
   const termPattern = /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/g;
 
   for (const node of nodes) {
+    // Node may have been removed from DOM during async lookups
+    if (!node.parentNode || !node.parentElement) continue;
     const text = node.nodeValue;
-    if (!text.trim() || !node.parentElement || node.parentElement.closest(".glossary-term")) continue;
+    if (!text.trim() || node.parentElement.closest(".glossary-term")) continue;
 
     // Quick pre-check — avoid expensive lookups on obviously non-term text
     if (!termPattern.test(text)) continue;
@@ -277,7 +272,7 @@ async function _registerTermsImpl(containerEl) {
       fragments.push(document.createTextNode(text.slice(lastIdx)));
     }
 
-    // Replace text node with fragments
+    // Replace text node with fragments — re-check parent still in DOM
     const parent = node.parentNode;
     if (!parent) continue;
     for (const frag of fragments) parent.insertBefore(frag, node);

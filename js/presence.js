@@ -2,8 +2,8 @@
 // Writes to RTDB presence/{safeKey} with name, page, timestamp
 // Subscribes to show colored pills in HUD
 
-
-import { db, onValue, ref, set } from "./firebase.js";
+import { db } from "./firebase.js";
+import { ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
 let _playerName = "";
 let _page       = "map"; // "map" | "editor"
