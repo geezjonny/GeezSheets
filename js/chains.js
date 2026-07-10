@@ -45,18 +45,9 @@ export function drawChains(ctx, chains, tokens, zoom) {
     const my = (ay + by) / 2 + sag;
 
     ctx.save();
-    // Color shifts subtly toward a tighter/brighter look as it goes taut
-    const slackColor = `rgba(120,110,90,0.55)`;
-    const tautColor   = `rgba(200,180,140,0.95)`;
-    ctx.strokeStyle = tautness > 0.85 ? tautColor : slackColor;
-    ctx.lineWidth = (tautness > 0.85 ? 3 : 2.2) / zoom;
-    ctx.lineCap = "round";
+    const tautness_color = tautness > 0.85;
 
-    // Draw as a quadratic curve through the sagged midpoint
-    ctx.beginPath();
-    ctx.moveTo(ax, ay);
-    ctx.quadraticCurveTo(mx, my, bx, by);
-    ctx.stroke();
+    // Links drawn below replace the base line
 
     // Draw chain links as ovals rotated along the curve
     {
@@ -82,24 +73,28 @@ export function drawChains(ctx, chains, tokens, zoom) {
         ctx.beginPath();
         ctx.ellipse(0, 0, lw, lh, 0, 0, Math.PI*2);
         // Fill with dark metal
-        ctx.fillStyle = tautness > 0.85 ? "rgba(160,140,100,0.6)" : "rgba(70,65,55,0.7)";
+        ctx.fillStyle = tautness_color ? "rgba(160,140,100,0.6)" : "rgba(70,65,55,0.7)";
         ctx.fill();
-        ctx.strokeStyle = tautness > 0.85 ? "rgba(220,190,130,0.95)" : "rgba(140,130,100,0.85)";
+        ctx.strokeStyle = tautness_color ? "rgba(220,190,130,0.95)" : "rgba(140,130,100,0.85)";
         ctx.lineWidth = lineW;
         ctx.stroke();
         ctx.restore();
       }
     }
 
-    // Taut warning flash — if tautness is at max, pulse briefly to draw the eye
+    // Taut warning: draw a glowing shadow behind the chain links
     if (tautness >= 1) {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 200);
-      ctx.strokeStyle = `rgba(220,80,60,${0.3 + pulse * 0.4})`;
-      ctx.lineWidth = 4 / zoom;
+      ctx.save();
+      ctx.shadowColor = `rgba(220,80,60,${0.6 + pulse * 0.4})`;
+      ctx.shadowBlur = 8 / zoom;
+      ctx.strokeStyle = `rgba(220,80,60,${0.15 + pulse * 0.15})`;
+      ctx.lineWidth = 6 / zoom;
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.quadraticCurveTo(mx, my, bx, by);
       ctx.stroke();
+      ctx.restore();
     }
 
     ctx.restore();
