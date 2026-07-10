@@ -1142,7 +1142,20 @@ window.addEventListener("keydown",e=>{
   // Start map subscription
   subscribeLive();
   draw();
+
+  // Lock overlay
+  onValue(ref(db,"session/locked"),snap=>{
+    const locked=!!snap.val();
+    const overlay=document.getElementById("locked-overlay");
+    overlay.style.display=locked?"flex":"none";
+  });
 })();
 </script>
+<div id="locked-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0d0b08;align-items:center;justify-content:center;flex-direction:column;gap:16px">
+  <div style="font-family:'Cinzel',serif;font-size:28px;color:#c8a84b;letter-spacing:.12em">⚔ GeezSheets</div>
+  <div style="font-family:'Cinzel',serif;font-size:12px;color:#6b5a38;letter-spacing:.08em;text-transform:uppercase">The GM is preparing the scene…</div>
+  <div style="width:40px;height:2px;background:var(--border);margin-top:8px;animation:pulse 1.5s ease-in-out infinite"></div>
+</div>
+<style>@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}</style>
 </body>
 </html>

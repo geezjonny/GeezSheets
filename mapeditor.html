@@ -410,6 +410,9 @@ canvas{display:block;cursor:crosshair}
   <button class="tb-btn" id="loadVttBtn">🗺 DD2VTT</button>
   <input type="file" id="vttFileInput" accept=".dd2vtt,.json" hidden>
 
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="lockPlayersBtn" title="Lock player view while setting up">🔒 Lock Players</button>
+
   <div style="flex:1"></div>
   <span id="status" style="font-family:'Cinzel',serif;font-size:10px;color:var(--dim)">Connecting…</span>
   <div id="presence-row" style="display:flex;align-items:center;gap:4px;margin-left:4px;flex-shrink:0"></div>
@@ -1256,6 +1259,19 @@ async function clearSection(section){
 
 // ── DD2VTT Import (background image only — no geometry) ─────────────────────
 document.getElementById("loadVttBtn").onclick=()=>document.getElementById("vttFileInput").click();
+
+// ── Lock Players ──────────────────────────────────────────────────────────────
+let _playersLocked=false;
+onValue(ref(db,"session/locked"),snap=>{
+  _playersLocked=!!snap.val();
+  const btn=document.getElementById("lockPlayersBtn");
+  btn.textContent=_playersLocked?"🔓 Unlock Players":"🔒 Lock Players";
+  btn.classList.toggle("active",_playersLocked);
+});
+document.getElementById("lockPlayersBtn").onclick=async()=>{
+  await set(ref(db,"session/locked"),!_playersLocked);
+  toast(_playersLocked?"Players unlocked — map visible":"Players locked — showing waiting screen");
+};
 document.getElementById("vttFileInput").addEventListener("change",async e=>{
   const file=e.target.files[0];if(!file)return;e.target.value="";
   try{
