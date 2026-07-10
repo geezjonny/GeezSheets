@@ -986,11 +986,7 @@ function draw(){
     _geoLX.globalCompositeOperation="source-over";
     _geoLX.restore();
     ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
-    // Also draw visible glow on main canvas with lighter for warmth on tiles
-    ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
-    ctx.globalCompositeOperation="lighter";
-    for(const li of getActiveLights())drawLight(ctx,{...li,intensity:li.intensity*(lp.lightPunch||1)*0.6},_occ,TILE);
-    ctx.globalCompositeOperation="source-over";ctx.restore();
+
   }}
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
