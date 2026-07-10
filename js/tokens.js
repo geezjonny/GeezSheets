@@ -82,13 +82,15 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
   if (isProne) { ctx.translate(cx, cy); ctx.rotate(-Math.PI / 2); ctx.translate(-cx, -cy); }
 
   // Name label with dark background
-  ctx.font = `${Math.round(9 / zoom)}px Cinzel,serif`;
-  ctx.textAlign = "center"; ctx.textBaseline = "top";
-  const nameLabel = tok.name || "";
-  const nameW = ctx.measureText(nameLabel).width;
-  ctx.fillStyle = "rgba(0,0,0,0.65)";
-  ctx.fillRect(cx - nameW / 2 - 3 / zoom, py + sh + 2 / zoom, nameW + 6 / zoom, 10 / zoom);
-  ctx.fillStyle = "#fff"; ctx.fillText(nameLabel, cx, py + sh + 2 / zoom);
+  if (!tok.hideName) {
+    ctx.font = `${Math.round(9 / zoom)}px Cinzel,serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    const nameLabel = tok.name || "";
+    const nameW = ctx.measureText(nameLabel).width;
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(cx - nameW / 2 - 3 / zoom, py + sh + 2 / zoom, nameW + 6 / zoom, 10 / zoom);
+    ctx.fillStyle = "#fff"; ctx.fillText(nameLabel, cx, py + sh + 2 / zoom);
+  }
 
   // HP bar — suppressed if tok.hideHp is set (e.g. NPCs the GM wants to keep mysterious)
   if (!tok.hideHp) {

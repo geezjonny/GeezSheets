@@ -641,6 +641,8 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-action="unchain" style="display:none">⛓✕ Remove chain</div>
   <div class="ctx-item" data-action="hide-hp" style="display:none">🙈 Hide HP bar</div>
   <div class="ctx-item" data-action="show-hp" style="display:none">❤️ Show HP bar</div>
+  <div class="ctx-item" data-action="hide-name" style="display:none">🏷 Hide name tag</div>
+  <div class="ctx-item" data-action="show-name" style="display:none">🏷 Show name tag</div>
   <div class="ctx-item" data-action="adjust-hp" style="display:none">❤️ Adjust HP…</div>
   <div class="ctx-item" data-action="delete" style="color:var(--red-bright)">✕ Delete token</div>
 </div>
@@ -1121,6 +1123,12 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     if(action==="unchain")removeChainsForToken(ctxTokenId);
     if(action==="hide-hp")setTokenHideHp(ctxTokenId,true);
     if(action==="show-hp")setTokenHideHp(ctxTokenId,false);
+    if(action==="hide-name"||action==="show-name"){
+      const _hide=action==="hide-name";
+      const mapName=getMapName();
+      await update(ref(db,`maps/${mapName}/tokens/${ctxTokenId}`),{hideName:_hide});
+      if(tokens[ctxTokenId])tokens[ctxTokenId].hideName=_hide;
+    }
     if(action==="adjust-hp"){ctxMenu.classList.remove("open");setTimeout(()=>openHpAdjustPopover(ctxTokenId),0);return;}
     ctxMenu.classList.remove("open");
     if(action!=="chain")ctxTokenId=null;
@@ -2237,6 +2245,8 @@ canvas.addEventListener("contextmenu",e=>{
     document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display="flex";
     document.querySelector('.ctx-item[data-action="light-add"]').style.display=tok.light?"none":"flex";
     document.querySelector('.ctx-item[data-action="light-remove"]').style.display=tok.light?"flex":"none";
+    document.querySelector('.ctx-item[data-action="hide-name"]').style.display=tok.hideName?"none":"flex";
+    document.querySelector('.ctx-item[data-action="show-name"]').style.display=tok.hideName?"flex":"none";
     ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";
     ctxMenu.classList.add("open");return;
   }
