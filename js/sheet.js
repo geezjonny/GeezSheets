@@ -54,6 +54,8 @@ export function sHpColor(cur,max) {
 
 // ── Spell/item API data cache ─────────────────────────────────────────────────
 // These are lazy-loaded when the sheet is first opened
+import { getSpells, getEquipment, getMagicItems, getSkills } from "./data.js";
+
 let spellsDb = {}, equipDb = {}, magicDb = {}, skillsDb = null, apiLoaded = false;
 
 export async function loadSheetApi() {
@@ -61,10 +63,10 @@ export async function loadSheetApi() {
   apiLoaded = true;
   try {
     const [spells, skills, equip, magic] = await Promise.all([
-      fetch("data/spells.json").then(r=>r.json()),
-      fetch("data/skills.json").then(r=>r.json()),
-      fetch("data/equipment.json").then(r=>r.json()).catch(()=>[]),
-      fetch("data/magic_items.json").then(r=>r.json()).catch(()=>[]),
+      getSpells(),
+      getSkills(),
+      getEquipment(),
+      getMagicItems(),
     ]);
     spells.forEach(s => { spellsDb[s.name.toLowerCase()] = s; });
     equip.forEach(e  => { equipDb[e.name.toLowerCase()]  = e; });
@@ -73,6 +75,7 @@ export async function loadSheetApi() {
       key:   s.index.replace(/-/g,"_"),
       label: s.name,
       stat:  s.ability_score?.index?.slice(0,3) ?? "str",
+      desc:  Array.isArray(s.desc) ? s.desc[0] : (s.desc || ""),
     }));
   } catch {
     skillsDb = SKILLS;
@@ -160,10 +163,122 @@ window.useItem = (charId, idx) => useItem(charId, idx, toast);
 window.removeItem = (charId, idx) => removeItem(charId, idx);
 
 window.addItem = async (charId) => {
-  const name = prompt("Item name:");
-  if (!name?.trim()) return;
-  const qty  = parseInt(prompt("Quantity:", "1")) || 1;
-  await addItem(charId, name, qty);
+  // Remove any existing picker
+  document.getElementById("item-picker-overlay")?.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "item-picker-overlay";
+  overlay.style.cssText = "position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6)";
+
+  overlay.innerHTML = `
+    <div style="background:#1a1510;border:1px solid #3d2e1a;border-radius:8px;width:480px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.8);overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #3d2e1a;flex-shrink:0">
+        <span style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#c8a84b">Add Item</span>
+        <button id="ipc-close" style="border:none;background:transparent;color:#6b5a38;font-size:16px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:10px 12px;border-bottom:1px solid #3d2e1a;flex-shrink:0">
+        <input id="ipc-search" type="text" placeholder="Search equipment, weapons, magic items…" spellcheck="false"
+          style="width:100%;background:rgba(255,255,255,.04);border:1px solid #3d2e1a;border-radius:4px;color:#d4c49a;font-family:'Cinzel',serif;font-size:10px;padding:7px 10px;outline:none;box-sizing:border-box">
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="ipc-tab active" data-src="all"     style="font-family:'Cinzel',serif;font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid #3d2e1a;background:rgba(200,168,75,.1);color:#c8a84b;cursor:pointer">All</button>
+          <button class="ipc-tab"        data-src="equip"   style="font-family:'Cinzel',serif;font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid #3d2e1a;background:transparent;color:#6b5a38;cursor:pointer">Equipment</button>
+          <button class="ipc-tab"        data-src="magic"   style="font-family:'Cinzel',serif;font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid #3d2e1a;background:transparent;color:#6b5a38;cursor:pointer">Magic Items</button>
+        </div>
+      </div>
+      <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+        <div id="ipc-list" style="width:200px;flex-shrink:0;overflow-y:auto;border-right:1px solid #3d2e1a;padding:4px"></div>
+        <div id="ipc-preview" style="flex:1;overflow-y:auto;padding:12px;font-size:.72rem;line-height:1.6;color:#d4c49a">
+          <div style="color:#6b5a38;font-family:'Cinzel',serif;font-size:.65rem;text-align:center;margin-top:20px">Search and select an item to preview</div>
+        </div>
+      </div>
+      <div style="padding:10px 12px;border-top:1px solid #3d2e1a;display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <input id="ipc-qty" type="number" value="1" min="1" style="width:52px;background:rgba(255,255,255,.04);border:1px solid #3d2e1a;border-radius:4px;color:#d4c49a;font-family:'Cinzel',serif;font-size:10px;padding:5px 8px;outline:none;text-align:center">
+        <button id="ipc-add" disabled style="flex:1;font-family:'Cinzel',serif;font-size:10px;font-weight:700;padding:8px;border-radius:4px;border:1px solid #7a6228;background:rgba(200,168,75,.08);color:#7a6228;cursor:not-allowed">Select an item to add</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  let allItems = [], filtered = [], selected = null, activeTab = "all";
+
+  // Load both datasets
+  // Load both datasets via shared data.js cache
+  const [eq, mg] = await Promise.all([
+    getEquipment(),
+    getMagicItems(),
+  ]);
+  allItems = [
+    ...eq.map(i=>({...i, _src:"equip"})),
+    ...mg.map(i=>({...i, _src:"magic"})),
+  ].sort((a,b)=>a.name.localeCompare(b.name));
+
+  function renderList() {
+    const q = document.getElementById("ipc-search").value.trim().toLowerCase();
+    filtered = allItems.filter(i => {
+      if(activeTab==="equip" && i._src!=="equip") return false;
+      if(activeTab==="magic" && i._src!=="magic") return false;
+      return !q || i.name.toLowerCase().includes(q);
+    }).slice(0,80);
+    const list = document.getElementById("ipc-list");
+    list.innerHTML = filtered.map((item,idx)=>`
+      <div class="ipc-row" data-idx="${idx}" style="padding:5px 8px;border-radius:3px;cursor:pointer;font-family:'Cinzel',serif;font-size:.65rem;color:#6b5a38;display:flex;align-items:center;gap:5px">
+        <span style="color:${item._src==="magic"?"#c084fc":"#6b5a38"};font-size:8px">${item._src==="magic"?"✨":"⚔"}</span>
+        <span>${item.name}</span>
+      </div>`).join("");
+    list.querySelectorAll(".ipc-row").forEach(row=>{
+      row.onmouseenter=()=>{row.style.background="rgba(200,168,75,.06)";row.style.color="#d4c49a";};
+      row.onmouseleave=()=>{if(row!==document.querySelector(".ipc-row.sel")){row.style.background="";row.style.color="#6b5a38";}};
+      row.onclick=()=>selectItem(parseInt(row.dataset.idx));
+    });
+  }
+
+  function selectItem(idx) {
+    selected = filtered[idx];
+    document.querySelectorAll(".ipc-row").forEach(r=>r.classList.remove("sel"));
+    const row = document.querySelector(`.ipc-row[data-idx="${idx}"]`);
+    if(row){row.classList.add("sel");row.style.background="rgba(200,168,75,.1)";row.style.color="#c8a84b";}
+    const prev = document.getElementById("ipc-preview");
+    const i = selected;
+    const cat = i.equipment_category?.name || i.rarity?.name || "";
+    const desc = Array.isArray(i.desc) ? i.desc.join(" ") : (i.desc||"No description.");
+    const props = i.properties?.map(p=>p.name).join(", ")||"";
+    prev.innerHTML = `
+      <div style="font-family:'Cinzel',serif;font-size:.85rem;font-weight:700;color:#c8a84b;margin-bottom:4px">${i.name}</div>
+      <div style="font-size:.62rem;color:#6b5a38;margin-bottom:8px">${cat}${props?` · ${props}`:""}</div>
+      ${i.damage?`<div style="color:#d4c49a;margin-bottom:6px">⚔ ${i.damage.damage_dice} ${i.damage.damage_type?.name||""}</div>`:""}
+      ${i.armor_class?`<div style="color:#d4c49a;margin-bottom:6px">🛡 AC ${i.armor_class.base}${i.armor_class.dex_bonus?" + DEX":""}</div>`:""}
+      ${i.cost?`<div style="color:#d4c49a;margin-bottom:6px">💰 ${i.cost.quantity} ${i.cost.unit}</div>`:""}
+      ${i.weight?`<div style="color:#6b5a38;margin-bottom:6px">⚖ ${i.weight} lb</div>`:""}
+      <div style="color:#a89070;line-height:1.5;font-size:.68rem">${desc}</div>`;
+    const btn = document.getElementById("ipc-add");
+    btn.disabled = false;
+    btn.style.color="#c8a84b";btn.style.borderColor="#c8a84b";btn.style.cursor="pointer";
+    btn.textContent=`Add "${i.name}"`;
+  }
+
+  // Tab switching
+  overlay.querySelectorAll(".ipc-tab").forEach(tab=>{
+    tab.onclick=()=>{
+      activeTab=tab.dataset.src;
+      overlay.querySelectorAll(".ipc-tab").forEach(t=>{t.style.background="transparent";t.style.color="#6b5a38";t.classList.remove("active");});
+      tab.style.background="rgba(200,168,75,.1)";tab.style.color="#c8a84b";tab.classList.add("active");
+      renderList();
+    };
+  });
+
+  document.getElementById("ipc-search").addEventListener("input", renderList);
+  document.getElementById("ipc-close").onclick = ()=>overlay.remove();
+  overlay.onclick = e=>{ if(e.target===overlay) overlay.remove(); };
+
+  document.getElementById("ipc-add").onclick = async ()=>{
+    if(!selected) return;
+    const qty = parseInt(document.getElementById("ipc-qty").value)||1;
+    await addItem(charId, selected.name, qty);
+    overlay.remove();
+  };
+
+  renderList();
+  document.getElementById("ipc-search").focus();
 };
 
 window.giveLight = async (charId) => {
@@ -319,7 +434,7 @@ export function buildSheetCard(char, editable = false) {
     const base = Math.floor(((st[s.stat]??10)-10)/2);
     const bonus = d.bonus != null ? d.bonus : (base + (d.proficient?profBonus:0) + (d.expertise?profBonus:0));
     const cls  = d.expertise ? 'expert' : d.proficient ? 'prof' : '';
-    return `<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${sFmt(bonus)}</span></div>`;
+    return `<div class="skill-row-item ${cls}" title="${s.desc||s.label}"><span class="skill-name">${s.label}</span><span class="skill-val">${sFmt(bonus)}</span></div>`;
   }).join('');
 
   // ── Saves ──

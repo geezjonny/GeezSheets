@@ -395,6 +395,7 @@ canvas{display:block;width:100%;height:100%}
     <input id="map-input" type="text" value="dungeon-1" hidden>
     <div class="sep"></div>
     <button id="pingBtn">📍 Ping</button>
+    <button id="rulerBtn" title="Ruler — click two points to measure distance">📏 Ruler</button>
     <button id="micBtn">🎤 Mic</button>
     <button id="sheet-toggle-btn" title="Character Sheet" onclick="window._toggleSheetPanel && window._toggleSheetPanel()" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">📋</button>
     <button onclick="toggleGlossarySearch()" title="Almanac" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">📖</button>
@@ -454,6 +455,7 @@ import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadToke
 import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile, applyCondition, deleteToken } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
+import { computeVisibilityPolygon, activeOccluders, drawLight, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
@@ -471,6 +473,8 @@ import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
 const wallGroups={},doors={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
+const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
+let _geoLC=null,_geoLX=null;
 let pcsData={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
 let currentMap="dungeon-1";
@@ -789,6 +793,7 @@ function subscribeLive(){
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
       if(data.chains)Object.assign(chains,data.chains);
+      if(data.geometry){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];if(data.geometry.walls)geometry.walls.push(...Object.values(data.geometry.walls));if(data.geometry.lights)geometry.lights.push(...Object.values(data.geometry.lights));if(data.geometry.doors)geometry.doors.push(...Object.values(data.geometry.doors));if(data.geometry.timeOfDay)geometry.timeOfDay=data.geometry.timeOfDay;if(data.geometry.lightingParams)Object.assign(geometry.lightingParams,data.geometry.lightingParams);}
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;timeOfDay=data.nightMode||"day"||"day";
@@ -926,15 +931,30 @@ function draw(){
   ctx.restore();
 
 
-  // ── Time of day overlay ────────────────────────────────────────────────────
-  if(timeOfDay!=="day"){
-    const _todOverlay={dawn:"rgba(255,140,60,0.18)",dusk:"rgba(180,80,20,0.28)",night:"rgba(10,20,60,0.6)"};
-    ctx.save();
-    ctx.globalCompositeOperation="multiply";
-    ctx.fillStyle=_todOverlay[timeOfDay]||"rgba(0,0,0,0)";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.restore();
-  }
+  // ── Geometry lighting pass ────────────────────────────────────────────────
+  {const _p=TIME_OF_DAY_PRESETS[geometry.timeOfDay]||TIME_OF_DAY_PRESETS.day,lp=geometry.lightingParams,da=lp.blackAlpha;
+  if(_p.darkness>0&&da>0.01){
+    if(!_geoLC||_geoLC.width!==canvas.width||_geoLC.height!==canvas.height){_geoLC=document.createElement("canvas");_geoLC.width=canvas.width;_geoLC.height=canvas.height;_geoLX=_geoLC.getContext("2d");}
+    _geoLX.clearRect(0,0,_geoLC.width,_geoLC.height);
+    _geoLX.fillStyle=`rgba(${_p.tint},${da})`;_geoLX.fillRect(0,0,_geoLC.width,_geoLC.height);
+    _geoLX.save();_geoLX.translate(camera.x,camera.y);_geoLX.scale(camera.zoom,camera.zoom);
+    _geoLX.globalCompositeOperation="destination-out";
+    const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
+    for(const li of geometry.lights){const segs=li.shadows?_occ:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;_geoLX.save();_geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,g2=_geoLX.createRadialGradient(cx,cy,0,cx,cy,r),pun=Math.min(1,li.intensity*(lp.lightPunch||1));g2.addColorStop(0,`rgba(0,0,0,${pun})`);g2.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=g2;_geoLX.fillRect(cx-r,cy-r,r*2,r*2);_geoLX.restore();}
+    // Darkvision: only for the logged-in player's own token
+    if(myCharacterId){
+      const myTok=Object.values(tokens).find(t=>t.characterId===myCharacterId);
+      if(myTok){
+        const c=pcsData[myCharacterId]||{},dvT=parseInt(c.darkvision||c.senses?.darkvision||0)/5;
+        if(dvT>0){const tx=(myTok.x+0.5)*TILE,ty=(myTok.y+0.5)*TILE,dr=dvT*TILE;_geoLX.save();_geoLX.globalCompositeOperation="destination-out";const dg=_geoLX.createRadialGradient(tx,ty,0,tx,ty,dr);dg.addColorStop(0,"rgba(0,0,0,0.9)");dg.addColorStop(0.65,"rgba(0,0,0,0.4)");dg.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=dg;_geoLX.fillRect(tx-dr,ty-dr,dr*2,dr*2);_geoLX.restore();}
+      }
+    }
+    _geoLX.restore();
+    ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
+    ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);ctx.globalCompositeOperation="lighter";
+    for(const li of geometry.lights)drawLight(ctx,{...li,intensity:li.intensity*(lp.lightPunch||1)},_occ,TILE);
+    ctx.globalCompositeOperation="source-over";ctx.restore();
+  }}
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
@@ -949,36 +969,50 @@ viewport.addEventListener("contextmenu",e=>{
   if(tokId){ctxTokenId=tokId;ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");}
 });
 
+// ── Ruler mode button ────────────────────────────────────────────────────────
+let rulerMode=false;
+document.getElementById("rulerBtn").onclick=()=>{
+  rulerMode=!rulerMode;rulerStart=null;rulerEnd=null;rulerActive=false;
+  document.getElementById("rulerBtn").classList.toggle("active",rulerMode);
+  viewport.style.cursor=rulerMode?"crosshair":"";
+};
+
 viewport.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
-  if(pingMode){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}
-  if(e.altKey){
-    const[wx,wy]=toWorld(sx,sy);const snap=findSnapPoint(tokens,wx,wy);const point=snap||[wx,wy];
-    if(!rulerActive){rulerStart=point;rulerEnd=point;rulerActive=true;}else{rulerEnd=point;rulerActive=false;}
+  const[wx,wy]=toWorld(sx,sy);
+
+  // Ping mode — drop a ping and exit
+  if(pingMode){
+    sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);
+    pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;
+  }
+
+  // Ruler mode — two-click measurement
+  if(rulerMode){
+    const snap=findSnapPoint(tokens,wx,wy);const point=snap||[wx,wy];
+    if(!rulerActive){rulerStart=point;rulerEnd=point;rulerActive=true;}
+    else{rulerEnd=point;rulerActive=false;}
     return;
   }
-  const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+
+  // Token click — open sheet only, no dragging
+  const[tx,ty]=worldToTile(wx,wy,TILE);
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
     const tok=tokens[tokId];
-    if(tok.type==="pc"&&(tok.name?.toLowerCase()===playerName.toLowerCase()||tok.characterId===myCharacterId)){
-      draggingToken={id:tokId,offsetTX:tx-tok.x,offsetTY:ty-tok.y};viewport.setPointerCapture(e.pointerId);
-      openCharSheet(tok.characterId,tok.name,false);return;
-    }
     openCharSheet(tok.characterId,tok.name,false);return;
   }
 
-  // Door click — check all doors for proximity to click point
+  // Door click
   const clickedDoor=findDoorAtPoint(doors,wx,wy,TILE);
   if(clickedDoor){
     const d=doors[clickedDoor];
-    if(d.locked){
-      toast(`🔒 ${d.lockReason||"This door is locked."}`);
-    } else {
-      update(ref(db,`maps/${currentMap}/doors/${clickedDoor}`),{open:!d.open});
-    }
+    if(d.locked){toast(`🔒 ${d.lockReason||"This door is locked."}`);}
+    else{update(ref(db,`maps/${currentMap}/doors/${clickedDoor}`),{open:!d.open});}
     return;
   }
+
+  // Pan + laser hold
   isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);
   panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camera.x;camStartY=camera.y;
   viewport.setPointerCapture(e.pointerId);
@@ -986,18 +1020,14 @@ viewport.addEventListener("pointerdown",e=>{
 
 viewport.addEventListener("pointermove",e=>{
   const[sx,sy]=screenPos(e);
-  if(rulerActive){const[wx,wy]=toWorld(sx,sy);const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
-  if(draggingToken){const[wx,wy]=toWorld(sx,sy);tokens[draggingToken.id].x=Math.floor(wx/TILE)-draggingToken.offsetTX;tokens[draggingToken.id].y=Math.floor(wy/TILE)-draggingToken.offsetTY;return;}
-  if(isHolding&&myLaserRef){const[wx,wy]=toWorld(sx,sy);moveLaser(myLaserRef,wx,wy,playerName);return;}
+  const[wx,wy]=toWorld(sx,sy);
+  if(rulerActive){const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
+  if(isHolding&&myLaserRef){moveLaser(myLaserRef,wx,wy,playerName);return;}
   if(panning){camera.x=camStartX+(e.clientX-panStartX);camera.y=camStartY+(e.clientY-panStartY);}
 });
 
 viewport.addEventListener("pointerup",e=>{
   if(rulerActive)return;
-  if(draggingToken){
-    update(ref(db,`maps/${currentMap}/tokens/${draggingToken.id}`),{x:tokens[draggingToken.id].x,y:tokens[draggingToken.id].y});
-    draggingToken=null;return;
-  }
   clearTimeout(pingHoldTimer);
   if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}
   isHolding=false;panning=false;

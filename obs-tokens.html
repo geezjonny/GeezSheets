@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GeezSheets — Token Strip</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0b08;--panel:#1a1510;--border:#3d2e1a;--gold:#c8a84b;--text:#d4c49a;--dim:#6b5a38;--green:#4a9a4a}
+html,body{width:100%;height:100%;overflow:hidden;background:#00ff00}
+#strip{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 8px;width:90px;height:100%;overflow:hidden}
+.pill{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0}
+.portrait{width:58px;height:58px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2.5px solid rgba(122,176,224,0.3);background:#1a3a5a;position:relative}
+.portrait img{width:100%;height:100%;object-fit:cover;display:block}
+.portrait-init{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:20px;color:#fff;font-weight:700}
+.portrait.talking{border-color:var(--gold);box-shadow:0 0 14px rgba(200,168,75,.7)}
+.portrait.active{border-color:var(--gold)}
+.tok-name{font-family:'Cinzel',serif;font-size:7px;color:#1a1510;white-space:nowrap;max-width:70px;overflow:hidden;text-overflow:ellipsis;text-align:center;font-weight:700}
+.hp-bar{width:54px;height:4px;background:rgba(0,0,0,.4);border-radius:2px;overflow:hidden;flex-shrink:0}
+.hp-fill{height:100%;border-radius:2px;transition:width .3s}
+.active-dot{position:absolute;top:-2px;left:-2px;width:10px;height:10px;border-radius:50%;background:var(--gold);border:1.5px solid #00ff00}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="strip"></div>
+<script type="module">
+import { ref, onValue, get } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import { db } from "./js/firebase.js";
+import { subscribeTalking, talkingPlayers } from "./js/mic.js";
+import { tokenTextures, tryLoadTokenTexture } from "./js/assets.js";
+import { loadConfig } from "./js/config.js";
+
+const strip = document.getElementById("strip");
+
+await loadConfig();
+subscribeTalking();
+
+// Shake talking tokens
+const shaking = new Set();
+requestAnimationFrame(function shake(){
+  shaking.forEach(el=>{
+    el.style.transform=`translate(${(Math.random()-.5)*3}px,${(Math.random()-.5)*3}px)`;
+  });
+  requestAnimationFrame(shake);
+});
+
+function hpColor(pct){ return pct>.5?"#4a9a4a":pct>.25?"#aaaa30":"#e04040"; }
+
+let pcsData={}, mapTokens={}, initiativeData={}, inCombat=false;
+
+onValue(ref(db,"characters/pcs"),snap=>{pcsData=snap.exists()?snap.val():{};render();});
+onValue(ref(db,"session/inCombat"),snap=>{inCombat=!!snap.val();render();});
+onValue(ref(db,"initiative"),snap=>{initiativeData=snap.exists()?snap.val()||{}:{};render();});
+
+// Talking state → update portraits
+setInterval(()=>{
+  document.querySelectorAll(".portrait").forEach(el=>{
+    const key=el.dataset.talkKey;
+    const talking=!!(key&&talkingPlayers[key]);
+    el.classList.toggle("talking",talking);
+    if(talking) shaking.add(el); else{shaking.delete(el);el.style.transform="";}
+  });
+},100);
+
+let mapUnsub=null;
+onValue(ref(db,"session/currentMap"),snap=>{
+  const name=snap.val()||"dungeon-1";
+  if(mapUnsub)mapUnsub();
+  mapUnsub=onValue(ref(db,`maps/${name}/tokens`),snap=>{
+    const raw=snap.exists()?snap.val():{};
+    mapTokens=raw;
+    // Load textures for all tokens
+    Object.values(raw).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));
+    render();
+  });
+});
+
+function render(){
+  const order=(initiativeData.order||[]);
+  const activeId=initiativeData.active||null;
+  const pcs=Object.entries(mapTokens).filter(([,t])=>t.type==="pc"||!t.type);
+  if(!pcs.length){strip.innerHTML="";return;}
+
+  // Sort by initiative order if in combat, otherwise alphabetical
+  let sorted;
+  if(inCombat&&order.length){
+    const idx={}; order.forEach((e,i)=>idx[e.tokenId]=i);
+    sorted=[...pcs].sort(([,a],[,b])=>(idx[a.id]??999)-(idx[b.id]??999));
+  } else {
+    sorted=[...pcs].sort(([,a],[,b])=>(a.name||"").localeCompare(b.name||""));
+  }
+
+  strip.innerHTML="";
+  sorted.forEach(([tokId,tok])=>{
+    const c=pcsData[tok.characterId]||{};
+    const hp=c.combat?.hp_current??c.hp_current??tok.hp??0;
+    const maxHp=c.combat?.hp_max??c.hp_max??tok.maxHp??1;
+    const pct=Math.max(0,Math.min(1,hp/maxHp));
+    const isActive=inCombat&&tok.id===activeId;
+    const talkKey=(tok.name||"").toLowerCase().replace(/\./g,"_");
+
+    // Use tokenTextures cache (same as index.html)
+    const cacheKey=tok.characterId==="__npc__"&&(tok.lookupName||tok.name)
+      ?`__npc__:${(tok.lookupName||tok.name).toLowerCase()}`
+      :tok.characterId;
+    const texImg=tokenTextures[cacheKey];
+
+    const pill=document.createElement("div"); pill.className="pill";
+
+    const portrait=document.createElement("div");
+    portrait.className="portrait"+(isActive?" active":"");
+    portrait.dataset.talkKey=talkKey;
+
+    if(texImg){
+      const img=document.createElement("img");img.src=texImg.src;portrait.appendChild(img);
+    } else {
+      const init=document.createElement("div");init.className="portrait-init";
+      init.textContent=(tok.name||"?")[0].toUpperCase();portrait.appendChild(init);
+    }
+
+    if(isActive){const dot=document.createElement("div");dot.className="active-dot";portrait.style.overflow="visible";portrait.appendChild(dot);}
+
+    const nameEl=document.createElement("div"); nameEl.className="tok-name";
+    nameEl.textContent=tok.name||"";
+
+    const hpBar=document.createElement("div"); hpBar.className="hp-bar";
+    const hpFill=document.createElement("div"); hpFill.className="hp-fill";
+    hpFill.style.width=`${pct*100}%`; hpFill.style.background=hpColor(pct);
+    hpBar.appendChild(hpFill);
+
+    pill.appendChild(portrait); pill.appendChild(nameEl); pill.appendChild(hpBar);
+    strip.appendChild(pill);
+  });
+}
+</script>
+</body>
+</html>

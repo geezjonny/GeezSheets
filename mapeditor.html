@@ -67,6 +67,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 #chat-drawer-ed.open{transform:translateY(0)}
 
 /* Sheet panel pushes from left — over tool strip */
+#sheet-panel{position:fixed;z-index:700;top:0;right:0;width:340px;height:100vh;background:var(--panel);border-left:1px solid var(--border);box-shadow:-8px 0 32px rgba(0,0,0,.6);transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column;overflow:hidden}
 #sheet-panel.open{transform:translateX(0)}
 .sep{width:1px;height:30px;background:var(--border);flex-shrink:0;margin:0 4px}
 .tool-label{font-family:'Cinzel',serif;font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;flex-shrink:0}
@@ -346,6 +347,11 @@ canvas{display:block;cursor:crosshair}
   <button class="tb-btn"        id="tokenBtn"    title="Spawn token · T">⚔ Token</button>
 
   <div class="tb-sep"></div>
+  <button class="tb-btn" id="geo-wall-btn"  title="Draw Wall · W">🧱 Wall</button>
+  <button class="tb-btn" id="geo-light-btn" title="Place Light · L">💡 Light</button>
+  <button class="tb-btn" id="geo-edit-btn"  title="Edit / Delete Geometry · G">✏ Geo Edit</button>
+
+  <div class="tb-sep"></div>
 
   <!-- Terrain picker (shows when Paint is active) -->
   <div class="picker-wrap" id="terrain-wrap" style="display:none;height:28px">
@@ -363,6 +369,18 @@ canvas{display:block;cursor:crosshair}
   <button class="tb-btn tod-btn"        data-tod="dawn"  title="Dawn">🌅</button>
   <button class="tb-btn tod-btn"        data-tod="dusk"  title="Dusk">🌇</button>
   <button class="tb-btn tod-btn"        data-tod="night" title="Night">🌙</button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Lighting controls -->
+  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+    <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;white-space:nowrap">DARK</span>
+    <input type="range" id="ctrl-darkness" min="0" max="1" step="0.01" value="1"
+      style="width:70px;accent-color:var(--gold);cursor:pointer" title="Darkness density (0=none, 1=max)">
+    <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;white-space:nowrap">LIGHT</span>
+    <input type="range" id="ctrl-light-punch" min="0" max="1" step="0.01" value="1"
+      style="width:70px;accent-color:var(--gold);cursor:pointer" title="Light brightness/cut (0=invisible, 1=full)">
+  </div>
 
   <div class="tb-sep"></div>
 
@@ -612,6 +630,7 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-sep"></div>
   <div class="ctx-label">Token</div>
   <div class="ctx-item" data-action="edit">✏ Edit token…</div>
+  <div class="ctx-item" data-action="sheet">📜 View Sheet</div>
   <div class="ctx-item" data-action="chain">🔗 Chain to token…</div>
   <div class="ctx-item" data-action="unchain" style="display:none">⛓✕ Remove chain</div>
   <div class="ctx-item" data-action="hide-hp" style="display:none">🙈 Hide HP bar</div>
@@ -749,6 +768,14 @@ import { subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { sendChat, renderChat } from "./js/chat.js";
 import { rollDie, animateDiceResult } from "./js/dice.js";
+import { findMonster } from "./js/data.js";
+import {
+  parseDD2VTT, computeVisibilityPolygon, activeOccluders,
+  drawWallsGeometry, drawLightsGeometry, drawLight,
+  TIME_OF_DAY_PRESETS,
+  addWall, addLight, deleteById,
+  segmentAtPoint, lightAtPoint, endpointAtPoint, moveEndpoint,
+} from "./js/geometry.js";
 import { subscribeTokenStrip, rollInitiative, startCombat, endCombat, lockInitiativeOrder, addToInitiative, nextTurn, clearInitiative } from "./js/initiative.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 window.toggleGlossarySearch = toggleGlossarySearch;
@@ -767,6 +794,22 @@ let customProps=[];
 const activePings={},activeLasers={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
 let currentShape="rect",currentTerrain="grass",wallsEnabled=false;
+// ── Geometry state ────────────────────────────────────────────────────────────
+const geometry = { walls:[], doors:[], lights:[], timeOfDay:"day", lightingParams:{tintAlpha:1, blackAlpha:0.92, dvPunch:0.8, lightPunch:1} };
+let geoMode    = null;   // "wall" | "light" | "edit"
+let geoWallStart = null; // [gx,gy] for first wall click
+let geoDragEp    = null; // endpoint being dragged
+let geoSelected  = null; // selected wall/light id
+
+async function saveGeometry() {
+  const m = mapInput.value.trim() || "dungeon-1";
+  await set(ref(db,`maps/${m}/geometry`), {
+    walls:  geometry.walls.length  ? geometry.walls  : null,
+    lights: geometry.lights.length ? geometry.lights : null,
+    timeOfDay: geometry.timeOfDay,
+    lightingParams: geometry.lightingParams,
+  }).catch(e => toast("Geo save failed: " + e.message));
+}
 let currentFogType="fog"; // "fog"|"darkness"|"magical"
 let fogMode=false,roofMode=false,wallMode=false,doorMode=false;
 let currentStamp=null,currentProp=null;
@@ -910,6 +953,15 @@ function subscribeLive(){
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
       if(data.chains)Object.assign(chains,data.chains);
+      // Load geometry (walls, lights, doors for lighting system)
+      geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
+      if(data.geometry){
+        if(data.geometry.walls)geometry.walls.push(...Object.values(data.geometry.walls));
+        if(data.geometry.lights)geometry.lights.push(...Object.values(data.geometry.lights));
+        if(data.geometry.doors)geometry.doors.push(...Object.values(data.geometry.doors));
+        if(data.geometry.timeOfDay)geometry.timeOfDay=data.geometry.timeOfDay;
+        if(data.geometry.lightingParams)Object.assign(geometry.lightingParams,data.geometry.lightingParams);
+      }
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;
@@ -1021,6 +1073,10 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     const cond=item.dataset.condition,action=item.dataset.action;
     if(cond)applyCondition(mapInput.value.trim()||"dungeon-1",ctxTokenId,cond,tokens);
     if(action==="delete")deleteTokenRTDB(getMapName(),ctxTokenId);
+    if(action==="sheet"){
+      const _tok=tokens[ctxTokenId];
+      if(_tok) openCharSheet(_tok.characterId,_tok.name,true);
+    }
     if(action==="edit"){ctxMenu.classList.remove("open");openEditTokenModal(ctxTokenId);return;}
     if(action==="chain")openChainModal(ctxTokenId);
     if(action==="unchain")removeChainsForToken(ctxTokenId);
@@ -1166,17 +1222,22 @@ document.getElementById("vttFileInput").addEventListener("change",async e=>{
   const file=e.target.files[0];if(!file)return;e.target.value="";
   try{
     const json=JSON.parse(await file.text());
-    // DD2VTT stores the map image as a base64 PNG in json.image
-    if(!json.image){toast("No image found in DD2VTT file");return;}
-    const dataUrl=`data:image/png;base64,${json.image}`;
+    const parsed=parseDD2VTT(json);
+    // Load geometry
+    geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
+    geometry.walls.push(...parsed.walls);
+    geometry.lights.push(...parsed.lights);
+    if(parsed.doors)geometry.doors.push(...parsed.doors);
+    geometry.pixelsPerGrid=parsed.pixelsPerGrid||70;
+    // Set background image
     const mapName=mapInput.value.trim()||"dungeon-1";
-    // Save background to Firebase
-    await set(ref(db,`maps/${mapName}/background`),dataUrl);
-    // Also save PPI if available (pixels per grid unit)
-    const ppi=json.resolution?.pixels_per_grid||70;
-    await set(ref(db,`maps/${mapName}/backgroundPpi`),ppi);
-    toast(`DD2VTT background imported (${ppi} PPI)`);
-  }catch(err){toast("DD2VTT import failed: "+err.message);}
+    if(parsed.imageDataUrl){
+      await set(ref(db,`maps/${mapName}/background`),parsed.imageDataUrl);
+      await set(ref(db,`maps/${mapName}/backgroundPpi`),parsed.pixelsPerGrid||70);
+    }
+    await saveGeometry();
+    toast(`DD2VTT: ${parsed.walls.length} walls · ${parsed.lights.length} lights · ${parsed.doors?.length||0} doors`);
+  }catch(err){toast("DD2VTT failed: "+err.message);console.error(err);}
 });
 
 // ── JSON Import ───────────────────────────────────────────────────────────────
@@ -1366,17 +1427,7 @@ function render(){
   if(bgImage){
     const s=TILE/(bgPpi||70);
     const bw=bgImage.width*s,bh=bgImage.height*s;
-    if(timeOfDay!=="day"){
-      ctx.save();
-      ctx.filter="saturate(0.55) brightness(0.55)";
-      ctx.drawImage(bgImage,0,0,bw,bh);
-      ctx.filter="none";
-      ctx.globalCompositeOperation="multiply";
-      ctx.fillStyle="rgba(40,60,110,0.55)";
-      ctx.fillRect(0,0,bw,bh);
-      ctx.globalCompositeOperation="source-over";
-      ctx.restore();
-    }else{
+    {
       ctx.drawImage(bgImage,0,0,bw,bh);
     }
   }
@@ -1453,15 +1504,107 @@ function render(){
   if(currentShape==="select")drawSelection();else drawPreview();
   ctx.restore();
 
-  // ── Time of day full-canvas overlay ──────────────────────────────────────
-  if(timeOfDay!=="day"){
-    const _todOverlay={dawn:"rgba(255,140,60,0.18)",dusk:"rgba(180,80,20,0.28)",night:"rgba(10,20,60,0.6)"};
-    const _todFilter={dawn:"saturate(0.8) brightness(0.88)",dusk:"saturate(0.85) brightness(0.72)",night:"saturate(0.25) brightness(0.45)"};
-    // Apply filter to canvas content via offscreen composite
-    ctx.save();
-    ctx.globalCompositeOperation="multiply";
-    ctx.fillStyle=_todOverlay[timeOfDay]||"rgba(0,0,0,0)";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+  // ── Geometry editor indicators (camera space) ─────────────────────────────
+  ctx.save(); ctx.translate(camera.x,camera.y); ctx.scale(camera.zoom,camera.zoom);
+  const _isDay=(geometry.timeOfDay==="day");
+  drawWallsGeometry(ctx,geometry.walls,TILE,{zoom:camera.zoom,selectedId:geoSelected});
+  if(geoMode==="edit"||geoMode==="light"||!_isDay)
+    drawLightsGeometry(ctx,geometry.lights,TILE,{zoom:camera.zoom,selectedId:geoSelected});
+  // Hover range circle for nearest light in edit/light mode
+  if((geoMode==="edit"||geoMode==="light")&&geometry.lights.length){
+    const hgx=(hoverTileX||0)+0.5, hgy=(hoverTileY||0)+0.5;
+    let nearLight=null,nearDist=2.5;
+    for(const l of geometry.lights){const d=Math.hypot(l.x-hgx,l.y-hgy);if(d<nearDist){nearDist=d;nearLight=l;}}
+    if(nearLight){
+      ctx.beginPath();ctx.arc(nearLight.x*TILE,nearLight.y*TILE,nearLight.range*TILE,0,Math.PI*2);
+      ctx.strokeStyle="rgba(200,168,75,.4)";ctx.lineWidth=1.5/camera.zoom;
+      ctx.setLineDash([4/camera.zoom,4/camera.zoom]);ctx.stroke();ctx.setLineDash([]);
+    }
+  }
+  if(geoMode==="wall"&&geoWallStart&&hoverTileX!=null){
+    ctx.strokeStyle="rgba(200,168,75,.7)";ctx.lineWidth=2/camera.zoom;
+    ctx.setLineDash([6/camera.zoom,4/camera.zoom]);
+    ctx.beginPath();ctx.moveTo(geoWallStart[0]*TILE,geoWallStart[1]*TILE);
+    ctx.lineTo((hoverTileX+0.5)*TILE,(hoverTileY+0.5)*TILE);ctx.stroke();ctx.setLineDash([]);
+  }
+  ctx.restore();
+
+  // ── Lighting pass (offscreen canvas — sliders actually work) ──────────────
+  {
+    const _preset=TIME_OF_DAY_PRESETS[geometry.timeOfDay]||TIME_OF_DAY_PRESETS.day;
+    const lp=geometry.lightingParams;
+    // Slider directly controls darkness depth — preset only sets the tint colour
+    const darkAmount=lp.blackAlpha;
+    if(_preset.darkness>0 && darkAmount>0.01){
+      if(!window._geoLightCanvas||window._geoLightCanvas.width!==canvas.width||window._geoLightCanvas.height!==canvas.height){
+        window._geoLightCanvas=document.createElement("canvas");
+        window._geoLightCanvas.width=canvas.width;window._geoLightCanvas.height=canvas.height;
+        window._geoLightCtx=window._geoLightCanvas.getContext("2d");
+      }
+      const lCtx=window._geoLightCtx;
+      lCtx.clearRect(0,0,canvas.width,canvas.height);
+      lCtx.fillStyle=`rgba(${_preset.tint},${darkAmount})`;
+      lCtx.fillRect(0,0,canvas.width,canvas.height);
+      // Punch holes for each light using destination-out in world space
+      lCtx.save();lCtx.translate(camera.x,camera.y);lCtx.scale(camera.zoom,camera.zoom);
+      lCtx.globalCompositeOperation="destination-out";
+      const occluders=activeOccluders(geometry.walls,geometry.doors||[]);
+      for(const light of geometry.lights){
+        const segs=light.shadows?occluders:[];
+        const poly=computeVisibilityPolygon(light.x,light.y,segs,light.range);
+        if(poly.length<3) continue;
+        lCtx.save();
+        // Clip to visibility polygon
+        lCtx.beginPath();lCtx.moveTo(poly[0].x*TILE,poly[0].y*TILE);
+        for(let i=1;i<poly.length;i++)lCtx.lineTo(poly[i].x*TILE,poly[i].y*TILE);
+        lCtx.closePath();lCtx.clip();
+        // Radial gradient punch — controlled by lightPunch slider
+        const cx=light.x*TILE,cy=light.y*TILE,r=light.range*TILE;
+        const grad=lCtx.createRadialGradient(cx,cy,0,cx,cy,r);
+        const punch=Math.min(1,light.intensity*(lp.lightPunch??1));
+        grad.addColorStop(0,`rgba(0,0,0,${punch})`);
+        grad.addColorStop(1,"rgba(0,0,0,0)");
+        lCtx.fillStyle=grad;lCtx.fillRect(cx-r,cy-r,r*2,r*2);
+        lCtx.restore();
+      }
+      // Darkvision per-PC-token
+      for(const[,tok] of Object.entries(tokens)){
+        if(tok.type!=="pc"&&tok.type!=null) continue;
+        const c=pcsData[tok.characterId]||{};
+        const dvFt=parseInt(c.darkvision||c.senses?.darkvision||0);
+        const dvTiles=dvFt/5;if(dvTiles<=0) continue;
+        const tcx=(tok.x+0.5)*TILE,tcy=(tok.y+0.5)*TILE,dvr=dvTiles*TILE;
+        lCtx.save();lCtx.globalCompositeOperation="destination-out";
+        const dvg=lCtx.createRadialGradient(tcx,tcy,0,tcx,tcy,dvr);
+        dvg.addColorStop(0,"rgba(0,0,0,0.9)");dvg.addColorStop(0.65,"rgba(0,0,0,0.4)");dvg.addColorStop(1,"rgba(0,0,0,0)");
+        lCtx.fillStyle=dvg;lCtx.fillRect(tcx-dvr,tcy-dvr,dvr*2,dvr*2);lCtx.restore();
+      }
+      lCtx.restore();
+      // Composite darkness mask onto main canvas
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);
+      ctx.drawImage(window._geoLightCanvas,0,0);ctx.restore();
+      // Draw light glows additively on top
+      ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
+      ctx.globalCompositeOperation="lighter";
+      for(const light of geometry.lights)drawLight(ctx,{...light,intensity:light.intensity*(lp.lightPunch??1)},occluders,TILE);
+      ctx.globalCompositeOperation="source-over";ctx.restore();
+    } else if(geometry.lights.length){
+      // Day mode: just draw additive light glow (no darkness)
+      ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
+      ctx.globalCompositeOperation="lighter";
+      const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+      for(const light of geometry.lights)drawLight(ctx,light,occ,TILE);
+      ctx.globalCompositeOperation="source-over";ctx.restore();
+    }
+  }
+
+  // ── GM token overlay: draw all tokens on top of darkness ─────────────────
+  // Players see tokens only where light reaches; GM always sees all tokens
+  if(geometry.timeOfDay!=="day"&&geometry.lightingParams.blackAlpha>0.1){
+    ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
+    for(const[,tok]of Object.entries(tokens)){
+      drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+    }
     ctx.restore();
   }
 
@@ -1581,6 +1724,94 @@ document.getElementById("tool-erase").onclick=()=>{
 };
 
 
+
+// ── Geometry toolbar wiring ───────────────────────────────────────────────────
+function setGeoMode(mode){
+  geoMode=mode; geoWallStart=null; geoSelected=null;
+  ["geo-wall-btn","geo-light-btn","geo-edit-btn"].forEach(id=>
+    document.getElementById(id)?.classList.toggle("active", document.getElementById(id)?.id===("geo-"+mode+"-btn")||("geo-edit-btn"===id&&mode==="edit"))
+  );
+  // Deactivate terrain tools when geo mode active
+  if(mode){ document.querySelectorAll(".tb-btn[id^='tool-']").forEach(b=>b.classList.remove("active")); }
+}
+
+document.getElementById("geo-wall-btn").onclick=()=>setGeoMode(geoMode==="wall"?null:"wall");
+document.getElementById("geo-light-btn").onclick=()=>setGeoMode(geoMode==="light"?null:"light");
+document.getElementById("geo-edit-btn").onclick=()=>setGeoMode(geoMode==="edit"?null:"edit");
+
+// ── Right-click in edit mode = instant delete ────────────────────────────────
+canvas.addEventListener("contextmenu",e=>{
+  if(geoMode!=="edit") return;
+  e.preventDefault();e.stopPropagation();
+  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
+  const gx=wx/TILE,gy=wy/TILE;
+  const li=lightAtPoint(geometry.lights,gx,gy,0.6);
+  if(li!==null){deleteById(geometry.lights,li);geoSelected=null;saveGeometry();toast("Light removed");return;}
+  const seg=segmentAtPoint(geometry.walls,geometry.doors||[],gx,gy,0.4);
+  if(seg){deleteById(geometry.walls,seg.id);geoSelected=null;saveGeometry();toast("Wall removed");return;}
+},{capture:true});
+
+// Geo pointer — runs before normal paint handler
+canvas.addEventListener("pointerdown",e=>{
+  if(e.button!==0||!geoMode) return;
+  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
+  const gx=wx/TILE, gy=wy/TILE;
+  const mapName=mapInput.value.trim()||"dungeon-1";
+
+  if(geoMode==="wall"){
+    if(!geoWallStart){ geoWallStart=[gx,gy]; }
+    else{
+      addWall(geometry.walls,geoWallStart[0],geoWallStart[1],gx,gy);
+      geoWallStart=null; saveGeometry();
+    }
+    e.stopPropagation(); return;
+  }
+
+  if(geoMode==="light"){
+    const rangeStr=prompt("Light range in tiles:","4");
+    if(!rangeStr) return;
+    const colorOpt=prompt("Color? warm=ffeccd88  cold=88ccffaa  red=ff3300aa  white=ffffffaa","ffeccd88");
+    addLight(geometry.lights,gx,gy,{range:parseFloat(rangeStr)||4,intensity:1,shadows:true,color:colorOpt||"ffeccd88"});
+    saveGeometry();
+    e.stopPropagation(); return;
+  }
+
+  if(geoMode==="edit"){
+    // Try to grab an endpoint for dragging
+    const ep=endpointAtPoint(geometry.walls,[],gx,gy,0.35);
+    if(ep){ canvas.setPointerCapture(e.pointerId); geoDragEp=ep; e.stopPropagation(); return; }
+    // Try to select a light
+    const li=lightAtPoint(geometry.lights,gx,gy,0.5);
+    if(li!==null){ geoSelected=li; e.stopPropagation(); return; }
+    // Try to select a wall
+    const seg=segmentAtPoint(geometry.walls,[],gx,gy,0.35);
+    if(seg){ geoSelected=seg.id; e.stopPropagation(); return; }
+    geoSelected=null;
+  }
+},{capture:true});
+
+canvas.addEventListener("pointermove",e=>{
+  if(!geoDragEp) return;
+  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
+  moveEndpoint(geometry.walls,[],geoDragEp.id,geoDragEp.end,wx/TILE,wy/TILE);
+});
+
+canvas.addEventListener("pointerup",e=>{
+  if(geoDragEp){ geoDragEp=null; saveGeometry(); }
+});
+
+// Delete selected geo element
+window.addEventListener("keydown",e=>{
+  if(geoMode==="edit"&&geoSelected&&(e.key==="Delete"||e.key==="Backspace")){
+    deleteById(geometry.walls,geoSelected);
+    deleteById(geometry.lights,geoSelected);
+    geoSelected=null; saveGeometry(); e.preventDefault();
+  }
+  if(e.key==="w"||e.key==="W") document.getElementById("geo-wall-btn").click();
+  if(e.key==="l"||e.key==="L") document.getElementById("geo-light-btn").click();
+  if(e.key==="g"||e.key==="G") document.getElementById("geo-edit-btn").click();
+  if(e.key==="Escape"&&geoMode){ setGeoMode(null); document.getElementById("tool-select").click(); }
+});
 
 // Keyboard shortcuts
 window.addEventListener("keydown",e=>{
@@ -2003,7 +2234,7 @@ window.toggleChatEd=function toggleChatEd(){
     if(_edChatOpen){_edUnread=0;const u=document.getElementById("chat-unread-ed");u.style.display="none";}
 }
 
-window.toggleDiceTray=window.toggleDiceTray=window.toggleDiceTray=function toggleDiceTray(){
+window.toggleDiceTray=function toggleDiceTray(){
     const tray=document.getElementById("dice-tray");
     const fab=document.getElementById("dice-fab");
     const open=tray.style.display==="flex";
@@ -2011,10 +2242,10 @@ window.toggleDiceTray=window.toggleDiceTray=window.toggleDiceTray=function toggl
     fab.style.transform=open?"":"rotate(15deg)";
 }
 
-function closeSheetPanelEd(){
+window.closeSheetPanelEd=function closeSheetPanelEd(){
     document.getElementById("sheet-panel").classList.remove("open");
     document.getElementById("app").classList.remove("sheet-open");
-}
+};
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
@@ -2103,15 +2334,37 @@ function closeSheetPanelEd(){
   document.querySelectorAll("[data-tod]").forEach(btn=>{
     btn.onclick=async()=>{
       const tod=btn.dataset.tod;
-      timeOfDay=tod;
+      timeOfDay=tod; geometry.timeOfDay=tod;
       await set(ref(db,`maps/${getMapName()}/nightMode`),tod);
+      saveGeometry();
+      // Sync slider to preset darkness
+      const _p=TIME_OF_DAY_PRESETS[tod]||TIME_OF_DAY_PRESETS.day;
+      if(_p.darkness===0){geometry.lightingParams.tintAlpha=1;geometry.lightingParams.blackAlpha=1;}
+      document.getElementById("ctrl-darkness").value=geometry.lightingParams.blackAlpha;
+      document.getElementById("ctrl-light-punch").value=geometry.lightingParams.lightPunch;
       document.querySelectorAll("[data-tod]").forEach(b=>b.classList.toggle("active",b.dataset.tod===tod));
       toast({day:"☀ Day",dawn:"🌅 Dawn",dusk:"🌇 Dusk",night:"🌙 Night"}[tod]);
     };
   });
   onValue(ref(db,`maps/${getMapName()}/nightMode`),snap=>{
     const _sv=snap.val();timeOfDay=(_sv===true?"night":_sv===false||_sv===null?"day":_sv)||"day";
+    geometry.timeOfDay=timeOfDay;
     document.querySelectorAll("[data-tod]").forEach(b=>b.classList.toggle("active",b.dataset.tod===timeOfDay));
+  });
+
+  // ── Lighting control sliders ─────────────────────────────────────────────
+  let _geoSaveTimer=null;
+  function debouncedSaveGeometry(){clearTimeout(_geoSaveTimer);_geoSaveTimer=setTimeout(saveGeometry,400);}
+
+  document.getElementById("ctrl-darkness").addEventListener("input",e=>{
+    const v=parseFloat(e.target.value);
+    geometry.lightingParams.blackAlpha=v;
+    geometry.lightingParams.tintAlpha=v;
+    debouncedSaveGeometry();
+  });
+  document.getElementById("ctrl-light-punch").addEventListener("input",e=>{
+    geometry.lightingParams.lightPunch=parseFloat(e.target.value);
+    debouncedSaveGeometry();
   });
 
   // ── Chat strip ──────────────────────────────────────────────────────────
@@ -2154,7 +2407,14 @@ function closeSheetPanelEd(){
     if(tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__"){
       openCharSheet(tok.characterId,tok.name,true);
     } else {
-      document.getElementById("sheet-view").innerHTML=`<div style="padding:16px 12px"><div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:8px">${tok.name}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)">${tok.type.toUpperCase()}<br>HP: ${tok.hp??'?'}/${tok.maxHp??'?'}<br>${tok.conditions?.length?'Conditions: '+tok.conditions.join(', '):'No conditions'}</div></div>`;
+      // NPC — try buildCard from RTDB or monster data
+      (async()=>{
+        const snap=await get(ref(db,`characters/npcs/${tok.characterId}`));
+        let c=snap.exists()?snap.val():null;
+        if(!c) c=await findMonster(tok.name||tok.lookupName||"");
+        if(c){c.id=tok.characterId||tokId;const card=buildCard(c);const sv=document.getElementById("sheet-view");sv.innerHTML="";sv.appendChild(card);watchCharacter(c.id);}
+        else{document.getElementById("sheet-view").innerHTML=`<div style="padding:16px 12px"><div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold);margin-bottom:8px">${tok.name}</div><div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim)">${tok.type.toUpperCase()}<br>HP: ${tok.hp??'?'}/${tok.maxHp??'?'}</div></div>`;}
+      })();
     }
   };
 
@@ -2223,6 +2483,328 @@ function closeSheetPanelEd(){
   });
 
 })();
+
+// ── Character Sheet Panel ────────────────────────────────────────────────────
+;const CANTRIP_DESC = {
+  "acid splash":"Hurl a bubble of acid. One or two creatures within 5 ft take 1d6 acid damage on a failed DEX save.",
+  "blade ward":"Until end of next turn, resistance to bludgeoning, piercing, and slashing damage from weapon attacks.",
+  "booming blade":"Melee attack that deals normal damage. If the target moves before your next turn, it takes 1d8 thunder damage.",
+  "chill touch":"Spectral hand prevents healing and deals 1d8 necrotic on a hit. Undead also have disadvantage attacking you.",
+  "control flames":"Instantly expand, move, extinguish, or change the color/shape of a non-magical flame up to a 5-ft cube.",
+  "create bonfire":"Conjure a 5-ft bonfire. Creatures entering or starting their turn in it take 1d8 fire damage (DEX save negates).",
+  "dancing lights":"Create up to 4 torch-sized lights you can move 60 ft per turn. Concentration, up to 1 minute.",
+  "druidcraft":"Minor nature tricks: predict weather, make flowers bloom, light or snuff candles, create harmless sensory effects.",
+  "eldritch blast":"A beam of crackling force energy. 1d10 force damage on hit. Extra beams at 5th, 11th, and 17th level.",
+  "encode thoughts":"Pull a thought or memory from your mind as a visible strand that others can experience.",
+  "fire bolt":"A mote of fire streaks to the target. 1d10 fire damage on hit. Ignites unattended flammable objects.",
+  "friends":"Advantage on CHA checks against one non-hostile creature for 1 minute. They may become hostile afterward.",
+  "frostbite":"CON save or take 1d6 cold damage and have disadvantage on their next weapon attack roll.",
+  "green-flame blade":"Melee attack; on hit, fire leaps to a creature within 5 ft for your spellcasting mod fire damage.",
+  "guidance":"Touch a willing creature. They add 1d4 to one ability check of their choice before the spell ends.",
+  "gust":"Push one creature 5 ft (STR save negates), or move a 5-lb object, or open/close a door or window.",
+  "hand of radiance":"Each creature of your choice within 5 ft must succeed a CON save or take 1d6 radiant damage.",
+  "infestation":"CON save or take 1d6 poison damage and be moved 5 ft in a random direction.",
+  "light":"Touch an object. It sheds bright light 20 ft and dim light 20 ft beyond for 1 hour.",
+  "lightning lure":"Pull a creature within 15 ft up to 10 ft toward you (STR save). If adjacent after, 1d8 lightning damage.",
+  "mage hand":"Spectral hand appears. Manipulate objects, open containers, stow items up to 10 lb within 30 ft.",
+  "magic stone":"Enchant up to 3 pebbles. Thrown attack: 1d6 + WIS mod bludgeoning. Works with slings.",
+  "mending":"Repair a single break or tear in an object no larger than 1 ft in any dimension.",
+  "message":"Whisper a message to a creature within 120 ft. They can whisper a reply only you hear.",
+  "mind sliver":"INT save or take 1d6 psychic damage and subtract 1d4 from their next saving throw.",
+  "minor illusion":"Create a sound or an image no larger than a 5-ft cube. Investigation check to see through it.",
+  "mold earth":"Move or shape up to 5 cubic ft of earth, create difficult terrain, or change its color/texture.",
+  "poison spray":"Project a puff of noxious gas at a creature within 10 ft. CON save or take 1d12 poison damage.",
+  "prestidigitation":"Minor magical tricks: clean, soil, chill, warm, flavor, color, make a symbol, or create a small sensory effect.",
+  "primal savagery":"Your teeth or nails become natural weapons. Melee spell attack: 1d10 acid damage.",
+  "produce flame":"A flickering flame appears in your hand. Hurl it as a ranged spell attack for 1d8 fire damage.",
+  "ray of frost":"Blue-white beam. 1d8 cold damage on hit and target speed reduced by 10 ft until your next turn.",
+  "resistance":"Touch a willing creature. They add 1d4 to one saving throw of their choice before the spell ends.",
+  "sacred flame":"Flame-like radiance descends. DEX save or take 1d8 radiant damage. Cover provides no bonus to the save.",
+  "sapping sting":"CON save or take 1d4 necrotic damage and fall prone.",
+  "shape water":"Move water up to 5 ft, change its flow, freeze it, or animate it into simple moving shapes.",
+  "shillelagh":"Your club or quarterstaff becomes magical. Use WIS for attack and damage rolls; damage die becomes 1d8.",
+  "shocking grasp":"Melee spell attack with advantage if target wears metal armor. 1d8 lightning damage; target cannot take reactions.",
+  "spare the dying":"Stabilize a dying creature at 0 HP. No effect on undead or constructs.",
+  "sword burst":"Spectral blades swirl around you. Each creature within 5 ft: DEX save or take 1d6 force damage.",
+  "thaumaturgy":"Minor divine tricks: booming voice, flickering flames, tremors, unnatural wind, or changing eye color.",
+  "thorn whip":"Thorn-covered vine. Melee spell attack: 1d6 piercing damage and pull target up to 10 ft toward you.",
+  "thunderclap":"A thunderclap audible 100 ft away. Each creature within 5 ft: CON save or take 1d6 thunder damage.",
+  "toll the dead":"Point at a creature. WIS save or take 1d8 necrotic damage (1d12 if already missing any HP).",
+  "true strike":"Gain advantage on your first attack roll against the target on your next turn. Concentration.",
+  "vicious mockery":"Hurl magical insults. WIS save or take 1d4 psychic damage and have disadvantage on next attack roll.",
+  "word of radiance":"Utter a divine word. Each creature of your choice within 5 ft: CON save or take 1d6 radiant damage.",
+};
+
+const SKILLS = [
+  {key:"acrobatics",label:"Acrobatics",stat:"dex"},
+  {key:"animal_handling",label:"Animal Handling",stat:"wis"},
+  {key:"arcana",label:"Arcana",stat:"int"},
+  {key:"athletics",label:"Athletics",stat:"str"},
+  {key:"deception",label:"Deception",stat:"cha"},
+  {key:"history",label:"History",stat:"int"},
+  {key:"insight",label:"Insight",stat:"wis"},
+  {key:"intimidation",label:"Intimidation",stat:"cha"},
+  {key:"investigation",label:"Investigation",stat:"int"},
+  {key:"medicine",label:"Medicine",stat:"wis"},
+  {key:"nature",label:"Nature",stat:"int"},
+  {key:"perception",label:"Perception",stat:"wis"},
+  {key:"performance",label:"Performance",stat:"cha"},
+  {key:"persuasion",label:"Persuasion",stat:"cha"},
+  {key:"religion",label:"Religion",stat:"int"},
+  {key:"sleight_of_hand",label:"Sleight of Hand",stat:"dex"},
+  {key:"stealth",label:"Stealth",stat:"dex"},
+  {key:"survival",label:"Survival",stat:"wis"},
+];
+
+const ABILITY_KEYS   = ["str","dex","con","int","wis","cha"];
+const ABILITY_LABELS = {str:"STR",dex:"DEX",con:"CON",int:"INT",wis:"WIS",cha:"CHA"};
+
+function mod(s){const m=Math.floor((s-10)/2);return(m>=0?"+":"")+m;}
+function fmtBonus(n){return(n>=0?"+":"")+n;}
+function parseBonus(v){return parseInt(String(v).replace(/[^0-9\-]/g,""),10)||0;}
+function hpColor(cur,max){if(!max)return"#4a7fe8";const p=cur/max;if(p>.5)return"#10b981";if(p>.25)return"#f59e0b";return"#ef4444";}
+function spellLevelLabel(lvl){if(lvl===0)return"Cantrip";const s=["th","st","nd","rd","th","th","th","th","th","th"][lvl]||"th";return lvl+s;}
+function esc(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function buildCard(char){
+  const c=char.combat||{},st=char.stats||{},sp=char.spellcasting||null,sk=char.skills||{};
+  const conds=c.conditions||[];
+  const hpCur=c.hp_current??0,hpMax=c.hp_max??1,hpPct=Math.max(0,Math.min(1,hpCur/hpMax)),tempHp=c.temp_hp??0;
+  const initBonus=c.initiative_bonus??Math.floor(((st.dex??10)-10)/2);
+  const profBonus=c.proficiency_bonus??2;
+  const passPerc=char.senses?.passive_perception??(10+Math.floor(((st.wis??10)-10)/2));
+  const subLine=`Lv ${char.level??'?'} ${char.class||''}${char.subclass?` (${char.subclass})`:''}${char.species?` · ${char.species}`:''}`;
+  const combatRole=char.combat_role||'';
+  const charTip=char.beginner_tip||'';
+
+  const abilityBoxes=ABILITY_KEYS.map(k=>{const score=st[k]??10;return`<div class="ab-box"><div class="ab-name">${ABILITY_LABELS[k]}</div><div class="ab-score">${score}</div><div class="ab-mod">${mod(score)}</div></div>`;}).join('');
+  const condPills=conds.map(cd=>`<div class="cond-pill">${cd}</div>`).join('');
+
+  // Weapons
+  const attacks=char.attacks||[];
+  let weaponPanelHtml='',hasWeapons=attacks.length>0;
+  if(hasWeapons){
+    const weaponItems=attacks.map(a=>{
+      const atkBonus=a.to_hit!=null&&a.to_hit!==''?fmtBonus(parseBonus(a.to_hit)):(a.attack_bonus!=null?fmtBonus(parseBonus(a.attack_bonus)):'—');
+      const dmgFull=a.damage||a.damage_dice||'—';
+      const dmgType=a.damage_type||'';
+      const range=a.range||null;
+      const notes=[a.properties,a.notes].filter(Boolean).join(' · ');
+      return`<div class="weapon-item">
+        <div class="weapon-top">
+          <div class="weapon-name">${a.name||'Unnamed'}</div>
+          ${dmgType?`<div class="weapon-type">${dmgType}</div>`:''}
+        </div>
+        <div class="weapon-stats">
+          <div class="wstat"><div class="wstat-label">Attack</div><div class="wstat-val">${atkBonus}</div></div>
+          <div class="wstat"><div class="wstat-label">Damage</div><div class="wstat-val">${dmgFull}</div></div>
+          ${range?`<div class="wstat"><div class="wstat-label">Range</div><div class="wstat-val">${range}</div></div>`:''}
+        </div>
+        ${notes?`<div class="weapon-notes">${notes}</div>`:''}
+      </div>`;
+    }).join('');
+    weaponPanelHtml=`<div class="expand-panel" id="wp-${char.id}"><div class="weapon-list">${weaponItems}</div></div>`;
+  }
+
+  // Spells
+  let spellPanelHtml='',hasSpells=false;
+  if(sp){
+    const spMetaHtml=[
+      sp.ability?`Ability: <span>${sp.ability.toUpperCase()}</span>`:null,
+      sp.spell_save_dc?`DC <span>${sp.spell_save_dc}</span>`:null,
+      sp.spell_attack_bonus!=null?`Atk <span>${fmtBonus(sp.spell_attack_bonus)}</span>`:null,
+    ].filter(Boolean).map(s=>`<div class="sp-meta-item">${s}</div>`).join('');
+    let slotRowsHtml='';
+    for(let lvl=1;lvl<=9;lvl++){
+      const maxS=sp.slots?.[String(lvl)]??sp.slots?.[lvl]??0;if(!maxS)continue;
+      const usedS=sp.slots_used?.[String(lvl)]??sp.slots_used?.[lvl]??0;
+      let pips='';
+      for(let i=0;i<maxS;i++)pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;
+      slotRowsHtml+=`<div class="slot-level-row"><div class="slot-level-label">${spellLevelLabel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;
+    }
+    const spells=sp.spells||[];
+    const cantrips=spells.filter(s=>s.prepared_type==='cantrip'||s.level===0);
+    const prepared=spells.filter(s=>s.prepared_type!=='cantrip'&&s.level!==0);
+
+    function spellTipHtml(spell){
+      if(!spell.beginner_tip)return'';
+      return`<div class="spell-tip"><span class="spell-tip-icon">✦</span><span class="spell-tip-text">${esc(spell.beginner_tip)}</span></div>`;
+    }
+
+    const cantripHtml=cantrips.map(s=>{
+      const desc=CANTRIP_DESC[s.name?.toLowerCase()]||'';
+      return`<div class="spell-item">
+        <div class="spell-item-top"><span class="spell-name">${s.name}</span><span class="spell-level-tag">Cantrip</span></div>
+        ${desc?`<div class="spell-desc">${desc}</div>`:''}
+        ${spellTipHtml(s)}
+      </div>`;
+    }).join('');
+
+    const preparedHtml=prepared.map(s=>`<div class="spell-item">
+      <div class="spell-item-top"><span class="spell-name">${s.name}</span><span class="spell-level-tag">${spellLevelLabel(s.level||1)}</span></div>
+      ${spellTipHtml(s)}
+    </div>`).join('');
+
+    hasSpells=!!(cantrips.length||prepared.length||slotRowsHtml);
+    spellPanelHtml=`<div class="expand-panel" id="sp-${char.id}">
+      ${spMetaHtml?`<div class="sp-meta">${spMetaHtml}</div>`:''}
+      ${slotRowsHtml?`<div class="slot-levels">${slotRowsHtml}</div>`:''}
+      ${cantrips.length?`<div class="sp-section-title" style="margin-top:0">Cantrips</div><div class="spell-list">${cantripHtml}</div>`:''}
+      ${prepared.length?`<div class="sp-section-title">Prepared Spells</div><div class="spell-list">${preparedHtml}</div>`:''}
+      ${!cantrips.length&&!prepared.length?`<div class="empty-panel">No spells recorded.</div>`:''}
+    </div>`;
+  }
+
+  // Skills & Feats
+  const skillRowsHtml=SKILLS.map(s=>{
+    const data=sk[s.key]||{};
+    const base=Math.floor(((st[s.stat]??10)-10)/2);
+    const bonus=data.bonus!=null?data.bonus:(base+(data.proficient?profBonus:0)+(data.expertise?profBonus:0));
+    const cls=data.expertise?'expert':data.proficient?'prof':'';
+    return`<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${fmtBonus(bonus)}</span></div>`;
+  }).join('');
+  const abilityCards=Object.entries(char.abilities||{}).map(([,ab])=>{
+    if(!ab||!ab.label)return'';
+    return`<div class="feat-item"><div class="feat-name">${ab.label}</div>${ab.effect_desc?`<div class="feat-desc">${ab.effect_desc}</div>`:''}</div>`;
+  }).join('');
+  const featuresText=char.text_blocks?.features_traits||'';
+  const profText=char.text_blocks?.proficiencies_languages||'';
+  const featuresBlock=featuresText?`<div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${featuresText}</div></div>`:'';
+  const profBlock=profText?`<div class="sp-section-title">Proficiencies &amp; Languages</div><div class="feat-item"><div class="feat-desc" style="white-space:pre-wrap">${profText}</div></div>`:'';
+  const skillPanelHtml=`<div class="expand-panel" id="sk-${char.id}">
+    <div class="sp-section-title" style="margin-top:0">Skills</div>
+    <div class="skill-grid">${skillRowsHtml}</div>
+    ${abilityCards||featuresBlock?`<div class="sp-section-title">Features &amp; Traits</div>${abilityCards}${featuresBlock}`:''}
+    ${profBlock}
+  </div>`;
+
+  // Combat Guide panel (beginner_tip at character level)
+  const hasTip=!!charTip;
+  const tipPanelHtml=hasTip?`<div class="expand-panel" id="tg-${char.id}">
+    <div class="combat-guide-wrap"><div class="combat-guide">${esc(charTip)}</div></div>
+  </div>`:'';
+
+  const card=document.createElement('div');
+  card.className='card';card.id=`card-${char.id}`;
+  card.innerHTML=`
+    <div class="card-header">
+      <div class="char-name">${char.name||'Unnamed'}</div>
+      <div class="char-sub">${subLine}</div>
+      ${combatRole?`<div class="char-role-badge">${esc(combatRole)}</div>`:''}
+      <div class="hp-row">
+        <div class="hp-label">HP</div>
+        <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${hpColor(hpCur,hpMax)}"></div></div>
+        <div class="hp-val" id="hpval-${char.id}">${hpCur} / ${hpMax}</div>
+        ${tempHp?`<div class="temp-badge">+${tempHp} tmp</div>`:''}
+      </div>
+      <div class="hp-controls">
+        <input class="hp-delta" id="hpdelta-${char.id}" type="number" min="1" placeholder="amount"/>
+        <button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button>
+        <button class="hp-btn dmg"  onclick="window.adjustHp('${char.id}',false)">&#8722; Dmg</button>
+      </div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-cell"><div class="stat-label">AC</div><div class="stat-val">${c.ac??'&#8212;'}</div></div>
+      <div class="stat-cell"><div class="stat-label">Speed</div><div class="stat-val">${c.speed??30}</div></div>
+      <div class="stat-cell"><div class="stat-label">Init</div><div class="stat-val">${fmtBonus(initBonus)}</div></div>
+      <div class="stat-cell"><div class="stat-label">Prof</div><div class="stat-val">+${profBonus}</div></div>
+      <div class="stat-cell"><div class="stat-label">Perc</div><div class="stat-val">${passPerc}</div></div>
+    </div>
+    <div class="ability-grid">${abilityBoxes}</div>
+    ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
+    <div class="card-footer">
+      ${hasTip?`<button class="panel-btn tip-btn" id="tgbtn-${char.id}" onclick="window.togglePanel('tg-${char.id}','tgbtn-${char.id}')">
+        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2H10c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        Combat Guide
+        <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>`:''}
+      ${hasWeapons?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">
+        <svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/></svg>
+        Weapons &amp; Attacks
+        <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>`:''}
+      <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Skills &amp; Feats
+        <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">
+        <svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        Spells &amp; Cantrips
+        <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>`:''}
+    </div>
+    ${tipPanelHtml}
+    ${weaponPanelHtml}
+    ${skillPanelHtml}
+    ${spellPanelHtml}`;
+  return card;
+}
+
+window.togglePanel=function(panelId,btnId){
+  const panel=document.getElementById(panelId),btn=document.getElementById(btnId);if(!panel||!btn)return;
+  const open=panel.classList.toggle('open');btn.classList.toggle('open',open);
+};
+
+window.toggleSlot=function(pip){
+  const charId=pip.dataset.charid,lvl=pip.dataset.lvl,idx=parseInt(pip.dataset.idx,10),max=parseInt(pip.dataset.max,10);
+  const pips=[...pip.parentElement.querySelectorAll('.slot-pip')];
+  const clamped=Math.max(0,Math.min(max,pip.classList.contains('used')?idx:idx+1));
+  pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
+  set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(e=>console.error(e));
+};
+
+window.adjustHp=async function(charId,isHeal){
+  const deltaEl=document.getElementById(`hpdelta-${charId}`);
+  const delta=parseInt(deltaEl?.value,10)||1;
+  if(!deltaEl||delta<=0)return;
+  try{
+    const snap=await get(ref(db,`characters/pcs/${charId}/combat`));if(!snap.exists())return;
+    const c=snap.val(),max=c.hp_max??1;
+    let cur=c.hp_current??0;
+    cur=isHeal?Math.min(max,cur+delta):Math.max(0,cur-delta);
+    await update(ref(db,`characters/pcs/${charId}/combat`),{hp_current:cur});
+    deltaEl.value='';
+  }catch(e){console.error('HP save failed:',e);}
+};
+
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||!e.target.classList.contains('hp-delta'))return;
+  window.adjustHp(e.target.id.replace('hpdelta-',''),true);
+});
+
+function watchCharacter(charId){
+  onValue(ref(db,`characters/pcs/${charId}/combat`),snap=>{
+    if(!snap.exists())return;
+    const c=snap.val(),hpCur=c.hp_current??0,hpMax=c.hp_max??1;
+    const pct=Math.max(0,Math.min(1,hpCur/hpMax));
+    const bar=document.getElementById(`hpbar-${charId}`),val=document.getElementById(`hpval-${charId}`);
+    if(bar){bar.style.width=Math.round(pct*100)+'%';bar.style.backgroundColor=hpColor(hpCur,hpMax);}
+    if(val)val.textContent=`${hpCur} / ${hpMax}`;
+  });
+}
+
+async function openSheetPanel(tokId){
+  const tok=tokens[tokId];if(!tok)return;
+  const panel=document.getElementById("sheet-panel");
+  const body=document.getElementById("sheet-view");
+  document.getElementById("sheet-panel-title").textContent=(tok.name||"Character").toUpperCase();
+  body.innerHTML='<div style="color:var(--dim);font-size:11px;padding:30px 0;text-align:center;font-family:monospace">Loading…</div>';
+  panel.classList.add("open");
+  const path=tok.type==="pc"?`characters/pcs/${tok.characterId}`:`characters/npcs/${tok.characterId}`;
+  try{
+    const snap=await get(ref(db,path));
+    let c=snap.exists()?snap.val():null;
+    if(!c&&tok.type==="npc")c=await findMonster(tok.name||tok.lookupName||"");
+    if(!c){body.innerHTML='<div style="color:var(--dim);padding:30px;text-align:center;font-size:11px">No data found.</div>';return;}
+    c.id=tok.characterId||tokId;
+    const card=buildCard(c);
+    body.innerHTML='';body.appendChild(card);
+    watchCharacter(c.id);
+  }catch(err){
+    body.innerHTML=`<div style="color:#ef4444;padding:30px;text-align:center;font-size:11px">${err.message}</div>`;
+  }
+}
 
 </script>
 </body>

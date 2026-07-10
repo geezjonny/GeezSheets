@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>GeezSheets OBS</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0d0b08;--panel:#1a1510;--border:#3d2e1a;--gold:#c8a84b;--text:#d4c49a;--dim:#6b5a38}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg)}
+#viewport{position:fixed;inset:0}
+canvas{display:block;width:100%;height:100%}
+
+/* Dice popup — copied from map.html */
+#dice-popup{position:fixed;bottom:60px;right:40px;z-index:1000;background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:16px 24px;text-align:center;box-shadow:0 0 40px rgba(200,168,75,.25),0 8px 32px rgba(0,0,0,.8);opacity:0;transition:opacity .25s,transform .25s;transform:scale(0.85);min-width:120px;pointer-events:none}
+#dice-popup.show{opacity:1;transform:scale(1)}
+#dice-popup.hide{opacity:0;transform:scale(0.85)}
+#dice-d{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.14em;color:var(--dim);margin-bottom:4px;text-transform:uppercase}
+#dice-n{font-family:'Cinzel',serif;font-size:56px;font-weight:700;line-height:1;color:var(--gold);text-shadow:0 0 24px rgba(200,168,75,.4)}
+#dice-who{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;color:var(--dim);margin-top:6px}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="viewport"><canvas id="canvas"></canvas></div>
+<div id="dice-popup"><div id="dice-d">D20</div><div id="dice-n">—</div><div id="dice-who"></div></div>
+
+<script type="module">
+import { getDatabase, ref, onValue }
+  from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import { db } from "./js/firebase.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, TILE } from "./js/config.js";
+import { camera, applyZoom, fitCamera } from "./js/camera.js";
+import { textures, tokenTextures, propTextures, loadTerrainTextures,
+         tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
+import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
+import { drawToken } from "./js/tokens.js";
+import { drawFog } from "./js/fog.js";
+import { drawPings } from "./js/pings.js";
+import { drawChains } from "./js/chains.js";
+import { subscribeTalking, getShakeOffset } from "./js/mic.js";
+import { computeVisibilityPolygon, activeOccluders, drawLight, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+
+// ── Canvas setup ───────────────────────────────────────────────────────────────
+const viewport = document.getElementById("viewport");
+const canvas   = document.getElementById("canvas");
+const ctx      = canvas.getContext("2d");
+
+function resize() {
+  canvas.width  = viewport.clientWidth;
+  canvas.height = viewport.clientHeight;
+  initParticles(canvas.width, canvas.height);
+}
+resize();
+window.addEventListener("resize", resize);
+
+// ── State ──────────────────────────────────────────────────────────────────────
+const tiles={}, fog={}, tokens={}, stamps={}, props={}, chains={};
+const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
+let _geoLC=null,_geoLX=null;
+const pcsData={};
+let bgImage=null, bgUrl="", bgPpi=70;
+let CONDITIONS={}, TERRAINS=[];
+const activePings={};
+let currentMap="dungeon-1", liveUnsub=null, firstLoad=true;
+
+// ── Subscriptions ──────────────────────────────────────────────────────────────
+onValue(ref(db,"characters/pcs"), snap => {
+  for(const k in pcsData) delete pcsData[k];
+  if(snap.exists()) Object.assign(pcsData, snap.val());
+});
+
+onValue(ref(db,"weather"), snap => {
+  if(snap.exists()) applyWeatherData(snap.val());
+});
+
+onValue(ref(db,"pings"), snap => {
+  const data=snap.val()||{}, now=Date.now();
+  for(const[id,ping] of Object.entries(data)) {
+    if(!activePings[id] && now-ping.t<4000)
+      activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};
+  }
+});
+
+subscribeTalking();
+
+function subscribeLive() {
+  if(liveUnsub){liveUnsub();liveUnsub=null;}
+  liveUnsub = onValue(ref(db,`maps/${currentMap}`), snap => {
+    const data = snap.val();
+    for(const k in tiles)delete tiles[k]; for(const k in fog)delete fog[k];
+    for(const k in tokens)delete tokens[k]; for(const k in stamps)delete stamps[k];
+    for(const k in props)delete props[k]; for(const k in chains)delete chains[k];
+    if(data) {
+      if(data.tiles)  Object.assign(tiles, data.tiles);
+      if(data.fog)    Object.assign(fog,   data.fog);
+      if(data.tokens) {
+        Object.assign(tokens, data.tokens);
+        Object.values(data.tokens).forEach(t => tryLoadTokenTexture(t.characterId, t.lookupName||t.name));
+      }
+      if(data.stamps) for(const[k,v] of Object.entries(data.stamps)) stamps[k.replace("_",",")]=v;
+      if(data.props)  Object.assign(props, data.props);
+      if(data.chains) Object.assign(chains, data.chains);
+      geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
+      if(data.geometry){
+        if(data.geometry.walls)geometry.walls.push(...Object.values(data.geometry.walls));
+        if(data.geometry.lights)geometry.lights.push(...Object.values(data.geometry.lights));
+        if(data.geometry.doors)geometry.doors.push(...Object.values(data.geometry.doors));
+        if(data.geometry.timeOfDay)geometry.timeOfDay=data.geometry.timeOfDay;
+        if(data.geometry.lightingParams)Object.assign(geometry.lightingParams,data.geometry.lightingParams);
+      }
+      if(data.background && data.background!==bgUrl) {
+        bgUrl=data.background; bgImage=null;
+        const img=new Image(); img.crossOrigin="anonymous";
+        img.onload=()=>{ bgImage=img; if(firstLoad){firstLoad=false;fitCamera(tiles,TILE,canvas.width,canvas.height);} };
+        img.src=bgUrl;
+      } else if(!data.background){ bgUrl=""; bgImage=null; }
+      bgPpi = data.backgroundPpi||70;
+      if(firstLoad && !data.background){ firstLoad=false; fitCamera(tiles,TILE,canvas.width,canvas.height); }
+    }
+  });
+}
+
+onValue(ref(db,"session/currentMap"), snap => {
+  const name=snap.val(); if(!name) return;
+  currentMap=name; firstLoad=true; subscribeLive();
+});
+
+// ── Dice popup ─────────────────────────────────────────────────────────────────
+let diceHideTimer=null;
+function showDicePopup(sides,result,roller) {
+  document.getElementById("dice-d").textContent = `D${sides}`;
+  document.getElementById("dice-n").textContent = result;
+  document.getElementById("dice-who").textContent = roller||"";
+  const p=document.getElementById("dice-popup");
+  p.classList.remove("hide"); p.classList.add("show");
+  clearTimeout(diceHideTimer);
+  diceHideTimer=setTimeout(()=>{
+    p.classList.add("hide");
+    setTimeout(()=>p.classList.remove("show","hide"),300);
+  }, 4000);
+}
+onValue(ref(db,"dice/last"), snap => {
+  if(!snap.exists()) return;
+  const d=snap.val(); if(d&&d.result!=null) showDicePopup(d.sides,d.result,d.roller);
+});
+
+// ── Draw ───────────────────────────────────────────────────────────────────────
+function toScreen(wx,wy){ return [wx*camera.zoom+camera.x, wy*camera.zoom+camera.y]; }
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle="#0d0b08";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.save();
+  ctx.translate(camera.x, camera.y);
+  ctx.scale(camera.zoom, camera.zoom);
+
+  // Background image
+  if(bgImage) {
+    const s=TILE/(bgPpi||70);
+    ctx.drawImage(bgImage,0,0,bgImage.width*s,bgImage.height*s);
+  }
+
+  // Terrain tiles
+  for(const k in tiles) {
+    const[x,y]=k.split(",").map(Number), t=tiles[k];
+    if(textures[t.terrain]) ctx.drawImage(textures[t.terrain],x*TILE,y*TILE,TILE,TILE);
+    else { const def=TERRAINS.find(tr=>tr.id===t.terrain); ctx.fillStyle=def?.color||"#333"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE); }
+  }
+
+  // Props
+  for(const[,p] of Object.entries(props)) {
+    if(propTextures[p.type]) ctx.drawImage(propTextures[p.type],p.x*TILE,p.y*TILE,TILE*(p.w||1),TILE*(p.h||1));
+  }
+
+  // Stamps
+  for(const[k,emoji] of Object.entries(stamps)) {
+    const[x,y]=k.split(",").map(Number);
+    ctx.font=`${TILE*.7}px serif`; ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);
+  }
+
+  // Chains + NPC tokens
+  drawChains(ctx,chains,tokens,camera.zoom);
+  for(const[,tok] of Object.entries(tokens))
+    if(tok.type==="npc") drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+
+  // Fog
+  drawFog(ctx,fog,camera.zoom,false);
+
+  // PC tokens (on top of fog)
+  for(const[,tok] of Object.entries(tokens))
+    if(tok.type==="pc"||!tok.type) drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+
+  ctx.restore();
+
+  // Geometry lighting pass
+  {const _p=TIME_OF_DAY_PRESETS[geometry.timeOfDay]||TIME_OF_DAY_PRESETS.day,lp=geometry.lightingParams,da=lp.blackAlpha;
+  if(_p.darkness>0&&da>0.01){
+    if(!_geoLC||_geoLC.width!==canvas.width||_geoLC.height!==canvas.height){_geoLC=document.createElement("canvas");_geoLC.width=canvas.width;_geoLC.height=canvas.height;_geoLX=_geoLC.getContext("2d");}
+    _geoLX.clearRect(0,0,_geoLC.width,_geoLC.height);
+    _geoLX.fillStyle=`rgba(${_p.tint},${da})`;_geoLX.fillRect(0,0,_geoLC.width,_geoLC.height);
+    _geoLX.save();_geoLX.translate(camera.x,camera.y);_geoLX.scale(camera.zoom,camera.zoom);
+    _geoLX.globalCompositeOperation="destination-out";
+    const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
+    for(const li of geometry.lights){const segs=li.shadows?_occ:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;_geoLX.save();_geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,g2=_geoLX.createRadialGradient(cx,cy,0,cx,cy,r),pun=Math.min(1,li.intensity*(lp.lightPunch||1));g2.addColorStop(0,`rgba(0,0,0,${pun})`);g2.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=g2;_geoLX.fillRect(cx-r,cy-r,r*2,r*2);_geoLX.restore();}
+    _geoLX.restore();
+    ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
+    ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);ctx.globalCompositeOperation="lighter";
+    for(const li of geometry.lights)drawLight(ctx,{...li,intensity:li.intensity*(lp.lightPunch||1)},_occ,TILE);
+    ctx.globalCompositeOperation="source-over";ctx.restore();
+  }}
+  // GM overlay: all tokens visible on top of darkness, slightly dimmed
+  if(geometry.timeOfDay!=="day"&&geometry.lightingParams.blackAlpha>0.1){
+    ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
+    ctx.globalAlpha=0.55; // dimmed but visible in darkness
+    for(const[,tok] of Object.entries(tokens)){
+      drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+    }
+    ctx.globalAlpha=1;ctx.restore();
+  }
+
+  drawWeather(ctx,canvas.width,canvas.height);
+  drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
+  requestAnimationFrame(draw);
+}
+
+// ── Zoom controls ──────────────────────────────────────────────────────────────
+// Left-click = zoom out, Right-click = zoom in, Scroll = zoom
+viewport.addEventListener("click", e => {
+  const cx=canvas.width/2, cy=canvas.height/2;
+  applyZoom(0.9, cx, cy);
+});
+viewport.addEventListener("contextmenu", e => {
+  e.preventDefault();
+  const cx=canvas.width/2, cy=canvas.height/2;
+  applyZoom(1.1, cx, cy);
+});
+viewport.addEventListener("wheel", e => {
+  e.preventDefault();
+  const cx=canvas.width/2, cy=canvas.height/2;
+  applyZoom(e.deltaY < 0 ? 1.1 : 0.9, cx, cy);
+}, {passive:false});
+
+// ── Pan + Zoom controls ───────────────────────────────────────────────────────
+let panning=false, panStartX=0, panStartY=0, camStartX=0, camStartY=0;
+
+viewport.addEventListener("pointerdown", e=>{
+  if(e.button!==0) return;
+  panning=true; viewport.setPointerCapture(e.pointerId);
+  panStartX=e.clientX; panStartY=e.clientY;
+  camStartX=camera.x; camStartY=camera.y;
+  viewport.style.cursor="grabbing";
+});
+viewport.addEventListener("pointermove", e=>{
+  if(!panning) return;
+  camera.x = camStartX + (e.clientX - panStartX);
+  camera.y = camStartY + (e.clientY - panStartY);
+});
+viewport.addEventListener("pointerup", ()=>{ panning=false; viewport.style.cursor="grab"; });
+viewport.style.cursor="grab";
+
+window.addEventListener("keydown", e=>{
+  if(e.key==="+"||e.key==="=") applyZoom(1.1, canvas.width/2, canvas.height/2);
+  if(e.key==="-")               applyZoom(0.9, canvas.width/2, canvas.height/2);
+  if(e.key==="0")               fitCamera(tiles, TILE, canvas.width, canvas.height);
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+(async()=>{
+  await loadConfig();
+  TERRAINS=getTERRAINS();
+  getCONDITIONS().forEach(c=>CONDITIONS[c.id]=c.color);
+  await loadTerrainTextures(TERRAINS);
+  draw();
+})();
+</script>
+</body>
+</html>
