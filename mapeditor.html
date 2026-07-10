@@ -398,6 +398,7 @@ canvas{display:block;cursor:crosshair}
       <div class="pd-item" id="clear-tokens" style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⚔ Tokens</div>
       <div class="pd-item" id="clear-fog"    style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog</div>
       <div class="pd-item" id="clear-tiles"  style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🟫 Tiles</div>
+      <div class="pd-item" id="clear-geometry" style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">💡 Geometry</div>
       <div style="height:1px;background:var(--border);margin:2px 0"></div>
       <div class="pd-item" id="clear-all"    style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--red-bright)">💥 Clear All</div>
     </div>
@@ -631,6 +632,8 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-label">Token</div>
   <div class="ctx-item" data-action="edit">✏ Edit token…</div>
   <div class="ctx-item" data-action="sheet">📜 View Sheet</div>
+  <div class="ctx-item" data-action="light-add">🕯 Add Light</div>
+  <div class="ctx-item" data-action="light-remove" style="display:none">🔦 Remove Light</div>
   <div class="ctx-item" data-action="chain">🔗 Chain to token…</div>
   <div class="ctx-item" data-action="unchain" style="display:none">⛓✕ Remove chain</div>
   <div class="ctx-item" data-action="hide-hp" style="display:none">🙈 Hide HP bar</div>
@@ -799,7 +802,23 @@ const geometry = { walls:[], doors:[], lights:[], timeOfDay:"day", lightingParam
 let geoMode    = null;   // "wall" | "light" | "edit"
 let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
+let geoDragLight = null; // light id being dragged
 let geoSelected  = null; // selected wall/light id
+
+// Combined lights: geometry lights + any token-attached lights
+function getActiveLights() {
+  const tokLights = [];
+  for (const [id, tok] of Object.entries(tokens)) {
+    if (!tok.light) continue;
+    tokLights.push({
+      id: `tok_light_${id}`,
+      x: tok.x + 0.5,
+      y: tok.y + 0.5,
+      ...tok.light,
+    });
+  }
+  return [...geometry.lights, ...tokLights];
+}
 
 async function saveGeometry() {
   const m = mapInput.value.trim() || "dungeon-1";
@@ -1068,7 +1087,7 @@ chatInput.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.prev
 
 // ── Conditions / Chains / HP ──────────────────────────────────────────────────
 document.querySelectorAll(".ctx-item").forEach(item=>{
-  item.onclick=()=>{
+  item.onclick=async()=>{
     if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
     const cond=item.dataset.condition,action=item.dataset.action;
     if(cond)applyCondition(mapInput.value.trim()||"dungeon-1",ctxTokenId,cond,tokens);
@@ -1076,6 +1095,23 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     if(action==="sheet"){
       const _tok=tokens[ctxTokenId];
       if(_tok) openCharSheet(_tok.characterId,_tok.name,true);
+    }
+    if(action==="light-add"){
+      const _tok=tokens[ctxTokenId];
+      if(_tok){
+        const rangeStr=prompt("Light range in tiles:","4");
+        if(rangeStr){
+          const colorOpt=prompt("Color? warm=ffeccd88  cold=88ccffaa  white=ffffffaa","ffeccd88");
+          const mapName=getMapName();
+          await update(ref(db,`maps/${mapName}/tokens/${ctxTokenId}`),{light:{range:parseFloat(rangeStr)||4,color:colorOpt||"ffeccd88",intensity:1,shadows:true}});
+          tokens[ctxTokenId].light={range:parseFloat(rangeStr)||4,color:colorOpt||"ffeccd88",intensity:1,shadows:true};
+        }
+      }
+    }
+    if(action==="light-remove"){
+      const mapName=getMapName();
+      await update(ref(db,`maps/${mapName}/tokens/${ctxTokenId}`),{light:null});
+      if(tokens[ctxTokenId]) delete tokens[ctxTokenId].light;
     }
     if(action==="edit"){ctxMenu.classList.remove("open");openEditTokenModal(ctxTokenId);return;}
     if(action==="chain")openChainModal(ctxTokenId);
@@ -1211,10 +1247,12 @@ async function clearSection(section){
   if(section==="doors"||section==="all"){for(const k in doors)delete doors[k];await set(ref(db,`maps/${mapName}/doors`),null);}
   if(section==="stamps"||section==="all"){for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
   if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);}
+  if(section==="geometry"||section==="all"){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];await set(ref(db,`maps/${mapName}/geometry`),null);}
   if(section==="roofs"||section==="all"){for(const k in roofs)delete roofs[k];await set(ref(db,`maps/${mapName}/roofs`),null);}
+  if(section==="all"){/* geometry already cleared above */}
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
 }
-["bg","tokens","props","fog","walls","doors","stamps","tiles","all"].forEach(s=>{const el=document.getElementById(`clear-${s}`);if(el)el.onclick=()=>clearSection(s);});
+["bg","tokens","props","fog","walls","doors","stamps","tiles","geometry","all"].forEach(s=>{const el=document.getElementById(`clear-${s}`);if(el)el.onclick=()=>clearSection(s);});
 
 // ── DD2VTT Import (background image only — no geometry) ─────────────────────
 document.getElementById("loadVttBtn").onclick=()=>document.getElementById("vttFileInput").click();
@@ -1780,9 +1818,12 @@ canvas.addEventListener("pointerdown",e=>{
     // Try to grab an endpoint for dragging
     const ep=endpointAtPoint(geometry.walls,[],gx,gy,0.35);
     if(ep){ canvas.setPointerCapture(e.pointerId); geoDragEp=ep; e.stopPropagation(); return; }
-    // Try to select a light
-    const li=lightAtPoint(geometry.lights,gx,gy,0.5);
-    if(li!==null){ geoSelected=li; e.stopPropagation(); return; }
+    // Try to drag a light
+    const li=lightAtPoint(geometry.lights,gx,gy,0.6);
+    if(li!==null){
+      geoSelected=li; geoDragLight=li;
+      canvas.setPointerCapture(e.pointerId); e.stopPropagation(); return;
+    }
     // Try to select a wall
     const seg=segmentAtPoint(geometry.walls,[],gx,gy,0.35);
     if(seg){ geoSelected=seg.id; e.stopPropagation(); return; }
@@ -1791,12 +1832,19 @@ canvas.addEventListener("pointerdown",e=>{
 },{capture:true});
 
 canvas.addEventListener("pointermove",e=>{
+  if(geoDragLight){
+    const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
+    const light=geometry.lights.find(l=>l.id===geoDragLight);
+    if(light){light.x=wx/TILE;light.y=wy/TILE;}
+    return;
+  }
   if(!geoDragEp) return;
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
   moveEndpoint(geometry.walls,[],geoDragEp.id,geoDragEp.end,wx/TILE,wy/TILE);
 });
 
 canvas.addEventListener("pointerup",e=>{
+  if(geoDragLight){ geoDragLight=null; saveGeometry(); return; }
   if(geoDragEp){ geoDragEp=null; saveGeometry(); }
 });
 
@@ -1908,6 +1956,8 @@ let marqueeActive=false,marqueeStartX=0,marqueeStartY=0,marqueeEndX=0,marqueeEnd
 
 canvas.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
+  // Geo mode captures input — don't paint tiles
+  if(geoMode) return;
   // Middle mouse / space = pan
   if(e.button===1||spaceDown){canvas.setPointerCapture(e.pointerId);panning=true;panStartX=sx;panStartY=sy;camStartX=camera.x;camStartY=camera.y;canvas.style.cursor="grabbing";return;}
   if(e.button!==0) return;
@@ -1995,6 +2045,8 @@ canvas.addEventListener("pointermove",e=>{
   coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
   if(rulerActive){const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
   if(pingMode&&isHolding&&myLaserRef){moveLaser(myLaserRef,wx,wy,playerName);return;}
+  // Geo mode handles its own pointermove
+  if(geoMode) return;
 
   // Token drag
   if(draggingToken){
@@ -2122,6 +2174,8 @@ canvas.addEventListener("contextmenu",e=>{
     document.querySelector('.ctx-item[data-action="hide-hp"]').style.display=(!tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="show-hp"]').style.display=(tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display="flex";
+    document.querySelector('.ctx-item[data-action="light-add"]').style.display=tok.light?"none":"flex";
+    document.querySelector('.ctx-item[data-action="light-remove"]').style.display=tok.light?"flex":"none";
     ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";
     ctxMenu.classList.add("open");return;
   }

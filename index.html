@@ -474,6 +474,14 @@ let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
 const wallGroups={},doors={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
+function getActiveLights(){
+  const tl=[];
+  for(const[id,tok] of Object.entries(tokens)){
+    if(!tok.light)continue;
+    tl.push({id:`tok_light_${id}`,x:tok.x+0.5,y:tok.y+0.5,...tok.light});
+  }
+  return[...geometry.lights,...tl];
+}
 let _geoLC=null,_geoLX=null;
 let pcsData={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
@@ -830,7 +838,18 @@ document.getElementById("chat-input").addEventListener("keydown",e=>{
 });
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
-document.getElementById("fitBtn").onclick=()=>fitCamera(tiles,TILE,canvas.width,canvas.height);
+document.getElementById("fitBtn").onclick=()=>{
+  if(Object.keys(tiles).length){
+    fitCamera(tiles,TILE,canvas.width,canvas.height);
+  } else if(bgImage){
+    // Fit to background image bounds
+    const s=TILE/(bgPpi||70);
+    const mapW=bgImage.width*s, mapH=bgImage.height*s;
+    camera.zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);
+    camera.x=canvas.width/2-mapW/2*camera.zoom;
+    camera.y=canvas.height/2-mapH/2*camera.zoom;
+  }
+};
 const _sheetToggleBtn=document.getElementById("sheet-toggle-btn");if(_sheetToggleBtn)_sheetToggleBtn.onclick=()=>{const p=document.getElementById("sheet-panel");if(p)p.classList.toggle("open");};
 document.getElementById("pingBtn").onclick=()=>{
   if(!playerName)return;
@@ -940,7 +959,7 @@ function draw(){
     _geoLX.save();_geoLX.translate(camera.x,camera.y);_geoLX.scale(camera.zoom,camera.zoom);
     _geoLX.globalCompositeOperation="destination-out";
     const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
-    for(const li of geometry.lights){const segs=li.shadows?_occ:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;_geoLX.save();_geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,g2=_geoLX.createRadialGradient(cx,cy,0,cx,cy,r),pun=Math.min(1,li.intensity*(lp.lightPunch||1));g2.addColorStop(0,`rgba(0,0,0,${pun})`);g2.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=g2;_geoLX.fillRect(cx-r,cy-r,r*2,r*2);_geoLX.restore();}
+    for(const li of getActiveLights()){const segs=li.shadows?_occ:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;_geoLX.save();_geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,g2=_geoLX.createRadialGradient(cx,cy,0,cx,cy,r),pun=Math.min(1,li.intensity*(lp.lightPunch||1));g2.addColorStop(0,`rgba(0,0,0,${pun})`);g2.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=g2;_geoLX.fillRect(cx-r,cy-r,r*2,r*2);_geoLX.restore();}
     // Darkvision: only for the logged-in player's own token
     if(myCharacterId){
       const myTok=Object.values(tokens).find(t=>t.characterId===myCharacterId);
@@ -952,7 +971,7 @@ function draw(){
     _geoLX.restore();
     ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
     ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);ctx.globalCompositeOperation="lighter";
-    for(const li of geometry.lights)drawLight(ctx,{...li,intensity:li.intensity*(lp.lightPunch||1)},_occ,TILE);
+    for(const li of getActiveLights())drawLight(ctx,{...li,intensity:li.intensity*(lp.lightPunch||1)},_occ,TILE);
     ctx.globalCompositeOperation="source-over";ctx.restore();
   }}
   drawWeather(ctx,canvas.width,canvas.height);
