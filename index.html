@@ -876,18 +876,16 @@ function draw(){
     const s=TILE/(bgPpi||70);const bw=bgImage.width*s,bh=bgImage.height*s;
     if(timeOfDay!=="day"){
       ctx.save();ctx.filter="saturate(0.4) brightness(0.35)";ctx.drawImage(bgImage,0,0,bw,bh);
-      ctx.filter="none";ctx.globalCompositeOperation="multiply";
-      ctx.fillStyle="rgba(20,30,70,0.6)";ctx.fillRect(0,0,bw,bh);
-      ctx.globalCompositeOperation="source-over";ctx.restore();
+      ctx.filter="none";ctx.restore();
     }else{ctx.drawImage(bgImage,0,0,bw,bh);}
   }
 
+  for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
+  // Darken tiles in non-day mode without CSS filter (avoids blur)
   if(timeOfDay!=="day"){
-    ctx.save();ctx.filter="brightness(0.35) saturate(0.4)";
-    for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
-    ctx.filter="none";ctx.restore();
-  } else {
-    for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
+    ctx.save();ctx.globalAlpha=0.7;ctx.fillStyle="#0d0b08";
+    for(const k in tiles){const[x,y]=k.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+    ctx.globalAlpha=1;ctx.restore();
   }
 
   // Wall groups — perimeter edges only
