@@ -213,11 +213,12 @@ function draw() {
     _geoLX.globalCompositeOperation="destination-out";
     const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
     for(const li of getActiveLights()){const segs=li.shadows?_occ:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;_geoLX.save();_geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,g2=_geoLX.createRadialGradient(cx,cy,0,cx,cy,r),pun=Math.min(1,li.intensity*(lp.lightPunch||1));g2.addColorStop(0,`rgba(0,0,0,${pun})`);g2.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=g2;_geoLX.fillRect(cx-r,cy-r,r*2,r*2);_geoLX.restore();}
+    // Bake glow into darkness canvas — prevents wall bleed
+    _geoLX.globalCompositeOperation="lighter";
+    for(const li of getActiveLights()){const segs=li.shadows?_occ:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;_geoLX.save();_geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,col=li.color||"ffeccd88",rr=parseInt(col.slice(0,2),16),gg=parseInt(col.slice(2,4),16),bb=parseInt(col.slice(4,6),16),aa=((parseInt(col.slice(6,8)||"88",16)/255)*Math.min(1,li.intensity*(lp.lightPunch||1))).toFixed(2);const ggr=_geoLX.createRadialGradient(cx,cy,0,cx,cy,r);ggr.addColorStop(0,"rgba("+rr+","+gg+","+bb+","+aa+")");ggr.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=ggr;_geoLX.fillRect(cx-r,cy-r,r*2,r*2);_geoLX.restore();}
+    _geoLX.globalCompositeOperation="source-over";
     _geoLX.restore();
     ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
-    ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);ctx.globalCompositeOperation="lighter";
-    for(const li of getActiveLights())drawLight(ctx,{...li,intensity:li.intensity*(lp.lightPunch||1)},_occ,TILE);
-    ctx.globalCompositeOperation="source-over";ctx.restore();
   }}
   // GM overlay: all tokens visible on top of darkness, slightly dimmed
   if(geometry.timeOfDay!=="day"&&geometry.lightingParams.blackAlpha>0.1){

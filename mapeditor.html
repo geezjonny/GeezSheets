@@ -1377,6 +1377,20 @@ function buildTerrainDropdown(){
     else{el.innerHTML=`<div class="pd-item-inner"></div><div class="pd-item-label">${t.label}</div>`;const inner=el.querySelector(".pd-item-inner");if(textures[t.id])inner.style.backgroundImage=`url(${textures[t.id].src})`;else inner.style.backgroundColor=t.color;}
     el.onclick=()=>{selectTerrain(t.id);dd.classList.remove("open");};dd.appendChild(el);
   });
+  // Custom color picker tile
+  const customEl=document.createElement("div");
+  customEl.className="pd-item"+(currentTerrain==="custom"?" active":"");
+  customEl.style.gap="6px";
+  customEl.innerHTML=`<input type="color" id="terrain-custom-color" value="${(()=>{const t=getTERRAINS().find(x=>x.id==='custom');return t?t.color:'#888888';})()}" style="width:20px;height:20px;border-radius:3px;border:1px solid var(--border);cursor:pointer;padding:0;flex-shrink:0"><div class="pd-item-label">Custom…</div>`;
+  customEl.onclick=e=>{if(e.target.type==='color')return;document.getElementById("terrain-custom-color").click();};
+  customEl.querySelector("input").addEventListener("change",e=>{
+    const hex=e.target.value;
+    const existing=getTERRAINS().find(t=>t.id==="custom");
+    if(existing){existing.color=hex;}else{getTERRAINS().push({id:"custom",label:"Custom",color:hex});}
+    selectTerrain("custom");
+    dd.classList.remove("open");
+  });
+  dd.appendChild(customEl);
 }
 function selectTerrain(t){
   const TERRAINS=getTERRAINS();const def=TERRAINS.find(x=>x.id===t)||{label:t,color:"#333"};
@@ -1605,18 +1619,32 @@ function render(){
         lCtx.fillStyle=grad;lCtx.fillRect(cx-r,cy-r,r*2,r*2);
         lCtx.restore();
       }
-      // Darkvision per-PC-token
+      // Darkvision per-PC-token — clipped to visibility polygon (walls block darkvision)
       for(const[,tok] of Object.entries(tokens)){
         if(tok.type!=="pc"&&tok.type!=null) continue;
         const c=pcsData[tok.characterId]||{};
         const dvFt=parseInt(c.darkvision||c.senses?.darkvision||0);
         const dvTiles=dvFt/5;if(dvTiles<=0) continue;
-        const tcx=(tok.x+0.5)*TILE,tcy=(tok.y+0.5)*TILE,dvr=dvTiles*TILE;
+        const tx=tok.x+0.5,ty=tok.y+0.5;
+        // Compute visibility from this token using walls as occluders
+        const dvPoly=computeVisibilityPolygon(tx,ty,occluders,dvTiles);
+        if(dvPoly.length<3) continue;
+        const tcx=tx*TILE,tcy=ty*TILE,dvr=dvTiles*TILE;
         lCtx.save();lCtx.globalCompositeOperation="destination-out";
+        // Clip to the LOS polygon so walls block darkvision
+        lCtx.beginPath();
+        lCtx.moveTo(dvPoly[0].x*TILE,dvPoly[0].y*TILE);
+        for(let i=1;i<dvPoly.length;i++)lCtx.lineTo(dvPoly[i].x*TILE,dvPoly[i].y*TILE);
+        lCtx.closePath();lCtx.clip();
         const dvg=lCtx.createRadialGradient(tcx,tcy,0,tcx,tcy,dvr);
         dvg.addColorStop(0,"rgba(0,0,0,0.9)");dvg.addColorStop(0.65,"rgba(0,0,0,0.4)");dvg.addColorStop(1,"rgba(0,0,0,0)");
-        lCtx.fillStyle=dvg;lCtx.fillRect(tcx-dvr,tcy-dvr,dvr*2,dvr*2);lCtx.restore();
+        lCtx.fillStyle=dvg;lCtx.fillRect(tcx-dvr,tcy-dvr,dvr*2,dvr*2);
+        lCtx.restore();
       }
+      // Glow drawn INSIDE darkness canvas — cannot escape walls
+      lCtx.globalCompositeOperation="lighter";
+      for(const li of getActiveLights()){const segs=li.shadows?occluders:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;lCtx.save();lCtx.beginPath();lCtx.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)lCtx.lineTo(poly[i].x*TILE,poly[i].y*TILE);lCtx.closePath();lCtx.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,col=li.color||"ffeccd88",rr=parseInt(col.slice(0,2),16),gg=parseInt(col.slice(2,4),16),bb=parseInt(col.slice(4,6),16),aa=((parseInt(col.slice(6,8)||"88",16)/255)*Math.min(1,li.intensity*(lp.lightPunch||1))).toFixed(2);const ggr=lCtx.createRadialGradient(cx,cy,0,cx,cy,r);ggr.addColorStop(0,"rgba("+rr+","+gg+","+bb+","+aa+")");ggr.addColorStop(1,"rgba(0,0,0,0)");lCtx.fillStyle=ggr;lCtx.fillRect(cx-r,cy-r,r*2,r*2);lCtx.restore();}
+      lCtx.globalCompositeOperation="source-over";
       lCtx.restore();
       // Composite darkness mask onto main canvas
       ctx.save();ctx.setTransform(1,0,0,1,0,0);
@@ -1745,7 +1773,7 @@ function setActiveTool(id) {
 
 // Select
 document.getElementById("tool-select").onclick=()=>{
-  setTool("mouse");setLayer("ground");setActiveTool("tool-select");
+  setTool("mouse");setActiveTool("tool-select");
   document.getElementById("terrain-wrap").style.display="none";
 };
 
@@ -1777,14 +1805,31 @@ document.getElementById("geo-wall-btn").onclick=()=>setGeoMode(geoMode==="wall"?
 document.getElementById("geo-light-btn").onclick=()=>setGeoMode(geoMode==="light"?null:"light");
 document.getElementById("geo-edit-btn").onclick=()=>setGeoMode(geoMode==="edit"?null:"edit");
 
-// ── Right-click in edit mode = instant delete ────────────────────────────────
+// ── Right-click in edit mode: edit light / delete wall ───────────────────────
 canvas.addEventListener("contextmenu",e=>{
   if(geoMode!=="edit") return;
   e.preventDefault();e.stopPropagation();
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
   const gx=wx/TILE,gy=wy/TILE;
   const li=lightAtPoint(geometry.lights,gx,gy,0.6);
-  if(li!==null){deleteById(geometry.lights,li);geoSelected=null;saveGeometry();toast("Light removed");return;}
+  if(li!==null){
+    // Right-click on light → edit menu
+    const light=geometry.lights.find(l=>l.id===li);
+    if(!light)return;
+    const choice=prompt(
+      `Light — Range: ${light.range} tiles | Intensity: ${light.intensity}\n\nEnter new values as "range,intensity" (e.g. 6,1.5)\nOr type "delete" to remove:`,
+      `${light.range},${light.intensity}`
+    );
+    if(!choice)return;
+    if(choice.trim().toLowerCase()==="delete"){
+      deleteById(geometry.lights,li);geoSelected=null;toast("Light removed");
+    } else {
+      const[r,i]=choice.split(",").map(Number);
+      if(!isNaN(r)&&r>0)light.range=r;
+      if(!isNaN(i)&&i>0)light.intensity=i;
+    }
+    saveGeometry();return;
+  }
   const seg=segmentAtPoint(geometry.walls,geometry.doors||[],gx,gy,0.4);
   if(seg){deleteById(geometry.walls,seg.id);geoSelected=null;saveGeometry();toast("Wall removed");return;}
 },{capture:true});
