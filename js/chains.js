@@ -58,18 +58,36 @@ export function drawChains(ctx, chains, tokens, zoom) {
     ctx.quadraticCurveTo(mx, my, bx, by);
     ctx.stroke();
 
-    // Small link "rivets" along the chain for texture, only when reasonably zoomed in
-    if (zoom > 0.5) {
-      const rivets = 6;
-      for (let i = 1; i < rivets; i++) {
-        const t = i / rivets;
+    // Draw chain links as ovals rotated along the curve
+    {
+      const linkCount = Math.max(3, Math.round(distTiles * 3));
+      const lw = 4.5 / zoom;   // link oval width
+      const lh = 2.2 / zoom;   // link oval height
+      const lineW = 1.2 / zoom;
+      // Alternate link orientation every other link (perpendicular pairs)
+      for (let i = 0; i <= linkCount; i++) {
+        const t = i / linkCount;
         // Quadratic bezier point
-        const qx = (1 - t) * (1 - t) * ax + 2 * (1 - t) * t * mx + t * t * bx;
-        const qy = (1 - t) * (1 - t) * ay + 2 * (1 - t) * t * my + t * t * by;
+        const qx = (1-t)*(1-t)*ax + 2*(1-t)*t*mx + t*t*bx;
+        const qy = (1-t)*(1-t)*ay + 2*(1-t)*t*my + t*t*by;
+        // Tangent direction along curve
+        const dt = Math.max(0.01, Math.min(0.99, t));
+        const tx2 = 2*(1-dt)*(mx-ax) + 2*dt*(bx-mx);
+        const ty2 = 2*(1-dt)*(my-ay) + 2*dt*(by-my);
+        const angle = Math.atan2(ty2, tx2) + (i % 2 === 0 ? 0 : Math.PI/2);
+        // Draw oval link
+        ctx.save();
+        ctx.translate(qx, qy);
+        ctx.rotate(angle);
         ctx.beginPath();
-        ctx.arc(qx, qy, 1.6 / zoom, 0, Math.PI * 2);
-        ctx.fillStyle = ctx.strokeStyle;
+        ctx.ellipse(0, 0, lw, lh, 0, 0, Math.PI*2);
+        // Fill with dark metal
+        ctx.fillStyle = tautness > 0.85 ? "rgba(160,140,100,0.6)" : "rgba(70,65,55,0.7)";
         ctx.fill();
+        ctx.strokeStyle = tautness > 0.85 ? "rgba(220,190,130,0.95)" : "rgba(140,130,100,0.85)";
+        ctx.lineWidth = lineW;
+        ctx.stroke();
+        ctx.restore();
       }
     }
 
