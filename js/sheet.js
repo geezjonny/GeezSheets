@@ -148,12 +148,17 @@ window.adjustHp = async function(charId, isHeal) {
   const delta   = parseInt(deltaEl?.value, 10) || 1;
   if (!deltaEl || delta <= 0) return;
   try {
-    const snap = await get(ref(db, `characters/pcs/${charId}/combat`));
+    let path = `characters/pcs/${charId}/combat`;
+    let snap = await get(ref(db, path));
+    if (!snap.exists()) {
+      path = `characters/npcs/${charId}/combat`;
+      snap = await get(ref(db, path));
+    }
     if (!snap.exists()) return;
     const c = snap.val(), max = c.hp_max ?? 1;
     let cur = c.hp_current ?? 0;
     cur = isHeal ? Math.min(max, cur+delta) : Math.max(0, cur-delta);
-    await update(ref(db, `characters/pcs/${charId}/combat`), { hp_current: cur });
+    await update(ref(db, path), { hp_current: cur });
     deltaEl.value = "";
   } catch(e) { console.error("HP save failed:", e); }
 };

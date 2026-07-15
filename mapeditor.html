@@ -336,7 +336,12 @@ canvas{display:block;cursor:crosshair}
 <!-- ── Top bar ── -->
 <div id="topbar">
   <!-- Map name -->
+  <select id="map-dropdown" title="Jump to an existing map" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 6px;max-width:140px;outline:none;">
+    <option value="">Loading maps…</option>
+  </select>
   <input id="map-name" type="text" placeholder="map-name" value="dungeon-1" spellcheck="false" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 8px;width:110px;outline:none">
+  <button id="save-new-map-btn" title="Copy what's currently loaded to a new map name" style="height:28px;background:rgba(200,168,75,.1);border:1px solid var(--gold-dim);border-radius:4px;color:var(--gold);font-family:'Cinzel',serif;font-size:10px;padding:0 10px;cursor:pointer;">💾 Save As New Map</button>
+  <button id="new-blank-map-btn" title="Create a brand-new empty map and register it in Firebase right away" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 10px;cursor:pointer;">🆕 New Blank Map</button>
 
   <div class="tb-sep"></div>
 
@@ -764,6 +769,12 @@ canvas{display:block;cursor:crosshair}
 import { getDatabase, ref, set, get, child, onValue, remove, push, update }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { db }                from "./js/firebase.js";
+// ── Campaign board linkage ──────────────────────────────────────────────────
+// Same campaign namespace scheme as graph-view.html, so NPC/location bubbles
+// created on the board are visible here, and vice versa.
+const _campaignParams = new URLSearchParams(location.search);
+const CAMPAIGN_ID = _campaignParams.get("campaign") || "default";
+const CAMPAIGN_BASE = `campaigns/${CAMPAIGN_ID}`;
 import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, TILE, TEXTURE_PATH, PROP_PATH, TOKEN_PATH } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
@@ -1068,6 +1079,91 @@ function rewireStrip() {
 }
 
 mapInput.addEventListener("change", ()=>{_firstMapLoad=true;subscribeLive();});
+mapInput.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); mapInput.blur(); } });
+
+// ── Map dropdown — lists every map that actually exists in Firebase, so picking
+// one can never hit the case-mismatch / typo problem free-typing has. ──────────
+const mapDropdown=document.getElementById("map-dropdown");
+let _mapDropdownNames=[];
+onValue(ref(db,"maps"),snap=>{
+  const data=snap.val()||{};
+  _mapDropdownNames=Object.keys(data).sort((a,b)=>a.localeCompare(b));
+  const current=getMapName();
+  mapDropdown.innerHTML="";
+  const newOpt=document.createElement("option");
+  newOpt.value="__new__";newOpt.textContent="＋ type a new name below";
+  mapDropdown.appendChild(newOpt);
+  if(!_mapDropdownNames.length){
+    const emptyOpt=document.createElement("option");
+    emptyOpt.value="";emptyOpt.textContent="(no maps saved yet)";emptyOpt.disabled=true;
+    mapDropdown.appendChild(emptyOpt);
+  }
+  _mapDropdownNames.forEach(name=>{
+    const opt=document.createElement("option");
+    opt.value=name;opt.textContent=name;
+    mapDropdown.appendChild(opt);
+  });
+  mapDropdown.value=_mapDropdownNames.includes(current)?current:"__new__";
+});
+mapDropdown.addEventListener("change",()=>{
+  if(mapDropdown.value==="__new__"){mapInput.focus();mapInput.select();return;}
+  mapInput.value=mapDropdown.value;
+  _firstMapLoad=true;
+  subscribeLive();
+});
+// keep the dropdown's selection in sync whenever the map changes via the text field too
+mapInput.addEventListener("change",()=>{
+  const current=getMapName();
+  mapDropdown.value=_mapDropdownNames.includes(current)?current:"__new__";
+});
+
+document.getElementById("save-new-map-btn").onclick=async()=>{
+  const currentName=getMapName();
+  const suggested=currentName+"-copy";
+  const newName=prompt(`Save the current map ("${currentName}") as a new map. Enter a name:`, suggested);
+  if(newName===null){return;} // user hit Cancel — silently do nothing, that's expected
+  if(!newName.trim()){toast("No name entered — nothing was saved.");return;}
+  const cleanName=newName.trim();
+  if(cleanName===currentName){toast("That's the name you're already on.");return;}
+  try{
+    const existingCheck=await get(ref(db,`maps/${cleanName}`));
+    if(existingCheck.exists()){
+      if(!confirm(`"${cleanName}" already exists and has its own data. Overwrite it with a copy of "${currentName}"?`))return;
+    }
+    const snap=await get(ref(db,`maps/${currentName}`));
+    if(!snap.exists()){toast("Nothing to copy — the current map has no saved data yet.");return;}
+    await set(ref(db,`maps/${cleanName}`),snap.val());
+    mapInput.value=cleanName;
+    _firstMapLoad=true;
+    subscribeLive();
+    toast(`Saved as "${cleanName}" — now editing the new copy`);
+  }catch(err){
+    toast("Save As failed: "+err.message);
+    console.error(err);
+  }
+};
+
+document.getElementById("new-blank-map-btn").onclick=async()=>{
+  const newName=prompt("Name for the new blank map:");
+  if(newName===null)return;
+  if(!newName.trim()){toast("No name entered — nothing was created.");return;}
+  const cleanName=newName.trim();
+  try{
+    const existingCheck=await get(ref(db,`maps/${cleanName}`));
+    if(existingCheck.exists()){
+      toast(`"${cleanName}" already exists — loading it instead of overwriting.`);
+    } else {
+      await set(ref(db,`maps/${cleanName}`),{updatedAt:Date.now()});
+    }
+    mapInput.value=cleanName;
+    _firstMapLoad=true;
+    subscribeLive();
+    toast(`Now editing "${cleanName}"`);
+  }catch(err){
+    toast("Could not create map: "+err.message);
+    console.error(err);
+  }
+};
 
 // ── Weather ───────────────────────────────────────────────────────────────────
 function buildWeatherPanel(){
@@ -1357,31 +1453,93 @@ let placingTokenLocal=null;
 
 tokenBtn.onclick=async()=>{
   tokCharSel.innerHTML='<option value="">Loading…</option>';
-  try{const snap=await get(child(ref(db),"characters/pcs"));tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';if(snap.exists()){const chars=snap.val();for(const[id,c]of Object.entries(chars)){const opt=document.createElement("option");opt.value=id;opt.textContent=c.name||id;opt.dataset.hp=c.hp??c.combat?.hp_current??10;opt.dataset.maxhp=c.maxHp??c.combat?.hp_max??10;opt.dataset.type="pc";tokCharSel.appendChild(opt);}}}
-  catch(e){tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option>';}
+  try{
+    const [pcsSnap, nodesSnap] = await Promise.all([
+      get(child(ref(db),"characters/pcs")),
+      get(ref(db,`${CAMPAIGN_BASE}/nodes`)),
+    ]);
+    tokCharSel.innerHTML='<option value="__npc__">— Blank NPC (not linked) —</option><option value="__new_board__">＋ New Board NPC (creates a bubble)</option>';
+
+    // NPCs that already exist as "person" nodes on the campaign board
+    if(nodesSnap.exists()){
+      const nodes=nodesSnap.val();
+      const people=Object.entries(nodes).filter(([_,n])=>n.tag==="person");
+      if(people.length){
+        const grp=document.createElement("optgroup");grp.label="📌 Board NPCs";
+        people.forEach(([nodeId,n])=>{
+          const opt=document.createElement("option");
+          opt.value="board:"+nodeId;
+          opt.textContent=n.name||"Unnamed";
+          opt.dataset.type="npc";
+          opt.dataset.boardName=n.name||"";
+          grp.appendChild(opt);
+        });
+        tokCharSel.appendChild(grp);
+      }
+    }
+
+    if(pcsSnap.exists()){
+      const chars=pcsSnap.val();
+      const grp=document.createElement("optgroup");grp.label="PCs";
+      for(const[id,c]of Object.entries(chars)){
+        const opt=document.createElement("option");opt.value=id;opt.textContent=c.name||id;
+        opt.dataset.hp=c.hp??c.combat?.hp_current??10;opt.dataset.maxhp=c.maxHp??c.combat?.hp_max??10;opt.dataset.type="pc";
+        grp.appendChild(opt);
+      }
+      tokCharSel.appendChild(grp);
+    }
+  }
+  catch(e){tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option><option value="__new_board__">＋ New Board NPC (creates a bubble)</option>';}
   tokNameInput.value="";tokHpInput.value="10";tokMaxHpInput.value="10";tokTypeInput.value="npc";
   document.getElementById("tok-hp-row").style.display="flex";
   document.getElementById("tok-lookup-name").value="";
   tokCharSel.value="__npc__";
   document.getElementById("token-modal").classList.remove("hidden");
 };
-tokCharSel.addEventListener("change",()=>{const opt=tokCharSel.selectedOptions[0];const isNpc=!opt||opt.value==="__npc__";document.getElementById("tok-hp-row").style.display=isNpc?"flex":"none";if(!isNpc&&opt.dataset.hp){tokHpInput.value=opt.dataset.hp;tokMaxHpInput.value=opt.dataset.maxhp;tokTypeInput.value=opt.dataset.type||"pc";tokNameInput.placeholder=opt.textContent;}else{tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="npc";tokNameInput.placeholder="NPC Name";}});
+tokCharSel.addEventListener("change",()=>{
+  const opt=tokCharSel.selectedOptions[0];
+  const val=opt?.value;
+  const isPc=opt&&opt.dataset.type==="pc";
+  document.getElementById("tok-hp-row").style.display=isPc?"none":"flex";
+  if(isPc&&opt.dataset.hp){
+    tokHpInput.value=opt.dataset.hp;tokMaxHpInput.value=opt.dataset.maxhp;tokTypeInput.value="pc";tokNameInput.placeholder=opt.textContent;
+  }else if(val&&val.startsWith("board:")){
+    tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="npc";tokNameInput.placeholder=opt.dataset.boardName||"NPC Name";
+  }else{
+    tokHpInput.value="";tokMaxHpInput.value="";tokTypeInput.value="npc";tokNameInput.placeholder="NPC Name";
+  }
+});
 document.getElementById("tok-cancel").onclick=()=>{editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";document.getElementById("token-modal").classList.add("hidden");placingToken=null;};
 document.getElementById("tok-place").onclick=async()=>{
-  const charId=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];
-  const name=tokNameInput.value.trim()||opt?.textContent||"Token";
+  const selVal=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];
+  let name=tokNameInput.value.trim()||opt?.textContent||"Token";
   const lookupName=document.getElementById("tok-lookup-name").value.trim()||name;
   const type=tokTypeInput.value;
   const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;
   const size=parseFloat(document.getElementById("tok-size").value)||1;
+
+  // Resolve board linkage: either an existing board NPC, or spin up a new one.
+  let charId=selVal;let nodeId=null;
+  if(selVal.startsWith("board:")){
+    nodeId=selVal.slice(6);
+    charId="__npc__"; // keep the existing characters/npcs lookup path untouched
+    if(!tokNameInput.value.trim()) name=opt.dataset.boardName||name;
+  }else if(selVal==="__new_board__"){
+    const newNodeRef=push(ref(db,`${CAMPAIGN_BASE}/nodes`));
+    nodeId=newNodeRef.key;
+    await set(newNodeRef,{name,tag:"person",notes:"",x:200,y:200});
+    charId="__npc__";
+    toast(`Created board NPC "${name}" — find it on the Thread Board`);
+  }
+
   if(editingTokenId){
     // Edit existing token in place
     const tok=tokens[editingTokenId];
-    if(tok){Object.assign(tok,{name,lookupName,type,hp,maxHp,size,characterId:charId});tryLoadTokenTexture(charId,lookupName);await saveTokenRTDB(getMapName(),editingTokenId,tok);}
+    if(tok){Object.assign(tok,{name,lookupName,type,hp,maxHp,size,characterId:charId,nodeId:nodeId||tok.nodeId||null});tryLoadTokenTexture(charId,lookupName);await saveTokenRTDB(getMapName(),editingTokenId,tok);}
     editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";
     document.getElementById("token-modal").classList.add("hidden");toast("Token updated");
   }else{
-    placingToken={id:"tok_"+Date.now(),characterId:charId,name,lookupName,type,hp,maxHp,size,x:0,y:0};
+    placingToken={id:"tok_"+Date.now(),characterId:charId,nodeId,name,lookupName,type,hp,maxHp,size,x:0,y:0};
     tryLoadTokenTexture(charId,lookupName);
     document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");
   }
