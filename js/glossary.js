@@ -20,7 +20,7 @@ function getTooltip() {
   _tooltipEl = document.createElement("div");
   _tooltipEl.id = "glossary-tooltip";
   _tooltipEl.style.cssText = [
-    "position:fixed", "z-index:9999", "pointer-events:none",
+    "position:fixed", "z-index:9999", "pointer-events:auto",
     "max-width:280px", "min-width:180px",
     "background:var(--panel,#1a1510)",
     "border:1px solid var(--gold,#c8a84b)",
@@ -35,6 +35,14 @@ function getTooltip() {
 
 function showTooltip(el, content) {
   clearTimeout(_hideTimer);
+  // Dismiss on next outside click
+  setTimeout(() => {
+    const dismiss = e => {
+      const tt = getTooltip();
+      if(!tt.contains(e.target)){ tt.style.opacity="0"; document.removeEventListener("click",dismiss); }
+    };
+    document.addEventListener("click", dismiss);
+  }, 100);
   const tt = getTooltip();
   tt.innerHTML = content;
   tt.style.opacity = "0";
