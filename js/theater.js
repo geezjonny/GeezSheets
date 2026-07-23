@@ -31,32 +31,42 @@ function resize() {
 function makeBlobs(n) {
   const blobs = [];
   for (let i = 0; i < n; i++) {
+    const layer = i % 3; // 0 = slow/big/background, 2 = fast/small/foreground
+    const warm = Math.random() < 0.4;
     blobs.push({
       x: Math.random(),
       y: Math.random(),
-      r: 0.25 + Math.random() * 0.35,   // radius as a fraction of canvas width
-      vx: (Math.random() - 0.5) * 0.006,
-      vy: (Math.random() - 0.5) * 0.004,
-      a: 0.10 + Math.random() * 0.12,
+      r: [0.42, 0.30, 0.18][layer] + Math.random() * 0.12,
+      vx: (Math.random() - 0.5) * [0.003, 0.006, 0.010][layer],
+      vy: (Math.random() - 0.5) * [0.002, 0.004, 0.007][layer],
+      a: [0.16, 0.22, 0.28][layer] + Math.random() * 0.08,
+      hue: warm ? "90,70,50" : "70,78,95",
+      phase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.15 + Math.random() * 0.2,
     });
   }
   return blobs;
 }
 
+let _t = 0;
+
 function tick() {
   if (!_running || !_ctx || !_canvas) return;
   const W = _canvas.width, H = _canvas.height;
+  _t += 0.016;
   _ctx.clearRect(0, 0, W, H);
-  _ctx.fillStyle = "#0d0b08";
+  _ctx.fillStyle = "#100d0a";
   _ctx.fillRect(0, 0, W, H);
   for (const b of _blobs) {
     b.x += b.vx; b.y += b.vy;
-    if (b.x < -0.3) b.x = 1.3; if (b.x > 1.3) b.x = -0.3;
-    if (b.y < -0.3) b.y = 1.3; if (b.y > 1.3) b.y = -0.3;
-    const cx = b.x * W, cy = b.y * H, r = b.r * W;
+    if (b.x < -0.4) b.x = 1.4; if (b.x > 1.4) b.x = -0.4;
+    if (b.y < -0.4) b.y = 1.4; if (b.y > 1.4) b.y = -0.4;
+    const pulse = 0.85 + 0.15 * Math.sin(_t * b.pulseSpeed + b.phase);
+    const cx = b.x * W, cy = b.y * H, r = b.r * Math.max(W, H) * pulse;
     const grad = _ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-    grad.addColorStop(0, `rgba(60,55,70,${b.a})`);
-    grad.addColorStop(1, "rgba(60,55,70,0)");
+    grad.addColorStop(0, `rgba(${b.hue},${(b.a * pulse).toFixed(3)})`);
+    grad.addColorStop(0.6, `rgba(${b.hue},${(b.a * pulse * 0.4).toFixed(3)})`);
+    grad.addColorStop(1, `rgba(${b.hue},0)`);
     _ctx.fillStyle = grad;
     _ctx.beginPath(); _ctx.arc(cx, cy, r, 0, Math.PI * 2); _ctx.fill();
   }
@@ -68,7 +78,8 @@ function tick() {
 export function startTheaterFog(canvasEl) {
   _canvas = canvasEl;
   _ctx = canvasEl.getContext("2d");
-  _blobs = makeBlobs(7);
+  _blobs = makeBlobs(15);
+  _t = 0;
   resize();
   if (!_canvas._tomResizeBound) {
     window.addEventListener("resize", resize);

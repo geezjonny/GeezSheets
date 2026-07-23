@@ -1924,7 +1924,7 @@ function setTool(t) {
 }
 
 // ── Switch layer ──────────────────────────────────────────────────────────────
-function setActiveLayer(l) {
+function setActiveLayer(l, skipToolDefault=false) {
   activeLayer = l;
   document.querySelectorAll(".layer-row").forEach(r=>{
     r.classList.toggle("active", r.dataset.layer === l);
@@ -1937,8 +1937,11 @@ function setActiveLayer(l) {
   // Auto-set sensible tool defaults per layer to prevent accidental drawing —
   // but only until the user has deliberately picked a tool themselves, so we
   // don't keep clobbering an intentional Select/Paint/Erase choice every time
-  // they switch layers.
-  if (!manualToolChosen) {
+  // they switch layers. Also skipped on the initial programmatic call at page
+  // load (skipToolDefault=true) -- otherwise the app silently starts in Paint
+  // mode on every fresh load, even though the toolbar visually shows Select
+  // as the default, and clicking around paints before you've touched a tool.
+  if (!manualToolChosen && !skipToolDefault) {
     if(l==="bg" || l==="objects") {
       setTool("mouse"); setActiveTool("tool-select");
     } else if(l==="ground" || l==="walls" || l==="fog") {
@@ -2606,7 +2609,7 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
 
   // New modules
   // initLayers() — using custom layer system
-  setActiveLayer("ground");
+  setActiveLayer("ground", true);
   setTool("mouse");
     initUndo({tiles,wallGroups,fogGroups}, getMapName, toast);
   setSheetToastFn(toast);

@@ -55,9 +55,11 @@ function showTooltip(el, content, avoidEl = null) {
     // over the anchor row, so the tooltip can't cover other rows in the list.
     const pr = avoidEl.getBoundingClientRect();
     const r  = el.getBoundingClientRect();
-    left = pr.left - ttW - 8;
-    if (left < 8) left = pr.right + 8; // not enough room on the left, try the right
-    top  = Math.min(Math.max(r.top, 8), window.innerHeight - ttH - 8);
+    left = pr.left - ttW - 6;
+    if (left < 8) left = pr.right + 6; // not enough room on the left, try the right
+    // Center vertically on the row that was actually clicked, so the
+    // tooltip reads as attached to it rather than floating below it.
+    top  = Math.min(Math.max(r.top + r.height / 2 - ttH / 2, 8), window.innerHeight - ttH - 8);
   } else {
     // Position near anchor
     const r = el.getBoundingClientRect();
