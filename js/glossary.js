@@ -33,7 +33,7 @@ function getTooltip() {
   return _tooltipEl;
 }
 
-function showTooltip(el, content) {
+function showTooltip(el, content, avoidEl = null) {
   clearTimeout(_hideTimer);
   // Dismiss on next outside click
   setTimeout(() => {
@@ -48,12 +48,23 @@ function showTooltip(el, content) {
   tt.style.opacity = "0";
   tt.style.display = "block";
 
-  // Position near anchor
-  const r = el.getBoundingClientRect();
   const ttW = 280, ttH = 160;
-  let left = r.left + r.width / 2 - ttW / 2;
-  let top  = r.top - ttH - 8;
-  if (top < 8) top = r.bottom + 8;
+  let left, top;
+  if (avoidEl) {
+    // Position beside the panel (e.g. the almanac search list) instead of
+    // over the anchor row, so the tooltip can't cover other rows in the list.
+    const pr = avoidEl.getBoundingClientRect();
+    const r  = el.getBoundingClientRect();
+    left = pr.left - ttW - 8;
+    if (left < 8) left = pr.right + 8; // not enough room on the left, try the right
+    top  = Math.min(Math.max(r.top, 8), window.innerHeight - ttH - 8);
+  } else {
+    // Position near anchor
+    const r = el.getBoundingClientRect();
+    left = r.left + r.width / 2 - ttW / 2;
+    top  = r.top - ttH - 8;
+    if (top < 8) top = r.bottom + 8;
+  }
   if (left < 8) left = 8;
   if (left + ttW > window.innerWidth - 8) left = window.innerWidth - ttW - 8;
   tt.style.left = left + "px";
@@ -341,7 +352,7 @@ export function toggleGlossarySearch() {
         el.onmouseleave = () => el.style.background = "rgba(255,255,255,.02)";
         el.onclick = async () => {
           const content = await lookupTerm(item.name);
-          if (content) { showTooltip(el, content); }
+          if (content) { showTooltip(el, content, _searchEl); }
         };
         results.appendChild(el);
       }

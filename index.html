@@ -399,7 +399,6 @@ canvas{display:block;width:100%;height:100%}
     <button id="glossaryBtn" title="Glossary (G)">📖</button>
     <button id="micBtn">🎤 Mic</button>
     <button id="sheet-toggle-btn" title="Character Sheet" onclick="window._toggleSheetPanel && window._toggleSheetPanel()" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">📋</button>
-    <button onclick="toggleGlossarySearch()" title="Almanac" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">📖</button>
     <div id="dice-hud"></div>
     <div class="sep"></div>
     <span id="status">—</span>
@@ -815,16 +814,17 @@ function subscribeLive(){
       bgPpi=data.backgroundPpi||70;timeOfDay=data.nightMode||"day"||"day";
     }
     setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
-    if(firstLoad){firstLoad=false;fitCamera(tiles,TILE,canvas.width,canvas.height);overlayEl.classList.add("hidden");}
+    if(firstLoad){firstLoad=false;doFit();overlayEl.classList.add("hidden");}
   },()=>{setStatus("error","RTDB error");overlayEl.classList.add("hidden");});
+}
+function doFit(){
+  if(Object.keys(tiles).length){fitCamera(tiles,TILE,canvas.width,canvas.height);return;}
+  if(bgImage){const s=TILE/(bgPpi||70);const mapW=bgImage.width*s,mapH=bgImage.height*s;camera.zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);camera.x=canvas.width/2-mapW/2*camera.zoom;camera.y=canvas.height/2-mapH/2*camera.zoom;}
 }
 onValue(ref(db,"session/currentMap"),snap=>{
   const name=snap.val();if(!name)return;
   mapInput.value=name;currentMap=name;firstLoad=true;subscribeLive();
-  setTimeout(()=>{
-    if(Object.keys(tiles).length) fitCamera(tiles,TILE,canvas.width,canvas.height);
-    else if(bgImage){const s=TILE/(bgPpi||70);const mapW=bgImage.width*s,mapH=bgImage.height*s;camera.zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);camera.x=canvas.width/2-mapW/2*camera.zoom;camera.y=canvas.height/2-mapH/2*camera.zoom;}
-  },1200);
+  setTimeout(doFit,1200);
 });
 
 // ── Context menu ──────────────────────────────────────────────────────────────
@@ -850,7 +850,7 @@ document.getElementById("chat-input").addEventListener("keydown",e=>{
 });
 
 // ── Buttons ───────────────────────────────────────────────────────────────────
-document.getElementById("fitBtn").onclick=()=>fitCamera(tiles,TILE,canvas.width,canvas.height);
+document.getElementById("fitBtn").onclick=()=>doFit();
 const _sheetToggleBtn=document.getElementById("sheet-toggle-btn");if(_sheetToggleBtn)_sheetToggleBtn.onclick=()=>{const p=document.getElementById("sheet-panel");if(p)p.classList.toggle("open");};
 // Reconnecting overlay
 onValue(ref(db,".info/connected"),snap=>{const o=document.getElementById("reconnect-overlay");if(o)o.style.display=snap.val()?"none":"flex";});
