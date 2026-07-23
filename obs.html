@@ -28,17 +28,17 @@ canvas{display:block;width:100%;height:100%}
 import { ref, onValue }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { db } from "./js/firebase.js";
-import { loadConfig, getTERRAINS, getCONDITIONS, TILE } from "./js/config.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, TILE } from "./js/config.js";
 import { camera, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, propTextures, loadTerrainTextures,
-         tryLoadTokenTexture } from "./js/assets.js";
+         tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
 import { drawToken } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
 import { drawPings } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
-import { computeVisibilityPolygon, activeOccluders, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+import { computeVisibilityPolygon, activeOccluders, drawDoorsGeometry, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 
 // ── Canvas setup ───────────────────────────────────────────────────────────────
 const viewport = document.getElementById("viewport");
@@ -55,6 +55,7 @@ window.addEventListener("resize", resize);
 
 // ── State ──────────────────────────────────────────────────────────────────────
 const tiles={}, fog={}, tokens={}, stamps={}, props={}, chains={};
+let propDefs={};
 const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
 function getActiveLights(){
   const tl=[];
@@ -72,6 +73,7 @@ const activePings={};
 let currentMap="dungeon-1", liveUnsub=null, firstLoad=true;
 
 // ── Subscriptions ──────────────────────────────────────────────────────────────
+onValue(ref(db,"propDefs"),snap=>{const data=snap.val();if(!data)return;for(const[id,p]of Object.entries(data)){propDefs[id]=p;tryLoadPropTexture(id);}});
 onValue(ref(db,"characters/pcs"), snap => {
   for(const k in pcsData) delete pcsData[k];
   if(snap.exists()) Object.assign(pcsData, snap.val());
@@ -177,9 +179,19 @@ function draw() {
     else { const def=TERRAINS.find(tr=>tr.id===t.terrain); ctx.fillStyle=def?.color||"#333"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE); }
   }
 
+  // Doors
+  drawDoorsGeometry(ctx,geometry.doors,TILE,{zoom:camera.zoom});
+
   // Props
-  for(const[,p] of Object.entries(props)) {
-    if(propTextures[p.type]) ctx.drawImage(propTextures[p.type],p.x*TILE,p.y*TILE,TILE*(p.w||1),TILE*(p.h||1));
+  for(const[k,p] of Object.entries(props)) {
+    let rx,ry;
+    if(p.attachedTo&&tokens[p.attachedTo]){rx=tokens[p.attachedTo].x+(p.offsetX||0);ry=tokens[p.attachedTo].y+(p.offsetY||0);}
+    else{[rx,ry]=k.split(",").map(Number);}
+    const def=propDefs[p.propId]||{emoji:"📦",w:1,h:1};
+    const px=rx*TILE,py=ry*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
+    const img=propTextures[p.propId];
+    if(img) ctx.drawImage(img,px,py,pw,ph);
+    else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
   }
 
   // Stamps
@@ -282,6 +294,7 @@ window.addEventListener("keydown", e=>{
   TERRAINS=getTERRAINS();
   getCONDITIONS().forEach(c=>CONDITIONS[c.id]=c.color);
   await loadTerrainTextures(TERRAINS);
+  getPROPS().forEach(p=>{ propDefs[p.id]=p; tryLoadPropTexture(p.id); });
   draw();
 })();
 </script>
