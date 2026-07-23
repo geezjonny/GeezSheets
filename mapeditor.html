@@ -738,7 +738,7 @@ import {
   segmentAtPoint, lightAtPoint, endpointAtPoint, moveEndpoint,
 } from "./js/geometry.js";
 import { subscribeTokenStrip, rollInitiative } from "./js/initiative.js";
-import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
+import { toggleGlossarySearch, registerTerms, setAddTokenHandler } from "./js/glossary.js";
 window.toggleGlossarySearch = toggleGlossarySearch;
 document.getElementById("glossaryBtn").onclick = toggleGlossarySearch;
 window.addEventListener("keydown", e => {
@@ -2336,6 +2336,30 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
   selectTerrain("grass");
   buildWeatherPanel();
   subscribeTalking();
+
+  // Monster lookup → drop-in: wire the Almanac's "Add to Map" button (only
+  // shown here in the DM tool, never in index.html/sheet.html) to the same
+  // click-to-place flow the token-spawn modal already uses.
+  const MONSTER_SIZE_TO_CELLS = {tiny:0.5,small:0.75,medium:1,large:2,huge:3,gargantuan:4};
+  setAddTokenHandler((monster)=>{
+    const size = MONSTER_SIZE_TO_CELLS[(monster.size||"medium").toLowerCase()] ?? 1;
+    placingToken={
+      id:"tok_"+Date.now(),
+      characterId:"__npc__",
+      nodeId:null,
+      name:monster.name,
+      lookupName:monster.name,
+      type:"npc",
+      hp:monster.hit_points,
+      maxHp:monster.hit_points,
+      size,
+      x:0,y:0,
+    };
+    tryLoadTokenTexture("__npc__",monster.name);
+    setCategory("tokens"); setVerb("pencil");
+    toggleGlossarySearch(); // close the Almanac so the map's clear to click
+    toast(`Click to place "${monster.name}" — stays armed until you switch tools or press Esc`);
+  });
 
   // New modules
   // Category/verb system starts with nothing selected by default —
