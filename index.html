@@ -951,6 +951,27 @@ function draw(){
     _geoLX.globalCompositeOperation="source-over";
     _geoLX.restore();
     ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
+  } else if(myCharacterId){
+    // Day: no darkness to tint, but still limit sight to line-of-sight so
+    // players can't see through walls or across the whole map in daylight.
+    const myTok=Object.values(tokens).find(t=>t.characterId===myCharacterId);
+    if(myTok){
+      const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
+      const DAY_SIGHT_RANGE=30; // generous — bounded mainly by walls, not this number
+      const poly=computeVisibilityPolygon(myTok.x+0.5,myTok.y+0.5,_occ,DAY_SIGHT_RANGE);
+      if(poly.length>=3){
+        if(!_geoLC||_geoLC.width!==canvas.width||_geoLC.height!==canvas.height){_geoLC=document.createElement("canvas");_geoLC.width=canvas.width;_geoLC.height=canvas.height;_geoLX=_geoLC.getContext("2d");}
+        _geoLX.clearRect(0,0,_geoLC.width,_geoLC.height);
+        _geoLX.fillStyle="rgba(0,0,0,1)";_geoLX.fillRect(0,0,_geoLC.width,_geoLC.height);
+        _geoLX.save();_geoLX.translate(camera.x,camera.y);_geoLX.scale(camera.zoom,camera.zoom);
+        _geoLX.globalCompositeOperation="destination-out";
+        _geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);
+        for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);
+        _geoLX.closePath();_geoLX.fillStyle="rgba(0,0,0,1)";_geoLX.fill();
+        _geoLX.restore();
+        ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
+      }
+    }
   }}
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
