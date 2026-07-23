@@ -1589,15 +1589,25 @@ function drawPortals(){
   for(const[k,p]of Object.entries(portals)){
     const[x,y]=k.split(",").map(Number);
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
+    ctx.save();
+    if(p.hidden) ctx.globalAlpha=0.4;
     if(img){
       ctx.drawImage(img,x*TILE,y*TILE,TILE,TILE);
     } else {
       ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
+      if(p.hidden) ctx.setLineDash([4,3]);
       ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if(p.hidden){
+      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.03);ctx.setLineDash([3,2]);
+      ctx.beginPath();ctx.arc(cx,cy,r*1.25,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
     }
     ctx.font=`${Math.round(TILE*0.3)}px 'Cinzel',serif`;ctx.fillStyle="#c8a84b";
     ctx.strokeStyle="rgba(0,0,0,.6)";ctx.lineWidth=3;
-    ctx.strokeText(p.link??"",cx,cy);ctx.fillText(p.link??"",cx,cy);
+    const label=(p.link??"")+(p.hidden?" 👁‍🗨":"");
+    ctx.strokeText(label,cx,cy);ctx.fillText(label,cx,cy);
+    ctx.restore();
   }
   ctx.restore();
 }
@@ -1870,6 +1880,14 @@ canvas.addEventListener("contextmenu",e=>{
   e.preventDefault();e.stopPropagation();
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
   const gx=wx/TILE,gy=wy/TILE;
+  const[tx,ty]=worldToTile(wx,wy,TILE);
+  const pk=key(tx,ty);
+  if(portals[pk]){
+    portals[pk].hidden=!portals[pk].hidden;
+    savePortals(getMapName(),portals);
+    toast(portals[pk].hidden?"Portal hidden from players":"Portal visible to players");
+    return;
+  }
   const li=lightAtPoint(geometry.lights,gx,gy,0.6);
   if(li!==null){
     const light=geometry.lights.find(l=>l.id===li);

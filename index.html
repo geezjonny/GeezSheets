@@ -889,6 +889,7 @@ function draw(){
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
   const portalImg=propTextures["portal"];
   for(const[k,p]of Object.entries(portals)){
+    if(p.hidden) continue; // invisible to players — like a trap door, but still works if stepped on
     const[x,y]=k.split(",").map(Number);
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
     // Players see the portal itself, never the link # — no hint of the destination
