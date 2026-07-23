@@ -62,6 +62,20 @@ export function parseDD2VTT(json) {
     shadows: l.shadows !== false,
   }));
 
+  // Perimeter wall: a closed box around the whole map's bounds. This is a
+  // correctness guarantee, not just tidiness -- once multiple dd2vtt floors
+  // share one canvas, this guarantees no ray can ever leave one floor's
+  // footprint and pick up another floor's geometry, independent of how far
+  // apart they're actually placed.
+  const { x: mw, y: mh } = mapSize;
+  if (mw > 0 && mh > 0) {
+    const corners = [{x:0,y:0},{x:mw,y:0},{x:mw,y:mh},{x:0,y:mh}];
+    for (let i = 0; i < 4; i++) {
+      const a = corners[i], b = corners[(i + 1) % 4];
+      walls.push({ id: genId(), x1: a.x, y1: a.y, x2: b.x, y2: b.y, perimeter: true });
+    }
+  }
+
   return { mapSize, pixelsPerGrid, imageDataUrl, ambientLight, walls, doors, lights };
 }
 
@@ -150,6 +164,14 @@ export function distToSegment(px, py, x1, y1, x2, y2) {
  * @returns {Array<{x,y}>} polygon points, in angle order, ready to fill/clip
  */
 export function computeVisibilityPolygon(ox, oy, segments, range) {
+  // Cull segments that can't possibly matter: if a wall's closest point to
+  // the origin is already beyond `range`, no ray at any angle can reach it
+  // before the range circle does. This keeps cost tied to nearby geometry
+  // (the active floor) rather than every wall on the whole canvas, which
+  // matters once multiple dd2vtt floors share one canvas.
+  if (segments.length) {
+    segments = segments.filter(s => distToSegment(ox, oy, s.x1, s.y1, s.x2, s.y2) <= range);
+  }
   if (!segments.length) {
     // No occluders: just return a circle approximation.
     const pts = [];
@@ -227,6 +249,56 @@ export function clipToVisibilityPolygon(ctx, polygon, TILE) {
  *  currently closed. Open doors simply don't block light/sight. */
 export function activeOccluders(walls, doors) {
   return [...walls, ...doors.filter(d => d.closed)];
+}
+
+/**
+ * Converts hand-painted tile walls (wallGroups) into the same {x1,y1,x2,y2}
+ * segment shape as dd2vtt-imported/hand-drawn walls, so a tile-painted map
+ * gets real light/vision occlusion too -- not just the red outline it
+ * already renders as. Mirrors the exact perimeter-edge logic already used
+ * to draw those outlines: an edge blocks light only where the neighboring
+ * cell isn't part of the same wall group (i.e. it's a true perimeter, not
+ * an interior seam between two painted wall cells).
+ *
+ * Tile-based doors (keyed by {x,y,edge}, separate from geometry.doors) are
+ * respected here too: an open door's edge is skipped entirely, a closed
+ * one still blocks like a plain wall -- same behavior as vector doors.
+ *
+ * Returned segments are ephemeral (recomputed from current state, not
+ * stored) -- they never enter `geometry.walls`, so they stay purely
+ * tile-driven and can't be selected/deleted via the vector wall editor.
+ *
+ * @param {object} wallGroups - {groupId: {cells: {"x,y": true, ...}}}
+ * @param {object} doors      - tile-based doors, {doorId: {x,y,edge,open,locked}}
+ * @returns {Array<{x1,y1,x2,y2}>} segments in GRID units, ready for activeOccluders
+ */
+export function wallGroupsToSegments(wallGroups, doors = {}) {
+  const doorLookup = {};
+  for (const did in doors) {
+    const d = doors[did];
+    doorLookup[`${d.x},${d.y},${d.edge}`] = d;
+  }
+  const segs = [];
+  for (const gid in wallGroups) {
+    if (gid === "__current") continue; // in-progress draw, not yet committed
+    const cells = wallGroups[gid].cells || {};
+    for (const ck in cells) {
+      const [x, y] = ck.split(",").map(Number);
+      const edges = [
+        ["n", 0,-1, x,y,   x+1,y  ],
+        ["s", 0, 1, x,y+1, x+1,y+1],
+        ["w",-1, 0, x,y,   x,y+1  ],
+        ["e", 1, 0, x+1,y, x+1,y+1],
+      ];
+      for (const [edge, dx, dy, x1, y1, x2, y2] of edges) {
+        if (cells[`${x+dx},${y+dy}`]) continue; // interior seam, not a perimeter
+        const door = doorLookup[`${x},${y},${edge}`];
+        if (door && door.open) continue; // open door: no occlusion here
+        segs.push({ x1, y1, x2, y2 });
+      }
+    }
+  }
+  return segs;
 }
 
 /**

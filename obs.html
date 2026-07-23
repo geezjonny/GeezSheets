@@ -25,20 +25,20 @@ canvas{display:block;width:100%;height:100%}
 <div id="dice-popup"><div id="dice-d">D20</div><div id="dice-n">—</div><div id="dice-who"></div></div>
 
 <script type="module">
-import { getDatabase, ref, onValue }
+import { ref, onValue }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { db } from "./js/firebase.js";
 import { loadConfig, getTERRAINS, getCONDITIONS, TILE } from "./js/config.js";
 import { camera, applyZoom, fitCamera } from "./js/camera.js";
-import { textures, tokenTextures, propTextures, loadTerrainTextures,
-         tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
+import { textures, propTextures, loadTerrainTextures,
+         tryLoadTokenTexture } from "./js/assets.js";
 import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
 import { drawToken } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
 import { drawPings } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
-import { computeVisibilityPolygon, activeOccluders, drawLight, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+import { computeVisibilityPolygon, activeOccluders, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 
 // ── Canvas setup ───────────────────────────────────────────────────────────────
 const viewport = document.getElementById("viewport");

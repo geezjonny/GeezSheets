@@ -351,6 +351,7 @@ canvas{display:block;cursor:crosshair}
   <button class="tb-btn"        id="tool-paint"  title="Paint terrain · R">🖌</button>
   <button class="tb-btn"        id="tool-erase"  title="Erase · X">✕</button>
   <button class="tb-btn"        id="tokenBtn"    title="Spawn token · T">⚔</button>
+  <button class="tb-btn"        id="portalBtn"   title="Portal — link two cells to warp tokens between them">🌀</button>
 
   <div class="tb-sep"></div>
   <button class="tb-btn" id="geo-wall-btn"  title="Draw Wall · W">🧱</button>
@@ -421,6 +422,7 @@ canvas{display:block;cursor:crosshair}
 
   <button class="tb-btn" id="glossaryBtn" title="Glossary Search (G)">📖</button>
   <button class="tb-btn" id="notesBtn" title="Session Notes (N)">📝</button>
+  <button class="tb-btn" id="theaterBtn" title="Theater of the Mind — hides the map/tokens/initiative on players' screens">🎭</button>
   <button class="tb-btn" id="lootBtn" title="Loot Generator">🎲 Loot</button>
 
   <div style="flex:1"></div>
@@ -434,10 +436,7 @@ canvas{display:block;cursor:crosshair}
   <!-- Ground layer options -->
   <div class="opt-section" id="opt-ground">
     <span class="opt-label">Terrain</span>
-    <div class="picker-wrap">
-      <button class="picker-btn" id="terrain-picker-btn" style="height:26px"><div class="picker-swatch" id="terrain-preview-swatch"></div><span id="terrain-preview-label">Grass</span> ▾</button>
-      <div class="picker-dropdown" id="terrain-dropdown" style="top:34px"></div>
-    </div>
+    <span style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim,#6b5a38);font-style:italic">Use the terrain picker in the toolbar above</span>
   </div>
   <!-- Walls layer options -->
   <div class="opt-section" id="opt-walls">
@@ -760,7 +759,7 @@ canvas{display:block;cursor:crosshair}
 </div>
 
 <script type="module">
-import { getDatabase, ref, set, get, child, onValue, remove, push, update }
+import { ref, set, get, child, onValue, remove, push, update }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { db }                from "./js/firebase.js";
 // ── Campaign board linkage ──────────────────────────────────────────────────
@@ -769,7 +768,7 @@ import { db }                from "./js/firebase.js";
 const _campaignParams = new URLSearchParams(location.search);
 const CAMPAIGN_ID = _campaignParams.get("campaign") || "default";
 const CAMPAIGN_BASE = `campaigns/${CAMPAIGN_ID}`;
-import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, TILE, TEXTURE_PATH, PROP_PATH, TOKEN_PATH } from "./js/config.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, TILE } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.js";
@@ -780,16 +779,17 @@ import { saveChain, deleteChain, chainsForToken, drawChains } from "./js/chains.
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { sendChat, renderChat } from "./js/chat.js";
-import { rollDie, animateDiceResult } from "./js/dice.js";
+import { rollDie } from "./js/dice.js";
 import { findMonster } from "./js/data.js";
+import { setTheaterMode, subscribeTheaterMode } from "./js/theater.js";
 import {
-  parseDD2VTT, computeVisibilityPolygon, activeOccluders,
+  parseDD2VTT, computeVisibilityPolygon, activeOccluders, wallGroupsToSegments,
   drawWallsGeometry, drawLightsGeometry, drawLight,
   TIME_OF_DAY_PRESETS,
   addWall, addLight, deleteById,
   segmentAtPoint, lightAtPoint, endpointAtPoint, moveEndpoint,
 } from "./js/geometry.js";
-import { subscribeTokenStrip, rollInitiative, startCombat, endCombat, lockInitiativeOrder, addToInitiative, nextTurn, clearInitiative } from "./js/initiative.js";
+import { subscribeTokenStrip, rollInitiative } from "./js/initiative.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 window.toggleGlossarySearch = toggleGlossarySearch;
 document.getElementById("glossaryBtn").onclick = toggleGlossarySearch;
@@ -797,14 +797,14 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { subscribeMap, saveWallGroups, saveDoors, saveStamp, savePropsLocal, saveTokenLocal as saveTokenRTDB, findDoorAtPoint, tileInFog } from "./js/map.js";
+import { saveWallGroups, saveDoors, saveStamp, savePropsLocal, savePortals, resolvePortal, saveTokenLocal as saveTokenRTDB, findDoorAtPoint } from "./js/map.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
-import { initLayers, setLayer, setWallSub, setObjSub, setFogType, getActiveLayer, getWallSub, getFogType, getObjSub } from "./js/layers.js";
+import { initLayers, setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},chains={};
+const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},portals={},chains={};
 const wallGroups={},doors={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
@@ -854,6 +854,7 @@ let moveOffX=0,moveOffY=0,moveStartWorldX=0,moveStartWorldY=0;
 let selStamps={},selProps={},selTokenIds=[];
 let draggingToken=null,draggingProp=null,placingToken=null;
 let pingMode=false,isHolding=false,pingHoldTimer=null,myLaserRef=null;
+let portalMode=false;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0,spaceDown=false;
 let rulerStart=null,rulerEnd=null,rulerActive=false;
 let initiative={order:[],active:null};
@@ -976,6 +977,7 @@ function subscribeLive(){
     for(const k in doors)delete doors[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
+    for(const k in portals)delete portals[k];
     for(const k in chains)delete chains[k];
     if(data){
       if(data.fog)Object.assign(fogGroups,data.fog);
@@ -986,6 +988,7 @@ function subscribeLive(){
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
+      if(data.portals)Object.assign(portals,data.portals);
       if(data.chains)Object.assign(chains,data.chains);
       // Load geometry (walls, lights, doors for lighting system)
       geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
@@ -1614,6 +1617,14 @@ document.addEventListener("click",()=>{
 // Mode buttons — handled by new tool/layer system
 // // wallBtn removed
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
+document.getElementById("portalBtn").onclick=()=>{portalMode=!portalMode;document.getElementById("portalBtn").classList.toggle("active",portalMode);canvas.style.cursor=portalMode?"crosshair":"";if(portalMode)toast("Click a cell, enter a link #. Click another cell, enter the same # to connect them.");};
+document.getElementById("theaterBtn").onclick=async()=>{
+  const btn=document.getElementById("theaterBtn");
+  const active=!btn.classList.contains("active");
+  await setTheaterMode(active);
+  toast(active?"Theater of the Mind ON — players' screens are fogged":"Theater of the Mind OFF");
+};
+subscribeTheaterMode(active=>{document.getElementById("theaterBtn")?.classList.toggle("active",active);});
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
 function drawTileAt(x,y,terrain){
@@ -1639,6 +1650,18 @@ function drawProps(){
 }
 
 function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}if(currentStamp&&currentStamp!=="erase"){ctx.globalAlpha=0.5;ctx.fillText(currentStamp,hoverTileX*TILE+TILE/2,hoverTileY*TILE+TILE/2);}ctx.restore();}
+function drawPortals(){
+  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
+  for(const[k,p]of Object.entries(portals)){
+    const[x,y]=k.split(",").map(Number);
+    const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
+    ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    ctx.font=`${Math.round(TILE*0.3)}px 'Cinzel',serif`;ctx.fillStyle="#c8a84b";
+    ctx.fillText(p.link??"",cx,cy);
+  }
+  ctx.restore();
+}
 
 function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/camera.zoom;const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,r=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
@@ -1706,7 +1729,7 @@ function render(){
       ctx.fillRect(mx-sz/2,my-sz/2,sz,sz);
     }
   }
-  drawStamps();drawProps();
+  drawStamps();drawProps();drawPortals();
   drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   drawFog(ctx,fogGroups,camera.zoom,true);
@@ -1781,7 +1804,7 @@ function render(){
       // Punch holes for each light using destination-out in world space
       lCtx.save();lCtx.translate(camera.x,camera.y);lCtx.scale(camera.zoom,camera.zoom);
       lCtx.globalCompositeOperation="destination-out";
-      const occluders=activeOccluders(geometry.walls,geometry.doors||[]);
+      const occluders=activeOccluders([...geometry.walls,...wallGroupsToSegments(wallGroups,doors)],geometry.doors||[]);
       for(const light of geometry.lights){
         const segs=light.shadows?occluders:[];
         const poly=computeVisibilityPolygon(light.x,light.y,segs,light.range);
@@ -1839,7 +1862,7 @@ function render(){
       // Day mode: just draw additive light glow (no darkness)
       ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
       ctx.globalCompositeOperation="lighter";
-      const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+      const occ=activeOccluders([...geometry.walls,...wallGroupsToSegments(wallGroups,doors)],geometry.doors||[]);
       for(const light of geometry.lights)drawLight(ctx,light,occ,TILE);
       ctx.globalCompositeOperation="source-over";ctx.restore();
     }
@@ -2020,7 +2043,7 @@ canvas.addEventListener("contextmenu",e=>{
     }
     saveGeometry();return;
   }
-  const seg=segmentAtPoint(geometry.walls,geometry.doors||[],gx,gy,0.4);
+  const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),geometry.doors||[],gx,gy,0.4);
   if(seg){deleteById(geometry.walls,seg.id);geoSelected=null;saveGeometry();toast("Wall removed");return;}
 },{capture:true});
 
@@ -2060,7 +2083,7 @@ canvas.addEventListener("pointerdown",e=>{
       canvas.setPointerCapture(e.pointerId); e.stopPropagation(); return;
     }
     // Try to select a wall
-    const seg=segmentAtPoint(geometry.walls,[],gx,gy,0.35);
+    const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),[],gx,gy,0.35);
     if(seg){ geoSelected=seg.id; e.stopPropagation(); return; }
     geoSelected=null;
   }
@@ -2094,6 +2117,7 @@ window.addEventListener("keydown",e=>{
   if(e.key==="l"||e.key==="L") document.getElementById("geo-light-btn").click();
   if(e.key==="g"||e.key==="G") document.getElementById("geo-edit-btn").click();
   if(e.key==="Escape"&&geoMode){ setGeoMode(null); document.getElementById("tool-select").click(); }
+  if(e.key==="Escape"&&portalMode){ portalMode=false; document.getElementById("portalBtn").classList.remove("active"); canvas.style.cursor=""; }
 });
 
 // Keyboard shortcuts
@@ -2203,6 +2227,24 @@ canvas.addEventListener("pointerdown",e=>{
 
   // Ping mode
   if(pingMode){isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);canvas.setPointerCapture(e.pointerId);return;}
+
+  // Portal placement/edit — click a cell, enter a link #; a second cell
+  // with the same # becomes its warp destination (and vice versa).
+  if(portalMode){
+    const pk=key(tx,ty);
+    const existing=portals[pk];
+    const val=prompt(existing?"Portal link # (clear the field to remove this portal):":"Link # for this portal cell (enter the same # on another cell to link them):", existing?existing.link:"");
+    if(val===null) return; // cancelled
+    const trimmed=val.trim();
+    if(!trimmed){
+      if(existing){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
+      return;
+    }
+    portals[pk]={link:trimmed};
+    savePortals(getMapName(),portals);
+    toast(`Portal #${trimmed} set — link another cell with the same # to connect it`);
+    return;
+  }
 
   // Placing token (from spawn modal)
   if(placingToken){placingToken.x=tx;placingToken.y=ty;tokens[placingToken.id]={...placingToken};saveTokenRTDB(getMapName(),placingToken.id,placingToken);placingToken=null;toast("Token placed");return;}
@@ -2332,7 +2374,10 @@ canvas.addEventListener("pointerup",e=>{
       // Was a click — open inspector
       openTokenInspector(draggingToken.id);
     } else {
-      saveTokenRTDB(getMapName(),draggingToken.id,tokens[draggingToken.id]);
+      const tok=tokens[draggingToken.id];
+      const dest=resolvePortal(portals,tok.x,tok.y);
+      if(dest){ tok.x=dest.x; tok.y=dest.y; toast("Warped!"); }
+      saveTokenRTDB(getMapName(),draggingToken.id,tok);
       savePropsLocal(getMapName(),props);
     }
     draggingToken=null;return;
