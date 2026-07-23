@@ -1,11 +1,9 @@
 [
-  /* Furniture & Interiors */
   {"id": "chair",       "label": "Chair",          "emoji": "🪑", "w": 1, "h": 1},
   {"id": "desk",        "label": "Desk",           "emoji": "🗄️", "w": 2, "h": 1},
   {"id": "rug",         "label": "Rug",            "emoji": "🖼️", "w": 2, "h": 3},
   {"id": "mirror",      "label": "Mirror",         "emoji": "🪞", "w": 1, "h": 1},
 
-  /* Doors, Passages & Structures */
   {"id": "door",        "label": "Door",           "emoji": "🚪", "w": 1, "h": 1},
   {"id": "trapdoor",    "label": "Trapdoor",       "emoji": "🕳️", "w": 1, "h": 1},
   {"id": "ladder",      "label": "Ladder",         "emoji": "🪜", "w": 1, "h": 1},
@@ -14,14 +12,12 @@
   {"id": "rubble",      "label": "Rubble",         "emoji": "🪨", "w": 1, "h": 1},
   {"id": "cage",        "label": "Cage",           "emoji": "⛓️", "w": 1, "h": 1},
 
-  /* Outdoors & Travel */
   {"id": "tree",        "label": "Tree",           "emoji": "🌳", "w": 2, "h": 2},
   {"id": "bush",        "label": "Bush / Cover",   "emoji": "🌿", "w": 1, "h": 1},
   {"id": "wagon",       "label": "Wagon / Cart",   "emoji": "🛒", "w": 2, "h": 3},
   {"id": "tent",        "label": "Tent",           "emoji": "⛺", "w": 2, "h": 2},
   {"id": "grave",       "label": "Grave",          "emoji": "🪦", "w": 1, "h": 1},
 
-  /* Magic, Treasure & Hazards */
   {"id": "magic_circle","label": "Magic Circle",   "emoji": "🔮", "w": 2, "h": 2},
   {"id": "portal",      "label": "Portal",         "emoji": "🌀", "w": 2, "h": 2},
   {"id": "treasure",    "label": "Treasure Pile",  "emoji": "💰", "w": 1, "h": 1},
