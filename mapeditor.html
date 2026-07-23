@@ -2312,10 +2312,6 @@ canvas.addEventListener("contextmenu",e=>{
     ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";
     ctxMenu.classList.add("open");return;
   }
-
-  // 3. Tile — erase terrain tile
-  const k=key(tx,ty);
-  if(tiles[k]){delete tiles[k];scheduleSave();return;}
 });
 
 // ── paintAt / eraseAt — dispatch by layer + tool ─────────────────────────────
