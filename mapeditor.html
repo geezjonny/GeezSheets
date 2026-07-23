@@ -447,6 +447,7 @@ canvas{display:block;cursor:crosshair}
       <button class="picker-btn" id="prop-picker-btn" style="height:28px;font-size:10px"><span id="prop-preview-label">None</span> ▾</button>
       <div class="picker-dropdown" id="prop-dropdown" style="top:36px"></div>
     </div>
+    <span style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim,#6b5a38);font-style:italic">[ / ] to rotate 90°</span>
   </div>
 
   <!-- Setting panel -->
@@ -732,7 +733,7 @@ import { findMonster } from "./js/data.js";
 import { setTheaterMode, subscribeTheaterMode } from "./js/theater.js";
 import {
   parseDD2VTT, computeVisibilityPolygon, activeOccluders,
-  drawWallsGeometry, drawDoorsGeometry, drawLightsGeometry, drawLight,
+  drawWallsGeometry, drawDoorsGeometry, drawDoorsWithArt, drawLightsGeometry, drawLight,
   TIME_OF_DAY_PRESETS,
   addWall, addLight, addDoor, deleteById,
   segmentAtPoint, lightAtPoint, endpointAtPoint, moveEndpoint,
@@ -801,6 +802,7 @@ async function saveGeometryDoors() {
 }
 let roofMode=false;
 let currentProp=null;
+let currentPropRotation=0; // degrees, 0/90/180/270 — applies to the next-placed prop
 let dragging=false,startX=0,startY=0,curX=0,curY=0;
 let hoverTileX=0,hoverTileY=0,hoverWX=0,hoverWY=0,roofOpacity=0.5;
 let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
@@ -1552,8 +1554,13 @@ function drawProps(){
     const def=customProps.find(d=>d.id===p.propId)||{emoji:"📦",w:1,h:1};
     const px=rx*TILE,py=ry*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
     const img=propTextures[p.propId];
-    if(img)ctx.drawImage(img,px,py,pw,ph);
-    else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
+    const rot=(p.rotation||0)*Math.PI/180;
+    ctx.save();
+    if(rot){ctx.translate(px+pw/2,py+ph/2);ctx.rotate(rot);ctx.translate(-pw/2,-ph/2);}
+    else{ctx.translate(px,py);}
+    if(img)ctx.drawImage(img,0,0,pw,ph);
+    else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,pw/2,ph/2);}
+    ctx.restore();
     if(p.attachedTo){ctx.save();ctx.strokeStyle="rgba(200,168,75,0.5)";ctx.lineWidth=1/camera.zoom;ctx.setLineDash([3/camera.zoom,3/camera.zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);ctx.restore();}
   }
   if(currentProp&&currentProp!=="erase"){
@@ -1563,8 +1570,13 @@ function drawProps(){
       ctx.fillText(currentProp.emoji,hoverTileX*TILE+TILE/2,hoverTileY*TILE+TILE/2);
     } else {
       const def=currentProp;const pw=(def.w||1)*TILE,ph=(def.h||1)*TILE;const img=propTextures[def.id];
-      if(img)ctx.drawImage(img,hoverTileX*TILE,hoverTileY*TILE,pw,ph);
-      else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,hoverTileX*TILE+pw/2,hoverTileY*TILE+ph/2);}
+      const px=hoverTileX*TILE,py=hoverTileY*TILE,rot=currentPropRotation*Math.PI/180;
+      ctx.save();
+      if(rot){ctx.translate(px+pw/2,py+ph/2);ctx.rotate(rot);ctx.translate(-pw/2,-ph/2);}
+      else{ctx.translate(px,py);}
+      if(img)ctx.drawImage(img,0,0,pw,ph);
+      else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,pw/2,ph/2);}
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -1573,13 +1585,19 @@ function drawProps(){
 function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}ctx.restore();}
 function drawPortals(){
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
+  const img=propTextures["portal"];
   for(const[k,p]of Object.entries(portals)){
     const[x,y]=k.split(",").map(Number);
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
-    ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
-    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    if(img){
+      ctx.drawImage(img,x*TILE,y*TILE,TILE,TILE);
+    } else {
+      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
+      ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    }
     ctx.font=`${Math.round(TILE*0.3)}px 'Cinzel',serif`;ctx.fillStyle="#c8a84b";
-    ctx.fillText(p.link??"",cx,cy);
+    ctx.strokeStyle="rgba(0,0,0,.6)";ctx.lineWidth=3;
+    ctx.strokeText(p.link??"",cx,cy);ctx.fillText(p.link??"",cx,cy);
   }
   ctx.restore();
 }
@@ -1631,7 +1649,7 @@ function render(){
   const _isDay=(geometry.timeOfDay==="day");
   const _structureActive = activeCategory==="structure"&&activeVerb;
   drawWallsGeometry(ctx,geometry.walls,TILE,{zoom:camera.zoom,selectedId:geoSelected});
-  drawDoorsGeometry(ctx,geometry.doors,TILE,{zoom:camera.zoom,selectedId:geoSelected});
+  drawDoorsWithArt(ctx,geometry.doors,TILE,propTextures,{zoom:camera.zoom,selectedId:geoSelected});
   if((_structureActive&&(activeVerb==="select"||structureType==="light"))||!_isDay)
     drawLightsGeometry(ctx,geometry.lights,TILE,{zoom:camera.zoom,selectedId:geoSelected});
   // Hover range circle for nearest light while editing/placing lights
@@ -2005,6 +2023,15 @@ window.addEventListener("keydown",e=>{
   if(activeCategory && (e.key==="r"||e.key==="R")) setVerb("pencil");
   if(activeCategory && (e.key==="x"||e.key==="X")) setVerb("eraser");
   if(e.key==="w"||e.key==="W"){ document.getElementById("cat-structure").click(); document.querySelector('.struct-type-btn[data-structtype="wall"]')?.click(); }
+  if((e.key==="["||e.key==="]") && !(currentProp&&currentProp.isStamp)){
+    const delta = e.key==="[" ? -90 : 90;
+    if(draggingProp){
+      const p=props[draggingProp.oldKey];
+      if(p){ p.rotation=((p.rotation||0)+delta+360)%360; }
+    } else if(activeCategory==="props"&&activeVerb==="pencil"&&currentProp&&currentProp!=="erase"){
+      currentPropRotation=(currentPropRotation+delta+360)%360;
+    }
+  }
   if(e.key==="l"||e.key==="L"){ document.getElementById("cat-structure").click(); document.querySelector('.struct-type-btn[data-structtype="light"]')?.click(); }
   if(e.key==="Escape"){
     setCategory(null);
@@ -2279,7 +2306,7 @@ function paintAt(tx,ty){
   else if(activeCategory==="props" && currentProp && currentProp!=="erase"){
     const k=key(tx,ty);
     if(currentProp.isStamp){ stamps[k]=currentProp.emoji; saveStamp(getMapName(),k,currentProp.emoji); }
-    else { props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h}; savePropsLocal(getMapName(),props); }
+    else { props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h,rotation:currentPropRotation}; savePropsLocal(getMapName(),props); }
   }
 }
 
@@ -2348,6 +2375,7 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
   await loadTerrainTextures(getTERRAINS());
   customProps=[...getPROPS()];
   customProps.forEach(p=>tryLoadPropTexture(p.id));
+  ["door","doorclosed","portal"].forEach(id=>tryLoadPropTexture(id)); // structure art, reuses the Props texture set
   buildTerrainDropdown();buildPropDropdown();
   selectTerrain("grass");
   buildWeatherPanel();

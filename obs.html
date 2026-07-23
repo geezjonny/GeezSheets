@@ -38,7 +38,7 @@ import { drawFog } from "./js/fog.js";
 import { drawPings } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
-import { computeVisibilityPolygon, activeOccluders, drawDoorsGeometry, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+import { computeVisibilityPolygon, activeOccluders, drawDoorsWithArt, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 
 // ── Canvas setup ───────────────────────────────────────────────────────────────
 const viewport = document.getElementById("viewport");
@@ -180,7 +180,7 @@ function draw() {
   }
 
   // Doors
-  drawDoorsGeometry(ctx,geometry.doors,TILE,{zoom:camera.zoom});
+  drawDoorsWithArt(ctx,geometry.doors,TILE,propTextures,{zoom:camera.zoom});
 
   // Props
   for(const[k,p] of Object.entries(props)) {
@@ -190,8 +190,13 @@ function draw() {
     const def=propDefs[p.propId]||{emoji:"📦",w:1,h:1};
     const px=rx*TILE,py=ry*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
     const img=propTextures[p.propId];
-    if(img) ctx.drawImage(img,px,py,pw,ph);
-    else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
+    const rot=(p.rotation||0)*Math.PI/180;
+    ctx.save();
+    if(rot){ctx.translate(px+pw/2,py+ph/2);ctx.rotate(rot);ctx.translate(-pw/2,-ph/2);}
+    else{ctx.translate(px,py);}
+    if(img) ctx.drawImage(img,0,0,pw,ph);
+    else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,pw/2,ph/2);}
+    ctx.restore();
   }
 
   // Stamps
@@ -295,6 +300,7 @@ window.addEventListener("keydown", e=>{
   getCONDITIONS().forEach(c=>CONDITIONS[c.id]=c.color);
   await loadTerrainTextures(TERRAINS);
   getPROPS().forEach(p=>{ propDefs[p.id]=p; tryLoadPropTexture(p.id); });
+  ["door","doorclosed"].forEach(id=>tryLoadPropTexture(id));
   draw();
 })();
 </script>

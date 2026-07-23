@@ -412,6 +412,36 @@ export function drawDoorsGeometry(ctx, doors, TILE, { zoom, selectedId } = {}) {
   ctx.restore();
 }
 
+/**
+ * Renders doors using real art (door.png / doorclosed.png from the Props
+ * texture set) instead of a plain colored line, oriented to match each
+ * door's own segment angle and stretched to its length. Falls back to
+ * drawDoorsGeometry's line rendering per-door if the art isn't loaded,
+ * so this is safe to call even before/without those textures existing.
+ *
+ * @param {object} propTextures - the shared propTextures cache from assets.js
+ */
+export function drawDoorsWithArt(ctx, doors, TILE, propTextures, { zoom, selectedId } = {}) {
+  ctx.save();
+  for (const d of doors) {
+    const img = propTextures[d.closed ? "doorclosed" : "door"];
+    if (!img) { drawDoorsGeometry(ctx, [d], TILE, { zoom, selectedId }); continue; }
+    const cx = (d.x1 + d.x2) / 2 * TILE, cy = (d.y1 + d.y2) / 2 * TILE;
+    const angle = Math.atan2(d.y2 - d.y1, d.x2 - d.x1);
+    const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1) * TILE;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    ctx.drawImage(img, -len / 2, -TILE * 0.35, len, TILE * 0.7);
+    if (d.id === selectedId) {
+      ctx.strokeStyle = "#ffcc44"; ctx.lineWidth = 2 / (zoom || 1);
+      ctx.strokeRect(-len / 2, -TILE * 0.35, len, TILE * 0.7);
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
 export function drawLightsGeometry(ctx, lights, TILE, { zoom, selectedId } = {}) {
   ctx.save();
   for (const l of lights) {

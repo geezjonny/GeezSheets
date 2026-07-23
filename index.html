@@ -434,7 +434,7 @@ import { textures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLo
 import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
-import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsGeometry, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
@@ -880,21 +880,26 @@ function draw(){
     ctx.restore();
   }
 
-  drawDoorsGeometry(ctx,geometry.doors,TILE,{zoom:camera.zoom});
+  drawDoorsWithArt(ctx,geometry.doors,TILE,propTextures,{zoom:camera.zoom});
 
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
   for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
   ctx.restore();
 
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
+  const portalImg=propTextures["portal"];
   for(const[k,p]of Object.entries(portals)){
     const[x,y]=k.split(",").map(Number);
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
-    ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
-    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-    // Players see a generic glyph, not the link # — no hint of the destination
-    ctx.font=`${Math.round(TILE*0.32)}px serif`;ctx.fillStyle="#c8a84b";
-    ctx.fillText("🌀",cx,cy);
+    // Players see the portal itself, never the link # — no hint of the destination
+    if(portalImg){
+      ctx.drawImage(portalImg,x*TILE,y*TILE,TILE,TILE);
+    } else {
+      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
+      ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+      ctx.font=`${Math.round(TILE*0.32)}px serif`;ctx.fillStyle="#c8a84b";
+      ctx.fillText("🌀",cx,cy);
+    }
   }
   ctx.restore();
 
@@ -905,8 +910,13 @@ function draw(){
     const def=propDefs[p.propId]||{emoji:"📦",w:1,h:1};
     const px=rx*TILE,py=ry*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
     const img=propTextures[p.propId];
-    if(img)ctx.drawImage(img,px,py,pw,ph);
-    else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
+    const rot=(p.rotation||0)*Math.PI/180;
+    ctx.save();
+    if(rot){ctx.translate(px+pw/2,py+ph/2);ctx.rotate(rot);ctx.translate(-pw/2,-ph/2);}
+    else{ctx.translate(px,py);}
+    if(img)ctx.drawImage(img,0,0,pw,ph);
+    else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,pw/2,ph/2);}
+    ctx.restore();
   }
 
   drawChains(ctx,chains,tokens,camera.zoom);
@@ -1045,6 +1055,7 @@ window.addEventListener("keydown",e=>{
 
   await loadTerrainTextures(getTERRAINS());
   getPROPS().forEach(p=>{ propDefs[p.id]=p; tryLoadPropTexture(p.id); });
+  ["door","doorclosed","portal"].forEach(id=>tryLoadPropTexture(id));
 
   // Wire sheet toast function
   setSheetToastFn(msg=>{const el=document.getElementById("ping-toast");if(!el)return;el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2500);});
