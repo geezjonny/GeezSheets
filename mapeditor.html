@@ -1659,7 +1659,7 @@ function render(){
   const _isDay=(geometry.timeOfDay==="day");
   const _structureActive = activeCategory==="structure"&&activeVerb;
   drawWallsGeometry(ctx,geometry.walls,TILE,{zoom:camera.zoom,selectedId:geoSelected});
-  drawDoorsWithArt(ctx,geometry.doors,TILE,propTextures,{zoom:camera.zoom,selectedId:geoSelected});
+  drawDoorsWithArt(ctx,geometry.doors,TILE,propTextures,{zoom:camera.zoom,selectedId:geoSelected,showLockIcons:true});
   if((_structureActive&&(activeVerb==="select"||structureType==="light"))||!_isDay)
     drawLightsGeometry(ctx,geometry.lights,TILE,{zoom:camera.zoom,selectedId:geoSelected});
   // Hover range circle for nearest light while editing/placing lights
@@ -1906,6 +1906,17 @@ canvas.addEventListener("contextmenu",e=>{
     }
     saveGeometry();return;
   }
+  const doorSeg=segmentAtPoint([],geometry.doors,gx,gy,0.4);
+  if(doorSeg){
+    const d=geometry.doors.find(x=>x.id===doorSeg.id);
+    if(d){
+      d.locked=!d.locked;
+      if(d.locked) d.closed=true; // a locked door is shut by definition
+      saveGeometryDoors();
+      toast(d.locked?"🔒 Door locked":"🔓 Door unlocked");
+    }
+    return;
+  }
   const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),geometry.doors||[],gx,gy,0.4);
   if(seg){deleteById(geometry.walls,seg.id);deleteById(geometry.doors,seg.id);geoSelected=null;saveGeometry();toast("Removed");return;}
 },{capture:true});
@@ -2000,7 +2011,10 @@ canvas.addEventListener("pointerdown",e=>{
     const doorSeg=segmentAtPoint([],geometry.doors,gx,gy,0.35);
     if(doorSeg){
       const d=geometry.doors.find(x=>x.id===doorSeg.id);
-      if(d){ d.closed=!d.closed; saveGeometryDoors(); }
+      if(d){
+        if(d.locked){ toast("🔒 This door is locked"); }
+        else { d.closed=!d.closed; saveGeometryDoors(); }
+      }
       e.stopPropagation(); return;
     }
     // Try to select a wall
@@ -2165,7 +2179,10 @@ canvas.addEventListener("pointerdown",e=>{
     const doorSeg=segmentAtPoint([],geometry.doors,gx,gy,0.35);
     if(doorSeg){
       const d=geometry.doors.find(x=>x.id===doorSeg.id);
-      if(d){ d.closed=!d.closed; saveGeometryDoors(); }
+      if(d){
+        if(d.locked){ toast("🔒 This door is locked"); }
+        else { d.closed=!d.closed; saveGeometryDoors(); }
+      }
       return;
     }
 

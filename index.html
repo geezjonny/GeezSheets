@@ -434,7 +434,7 @@ import { textures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLo
 import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
-import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, pathBlocked, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
@@ -796,6 +796,9 @@ function doFit(){
   if(Object.keys(tiles).length){fitCamera(tiles,TILE,canvas.width,canvas.height);return;}
   if(bgImage){const s=TILE/(bgPpi||70);const mapW=bgImage.width*s,mapH=bgImage.height*s;camera.zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);camera.x=canvas.width/2-mapW/2*camera.zoom;camera.y=canvas.height/2-mapH/2*camera.zoom;}
 }
+let playersLocked=false;
+onValue(ref(db,"session/locked"),snap=>{playersLocked=!!snap.val();});
+
 onValue(ref(db,"session/currentMap"),snap=>{
   const name=snap.val();if(!name)return;
   mapInput.value=name;currentMap=name;firstLoad=true;subscribeLive();
@@ -995,6 +998,7 @@ viewport.addEventListener("pointerdown",e=>{
   if(tokId){
     const tok=tokens[tokId];
     if(tok.type==="pc"&&(tok.name?.toLowerCase()===playerName.toLowerCase()||tok.characterId===myCharacterId)){
+      if(playersLocked){toast("🔒 Movement is locked");openCharSheet(tok.characterId,tok.name,false);return;}
       draggingToken={id:tokId,offsetTX:tx-tok.x,offsetTY:ty-tok.y};viewport.setPointerCapture(e.pointerId);
       openCharSheet(tok.characterId,tok.name,false);return;
     }
@@ -1006,8 +1010,12 @@ viewport.addEventListener("pointerdown",e=>{
   if(clickedDoorSeg){
     const d=geometry.doors.find(x=>x.id===clickedDoorSeg.id);
     if(d){
-      d.closed=!d.closed;
-      set(ref(db,`maps/${currentMap}/geometry/doors`), geometry.doors.length?geometry.doors:null);
+      if(d.locked){
+        toast(`🔒 This door is locked.`);
+      } else {
+        d.closed=!d.closed;
+        set(ref(db,`maps/${currentMap}/geometry/doors`), geometry.doors.length?geometry.doors:null);
+      }
     }
     return;
   }
@@ -1051,6 +1059,31 @@ window.addEventListener("keydown",e=>{
     if(rulerMode){rulerMode=false;document.getElementById("rulerBtn").classList.remove("active");viewport.style.cursor="";}
     closeSheetPanel();
   }
+});
+
+// ── Keyboard movement (arrow keys) — own token only, wall-blocked ─────────────
+let _lastMoveTime=0;
+window.addEventListener("keydown",e=>{
+  const dirs={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]};
+  const d=dirs[e.key];
+  if(!d) return;
+  if(e.target.matches("input,textarea,select,[contenteditable]")) return;
+  e.preventDefault();
+  const now=Date.now();
+  if(now-_lastMoveTime<140) return; // throttle key-repeat so it can't flood Firebase
+  const entry=Object.entries(tokens).find(([id,t])=>t.type==="pc"&&(t.name?.toLowerCase()===playerName.toLowerCase()||t.characterId===myCharacterId));
+  if(!entry) return;
+  const[tokId,tok]=entry;
+  if(playersLocked){toast("🔒 Movement is locked");return;}
+  const[dx,dy]=d;
+  const fromX=tok.x,fromY=tok.y,toX=fromX+dx,toY=fromY+dy;
+  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+  if(pathBlocked(fromX+0.5,fromY+0.5,toX+0.5,toY+0.5,occ)) return; // blocked by a wall/closed door
+  _lastMoveTime=now;
+  tok.x=toX;tok.y=toY;
+  const dest=resolvePortal(portals,tok.x,tok.y);
+  if(dest){tok.x=dest.x;tok.y=dest.y;}
+  update(ref(db,`maps/${currentMap}/tokens/${tokId}`),{x:tok.x,y:tok.y});
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────

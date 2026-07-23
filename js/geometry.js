@@ -251,6 +251,26 @@ export function activeOccluders(walls, doors) {
   return [...walls, ...doors.filter(d => d.closed)];
 }
 
+function cross(ax, ay, bx, by) { return ax * by - ay * bx; }
+
+function segmentsIntersect(ax1, ay1, ax2, ay2, bx1, by1, bx2, by2) {
+  const d1 = cross(bx2 - bx1, by2 - by1, ax1 - bx1, ay1 - by1);
+  const d2 = cross(bx2 - bx1, by2 - by1, ax2 - bx1, ay2 - by1);
+  const d3 = cross(ax2 - ax1, ay2 - ay1, bx1 - ax1, by1 - ay1);
+  const d4 = cross(ax2 - ax1, ay2 - ay1, bx2 - ax1, by2 - ay1);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/** True if a straight move from (x1,y1) to (x2,y2) [grid units] would cross
+ *  any occluder (wall or closed door). Used to block movement through walls
+ *  for keyboard-driven token movement. */
+export function pathBlocked(x1, y1, x2, y2, occluders) {
+  for (const seg of occluders) {
+    if (segmentsIntersect(x1, y1, x2, y2, seg.x1, seg.y1, seg.x2, seg.y2)) return true;
+  }
+  return false;
+}
+
 /**
  * Converts hand-painted tile walls (wallGroups) into the same {x1,y1,x2,y2}
  * segment shape as dd2vtt-imported/hand-drawn walls, so a tile-painted map
@@ -421,7 +441,7 @@ export function drawDoorsGeometry(ctx, doors, TILE, { zoom, selectedId } = {}) {
  *
  * @param {object} propTextures - the shared propTextures cache from assets.js
  */
-export function drawDoorsWithArt(ctx, doors, TILE, propTextures, { zoom, selectedId } = {}) {
+export function drawDoorsWithArt(ctx, doors, TILE, propTextures, { zoom, selectedId, showLockIcons=false } = {}) {
   ctx.save();
   for (const d of doors) {
     const img = propTextures[d.closed ? "doorclosed" : "door"];
@@ -438,6 +458,13 @@ export function drawDoorsWithArt(ctx, doors, TILE, propTextures, { zoom, selecte
       ctx.strokeRect(-len / 2, -TILE * 0.35, len, TILE * 0.7);
     }
     ctx.restore();
+    if (showLockIcons && d.locked) {
+      ctx.save();
+      ctx.font = `${Math.round(TILE * 0.3)}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 3;
+      ctx.strokeText("🔒", cx, cy - TILE * 0.4); ctx.fillText("🔒", cx, cy - TILE * 0.4);
+      ctx.restore();
+    }
   }
   ctx.restore();
 }
