@@ -802,7 +802,7 @@ async function saveGeometryDoors() {
 let roofMode=false;
 let currentProp=null;
 let dragging=false,startX=0,startY=0,curX=0,curY=0;
-let hoverTileX=0,hoverTileY=0,roofOpacity=0.5;
+let hoverTileX=0,hoverTileY=0,hoverWX=0,hoverWY=0,roofOpacity=0.5;
 let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
 let moveOffX=0,moveOffY=0,moveStartWorldX=0,moveStartWorldY=0;
 let selStamps={},selProps={},selTokenIds=[];
@@ -1646,16 +1646,18 @@ function render(){
     }
   }
   if(activeCategory==="structure"&&structureType==="wall"&&activeVerb==="pencil"&&geoWallStart&&hoverTileX!=null){
+    const sp=snapStructurePoint(hoverWX/TILE,hoverWY/TILE);
     ctx.strokeStyle="rgba(200,168,75,.7)";ctx.lineWidth=2/camera.zoom;
     ctx.setLineDash([6/camera.zoom,4/camera.zoom]);
     ctx.beginPath();ctx.moveTo(geoWallStart[0]*TILE,geoWallStart[1]*TILE);
-    ctx.lineTo((hoverTileX+0.5)*TILE,(hoverTileY+0.5)*TILE);ctx.stroke();ctx.setLineDash([]);
+    ctx.lineTo(sp[0]*TILE,sp[1]*TILE);ctx.stroke();ctx.setLineDash([]);
   }
   if(activeCategory==="structure"&&structureType==="door"&&activeVerb==="pencil"&&geoDoorStart&&hoverTileX!=null){
+    const sp=snapStructurePoint(hoverWX/TILE,hoverWY/TILE);
     ctx.strokeStyle="rgba(160,110,60,.8)";ctx.lineWidth=3/camera.zoom;
     ctx.setLineDash([5/camera.zoom,3/camera.zoom]);
     ctx.beginPath();ctx.moveTo(geoDoorStart[0]*TILE,geoDoorStart[1]*TILE);
-    ctx.lineTo((hoverTileX+0.5)*TILE,(hoverTileY+0.5)*TILE);ctx.stroke();ctx.setLineDash([]);
+    ctx.lineTo(sp[0]*TILE,sp[1]*TILE);ctx.stroke();ctx.setLineDash([]);
   }
   ctx.restore();
 
@@ -1872,6 +1874,18 @@ canvas.addEventListener("contextmenu",e=>{
   if(seg){deleteById(geometry.walls,seg.id);deleteById(geometry.doors,seg.id);geoSelected=null;saveGeometry();toast("Removed");return;}
 },{capture:true});
 
+// Snaps a click point to the nearest existing wall/door endpoint first (so new
+// walls connect cleanly instead of leaving light-leaking micro-gaps), falling
+// back to the nearest grid corner otherwise.
+function snapStructurePoint(gx, gy) {
+  const ep = endpointAtPoint(geometry.walls, geometry.doors, gx, gy, 0.3);
+  if (ep) {
+    const item = geometry.walls.find(w=>w.id===ep.id) || geometry.doors.find(d=>d.id===ep.id);
+    if (item) return ep.end===1 ? [item.x1,item.y1] : [item.x2,item.y2];
+  }
+  return [Math.round(gx), Math.round(gy)];
+}
+
 // Structure pointer — runs before the baseline/other-category dispatch
 canvas.addEventListener("pointerdown",e=>{
   if(e.button===1||spaceDown) return; // panning always wins, regardless of category
@@ -1881,13 +1895,15 @@ canvas.addEventListener("pointerdown",e=>{
 
   if(activeVerb==="pencil"){
     if(structureType==="wall"){
-      if(!geoWallStart){ geoWallStart=[gx,gy]; }
-      else{ addWall(geometry.walls,geoWallStart[0],geoWallStart[1],gx,gy); geoWallStart=null; saveGeometry(); }
+      const p=snapStructurePoint(gx,gy);
+      if(!geoWallStart){ geoWallStart=p; }
+      else{ addWall(geometry.walls,geoWallStart[0],geoWallStart[1],p[0],p[1]); geoWallStart=null; saveGeometry(); }
       e.stopPropagation(); return;
     }
     if(structureType==="door"){
-      if(!geoDoorStart){ geoDoorStart=[gx,gy]; }
-      else{ addDoor(geometry.doors,geoDoorStart[0],geoDoorStart[1],gx,gy); geoDoorStart=null; saveGeometry(); toast("Door placed"); }
+      const p=snapStructurePoint(gx,gy);
+      if(!geoDoorStart){ geoDoorStart=p; }
+      else{ addDoor(geometry.doors,geoDoorStart[0],geoDoorStart[1],p[0],p[1]); geoDoorStart=null; saveGeometry(); toast("Door placed"); }
       e.stopPropagation(); return;
     }
     if(structureType==="light"){
@@ -2126,7 +2142,7 @@ canvas.addEventListener("pointerdown",e=>{
 canvas.addEventListener("pointermove",e=>{
   const[sx,sy]=screenPos(e);
   if(panning){camera.x=camStartX+(sx-panStartX);camera.y=camStartY+(sy-panStartY);return;}
-  const[wx,wy]=toWorld(sx,sy);hoverTileX=Math.floor(wx/TILE);hoverTileY=Math.floor(wy/TILE);
+  const[wx,wy]=toWorld(sx,sy);hoverTileX=Math.floor(wx/TILE);hoverTileY=Math.floor(wy/TILE);hoverWX=wx;hoverWY=wy;
   coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
   if(rulerActive){const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
   if(pingMode&&isHolding&&myLaserRef){moveLaser(myLaserRef,wx,wy,playerName);return;}
