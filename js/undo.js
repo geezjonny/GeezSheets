@@ -1,15 +1,14 @@
 // Undo/Redo — snapshot-based history for map editing
-// Snapshots: tiles, wallGroups, fogGroups (the three painted layers)
-// Roofs removed from system per design decision
+// Snapshots: tiles only. wallGroups/fogGroups were removed along with the old
+// tile-based wall/door system and manual fog painting.
 
-import { saveFog }                    from "./fog.js";
-import { saveWallGroups, saveTiles }  from "./map.js";
+import { saveTiles } from "./map.js";
 
 const undoStack = [];
 const redoStack = [];
 const MAX_HISTORY = 50;
 
-let _state    = null; // reference to { tiles, wallGroups, fogGroups }
+let _state    = null; // reference to { tiles }
 let _mapName  = null; // getter fn → current map name
 let _toast    = null; // fn(msg) for feedback
 
@@ -21,30 +20,19 @@ export function initUndo(stateRef, getMapName, toastFn) {
 
 function snapshot() {
   return JSON.stringify({
-    tiles:      _state.tiles,
-    wallGroups: _state.wallGroups,
-    fogGroups:  _state.fogGroups,
+    tiles: _state.tiles,
   });
 }
 
 function restore(s) {
   const snap = JSON.parse(s);
-  // Clear and repopulate each layer
-  for (const k in _state.tiles)      delete _state.tiles[k];
-  for (const k in _state.wallGroups) delete _state.wallGroups[k];
-  for (const k in _state.fogGroups)  delete _state.fogGroups[k];
-  Object.assign(_state.tiles,      snap.tiles      || {});
-  Object.assign(_state.wallGroups, snap.wallGroups || {});
-  Object.assign(_state.fogGroups,  snap.fogGroups  || {});
+  for (const k in _state.tiles) delete _state.tiles[k];
+  Object.assign(_state.tiles, snap.tiles || {});
 }
 
 async function persist() {
   const m = _mapName();
-  await Promise.all([
-    saveTiles(m, _state.tiles),
-    saveWallGroups(m, _state.wallGroups),
-    saveFog(m, _state.fogGroups),
-  ]);
+  await saveTiles(m, _state.tiles);
 }
 
 export function pushUndo() {

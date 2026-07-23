@@ -53,7 +53,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .opt-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
 
 /* ── Canvas area ── */
-#canvas-wrap{position:fixed;top:44px;left:0;right:0;bottom:calc(var(--initiative) + var(--chat-collapsed));overflow:hidden}
+#canvas-wrap{position:fixed;top:84px;left:0;right:0;bottom:calc(var(--initiative) + var(--chat-collapsed));overflow:hidden}
 
 /* ── Initiative bar ── */
 #initiative-bar{position:fixed;bottom:var(--chat-collapsed);left:0;right:0;height:var(--initiative);background:rgba(13,11,8,.95);border-top:1px solid var(--border);display:flex;align-items:center;overflow:hidden;z-index:20}
@@ -165,7 +165,7 @@ canvas{display:block;cursor:crosshair}
 .modal-btns{display:flex;gap:8px}
 .modal-btns button{flex:1;height:36px}
 .modal-btns button.primary{border-color:var(--gold);color:var(--gold)}
-#weather-panel{position:fixed;top:44px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+#weather-panel{position:fixed;top:84px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
 #weather-panel.open{display:flex}
 #dice-popup-ed{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.8);z-index:1000;background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:20px 32px;text-align:center;box-shadow:0 0 60px rgba(200,168,75,.25),0 16px 48px rgba(0,0,0,.8);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;min-width:160px}
 #dice-popup-ed.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
@@ -346,83 +346,50 @@ canvas{display:block;cursor:crosshair}
 
   <div class="tb-sep"></div>
 
-  <!-- Tools -->
-  <button class="tb-btn active" id="tool-select" title="Select · V">🖱</button>
-  <button class="tb-btn"        id="tool-paint"  title="Paint terrain · R">🖌</button>
-  <button class="tb-btn"        id="tool-erase"  title="Erase · X">✕</button>
-  <button class="tb-btn"        id="tokenBtn"    title="Spawn token · T">⚔</button>
-  <button class="tb-btn"        id="portalBtn"   title="Portal — link two cells to warp tokens between them">🌀</button>
-
+  <!-- Category tabs -->
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="geo-wall-btn"  title="Draw Wall · W">🧱</button>
-  <button class="tb-btn" id="geo-light-btn" title="Place Light · L">💡</button>
-  <button class="tb-btn" id="geo-edit-btn"  title="Edit / Delete Geometry · G">✏</button>
+
+  <!-- Standalone verb — Select is the universal escape hatch: click it any
+       time to pan/drag tokens/toggle doors, regardless of what category is active. -->
+  <button class="tb-btn verb-btn active" id="verb-select" title="Select · V — pan, drag tokens/props, toggle doors">🖱 Select</button>
+  <button class="tb-btn verb-btn" id="verb-pencil" title="Pencil · R — create/paint in the active category">🖌 Pencil</button>
+  <button class="tb-btn verb-btn" id="verb-eraser" title="Eraser · X — erase/delete in the active category">✕ Eraser</button>
 
   <div class="tb-sep"></div>
 
-  <!-- Terrain picker (shows when Paint is active) -->
-  <div class="picker-wrap" id="terrain-wrap" style="display:none;height:28px">
-    <button class="picker-btn" id="terrain-picker-btn" style="height:28px;font-size:10px">
-      <div class="picker-swatch" id="terrain-preview-swatch" style="width:12px;height:12px;border-radius:2px;background:#3a6b3a;flex-shrink:0"></div>
-      <span id="terrain-preview-label">Grass</span> ▾
-    </button>
-    <div class="picker-dropdown" id="terrain-dropdown" style="top:36px"></div>
-  </div>
+  <button class="tb-btn cat-btn" id="cat-background" title="Background — dd2vtt import or tile painting (cosmetic)">🗺 Background</button>
+  <button class="tb-btn cat-btn" id="cat-structure"  title="Structure — walls, lights, doors, portals (gameplay-affecting)">🧱 Structure</button>
+  <button class="tb-btn cat-btn" id="cat-tokens"      title="Tokens — PCs and NPCs">⚔ Tokens</button>
+  <button class="tb-btn cat-btn" id="cat-props"       title="Props — furniture, clutter, decals">🪑 Props</button>
+  <button class="tb-btn cat-btn" id="cat-setting"     title="Setting — time of day, lighting, weather, Theater of Mind">🌗 Setting</button>
 
   <div class="tb-sep"></div>
 
-  <!-- Time of day -->
-  <button class="tb-btn tod-btn active" data-tod="day"   title="Day">☀</button>
-  <button class="tb-btn tod-btn"        data-tod="dawn"  title="Dawn">🌅</button>
-  <button class="tb-btn tod-btn"        data-tod="dusk"  title="Dusk">🌇</button>
-  <button class="tb-btn tod-btn"        data-tod="night" title="Night">🌙</button>
+  <!-- Persistent utilities — always available regardless of category -->
+  <button class="tb-btn" id="rulerBtnEd" title="Ruler">📏</button>
+  <button class="tb-btn" id="pingBtn" title="Ping">📍</button>
 
-  <div class="tb-sep"></div>
-
-  <!-- Lighting controls -->
-  <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-    <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;white-space:nowrap">DARK</span>
-    <input type="range" id="ctrl-darkness" min="0" max="1" step="0.01" value="1"
-      style="width:50px;accent-color:var(--gold);cursor:pointer" title="Darkness density (0=none, 1=max)">
-    <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;white-space:nowrap">LIGHT</span>
-    <input type="range" id="ctrl-light-punch" min="0" max="1" step="0.01" value="1"
-      style="width:50px;accent-color:var(--gold);cursor:pointer" title="Light brightness/cut (0=invisible, 1=full)">
-  </div>
-
-  <div class="tb-sep"></div>
-
-  <!-- Ping / Weather -->
-  <button class="tb-btn" id="pingBtn">📍</button>
-  <button class="tb-btn" id="weatherBtn">🌦</button>
-
-  <div class="tb-sep"></div>
-
-  <!-- Clear -->
   <div class="picker-wrap" id="clear-wrap" style="height:28px">
     <button class="picker-btn tb-btn" id="clearBtn" style="height:28px;font-size:10px">✕ Clear ▾</button>
     <div class="picker-dropdown" id="clear-dropdown" style="grid-template-columns:1fr;min-width:150px;top:36px">
-      <div class="pd-item" id="clear-bg"     style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🗺 Background</div>
-      <div class="pd-item" id="clear-tokens" style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⚔ Tokens</div>
-      <div class="pd-item" id="clear-fog"    style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🌫 Fog</div>
-      <div class="pd-item" id="clear-tiles"  style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🟫 Tiles</div>
-      <div class="pd-item" id="clear-geometry" style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">💡 Geometry</div>
+      <div class="pd-item" id="clear-bg"       style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🗺 Background</div>
+      <div class="pd-item" id="clear-tokens"   style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">⚔ Tokens</div>
+      <div class="pd-item" id="clear-props"    style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🪑 Props</div>
+      <div class="pd-item" id="clear-tiles"    style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🟫 Tiles</div>
+      <div class="pd-item" id="clear-geometry" style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--text-dim)">🧱 Structure</div>
       <div style="height:1px;background:var(--border);margin:2px 0"></div>
-      <div class="pd-item" id="clear-all"    style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--red-bright)">💥 Clear All</div>
+      <div class="pd-item" id="clear-all"      style="width:100%;height:28px;border-radius:3px;justify-content:flex-start;padding:0 10px;font-size:10px;font-family:'Cinzel',serif;color:var(--red-bright)">💥 Clear All</div>
     </div>
   </div>
 
-  <!-- Import / DD2VTT -->
-  <button class="tb-btn" id="loadJsonBtn">⬆</button>
+  <button class="tb-btn" id="loadJsonBtn" title="Import JSON">⬆</button>
   <input type="file" id="jsonFileInput" accept=".json" hidden>
-  <button class="tb-btn" id="loadVttBtn">🗺</button>
+  <button class="tb-btn" id="loadVttBtn" title="Load dd2vtt (brings its walls/lights/doors with it)">🗺 Load dd2vtt</button>
   <input type="file" id="vttFileInput" accept=".dd2vtt,.json" hidden>
 
-  <div class="tb-sep"></div>
   <button class="tb-btn" id="lockPlayersBtn" title="Lock player view while setting up">🔒</button>
-
   <button class="tb-btn" id="glossaryBtn" title="Glossary Search (G)">📖</button>
   <button class="tb-btn" id="notesBtn" title="Session Notes (N)">📝</button>
-  <button class="tb-btn" id="theaterBtn" title="Theater of the Mind — hides the map/tokens/initiative on players' screens">🎭</button>
   <button class="tb-btn" id="lootBtn" title="Loot Generator">🎲 Loot</button>
 
   <div style="flex:1"></div>
@@ -431,95 +398,77 @@ canvas{display:block;cursor:crosshair}
   <span id="player-name-display" style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim);cursor:pointer;flex-shrink:0;padding:0 8px"></span>
 </div>
 
-<!-- ── Options bar (context-sensitive, below topbar) ── -->
-<div id="options-bar">
-  <!-- Ground layer options -->
-  <div class="opt-section" id="opt-ground">
-    <span class="opt-label">Terrain</span>
-    <span style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim,#6b5a38);font-style:italic">Use the terrain picker in the toolbar above</span>
-  </div>
-  <!-- Walls layer options -->
-  <div class="opt-section" id="opt-walls">
-    <span class="opt-label">Mode</span>
-    <button class="opt-btn active" id="wall-sub-wall">🧱</button>
-    <button class="opt-btn"        id="wall-sub-door">🚪 Door</button>
-    <div class="opt-sep"></div>
-    <span class="opt-label">Terrain</span>
-    <div class="picker-wrap">
-      <button class="picker-btn" id="wall-terrain-btn" style="height:26px"><span id="wall-terrain-label">Stone</span> ▾</button>
-      <div class="picker-dropdown" id="wall-terrain-dropdown" style="top:34px"></div>
+<!-- ── Context bar (row 2) — verbs + sub-pickers, contextual on the active category ── -->
+<div id="context-bar" style="position:fixed;top:44px;left:0;right:0;height:40px;z-index:29;display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--panel2,#1a150f);border-bottom:1px solid var(--border);flex-wrap:wrap;overflow-x:auto;overflow-y:hidden">
+  <!-- Verb row: hidden entirely for Background (no Select) and Setting (no verbs at all) -->
+  <!-- Verbs now live in the topbar (standalone) -->
+
+  <!-- Background sub-panel -->
+  <div id="ctx-background" class="ctx-panel" style="display:none;align-items:center;gap:6px">
+    <div class="picker-wrap" id="terrain-wrap" style="height:28px">
+      <button class="picker-btn" id="terrain-picker-btn" style="height:28px;font-size:10px">
+        <div class="picker-swatch" id="terrain-preview-swatch" style="width:12px;height:12px;border-radius:2px;background:#3a6b3a;flex-shrink:0"></div>
+        <span id="terrain-preview-label">Grass</span> ▾
+      </button>
+      <div class="picker-dropdown" id="terrain-dropdown" style="top:36px"></div>
     </div>
-  </div>
-  <!-- Fog layer options -->
-  <div class="opt-section" id="opt-fog">
-    <span class="opt-label">Type</span>
-    <button class="opt-btn active" data-fogtype="fog">🌫 Fog</button>
-    <button class="opt-btn"        data-fogtype="darkness">🌑 Darkness</button>
-    <button class="opt-btn"        data-fogtype="magical">✨ Magical</button>
-  </div>
-  <!-- Objects layer options -->
-  <div class="opt-section" id="opt-objects">
-    <span class="opt-label">Place</span>
-    <button class="opt-btn active" id="obj-sub-token">⚔</button>
-    <button class="opt-btn"        id="obj-sub-prop">🪣 Prop</button>
-    <button class="opt-btn"        id="obj-sub-stamp">⭐ Stamp</button>
-    <div class="opt-sep"></div>
-    <div class="picker-wrap" id="prop-picker-wrap" style="display:none">
-      <button class="picker-btn" id="prop-picker-btn" style="height:26px"><span id="prop-preview-label">None</span> ▾</button>
-      <div class="picker-dropdown" id="prop-dropdown" style="top:34px"></div>
-    </div>
-    <div class="picker-wrap" id="stamp-picker-wrap" style="display:none">
-      <button class="picker-btn" id="stamp-picker-btn" style="height:26px"><span id="stamp-preview-label">None</span> ▾</button>
-      <div class="picker-dropdown" id="stamp-dropdown" style="top:34px"></div>
-    </div>
-  </div>
-  <!-- BG layer options -->
-  <div class="opt-section" id="opt-bg">
-    <span class="opt-label">URL</span>
-    <input id="bg-url-input" type="text" placeholder="https://…" style="height:26px;width:200px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'IM Fell English',serif;font-size:11px;padding:0 8px;outline:none">
+    <div class="tb-sep"></div>
+    <span class="opt-label">Shape</span>
+    <button class="opt-btn shape-btn active" data-shape="rect" title="Rectangle">▭</button>
+    <button class="opt-btn shape-btn"        data-shape="circle" title="Ellipse">◯</button>
+    <button class="opt-btn shape-btn"        data-shape="line" title="Line">╱</button>
+    <div class="tb-sep"></div>
+    <span class="opt-label">BG Image</span>
+    <input id="bg-url-input" type="text" placeholder="https://…" style="height:26px;width:180px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'IM Fell English',serif;font-size:11px;padding:0 8px;outline:none">
     <span class="opt-label">PPI</span>
-    <input id="bg-ppi-input" type="number" value="70" min="10" max="300" style="height:26px;width:56px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 6px;outline:none;text-align:center">
+    <input id="bg-ppi-input" type="number" value="70" min="10" max="300" style="height:26px;width:52px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 6px;outline:none;text-align:center">
     <button class="opt-btn" id="bg-set-btn">Set</button>
     <button class="opt-btn" id="bg-clear-btn">Clear</button>
     <span id="bg-status-text" style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim)"></span>
   </div>
+
+  <!-- Structure sub-panel -->
+  <div id="ctx-structure" class="ctx-panel" style="display:none;align-items:center;gap:6px">
+    <span class="opt-label">Type</span>
+    <button class="opt-btn struct-type-btn active" data-structtype="wall"   title="Wall">🧱 Wall</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="light" title="Light">💡 Light</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="door"  title="Door">🚪 Door</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="portal" title="Portal">🌀 Portal</button>
+  </div>
+
+  <!-- Tokens sub-panel -->
+  <div id="ctx-tokens" class="ctx-panel" style="display:none;align-items:center;gap:6px">
+    <span style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim,#6b5a38);font-style:italic">Pencil: click the map to open the spawn menu · Select: drag to move, click to inspect · Eraser: click to delete</span>
+  </div>
+
+  <!-- Props sub-panel -->
+  <div id="ctx-props" class="ctx-panel" style="display:none;align-items:center;gap:6px">
+    <div class="picker-wrap" id="prop-picker-wrap" style="height:28px">
+      <button class="picker-btn" id="prop-picker-btn" style="height:28px;font-size:10px"><span id="prop-preview-label">None</span> ▾</button>
+      <div class="picker-dropdown" id="prop-dropdown" style="top:36px"></div>
+    </div>
+  </div>
+
+  <!-- Setting panel -->
+  <div id="ctx-setting" class="ctx-panel" style="display:none;align-items:center;gap:6px">
+    <button class="tb-btn tod-btn active" data-tod="day"   title="Day">☀</button>
+    <button class="tb-btn tod-btn"        data-tod="dawn"  title="Dawn">🌅</button>
+    <button class="tb-btn tod-btn"        data-tod="dusk"  title="Dusk">🌇</button>
+    <button class="tb-btn tod-btn"        data-tod="night" title="Night">🌙</button>
+    <div class="tb-sep"></div>
+    <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;white-space:nowrap">DARK</span>
+    <input type="range" id="ctrl-darkness" min="0" max="1" step="0.01" value="1"
+      style="width:60px;accent-color:var(--gold);cursor:pointer" title="Darkness density (0=none, 1=max)">
+    <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;white-space:nowrap">LIGHT</span>
+    <input type="range" id="ctrl-light-punch" min="0" max="1" step="0.01" value="1"
+      style="width:60px;accent-color:var(--gold);cursor:pointer" title="Light brightness/cut (0=invisible, 1=full)">
+    <div class="tb-sep"></div>
+    <button class="tb-btn" id="weatherBtn" title="Weather">🌦 Weather</button>
+    <button class="tb-btn" id="theaterBtn" title="Theater of the Mind — hides the map/tokens/initiative on players' screens">🎭 Theater of the Mind</button>
+  </div>
 </div>
 
-<!-- ── Layer palette (right) ── -->
-<div id="layer-palette">
-  <div id="layer-palette-header">Layers</div>
-  <div class="layer-row" data-layer="bg">
-    <button class="layer-vis" data-layer="bg">👁</button>
-    <button class="layer-lock" data-layer="bg">🔓</button>
-    <span class="layer-icon">🗺</span>
-    <span class="layer-name">Background</span>
-  </div>
-  <div class="layer-row active" data-layer="ground">
-    <button class="layer-vis" data-layer="ground">👁</button>
-    <button class="layer-lock" data-layer="ground">🔓</button>
-    <span class="layer-icon">🟫</span>
-    <span class="layer-name">Ground</span>
-  </div>
-  <div class="layer-row" data-layer="walls">
-    <button class="layer-vis" data-layer="walls">👁</button>
-    <button class="layer-lock" data-layer="walls">🔓</button>
-    <span class="layer-icon">🧱</span>
-    <span class="layer-name">Walls</span>
-  </div>
-  <div class="layer-row" data-layer="fog">
-    <button class="layer-vis" data-layer="fog">👁</button>
-    <button class="layer-lock" data-layer="fog">🔓</button>
-    <span class="layer-icon">🌫</span>
-    <span class="layer-name">Fog</span>
-  </div>
-  <div class="layer-row" data-layer="objects">
-    <button class="layer-vis" data-layer="objects">👁</button>
-    <button class="layer-lock" data-layer="objects">🔓</button>
-    <span class="layer-icon">⚔</span>
-    <span class="layer-name">Objects</span>
-  </div>
-</div>
-
+<!-- ── Options bar (context-sensitive, below topbar) ── -->
 <!-- ── App container (just for grid children that need it) ── -->
 <div id="app">
 
@@ -773,7 +722,6 @@ import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
-import { drawFog, fogGroupAtTile, saveFog, deleteFogGroup as deleteFogGroupRTDB } from "./js/fog.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { saveChain, deleteChain, chainsForToken, drawChains } from "./js/chains.js";
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
@@ -783,10 +731,10 @@ import { rollDie } from "./js/dice.js";
 import { findMonster } from "./js/data.js";
 import { setTheaterMode, subscribeTheaterMode } from "./js/theater.js";
 import {
-  parseDD2VTT, computeVisibilityPolygon, activeOccluders, wallGroupsToSegments,
-  drawWallsGeometry, drawLightsGeometry, drawLight,
+  parseDD2VTT, computeVisibilityPolygon, activeOccluders,
+  drawWallsGeometry, drawDoorsGeometry, drawLightsGeometry, drawLight,
   TIME_OF_DAY_PRESETS,
-  addWall, addLight, deleteById,
+  addWall, addLight, addDoor, deleteById,
   segmentAtPoint, lightAtPoint, endpointAtPoint, moveEndpoint,
 } from "./js/geometry.js";
 import { subscribeTokenStrip, rollInitiative } from "./js/initiative.js";
@@ -797,15 +745,14 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { saveWallGroups, saveDoors, saveStamp, savePropsLocal, savePortals, resolvePortal, saveTokenLocal as saveTokenRTDB, findDoorAtPoint } from "./js/map.js";
+import { saveStamp, savePropsLocal, savePortals, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { initLayers, setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},fogGroups={},tokens={},stamps={},roofs={},props={},portals={},chains={};
-const wallGroups={},doors={};
+const tiles={},tokens={},stamps={},roofs={},props={},portals={},chains={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
 let customProps=[];
@@ -814,7 +761,6 @@ let playerName=localStorage.getItem("vtt_player_name")||"";
 let currentShape="rect",currentTerrain="grass",wallsEnabled=false;
 // ── Geometry state ────────────────────────────────────────────────────────────
 const geometry = { walls:[], doors:[], lights:[], timeOfDay:"day", lightingParams:{tintAlpha:1, blackAlpha:0.92, dvPunch:0.8, lightPunch:1} };
-let geoMode    = null;   // "wall" | "light" | "edit"
 let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
 let geoDragLight = null; // light id being dragged
@@ -840,13 +786,21 @@ async function saveGeometry() {
   await set(ref(db,`maps/${m}/geometry`), {
     walls:  geometry.walls.length  ? geometry.walls  : null,
     lights: geometry.lights.length ? geometry.lights : null,
+    doors:  geometry.doors.length  ? geometry.doors  : null,
     timeOfDay: geometry.timeOfDay,
     lightingParams: geometry.lightingParams,
   }).catch(e => toast("Geo save failed: " + e.message));
 }
-let currentFogType="fog"; // "fog"|"darkness"|"magical"
-let fogMode=false,roofMode=false,wallMode=false,doorMode=false;
-let currentStamp=null,currentProp=null;
+// Targeted write for just the doors list -- used for open/close toggling,
+// so it can't clobber a concurrent wall/light edit the way a full
+// saveGeometry() overwrite could.
+async function saveGeometryDoors() {
+  const m = mapInput.value.trim() || "dungeon-1";
+  await set(ref(db,`maps/${m}/geometry/doors`), geometry.doors.length ? geometry.doors : null)
+    .catch(e => toast("Door save failed: " + e.message));
+}
+let roofMode=false;
+let currentProp=null;
 let dragging=false,startX=0,startY=0,curX=0,curY=0;
 let hoverTileX=0,hoverTileY=0,roofOpacity=0.5;
 let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
@@ -854,9 +808,8 @@ let moveOffX=0,moveOffY=0,moveStartWorldX=0,moveStartWorldY=0;
 let selStamps={},selProps={},selTokenIds=[];
 let draggingToken=null,draggingProp=null,placingToken=null;
 let pingMode=false,isHolding=false,pingHoldTimer=null,myLaserRef=null;
-let portalMode=false;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0,spaceDown=false;
-let rulerStart=null,rulerEnd=null,rulerActive=false;
+let rulerStart=null,rulerEnd=null,rulerActive=false,rulerMode=false;
 let initiative={order:[],active:null};
 let ctxTokenId=null,ctxPropKey=null;
 let liveUnsub=null,saveTimer=null,isSavingTiles=false;
@@ -876,7 +829,6 @@ const wallBtn   =document.getElementById("wallBtn"); // kept for compat
 const doorBtn   =document.getElementById("doorBtn");
 const fogBtn    =null; // removed — use layer palette
 const roofBtn   =null; // removed
-const tokenBtn  =document.getElementById("tokenBtn");
 const pingToastEl=document.getElementById("ping-toast");
 const chatLog   =document.getElementById("chat-log");
 const chatInput =document.getElementById("chat-input");
@@ -894,32 +846,7 @@ function key(x,y){return`${x},${y}`;}
 function screenPos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
 function hasWall(x,y){const t=tiles[key(x,y)];return t&&t.walls;}
 
-// Find which wall group contains a tile
-function wallGroupAtTile(tx,ty){const k=key(tx,ty);for(const gid in wallGroups){if(wallGroups[gid].cells?.[k])return gid;}return null;}
 
-// Find nearest wall-group edge to place a door on
-function nearestWallEdge(tx,ty){
-  const neighbors=[{dx:0,dy:-1,edge:"n"},{dx:0,dy:1,edge:"s"},{dx:-1,dy:0,edge:"w"},{dx:1,dy:0,edge:"e"}];
-  // Check if the hovered tile is in a wall group — find an exposed edge
-  const myGid=wallGroupAtTile(tx,ty);
-  if(myGid){
-    for(const{dx,dy,edge}of neighbors){
-      const nk=key(tx+dx,ty+dy);
-      if(!wallGroups[myGid].cells?.[nk])return{edge,x:tx,y:ty};
-    }
-  }
-  // Otherwise check adjacent wall group tiles
-  for(const{dx,dy,edge}of neighbors){
-    const nx=tx+dx,ny=ty+dy;
-    const ngid=wallGroupAtTile(nx,ny);
-    if(ngid){
-      // The edge is on the neighbor tile, facing back toward us
-      const opposite={n:"s",s:"n",e:"w",w:"e"};
-      return{edge:opposite[edge],x:nx,y:ny};
-    }
-  }
-  return{edge:null,x:tx,y:ty};
-}
 function applyTile(x,y){const k=key(x,y);if(currentTerrain==="erase"){delete tiles[k];return;}tiles[k]={terrain:currentTerrain,walls:wallsEnabled};}
 function applyRoof(x,y){const k=key(x,y);if(currentTerrain==="erase"){delete roofs[k];return;}roofs[k]={terrain:currentTerrain};}
 let toastTimer;
@@ -952,8 +879,6 @@ new ResizeObserver(resize).observe(canvasWrap);
 // ── RTDB save helpers ─────────────────────────────────────────────────────────
 function scheduleSave(){clearTimeout(saveTimer);setStatus("saving","Saving…");saveTimer=setTimeout(async()=>{const mapName=mapInput.value.trim()||"dungeon-1";try{isSavingTiles=true;await set(ref(db,`maps/${mapName}/tiles`),Object.keys(tiles).length?tiles:null);await set(ref(db,`maps/${mapName}/updatedAt`),Date.now());setStatus("live","Live ✓");}catch(e){setStatus("error","Error");}finally{isSavingTiles=false;}},600);}
 async function saveRoofs(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/roofs`),Object.keys(roofs).length?roofs:null);}
-async function saveFogLocal(){const m=mapInput.value.trim()||"dungeon-1";await saveFog(m,fogGroups);}
-async function deleteFogGroup(id){const m=mapInput.value.trim()||"dungeon-1";await deleteFogGroupRTDB(m,id,fogGroups);}
 async function deleteStamp(k){const m=mapInput.value.trim()||"dungeon-1";await remove(ref(db,`maps/${m}/stamps/${k.replace(",","_")}`));delete stamps[k];}
 async function savePropDef(p){await set(ref(db,`propDefs/${p.id}`),p);}
 
@@ -971,19 +896,11 @@ function subscribeLive(){
       for(const k in tiles)delete tiles[k];
       if(data?.tiles)Object.assign(tiles,data.tiles);
     }
-    for(const k in fogGroups)delete fogGroups[k];
-    for(const k in wallGroups)delete wallGroups[k];
-    
-    for(const k in doors)delete doors[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in portals)delete portals[k];
     for(const k in chains)delete chains[k];
     if(data){
-      if(data.fog)Object.assign(fogGroups,data.fog);
-      if(data.wallGroups)Object.assign(wallGroups,data.wallGroups);
-      
-      if(data.doors)Object.assign(doors,data.doors);
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
@@ -1345,23 +1262,18 @@ document.getElementById("clearBtn").onclick=(e)=>{e.stopPropagation();const r=do
 clearDropdown.addEventListener("click",e=>e.stopPropagation());
 async function clearSection(section){
   const mapName=mapInput.value.trim()||"dungeon-1";
-  const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",fog:"Clear all fog?",stamps:"Clear all stamps?",tiles:"Clear all tiles?",roofs:"Clear all roofs?",all:"Clear EVERYTHING?"};
+  const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",tiles:"Clear all tiles?",roofs:"Clear all roofs?",geometry:"Clear all structure (walls/lights/doors)?",all:"Clear EVERYTHING?"};
   if(!confirm(confirm_msg[section]))return;
   if(section==="tiles"||section==="all")pushUndo();
   if(section==="bg"||section==="all"){bgImage=null;bgUrl="";bgPpi=70;await set(ref(db,`maps/${mapName}/background`),null);await set(ref(db,`maps/${mapName}/backgroundPpi`),null);}
   if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);for(const k in chains)delete chains[k];await set(ref(db,`maps/${mapName}/chains`),null);}
-  if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);}
-  if(section==="fog"||section==="all"){for(const k in fogGroups)delete fogGroups[k];await set(ref(db,`maps/${mapName}/fog`),null);if(section==="all")await set(ref(db,`maps/${mapName}/darknessGroups`),null);}
-  if(section==="walls"||section==="all"){for(const k in wallGroups)delete wallGroups[k];await set(ref(db,`maps/${mapName}/wallGroups`),null);}
-  if(section==="doors"||section==="all"){for(const k in doors)delete doors[k];await set(ref(db,`maps/${mapName}/doors`),null);}
-  if(section==="stamps"||section==="all"){for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
+  if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
   if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);}
   if(section==="geometry"||section==="all"){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];await set(ref(db,`maps/${mapName}/geometry`),null);}
   if(section==="roofs"||section==="all"){for(const k in roofs)delete roofs[k];await set(ref(db,`maps/${mapName}/roofs`),null);}
-  if(section==="all"){/* geometry already cleared above */}
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
 }
-["bg","tokens","props","fog","walls","doors","stamps","tiles","geometry","all"].forEach(s=>{const el=document.getElementById(`clear-${s}`);if(el)el.onclick=()=>clearSection(s);});
+["bg","tokens","props","tiles","geometry","all"].forEach(s=>{const el=document.getElementById(`clear-${s}`);if(el)el.onclick=()=>clearSection(s);});
 
 // ── DD2VTT Import (background image only — no geometry) ─────────────────────
 document.getElementById("loadVttBtn").onclick=()=>document.getElementById("vttFileInput").click();
@@ -1453,7 +1365,7 @@ const tokHpInput=document.getElementById("tok-hp");
 const tokMaxHpInput=document.getElementById("tok-maxhp");
 let placingTokenLocal=null;
 
-tokenBtn.onclick=async()=>{
+async function openTokenSpawnModal(){
   tokCharSel.innerHTML='<option value="">Loading…</option>';
   try{
     const [pcsSnap, nodesSnap] = await Promise.all([
@@ -1497,7 +1409,7 @@ tokenBtn.onclick=async()=>{
   document.getElementById("tok-lookup-name").value="";
   tokCharSel.value="__npc__";
   document.getElementById("token-modal").classList.remove("hidden");
-};
+}
 tokCharSel.addEventListener("change",()=>{
   const opt=tokCharSel.selectedOptions[0];
   const val=opt?.value;
@@ -1587,23 +1499,16 @@ function selectTerrain(t){
 document.getElementById("terrain-picker-btn").onclick=(e)=>{e.stopPropagation();const r=document.getElementById("terrain-picker-btn").getBoundingClientRect();document.getElementById("terrain-dropdown").style.left=r.left+"px";document.getElementById("terrain-dropdown").classList.toggle("open");};
 
 
-let currentStampLocal=null,currentPropLocal=null;
-function buildStampDropdown(){
-  const dd=document.getElementById("stamp-dropdown");dd.innerHTML="";
-  const STAMPS=getSTAMPS();
-  const eraseEl=document.createElement("div");eraseEl.className="pd-item pd-stamp"+(currentStamp==="erase"?" active":"");eraseEl.textContent="✕";eraseEl.style.fontSize="16px";eraseEl.onclick=()=>{selectStamp("erase");dd.classList.remove("open");};dd.appendChild(eraseEl);
-  STAMPS.forEach(s=>{const el=document.createElement("div");el.className="pd-item pd-stamp"+(s===currentStamp?" active":"");el.textContent=s;el.onclick=()=>{selectStamp(s);dd.classList.remove("open");};dd.appendChild(el);});
-}
-function selectStamp(s){currentStamp=s;currentProp=null;document.getElementById("stamp-preview-label").textContent=s==="erase"?"Erase ✕":s||"None";buildStampDropdown();buildPropDropdown();}
-document.getElementById("stamp-picker-btn").onclick=(e)=>{e.stopPropagation();const r=document.getElementById("stamp-picker-btn").getBoundingClientRect();document.getElementById("stamp-dropdown").style.left=r.left+"px";document.getElementById("stamp-dropdown").classList.toggle("open");};
-
 function buildPropDropdown(){
   const dd=document.getElementById("prop-dropdown");dd.innerHTML="";
   const eraseEl=document.createElement("div");eraseEl.className="pd-item pd-stamp"+(currentProp==="erase"?" active":"");eraseEl.textContent="✕";eraseEl.style.fontSize="16px";eraseEl.onclick=()=>{selectProp("erase");dd.classList.remove("open");};dd.appendChild(eraseEl);
   const addEl=document.createElement("div");addEl.className="pd-item pd-stamp";addEl.textContent="➕";addEl.onclick=()=>{dd.classList.remove("open");document.getElementById("prop-modal").classList.remove("hidden");};dd.appendChild(addEl);
-  customProps.forEach(p=>{const el=document.createElement("div");el.className="pd-item"+(currentProp&&currentProp.id===p.id?" active":"");const img=propTextures[p.id];if(img){el.innerHTML=`<div class="pd-item-inner" style="background-image:url(${img.src})"></div><div class="pd-item-label">${p.label}</div>`;}else{el.innerHTML=`<div style="font-size:18px;line-height:36px">${p.emoji}</div><div class="pd-item-label">${p.label}</div>`;}el.onclick=()=>{selectProp(p);dd.classList.remove("open");};dd.appendChild(el);});
+  customProps.forEach(p=>{const el=document.createElement("div");el.className="pd-item"+(currentProp&&!currentProp.isStamp&&currentProp.id===p.id?" active":"");const img=propTextures[p.id];if(img){el.innerHTML=`<div class="pd-item-inner" style="background-image:url(${img.src})"></div><div class="pd-item-label">${p.label}</div>`;}else{el.innerHTML=`<div style="font-size:18px;line-height:36px">${p.emoji}</div><div class="pd-item-label">${p.label}</div>`;}el.onclick=()=>{selectProp(p);dd.classList.remove("open");};dd.appendChild(el);});
+  // Former "stamps" -- decals like blood, cracks, moss -- now just part of Props
+  const STAMPS=getSTAMPS();
+  STAMPS.forEach(s=>{const item={isStamp:true,emoji:s,label:s};const el=document.createElement("div");el.className="pd-item pd-stamp"+(currentProp&&currentProp.isStamp&&currentProp.emoji===s?" active":"");el.textContent=s;el.onclick=()=>{selectProp(item);dd.classList.remove("open");};dd.appendChild(el);});
 }
-function selectProp(p){currentProp=p;currentStamp=null;document.getElementById("prop-preview-label").textContent=p==="erase"?"Erase ✕":(p.label||"None");buildPropDropdown();buildStampDropdown();}
+function selectProp(p){currentProp=p;document.getElementById("prop-preview-label").textContent=p==="erase"?"Erase ✕":(p.emoji||p.label||"None");buildPropDropdown();}
 document.getElementById("prop-picker-btn").onclick=(e)=>{e.stopPropagation();const r=document.getElementById("prop-picker-btn").getBoundingClientRect();document.getElementById("prop-dropdown").style.left=r.left+"px";document.getElementById("prop-dropdown").classList.toggle("open");};
 
 // Close all dropdowns on click
@@ -1616,8 +1521,13 @@ document.addEventListener("click",()=>{
 
 // Mode buttons — handled by new tool/layer system
 // // wallBtn removed
+document.getElementById("rulerBtnEd").onclick=()=>{
+  rulerMode=!rulerMode;
+  document.getElementById("rulerBtnEd").classList.toggle("active",rulerMode);
+  canvas.style.cursor=rulerMode?"crosshair":cursorFor();
+  if(!rulerMode){rulerStart=null;rulerEnd=null;rulerActive=false;}
+};
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
-document.getElementById("portalBtn").onclick=()=>{portalMode=!portalMode;document.getElementById("portalBtn").classList.toggle("active",portalMode);canvas.style.cursor=portalMode?"crosshair":"";if(portalMode)toast("Click a cell, enter a link #. Click another cell, enter the same # to connect them.");};
 document.getElementById("theaterBtn").onclick=async()=>{
   const btn=document.getElementById("theaterBtn");
   const active=!btn.classList.contains("active");
@@ -1646,10 +1556,21 @@ function drawProps(){
     else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
     if(p.attachedTo){ctx.save();ctx.strokeStyle="rgba(200,168,75,0.5)";ctx.lineWidth=1/camera.zoom;ctx.setLineDash([3/camera.zoom,3/camera.zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);ctx.restore();}
   }
-  if(currentProp&&currentProp!=="erase"){ctx.save();ctx.globalAlpha=0.5;const def=currentProp;const pw=(def.w||1)*TILE,ph=(def.h||1)*TILE;const img=propTextures[def.id];if(img)ctx.drawImage(img,hoverTileX*TILE,hoverTileY*TILE,pw,ph);else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,hoverTileX*TILE+pw/2,hoverTileY*TILE+ph/2);}ctx.restore();}
+  if(currentProp&&currentProp!=="erase"){
+    ctx.save();ctx.globalAlpha=0.5;
+    if(currentProp.isStamp){
+      ctx.font=`${Math.round(TILE*.65)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.fillText(currentProp.emoji,hoverTileX*TILE+TILE/2,hoverTileY*TILE+TILE/2);
+    } else {
+      const def=currentProp;const pw=(def.w||1)*TILE,ph=(def.h||1)*TILE;const img=propTextures[def.id];
+      if(img)ctx.drawImage(img,hoverTileX*TILE,hoverTileY*TILE,pw,ph);
+      else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,hoverTileX*TILE+pw/2,hoverTileY*TILE+ph/2);}
+    }
+    ctx.restore();
+  }
 }
 
-function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}if(currentStamp&&currentStamp!=="erase"){ctx.globalAlpha=0.5;ctx.fillText(currentStamp,hoverTileX*TILE+TILE/2,hoverTileY*TILE+TILE/2);}ctx.restore();}
+function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}ctx.restore();}
 function drawPortals(){
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
   for(const[k,p]of Object.entries(portals)){
@@ -1665,7 +1586,7 @@ function drawPortals(){
 
 function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/camera.zoom;const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,r=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
-function drawPreview(){if(activeTool==="mouse")return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
+function drawPreview(){if(!(activeCategory==="background"&&activeVerb==="pencil"))return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
 
 function drawSelection(){if(currentShape!=="select")return;if(selectPhase==="marquee"&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(100,160,255,0.15)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=1.5/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);return;}if(selectPhase==="selected"||selectPhase==="moving"){const ox=moveOffX,oy=moveOffY;const TERRAINS=getTERRAINS();for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);const{terrain}=selectTiles[k];const px=(tx+ox)*TILE,py=(ty+oy)*TILE;const def=TERRAINS.find(t=>t.id===terrain);if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=def?.color||"#333";ctx.fillRect(px,py,TILE,TILE);}}const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE,pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;ctx.fillStyle="rgba(100,160,255,0.18)";ctx.fillRect(px,py,pw,ph);ctx.strokeStyle="rgba(100,160,255,0.95)";ctx.lineWidth=2/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);}}
 
@@ -1691,64 +1612,9 @@ function render(){
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
   ctx.restore();
-  // Wall groups — draw perimeter edges
-  ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
-  for(const gid in wallGroups){
-    const cells=wallGroups[gid].cells||{};
-    for(const ck in cells){
-      const[x,y]=ck.split(",").map(Number);const px=x*TILE,py=y*TILE;
-      [[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{
-        const nk=key(x+dx,y+dy);
-        if(!cells[nk]){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
-      });
-    }
-  }
-  // Doors
-  for(const did in doors){
-    const d=doors[did];
-    const px=d.x*TILE,py=d.y*TILE;
-    const edges={n:[px,py,px+TILE,py],s:[px,py+TILE,px+TILE,py+TILE],w:[px,py,px,py+TILE],e:[px+TILE,py,px+TILE,py+TILE]};
-    const[x1,y1,x2,y2]=edges[d.edge]||edges.n;
-    const mx=(x1+x2)/2,my=(y1+y2)/2;
-    if(d.open){
-      // Open door — short perpendicular lines at each end
-      ctx.strokeStyle="#8a6a2a";ctx.lineWidth=2/camera.zoom;
-      const len=TILE*0.25;
-      const isH=d.edge==="n"||d.edge==="s";
-      ctx.beginPath();
-      if(isH){ctx.moveTo(x1,y1-len);ctx.lineTo(x1,y1+len);ctx.moveTo(x2,y2-len);ctx.lineTo(x2,y2+len);}
-      else{ctx.moveTo(x1-len,y1);ctx.lineTo(x1+len,y1);ctx.moveTo(x2-len,y2);ctx.lineTo(x2+len,y2);}
-      ctx.stroke();
-    } else {
-      // Closed door — colored line across the edge
-      ctx.strokeStyle=d.locked?"#8a2a2a":"#8a6a2a";ctx.lineWidth=3.5/camera.zoom;
-      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-      // Small square in center
-      const sz=4/camera.zoom;
-      ctx.fillStyle=d.locked?"#c04040":"#c0a040";
-      ctx.fillRect(mx-sz/2,my-sz/2,sz,sz);
-    }
-  }
   drawStamps();drawProps();drawPortals();
   drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
-  drawFog(ctx,fogGroups,camera.zoom,true);
-  // Fog preview
-  if(fogMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(10,20,40,0.35)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
-  // Wall mode preview
-  if(wallMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(192,57,43,0.2)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
-  // Darkness mode preview
-  // Door mode — highlight hovered wall edge
-  if(doorMode&&!dragging){
-    const{edge,x,y}=nearestWallEdge(hoverTileX,hoverTileY);
-    if(edge){
-      const px=x*TILE,py=y*TILE;
-      const edges={n:[px,py,px+TILE,py],s:[px,py+TILE,px+TILE,py+TILE],w:[px,py,px,py+TILE],e:[px+TILE,py,px+TILE,py+TILE]};
-      const[x1,y1,x2,y2]=edges[edge];
-      ctx.strokeStyle="rgba(200,168,75,0.8)";ctx.lineWidth=4/camera.zoom;
-      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-    }
-  }
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   // Placing token preview
   if(placingToken){const alpha=0.6+0.2*Math.sin(Date.now()/300);drawToken(ctx,{...placingToken,x:hoverTileX,y:hoverTileY},camera.zoom,pcsData,CONDITIONS,alpha);}
@@ -1763,11 +1629,13 @@ function render(){
   // ── Geometry editor indicators (camera space) ─────────────────────────────
   ctx.save(); ctx.translate(camera.x,camera.y); ctx.scale(camera.zoom,camera.zoom);
   const _isDay=(geometry.timeOfDay==="day");
+  const _structureActive = activeCategory==="structure"&&activeVerb;
   drawWallsGeometry(ctx,geometry.walls,TILE,{zoom:camera.zoom,selectedId:geoSelected});
-  if(geoMode==="edit"||geoMode==="light"||!_isDay)
+  drawDoorsGeometry(ctx,geometry.doors,TILE,{zoom:camera.zoom,selectedId:geoSelected});
+  if((_structureActive&&(activeVerb==="select"||structureType==="light"))||!_isDay)
     drawLightsGeometry(ctx,geometry.lights,TILE,{zoom:camera.zoom,selectedId:geoSelected});
-  // Hover range circle for nearest light in edit/light mode
-  if((geoMode==="edit"||geoMode==="light")&&geometry.lights.length){
+  // Hover range circle for nearest light while editing/placing lights
+  if(_structureActive&&(activeVerb==="select"||structureType==="light")&&geometry.lights.length){
     const hgx=(hoverTileX||0)+0.5, hgy=(hoverTileY||0)+0.5;
     let nearLight=null,nearDist=2.5;
     for(const l of geometry.lights){const d=Math.hypot(l.x-hgx,l.y-hgy);if(d<nearDist){nearDist=d;nearLight=l;}}
@@ -1777,10 +1645,16 @@ function render(){
       ctx.setLineDash([4/camera.zoom,4/camera.zoom]);ctx.stroke();ctx.setLineDash([]);
     }
   }
-  if(geoMode==="wall"&&geoWallStart&&hoverTileX!=null){
+  if(activeCategory==="structure"&&structureType==="wall"&&activeVerb==="pencil"&&geoWallStart&&hoverTileX!=null){
     ctx.strokeStyle="rgba(200,168,75,.7)";ctx.lineWidth=2/camera.zoom;
     ctx.setLineDash([6/camera.zoom,4/camera.zoom]);
     ctx.beginPath();ctx.moveTo(geoWallStart[0]*TILE,geoWallStart[1]*TILE);
+    ctx.lineTo((hoverTileX+0.5)*TILE,(hoverTileY+0.5)*TILE);ctx.stroke();ctx.setLineDash([]);
+  }
+  if(activeCategory==="structure"&&structureType==="door"&&activeVerb==="pencil"&&geoDoorStart&&hoverTileX!=null){
+    ctx.strokeStyle="rgba(160,110,60,.8)";ctx.lineWidth=3/camera.zoom;
+    ctx.setLineDash([5/camera.zoom,3/camera.zoom]);
+    ctx.beginPath();ctx.moveTo(geoDoorStart[0]*TILE,geoDoorStart[1]*TILE);
     ctx.lineTo((hoverTileX+0.5)*TILE,(hoverTileY+0.5)*TILE);ctx.stroke();ctx.setLineDash([]);
   }
   ctx.restore();
@@ -1804,7 +1678,7 @@ function render(){
       // Punch holes for each light using destination-out in world space
       lCtx.save();lCtx.translate(camera.x,camera.y);lCtx.scale(camera.zoom,camera.zoom);
       lCtx.globalCompositeOperation="destination-out";
-      const occluders=activeOccluders([...geometry.walls,...wallGroupsToSegments(wallGroups,doors)],geometry.doors||[]);
+      const occluders=activeOccluders(geometry.walls,geometry.doors||[]);
       for(const light of geometry.lights){
         const segs=light.shadows?occluders:[];
         const poly=computeVisibilityPolygon(light.x,light.y,segs,light.range);
@@ -1862,7 +1736,7 @@ function render(){
       // Day mode: just draw additive light glow (no darkness)
       ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
       ctx.globalCompositeOperation="lighter";
-      const occ=activeOccluders([...geometry.walls,...wallGroupsToSegments(wallGroups,doors)],geometry.doors||[]);
+      const occ=activeOccluders(geometry.walls,geometry.doors||[]);
       for(const light of geometry.lights)drawLight(ctx,light,occ,TILE);
       ctx.globalCompositeOperation="source-over";ctx.restore();
     }
@@ -1900,136 +1774,84 @@ canvas.addEventListener("contextmenu",e=>e.preventDefault());
 
 // Left-click on token → open sheet panel (skip if placing token or in a mode)
 // ═══════════════════════════════════════════════════════════════════════════════
-// TOOL + LAYER SYSTEM
+// ═══════════════════════════════════════════════════════════════════════════════
+// CATEGORY + VERB SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // ── State ────────────────────────────────────────────────────────────────────
-let activeTool  = "mouse";   // mouse | pencil | rect | ellipse | eraser
-let manualToolChosen = false; // true once the user picks a tool themselves, so layer switches stop overriding it
-let activeLayer = "ground";  // bg | ground | walls | fog | objects
-let wallSub     = "wall";    // wall | door
-let objSub      = "token";   // token | prop | stamp
-let layerVisible = {bg:true,ground:true,walls:true,fog:true,objects:true};
-let layerLocked  = {bg:false,ground:false,walls:false,fog:false,objects:false};
+let activeCategory = null;     // null | "background" | "structure" | "tokens" | "props" | "setting"
+let activeVerb     = "select"; // "select" | "pencil" | "eraser" -- standalone, independent of category.
+                                // Select is the universal escape hatch: pan, drag tokens/props, toggle
+                                // doors, no matter what category is showing.
+let structureType  = "wall"; // wall | light | door | portal
+// currentShape already declared above (line ~754)
+let geoDoorStart = null; // [gx,gy] for first door click
 
-// ── Switch tool ───────────────────────────────────────────────────────────────
-function setTool(t) {
-  activeTool = t;
-  document.querySelectorAll(".tool-btn").forEach(b=>b.classList.remove("active"));
-  const btn = document.getElementById("tool-"+t);
-  if(btn) btn.classList.add("active");
-  // Cursor
-  const cursors = {mouse:"default",pencil:"crosshair",rect:"crosshair",ellipse:"crosshair",eraser:"cell"};
-  canvas.style.cursor = cursors[t] || "crosshair";
+function cursorFor(){
+  if(activeVerb==="pencil") return "crosshair";
+  if(activeVerb==="eraser") return "cell";
+  return "default";
 }
 
-// ── Switch layer ──────────────────────────────────────────────────────────────
-function setActiveLayer(l, skipToolDefault=false) {
-  activeLayer = l;
-  document.querySelectorAll(".layer-row").forEach(r=>{
-    r.classList.toggle("active", r.dataset.layer === l);
+function setCategory(cat){
+  // Clicking the already-active category tab turns it off (back to no category,
+  // still whatever verb was active -- most useful with Select, to fully back out).
+  if(activeCategory===cat) cat=null;
+  activeCategory = cat;
+  geoWallStart = null; geoDoorStart = null; geoSelected = null;
+  document.querySelectorAll(".cat-btn").forEach(b=>b.classList.remove("active"));
+  if(cat) document.getElementById("cat-"+cat)?.classList.add("active");
+  document.querySelectorAll(".ctx-panel").forEach(p=>p.style.display="none");
+  const panel = cat && document.getElementById("ctx-"+cat);
+  if(panel) panel.style.display="flex";
+  canvas.style.cursor = cursorFor();
+}
+
+function setVerb(v){
+  activeVerb = v;
+  document.querySelectorAll(".verb-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("verb-"+v)?.classList.add("active");
+  canvas.style.cursor = cursorFor();
+}
+
+document.getElementById("cat-background").onclick=()=>setCategory("background");
+document.getElementById("cat-structure").onclick=()=>setCategory("structure");
+document.getElementById("cat-tokens").onclick=()=>setCategory("tokens");
+document.getElementById("cat-props").onclick=()=>setCategory("props");
+document.getElementById("cat-setting").onclick=()=>setCategory("setting");
+document.getElementById("verb-select").onclick=()=>setVerb("select");
+document.getElementById("verb-pencil").onclick=()=>setVerb("pencil");
+document.getElementById("verb-eraser").onclick=()=>setVerb("eraser");
+
+document.querySelectorAll(".struct-type-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    structureType = btn.dataset.structtype;
+    document.querySelectorAll(".struct-type-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    geoWallStart=null; geoDoorStart=null;
   });
-  // Show correct options bar section
-  document.querySelectorAll(".opt-section").forEach(s=>s.classList.remove("active"));
-  const optEl = document.getElementById("opt-"+l);
-  if(optEl) optEl.classList.add("active");
-  
-  // Auto-set sensible tool defaults per layer to prevent accidental drawing —
-  // but only until the user has deliberately picked a tool themselves, so we
-  // don't keep clobbering an intentional Select/Paint/Erase choice every time
-  // they switch layers. Also skipped on the initial programmatic call at page
-  // load (skipToolDefault=true) -- otherwise the app silently starts in Paint
-  // mode on every fresh load, even though the toolbar visually shows Select
-  // as the default, and clicking around paints before you've touched a tool.
-  if (!manualToolChosen && !skipToolDefault) {
-    if(l==="bg" || l==="objects") {
-      setTool("mouse"); setActiveTool("tool-select");
-    } else if(l==="ground" || l==="walls" || l==="fog") {
-      setTool("pencil"); setActiveTool("tool-paint");
-    }
-  }
-}
-
-// Wire layer palette rows
-document.querySelectorAll(".layer-row").forEach(row=>{
-  row.addEventListener("click", e=>{
-    if(e.target.classList.contains("layer-vis")||e.target.classList.contains("layer-lock")) return;
-    setActiveLayer(row.dataset.layer);
+});
+document.querySelectorAll(".shape-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    currentShape = btn.dataset.shape;
+    document.querySelectorAll(".shape-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
   });
 });
 
-// Wire eye/lock buttons
-document.querySelectorAll(".layer-vis").forEach(btn=>{
-  btn.addEventListener("click", e=>{
-    e.stopPropagation();
-    const l = btn.dataset.layer;
-    layerVisible[l] = !layerVisible[l];
-    btn.classList.toggle("hidden", !layerVisible[l]);
-    btn.title = layerVisible[l] ? "Hide layer" : "Show layer";
-  });
-});
-document.querySelectorAll(".layer-lock").forEach(btn=>{
-  btn.addEventListener("click", e=>{
-    e.stopPropagation();
-    const l = btn.dataset.layer;
-    layerLocked[l] = !layerLocked[l];
-    btn.textContent = layerLocked[l] ? "🔒" : "🔓";
-    btn.title = layerLocked[l] ? "Unlock layer" : "Lock layer";
-  });
-});
+// Start with nothing selected: no category, no verb — canvas behaves like the
+// player view (drag tokens, toggle doors, drag props) until the DM deliberately
+// picks a category + verb.
 
-// ── Toolbar wiring ────────────────────────────────────────────────────────────
-function setActiveTool(id) {
-  document.querySelectorAll(".tb-btn[id^='tool-'],.tb-btn#tokenBtn").forEach(b=>b.classList.remove("active"));
-  document.getElementById(id)?.classList.add("active");
-}
-
-// Select
-document.getElementById("tool-select").onclick=()=>{
-  manualToolChosen=true;
-  setTool("mouse");setActiveTool("tool-select");
-  document.getElementById("terrain-wrap").style.display="none";
-};
-
-// Paint
-document.getElementById("tool-paint").onclick=()=>{
-  manualToolChosen=true;
-  setTool("rect");setLayer("ground");setActiveTool("tool-paint");
-  document.getElementById("terrain-wrap").style.display="";
-};
-
-// Erase
-document.getElementById("tool-erase").onclick=()=>{
-  manualToolChosen=true;
-  selectTerrain("erase");setTool("rect");setLayer("ground");setActiveTool("tool-erase");
-  document.getElementById("terrain-wrap").style.display="none";
-};
-
-
-
-// ── Geometry toolbar wiring ───────────────────────────────────────────────────
-function setGeoMode(mode){
-  geoMode=mode; geoWallStart=null; geoSelected=null;
-  ["geo-wall-btn","geo-light-btn","geo-edit-btn"].forEach(id=>
-    document.getElementById(id)?.classList.toggle("active", document.getElementById(id)?.id===("geo-"+mode+"-btn")||("geo-edit-btn"===id&&mode==="edit"))
-  );
-  // Deactivate terrain tools when geo mode active
-  if(mode){ document.querySelectorAll(".tb-btn[id^='tool-']").forEach(b=>b.classList.remove("active")); }
-}
-
-document.getElementById("geo-wall-btn").onclick=()=>setGeoMode(geoMode==="wall"?null:"wall");
-document.getElementById("geo-light-btn").onclick=()=>setGeoMode(geoMode==="light"?null:"light");
-document.getElementById("geo-edit-btn").onclick=()=>setGeoMode(geoMode==="edit"?null:"edit");
-
-// ── Right-click in edit mode: edit light / delete wall ───────────────────────
+// ── Right-click: edit/delete structure elements while Structure+Select is active,
+//    plus the existing prop/token context menus regardless of category ──────────
 canvas.addEventListener("contextmenu",e=>{
-  if(geoMode!=="edit") return;
+  if(!(activeCategory==="structure" && activeVerb==="select")) return;
   e.preventDefault();e.stopPropagation();
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
   const gx=wx/TILE,gy=wy/TILE;
   const li=lightAtPoint(geometry.lights,gx,gy,0.6);
   if(li!==null){
-    // Right-click on light → edit menu
     const light=geometry.lights.find(l=>l.id===li);
     if(!light)return;
     const choice=prompt(
@@ -2047,36 +1869,73 @@ canvas.addEventListener("contextmenu",e=>{
     saveGeometry();return;
   }
   const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),geometry.doors||[],gx,gy,0.4);
-  if(seg){deleteById(geometry.walls,seg.id);geoSelected=null;saveGeometry();toast("Wall removed");return;}
+  if(seg){deleteById(geometry.walls,seg.id);deleteById(geometry.doors,seg.id);geoSelected=null;saveGeometry();toast("Removed");return;}
 },{capture:true});
 
-// Geo pointer — runs before normal paint handler
+// Structure pointer — runs before the baseline/other-category dispatch
 canvas.addEventListener("pointerdown",e=>{
-  if(e.button!==0||!geoMode) return;
+  if(e.button===1||spaceDown) return; // panning always wins, regardless of category
+  if(e.button!==0||activeCategory!=="structure") return;
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
   const gx=wx/TILE, gy=wy/TILE;
-  const mapName=mapInput.value.trim()||"dungeon-1";
 
-  if(geoMode==="wall"){
-    if(!geoWallStart){ geoWallStart=[gx,gy]; }
-    else{
-      addWall(geometry.walls,geoWallStart[0],geoWallStart[1],gx,gy);
-      geoWallStart=null; saveGeometry();
+  if(activeVerb==="pencil"){
+    if(structureType==="wall"){
+      if(!geoWallStart){ geoWallStart=[gx,gy]; }
+      else{ addWall(geometry.walls,geoWallStart[0],geoWallStart[1],gx,gy); geoWallStart=null; saveGeometry(); }
+      e.stopPropagation(); return;
+    }
+    if(structureType==="door"){
+      if(!geoDoorStart){ geoDoorStart=[gx,gy]; }
+      else{ addDoor(geometry.doors,geoDoorStart[0],geoDoorStart[1],gx,gy); geoDoorStart=null; saveGeometry(); toast("Door placed"); }
+      e.stopPropagation(); return;
+    }
+    if(structureType==="light"){
+      const rangeStr=prompt("Light range in tiles:","4");
+      if(!rangeStr) return;
+      const colorOpt=prompt("Color? warm=ffeccd88  cold=88ccffaa  red=ff3300aa  white=ffffffaa","ffeccd88");
+      addLight(geometry.lights,gx,gy,{range:parseFloat(rangeStr)||4,intensity:1,shadows:true,color:colorOpt||"ffeccd88"});
+      saveGeometry();
+      e.stopPropagation(); return;
+    }
+    if(structureType==="portal"){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      const pk=key(tx,ty);
+      const existing=portals[pk];
+      const val=prompt(existing?"Portal link # (clear the field to remove this portal):":"Link # for this portal cell (enter the same # on another cell to link them):", existing?existing.link:"");
+      if(val===null){ e.stopPropagation(); return; }
+      const trimmed=val.trim();
+      if(!trimmed){
+        if(existing){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
+        e.stopPropagation(); return;
+      }
+      portals[pk]={link:trimmed};
+      savePortals(getMapName(),portals);
+      toast(`Portal #${trimmed} set — link another cell with the same # to connect it`);
+      e.stopPropagation(); return;
+    }
+  }
+
+  if(activeVerb==="eraser"){
+    if(structureType==="wall"){
+      const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),[],gx,gy,0.35);
+      if(seg){ deleteById(geometry.walls,seg.id); saveGeometry(); toast("Wall removed"); }
+    } else if(structureType==="light"){
+      const li=lightAtPoint(geometry.lights,gx,gy,0.6);
+      if(li!==null){ deleteById(geometry.lights,li); saveGeometry(); toast("Light removed"); }
+    } else if(structureType==="door"){
+      const seg=segmentAtPoint([],geometry.doors,gx,gy,0.35);
+      if(seg){ deleteById(geometry.doors,seg.id); saveGeometry(); toast("Door removed"); }
+    } else if(structureType==="portal"){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      const pk=key(tx,ty);
+      if(portals[pk]){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
     }
     e.stopPropagation(); return;
   }
 
-  if(geoMode==="light"){
-    const rangeStr=prompt("Light range in tiles:","4");
-    if(!rangeStr) return;
-    const colorOpt=prompt("Color? warm=ffeccd88  cold=88ccffaa  red=ff3300aa  white=ffffffaa","ffeccd88");
-    addLight(geometry.lights,gx,gy,{range:parseFloat(rangeStr)||4,intensity:1,shadows:true,color:colorOpt||"ffeccd88"});
-    saveGeometry();
-    e.stopPropagation(); return;
-  }
-
-  if(geoMode==="edit"){
-    // Try to grab an endpoint for dragging
+  if(activeVerb==="select"){
+    // Try to grab an endpoint for dragging (walls)
     const ep=endpointAtPoint(geometry.walls,[],gx,gy,0.35);
     if(ep){ canvas.setPointerCapture(e.pointerId); geoDragEp=ep; e.stopPropagation(); return; }
     // Try to drag a light
@@ -2085,55 +1944,59 @@ canvas.addEventListener("pointerdown",e=>{
       geoSelected=li; geoDragLight=li;
       canvas.setPointerCapture(e.pointerId); e.stopPropagation(); return;
     }
+    // Toggle a door open/closed
+    const doorSeg=segmentAtPoint([],geometry.doors,gx,gy,0.35);
+    if(doorSeg){
+      const d=geometry.doors.find(x=>x.id===doorSeg.id);
+      if(d){ d.closed=!d.closed; saveGeometryDoors(); }
+      e.stopPropagation(); return;
+    }
     // Try to select a wall
     const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),[],gx,gy,0.35);
     if(seg){ geoSelected=seg.id; e.stopPropagation(); return; }
     geoSelected=null;
   }
 },{capture:true});
-
 canvas.addEventListener("pointermove",e=>{
-  if(geoDragLight){
-    const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
-    const light=geometry.lights.find(l=>l.id===geoDragLight);
-    if(light){light.x=wx/TILE;light.y=wy/TILE;}
-    return;
-  }
-  if(!geoDragEp) return;
+  if(!(activeCategory==="structure"&&activeVerb==="select")) return;
+  if(!geoDragEp&&!geoDragLight) return;
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
-  moveEndpoint(geometry.walls,[],geoDragEp.id,geoDragEp.end,wx/TILE,wy/TILE);
+  const gx=wx/TILE,gy=wy/TILE;
+  if(geoDragEp){ moveEndpoint(geometry.walls,geoDragEp,gx,gy); }
+  if(geoDragLight!==null){ const l=geometry.lights.find(x=>x.id===geoDragLight); if(l){l.x=gx;l.y=gy;} }
 });
-
 canvas.addEventListener("pointerup",e=>{
-  if(geoDragLight){ geoDragLight=null; saveGeometry(); return; }
+  if(geoDragLight!==null){ geoDragLight=null; saveGeometry(); return; }
   if(geoDragEp){ geoDragEp=null; saveGeometry(); }
 });
 
-// Delete selected geo element
+// Delete selected structure element via keyboard
 window.addEventListener("keydown",e=>{
-  if(geoMode==="edit"&&geoSelected&&(e.key==="Delete"||e.key==="Backspace")){
+  if(activeCategory==="structure"&&activeVerb==="select"&&geoSelected&&(e.key==="Delete"||e.key==="Backspace")){
     deleteById(geometry.walls,geoSelected);
     deleteById(geometry.lights,geoSelected);
+    deleteById(geometry.doors,geoSelected);
     geoSelected=null; saveGeometry(); e.preventDefault();
   }
-  if(e.key==="w"||e.key==="W") document.getElementById("geo-wall-btn").click();
-  if(e.key==="l"||e.key==="L") document.getElementById("geo-light-btn").click();
-  if(e.key==="g"||e.key==="G") document.getElementById("geo-edit-btn").click();
-  if(e.key==="Escape"&&geoMode){ setGeoMode(null); document.getElementById("tool-select").click(); }
-  if(e.key==="Escape"&&portalMode){ portalMode=false; document.getElementById("portalBtn").classList.remove("active"); canvas.style.cursor=""; }
+  if(e.key==="Escape"&&activeCategory){ setCategory(null); document.querySelectorAll(".cat-btn").forEach(b=>b.classList.remove("active")); }
 });
+
 
 // Keyboard shortcuts
 window.addEventListener("keydown",e=>{
   if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA") return;
-  if(e.key==="v"||e.key==="V") document.getElementById("tool-select").click();
-  if(e.key==="r"||e.key==="R") document.getElementById("tool-paint").click();
-  if(e.key==="x"||e.key==="X") document.getElementById("tool-erase").click();
+  if(activeCategory && (e.key==="v"||e.key==="V")) setVerb("select");
+  if(activeCategory && (e.key==="r"||e.key==="R")) setVerb("pencil");
+  if(activeCategory && (e.key==="x"||e.key==="X")) setVerb("eraser");
+  if(e.key==="w"||e.key==="W"){ document.getElementById("cat-structure").click(); document.querySelector('.struct-type-btn[data-structtype="wall"]')?.click(); }
+  if(e.key==="l"||e.key==="L"){ document.getElementById("cat-structure").click(); document.querySelector('.struct-type-btn[data-structtype="light"]')?.click(); }
   if(e.key==="Escape"){
-    document.getElementById("tool-select").click();
+    setCategory(null);
+    document.querySelectorAll(".cat-btn").forEach(b=>b.classList.remove("active"));
     if(placingToken){placingToken=null;toast("Cancelled");}
     if(selectPhase&&selectPhase!=="marquee")commitSelection();
     rulerStart=null;rulerEnd=null;rulerActive=false;
+    if(rulerMode){rulerMode=false;document.getElementById("rulerBtnEd")?.classList.remove("active");}
     closeSheetPanelEd();
   }
   if(e.key==="z"&&(e.ctrlKey||e.metaKey)&&!e.shiftKey){e.preventDefault();undo();}
@@ -2149,39 +2012,7 @@ window.addEventListener("keydown",e=>{
   if(spaceDown) canvas.style.cursor="grab";
 });
 window.addEventListener("keyup",e=>{
-  if(e.code==="Space"){spaceDown=false;canvas.style.cursor={mouse:"default",rect:"crosshair",eraser:"cell"}[activeTool]||"crosshair";}
-});
-
-// Wire fog type options bar buttons
-document.querySelectorAll("[data-fogtype]").forEach(btn=>{
-  btn.addEventListener("click",()=>{
-    currentFogType = btn.dataset.fogtype;
-    document.querySelectorAll("[data-fogtype]").forEach(b=>b.classList.remove("active"));
-    btn.classList.add("active");
-  });
-});
-
-// Wire wall sub-mode
-document.getElementById("wall-sub-wall")?.addEventListener("click",()=>{
-  wallSub="wall";doorMode=false;wallMode=true;
-  document.getElementById("wall-sub-wall").classList.add("active");
-  document.getElementById("wall-sub-door").classList.remove("active");
-});
-document.getElementById("wall-sub-door")?.addEventListener("click",()=>{
-  wallSub="door";wallMode=false;doorMode=true;
-  document.getElementById("wall-sub-door").classList.add("active");
-  document.getElementById("wall-sub-wall").classList.remove("active");
-});
-
-// Wire object sub-mode
-["token","prop","stamp"].forEach(sub=>{
-  document.getElementById("obj-sub-"+sub)?.addEventListener("click",()=>{
-    objSub=sub;
-    ["token","prop","stamp"].forEach(s=>document.getElementById("obj-sub-"+s)?.classList.remove("active"));
-    document.getElementById("obj-sub-"+sub)?.classList.add("active");
-    document.getElementById("prop-picker-wrap").style.display=sub==="prop"?"flex":"none";
-    document.getElementById("stamp-picker-wrap").style.display=sub==="stamp"?"flex":"none";
-  });
+  if(e.code==="Space"){spaceDown=false;canvas.style.cursor=cursorFor();}
 });
 
 // ── Background layer controls ────────────────────────────────────────────────
@@ -2213,58 +2044,68 @@ document.getElementById("bg-clear-btn")?.addEventListener("click", async()=>{
 let marqueeActive=false,marqueeStartX=0,marqueeStartY=0,marqueeEndX=0,marqueeEndY=0;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// POINTER EVENTS — unified tool/layer dispatch
+// POINTER EVENTS — category/verb dispatch
 // ═══════════════════════════════════════════════════════════════════════════════
 
 canvas.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
-  // Geo mode captures input — don't paint tiles
-  if(geoMode) return;
-  // Middle mouse / space = pan
+  // Middle mouse / space = pan — always wins, checked before any category intercept
   if(e.button===1||spaceDown){canvas.setPointerCapture(e.pointerId);panning=true;panStartX=sx;panStartY=sy;camStartX=camera.x;camStartY=camera.y;canvas.style.cursor="grabbing";return;}
+  // Structure mode captures input — don't paint tiles
+  if(activeCategory==="structure"&&activeVerb) return;
   if(e.button!==0) return;
   const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
 
   // Ruler (alt+click)
-  if(e.altKey){const snap=findSnapPoint(tokens,wx,wy);const pt=snap||[wx,wy];if(!rulerActive){rulerStart=pt;rulerEnd=pt;rulerActive=true;}else{rulerEnd=pt;rulerActive=false;}return;}
+  if(rulerMode){const snap=findSnapPoint(tokens,wx,wy);const pt=snap||[wx,wy];if(!rulerActive){rulerStart=pt;rulerEnd=pt;rulerActive=true;}else{rulerEnd=pt;rulerActive=false;}return;}
 
   // Ping mode
   if(pingMode){isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);canvas.setPointerCapture(e.pointerId);return;}
 
-  // Portal placement/edit — click a cell, enter a link #; a second cell
-  // with the same # becomes its warp destination (and vice versa).
-  if(portalMode){
-    const pk=key(tx,ty);
-    const existing=portals[pk];
-    const val=prompt(existing?"Portal link # (clear the field to remove this portal):":"Link # for this portal cell (enter the same # on another cell to link them):", existing?existing.link:"");
-    if(val===null) return; // cancelled
-    const trimmed=val.trim();
-    if(!trimmed){
-      if(existing){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
-      return;
-    }
-    portals[pk]={link:trimmed};
-    savePortals(getMapName(),portals);
-    toast(`Portal #${trimmed} set — link another cell with the same # to connect it`);
-    return;
-  }
-
   // Placing token (from spawn modal)
   if(placingToken){placingToken.x=tx;placingToken.y=ty;tokens[placingToken.id]={...placingToken};saveTokenRTDB(getMapName(),placingToken.id,placingToken);placingToken=null;toast("Token placed");return;}
 
-  // Locked layer — block all painting
-  if(layerLocked[activeLayer]) return;
+  // ── Background/Tokens/Props creation & erase (Structure has its own handler above) ──
+  if(activeCategory==="background"){
+    if(activeVerb==="pencil"){
+      canvas.setPointerCapture(e.pointerId);
+      dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
+      return;
+    }
+    if(activeVerb==="eraser"){
+      pushUndo();
+      canvas.setPointerCapture(e.pointerId);
+      dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
+      eraseAt(tx,ty);
+      return;
+    }
+  }
+  if(activeCategory==="tokens"&&activeVerb==="pencil"){
+    openTokenSpawnModal();
+    return;
+  }
+  if(activeCategory==="tokens"&&activeVerb==="eraser"){
+    const tokId=tokenAtTile(tokens,tx,ty);
+    if(tokId){deleteTokenRTDB(getMapName(),tokId);delete tokens[tokId];toast("Token deleted");}
+    return;
+  }
+  if(activeCategory==="props"&&(activeVerb==="pencil"||activeVerb==="eraser")){
+    pushUndo();
+    if(activeVerb==="pencil") paintAt(tx,ty); else eraseAt(tx,ty);
+    canvas.setPointerCapture(e.pointerId);
+    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
+    return;
+  }
 
-  // ── MOUSE TOOL ──────────────────────────────────────────────────────────────
-  if(activeTool==="mouse"){
-    // Door toggle (walls layer or mouse tool near a door)
-    const nearDoor=findDoorAtPoint(doors,wx,wy,TILE);
-    if(nearDoor){
-      const d=doors[nearDoor];
-      if(d.locked){delete doors[nearDoor];}
-      else if(d.open){doors[nearDoor]={...d,open:false,locked:true};}
-      else{doors[nearDoor]={...d,open:true};}
-      saveDoors(getMapName(),doors);return;
+  // ── Baseline interaction: nothing selected, or Select verb on Tokens/Props —
+  //    same as what a player can do: toggle doors, drag tokens, drag props ────
+  {
+    const gx=wx/TILE, gy=wy/TILE;
+    const doorSeg=segmentAtPoint([],geometry.doors,gx,gy,0.35);
+    if(doorSeg){
+      const d=geometry.doors.find(x=>x.id===doorSeg.id);
+      if(d){ d.closed=!d.closed; saveGeometryDoors(); }
+      return;
     }
 
     // Token drag
@@ -2279,42 +2120,6 @@ canvas.addEventListener("pointerdown",e=>{
     // Prop drag
     const pk=propAtTile(tx,ty);
     if(pk){canvas.setPointerCapture(e.pointerId);const p=props[pk];let ox,oy;if(p.attachedTo&&tokens[p.attachedTo]){ox=tokens[p.attachedTo].x+(p.offsetX||0);oy=tokens[p.attachedTo].y+(p.offsetY||0);}else{[ox,oy]=pk.split(",").map(Number);}draggingProp={oldKey:pk,offsetTX:tx-ox,offsetTY:ty-oy};return;}
-
-    // Marquee select (hold — started after 200ms in pointermove)
-    canvas.setPointerCapture(e.pointerId);
-    marqueeActive=false;
-    marqueeStartX=wx;marqueeStartY=wy;marqueeEndX=wx;marqueeEndY=wy;
-    if(selectPhase==="selected"||selectPhase==="moving"){
-      if(inSelection(wx,wy)){selectPhase="moving";moveStartWorldX=wx-moveOffX*TILE;moveStartWorldY=wy-moveOffY*TILE;return;}
-      commitSelection();
-    }
-    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
-    return;
-  }
-
-  // ── ERASER TOOL ─────────────────────────────────────────────────────────────
-  if(activeTool==="eraser"){
-    canvas.setPointerCapture(e.pointerId);
-    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
-    // Erase single on click
-    eraseAt(tx,ty);
-    return;
-  }
-
-  // ── PENCIL TOOL ─────────────────────────────────────────────────────────────
-  if(activeTool==="pencil"){
-    pushUndo();
-    paintAt(tx,ty);
-    canvas.setPointerCapture(e.pointerId);
-    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
-    return;
-  }
-
-  // ── RECT / ELLIPSE TOOLS ────────────────────────────────────────────────────
-  if(activeTool==="rect"||activeTool==="ellipse"){
-    canvas.setPointerCapture(e.pointerId);
-    dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
-    return;
   }
 });
 
@@ -2325,8 +2130,8 @@ canvas.addEventListener("pointermove",e=>{
   coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
   if(rulerActive){const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
   if(pingMode&&isHolding&&myLaserRef){moveLaser(myLaserRef,wx,wy,playerName);return;}
-  // Geo mode handles its own pointermove
-  if(geoMode) return;
+  // Structure mode handles its own pointermove
+  if(activeCategory==="structure"&&activeVerb) return;
 
   // Token drag
   if(draggingToken){
@@ -2334,8 +2139,6 @@ canvas.addEventListener("pointermove",e=>{
     if(!draggingToken.moved&&(tx!==draggingToken.startTX||ty!==draggingToken.startTY)) draggingToken.moved=true;
     tokens[draggingToken.id].x=tx-draggingToken.offsetTX;
     tokens[draggingToken.id].y=ty-draggingToken.offsetTY;
-    // Move attached props
-    for(const k in props){if(props[k].attachedTo===draggingToken.id){/* rendered dynamically */}}
     return;
   }
 
@@ -2350,31 +2153,26 @@ canvas.addEventListener("pointermove",e=>{
   if(!dragging) return;
   curX=wx;curY=wy;
 
-  // Pencil — paint as you drag
-  if(activeTool==="pencil"){
-    const[tx,ty]=worldToTile(wx,wy,TILE);paintAt(tx,ty);
-  }
-  // Eraser — erase as you drag
-  if(activeTool==="eraser"){
+  // Background eraser & Props (pencil/eraser) paint/erase continuously as you drag.
+  // Background pencil does NOT paint here -- it resolves as a shape fill on release.
+  if(activeCategory==="background"&&activeVerb==="eraser"){
     const[tx,ty]=worldToTile(wx,wy,TILE);eraseAt(tx,ty);
   }
-  // Moving selection
-  if(activeTool==="mouse"&&selectPhase==="moving"){
-    moveOffX=Math.round((wx-moveStartWorldX)/TILE);
-    moveOffY=Math.round((wy-moveStartWorldY)/TILE);
+  if(activeCategory==="props"&&activeVerb){
+    const[tx,ty]=worldToTile(wx,wy,TILE);
+    if(activeVerb==="pencil") paintAt(tx,ty); else eraseAt(tx,ty);
   }
 });
 
 canvas.addEventListener("pointerup",e=>{
   const[sx,sy]=screenPos(e);
   if(rulerActive) return;
-  if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":{mouse:"default",pencil:"crosshair",rect:"crosshair",ellipse:"crosshair",eraser:"cell"}[activeTool]||"crosshair";return;}
+  if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":cursorFor();return;}
   if(pingMode){clearTimeout(pingHoldTimer);if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}else{const[wx,wy]=toWorld(sx,sy);sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);}isHolding=false;pingMode=false;document.getElementById("pingBtn")?.classList.remove("active");return;}
 
   // Token drag end
   if(draggingToken){
     if(!draggingToken.moved){
-      // Was a click — open inspector
       openTokenInspector(draggingToken.id);
     } else {
       const tok=tokens[draggingToken.id];
@@ -2392,50 +2190,39 @@ canvas.addEventListener("pointerup",e=>{
   if(!dragging) return;
   dragging=false;
 
-  const[wx,wy]=toWorld(sx,sy);
   const minTX=Math.floor(Math.min(startX,curX)/TILE),maxTX=Math.floor(Math.max(startX,curX)/TILE);
   const minTY=Math.floor(Math.min(startY,curY)/TILE),maxTY=Math.floor(Math.max(startY,curY)/TILE);
 
-  // Mouse marquee select end
-  if(activeTool==="mouse"){
-    const dist=Math.hypot(curX-startX,curY-startY);
-    if(dist>TILE*0.5){
-      pushUndo();liftSelection(minTX,minTY,maxTX,maxTY);
-      selectPhase=Object.keys(selectTiles).length?"selected":null;
-      canvas.style.cursor=selectPhase?"move":"default";
-    }
-    return;
-  }
-
-  // Pencil — already painted on move
-  if(activeTool==="pencil"){scheduleSave();return;}
-
-  // Eraser — already erased on move, do group erase on drag
-  if(activeTool==="eraser"){
+  // Background eraser -- group erase if it was a real drag
+  if(activeCategory==="background"&&activeVerb==="eraser"){
     if(Math.hypot(curX-startX,curY-startY)>TILE*0.5){
-      pushUndo();
       for(let x=minTX;x<=maxTX;x++)for(let y=minTY;y<=maxTY;y++)eraseAt(x,y);
     }
     scheduleSave();return;
   }
 
-  // Rect fill
-  if(activeTool==="rect"){
+  // Background pencil -- resolve as a shape fill (rect/circle/line) over the drag extent.
+  // A plain click with no drag naturally fills just the one cell.
+  if(activeCategory==="background"&&activeVerb==="pencil"){
     pushUndo();
-    for(let x=minTX;x<=maxTX;x++)for(let y=minTY;y<=maxTY;y++)paintAt(x,y);
-    scheduleSave();return;
-  }
-
-  // Ellipse fill
-  if(activeTool==="ellipse"){
-    pushUndo();
-    const cx=(minTX+maxTX)/2,cy=(minTY+maxTY)/2,rx=(maxTX-minTX)/2||0.5,ry=(maxTY-minTY)/2||0.5;
-    for(let x=minTX;x<=maxTX;x++)for(let y=minTY;y<=maxTY;y++){
-      const dx=(x-cx)/rx,dy=(y-cy)/ry;
-      if(dx*dx+dy*dy<=1)paintAt(x,y);
+    if(currentShape==="rect"){
+      for(let x=minTX;x<=maxTX;x++)for(let y=minTY;y<=maxTY;y++)paintAt(x,y);
+    } else if(currentShape==="circle"){
+      const cx=(minTX+maxTX)/2,cy=(minTY+maxTY)/2,rx=(maxTX-minTX)/2||0.5,ry=(maxTY-minTY)/2||0.5;
+      for(let x=minTX;x<=maxTX;x++)for(let y=minTY;y<=maxTY;y++){
+        const dx=(x-cx)/rx,dy=(y-cy)/ry;
+        if(dx*dx+dy*dy<=1)paintAt(x,y);
+      }
+    } else if(currentShape==="line"){
+      let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);
+      const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx2=x0<x1?1:-1,sy2=y0<y1?1:-1;let err=dx-dy;
+      while(true){paintAt(x0,y0);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx2;}if(e2<dx){err+=dx;y0+=sy2;}}
     }
     scheduleSave();return;
   }
+
+  // Props pencil/eraser -- already painted/erased on move
+  if(activeCategory==="props"){scheduleSave();return;}
 });
 
 // Right-click — erase/context depending on tool
@@ -2465,87 +2252,30 @@ canvas.addEventListener("contextmenu",e=>{
     ctxMenu.classList.add("open");return;
   }
 
-  // 3. Fog — erase fog group under cursor
-  const fgid=fogGroupAtTile(fogGroups,tx,ty);
-  if(fgid){deleteFogGroupRTDB(getMapName(),fgid,fogGroups);return;}
-
-  // 4. Tile — erase terrain tile
+  // 3. Tile — erase terrain tile
   const k=key(tx,ty);
   if(tiles[k]){delete tiles[k];scheduleSave();return;}
 });
 
 // ── paintAt / eraseAt — dispatch by layer + tool ─────────────────────────────
 function paintAt(tx,ty){
-  if(layerLocked[activeLayer]) return;
-  if(activeLayer==="ground"){applyTile(tx,ty);}
-  else if(activeLayer==="walls"){
-    if(wallSub==="wall"){const k=key(tx,ty);if(!wallGroups.__current){wallGroups.__current={cells:{}};};wallGroups.__current.cells[k]=true;}
-    else if(wallSub==="door"){
-      const{edge,x,y}=nearestWallEdge(tx,ty);
-      if(edge){const did="door_"+Date.now();doors[did]={x,y,edge,open:false,locked:false};saveDoors(getMapName(),doors);}
-    }
-  }
-  else if(activeLayer==="fog"){
-    // Fog painted on drag, committed on pointerup
+  if(activeCategory==="background"){ applyTile(tx,ty); }
+  else if(activeCategory==="props" && currentProp && currentProp!=="erase"){
     const k=key(tx,ty);
-    if(!fogGroups.__painting){fogGroups.__painting={cells:{},type:currentFogType};}
-    fogGroups.__painting.cells[k]=true;
-  }
-  else if(activeLayer==="objects"){
-    if(objSub==="prop"&&currentProp&&currentProp!=="erase"){const k=key(tx,ty);props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h};savePropsLocal(getMapName(),props);}
-    else if(objSub==="stamp"&&currentStamp&&currentStamp!=="erase"){stamps[key(tx,ty)]=currentStamp;saveStamp(getMapName(),key(tx,ty),currentStamp);}
+    if(currentProp.isStamp){ stamps[k]=currentProp.emoji; saveStamp(getMapName(),k,currentProp.emoji); }
+    else { props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h}; savePropsLocal(getMapName(),props); }
   }
 }
 
 function eraseAt(tx,ty){
-  if(layerLocked[activeLayer]) return;
   const k=key(tx,ty);
-  if(activeLayer==="ground"){delete tiles[k];}
-  else if(activeLayer==="walls"){
-    // 1. Delete standard wall groups
-    const gid=wallGroupAtTile(tx,ty);
-    if(gid) delete wallGroups[gid];
-    
-    // 2. Fixed Door Deletion: Find the door nearest to the clicked tile coordinates
-    const did = Object.keys(doors).find(id => {
-      // Check if the door's coordinates are close to the clicked tile center (within 0.6 units)
-      return Math.abs(doors[id].x - tx) <= 0.6 && Math.abs(doors[id].y - ty) <= 0.6;
-    });
-    
-    if(did) {
-      delete doors[did];
-      // Sync the deletion back to Firebase RTDB!
-      if (typeof saveDoors === "function") {
-        saveDoors(getMapName(), doors);
-      }
-    }
-  }
-  else if(activeLayer==="fog"){
-    const gid=fogGroupAtTile(fogGroups,tx,ty);
-    if(gid) deleteFogGroupRTDB(getMapName(),gid,fogGroups);
-  }
-  else if(activeLayer==="objects"){
-    const tokId=tokenAtTile(tokens,tx,ty);
-    if(tokId){deleteTokenRTDB(getMapName(),tokId);delete tokens[tokId];}
+  if(activeCategory==="background"){ delete tiles[k]; }
+  else if(activeCategory==="props"){
     if(props[k]){delete props[k];savePropsLocal(getMapName(),props);}
-    const sk=Object.keys(stamps).find(sk=>{const[sx,sy]=sk.split(",").map(Number);return sx===tx&&sy===ty;});
-    if(sk) deleteStamp(sk);
+    if(stamps[k]){deleteStamp(k);}
   }
 }
 
-// Commit wall/fog painting groups on pointerup
-canvas.addEventListener("pointerup",e=>{
-  // Wall group commit
-  if(wallGroups.__current&&Object.keys(wallGroups.__current.cells).length){
-    const gid="wg_"+Date.now();wallGroups[gid]=wallGroups.__current;delete wallGroups.__current;
-    saveWallGroups(getMapName(),wallGroups);
-  }
-  // Fog group commit
-  if(fogGroups.__painting&&Object.keys(fogGroups.__painting.cells).length){
-    const gid="fog_"+Date.now();fogGroups[gid]=fogGroups.__painting;delete fogGroups.__painting;
-    saveFogLocal();
-  }
-},{passive:true});
 
 // ── Session sidebar tabs ──────────────────────────────────────────────────────
 document.querySelectorAll(".session-tab").forEach(tab=>{
@@ -2602,16 +2332,15 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
   await loadTerrainTextures(getTERRAINS());
   customProps=[...getPROPS()];
   customProps.forEach(p=>tryLoadPropTexture(p.id));
-  buildTerrainDropdown();buildStampDropdown();buildPropDropdown();
+  buildTerrainDropdown();buildPropDropdown();
   selectTerrain("grass");
   buildWeatherPanel();
   subscribeTalking();
 
   // New modules
-  // initLayers() — using custom layer system
-  setActiveLayer("ground", true);
-  setTool("mouse");
-    initUndo({tiles,wallGroups,fogGroups}, getMapName, toast);
+  // Category/verb system starts with nothing selected by default —
+  // no init call needed (matches "starts with nothing selected" behavior).
+    initUndo({tiles}, getMapName, toast);
   setSheetToastFn(toast);
   subscribePresence(document.getElementById("presence-row"));
 
