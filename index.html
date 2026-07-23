@@ -857,7 +857,12 @@ onValue(ref(db,".info/connected"),snap=>{const o=document.getElementById("reconn
 
 // Ruler mode
 let rulerMode=false;
-document.getElementById("rulerBtn").onclick=()=>{rulerMode=!rulerMode;document.getElementById("rulerBtn").classList.toggle("active",rulerMode);viewport.style.cursor=rulerMode?"crosshair":"";};
+document.getElementById("rulerBtn").onclick=()=>{
+  rulerMode=!rulerMode;
+  document.getElementById("rulerBtn").classList.toggle("active",rulerMode);
+  viewport.style.cursor=rulerMode?"crosshair":"";
+  if(!rulerMode){rulerStart=null;rulerEnd=null;rulerActive=false;}
+};
 
 // Glossary
 document.getElementById("glossaryBtn").onclick=toggleGlossarySearch;
@@ -998,7 +1003,7 @@ viewport.addEventListener("contextmenu",e=>{
 viewport.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
   if(pingMode){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}
-  if(e.altKey){
+  if(rulerMode){
     const[wx,wy]=toWorld(sx,sy);const snap=findSnapPoint(tokens,wx,wy);const point=snap||[wx,wy];
     if(!rulerActive){rulerStart=point;rulerEnd=point;rulerActive=true;}else{rulerEnd=point;rulerActive=false;}
     return;
@@ -1059,6 +1064,7 @@ viewport.addEventListener("wheel",e=>{
 window.addEventListener("keydown",e=>{
   if(e.code==="Escape"){
     rulerStart=null;rulerEnd=null;rulerActive=false;
+    if(rulerMode){rulerMode=false;document.getElementById("rulerBtn").classList.remove("active");viewport.style.cursor="";}
     closeSheetPanel();
   }
 });
