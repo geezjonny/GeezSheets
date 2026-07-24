@@ -452,7 +452,7 @@ import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/p
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},portals={},impassable={},chains={};
+let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},portals={},impassable={},traps={},chains={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
 let _geoLC=null,_geoLX=null;
@@ -769,6 +769,7 @@ function subscribeLive(){
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in portals)delete portals[k];
     for(const k in impassable)delete impassable[k];
+    for(const k in traps)delete traps[k];
     for(const k in chains)delete chains[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
@@ -779,6 +780,7 @@ function subscribeLive(){
       if(data.props)Object.assign(props,data.props);
       if(data.portals)Object.assign(portals,data.portals);
       if(data.impassable)Object.assign(impassable,data.impassable);
+      if(data.traps)Object.assign(traps,data.traps);
       if(data.chains)Object.assign(chains,data.chains);
       geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
       if(data.geometry){
@@ -1129,6 +1131,33 @@ window.addEventListener("keydown",e=>{
   }
 });
 
+// ── NPC line-of-sight detection (omnidirectional, wall-blocked) ───────────────
+const NPC_SIGHT_RANGE=12;
+const _seenByNpc=new Set(); // NPC token ids currently seeing the player
+function pointInPolygon(px,py,poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;
+    const intersect=((yi>py)!==(yj>py))&&(px<(xj-xi)*(py-yi)/(yj-yi)+xi);
+    if(intersect) inside=!inside;
+  }
+  return inside;
+}
+function checkNpcSight(myTok){
+  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+  for(const[npcId,npc]of Object.entries(tokens)){
+    if(npc.type!=="npc"||!npc.hostile) continue;
+    const poly=computeVisibilityPolygon(npc.x+0.5,npc.y+0.5,occ,NPC_SIGHT_RANGE);
+    const seen=poly.length>=3&&pointInPolygon(myTok.x+0.5,myTok.y+0.5,poly);
+    if(seen&&!_seenByNpc.has(npcId)){
+      _seenByNpc.add(npcId);
+      sendChat(`👁️ You might have been seen by ${npc.name||"something"}...`,"GM","system");
+    }else if(!seen&&_seenByNpc.has(npcId)){
+      _seenByNpc.delete(npcId);
+    }
+  }
+}
+
 // ── Keyboard movement (arrow keys) — own token only, wall-blocked ─────────────
 let _lastMoveTime=0;
 window.addEventListener("keydown",e=>{
@@ -1143,6 +1172,7 @@ window.addEventListener("keydown",e=>{
   if(!entry) return;
   const[tokId,tok]=entry;
   if(playersLocked){toast("🔒 Movement is locked");return;}
+  if(tok.trapped){toast("🪤 You're trapped! The GM needs to release you.");return;}
   const[dx,dy]=d;
   const fromX=tok.x,fromY=tok.y,toX=fromX+dx,toY=fromY+dy;
   const occ=activeOccluders(geometry.walls,geometry.doors||[]);
@@ -1152,7 +1182,13 @@ window.addEventListener("keydown",e=>{
   tok.x=toX;tok.y=toY;
   const dest=resolvePortal(portals,tok.x,tok.y);
   if(dest){tok.x=dest.x;tok.y=dest.y;}
-  update(ref(db,`maps/${currentMap}/tokens/${tokId}`),{x:tok.x,y:tok.y});
+  const updates={x:tok.x,y:tok.y};
+  if(traps[`${tok.x},${tok.y}`]){
+    tok.trapped=true;updates.trapped=true;
+    toast("🪤 You've triggered a trap and can't move until the GM releases you!");
+  }
+  update(ref(db,`maps/${currentMap}/tokens/${tokId}`),updates);
+  checkNpcSight(tok);
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────

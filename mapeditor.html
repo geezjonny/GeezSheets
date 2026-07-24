@@ -435,6 +435,7 @@ canvas{display:block;cursor:crosshair}
     <button class="opt-btn struct-type-btn"        data-structtype="door"  title="Door">🚪 Door</button>
     <button class="opt-btn struct-type-btn"        data-structtype="portal" title="Portal">🌀 Portal</button>
     <button class="opt-btn struct-type-btn"        data-structtype="impassable" title="Impassable — blocks movement only, not sight">🚫 Impassable</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="trap" title="Trap — locks the player's movement until the GM unlocks their token">🪤 Trap</button>
   </div>
 
   <!-- Tokens sub-panel -->
@@ -504,6 +505,10 @@ canvas{display:block;cursor:crosshair}
       <button class="gm-tool-btn" id="stc-chain"   style="flex:1;min-width:60px">🔗 Chain</button>
       <button class="gm-tool-btn" id="stc-hide-hp" style="flex:1;min-width:60px">👁 HP</button>
       <button class="gm-tool-btn" id="stc-delete"  style="flex:1;min-width:60px;color:var(--red-bright);border-color:rgba(224,64,64,.3)">🗑</button>
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="gm-tool-btn" id="stc-hostile" style="flex:1;min-width:60px" title="Toggles line-of-sight detection — players get a chat warning if seen">⚠ Hostile</button>
+      <button class="gm-tool-btn" id="stc-unlock" style="flex:1;min-width:60px;display:none;color:#8fd08f;border-color:rgba(80,160,80,.3)" title="Release a player caught in a trap">🔓 Unlock</button>
     </div>
     <!-- Conditions -->
     <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
@@ -757,14 +762,14 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { saveStamp, savePropsLocal, savePortals, saveImpassable, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
+import { saveStamp, savePropsLocal, savePortals, saveImpassable, saveTraps, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},tokens={},stamps={},roofs={},props={},portals={},impassable={},chains={};
+const tiles={},tokens={},stamps={},roofs={},props={},portals={},impassable={},traps={},chains={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
 let customProps=[];
@@ -777,6 +782,7 @@ let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
 let geoDragLight = null; // light id being dragged
 let paintingImpassable=false, erasingImpassable=false;
+let paintingTrap=false, erasingTrap=false;
 let geoSelected  = null; // selected wall/light id
 
 // Combined lights: geometry lights + any token-attached lights
@@ -914,6 +920,7 @@ function subscribeLive(){
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in portals)delete portals[k];
     for(const k in impassable)delete impassable[k];
+    for(const k in traps)delete traps[k];
     for(const k in chains)delete chains[k];
     if(data){
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
@@ -922,6 +929,7 @@ function subscribeLive(){
       if(data.props)Object.assign(props,data.props);
       if(data.portals)Object.assign(portals,data.portals);
       if(data.impassable)Object.assign(impassable,data.impassable);
+      if(data.traps)Object.assign(traps,data.traps);
       if(data.chains)Object.assign(chains,data.chains);
       // Load geometry (walls, lights, doors for lighting system)
       geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
@@ -1623,6 +1631,27 @@ function drawProps(){
 }
 
 function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}ctx.restore();}
+function drawTraps(){
+  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
+  for(const k in traps){
+    const[x,y]=k.split(",").map(Number);
+    const px=x*TILE,py=y*TILE;
+    ctx.fillStyle="rgba(140,60,200,0.18)";
+    ctx.fillRect(px,py,TILE,TILE);
+    ctx.strokeStyle="rgba(140,60,200,0.5)";ctx.lineWidth=Math.max(1,TILE*0.03);
+    ctx.save();ctx.beginPath();ctx.rect(px,py,TILE,TILE);ctx.clip();
+    const step=TILE*0.28;
+    for(let o=-TILE;o<TILE*2;o+=step){
+      ctx.beginPath();ctx.moveTo(px+o,py);ctx.lineTo(px+o-TILE,py+TILE);ctx.stroke();
+    }
+    ctx.restore();
+    ctx.strokeStyle="rgba(140,60,200,0.7)";ctx.lineWidth=Math.max(1,TILE*0.045);
+    ctx.strokeRect(px+1,py+1,TILE-2,TILE-2);
+    ctx.font=`${Math.round(TILE*0.4)}px serif`;ctx.fillStyle="rgba(140,60,200,0.9)";
+    ctx.fillText("🪤",px+TILE/2,py+TILE/2);
+  }
+  ctx.restore();
+}
 function drawImpassable(){
   ctx.save();
   for(const k in impassable){
@@ -1699,7 +1728,7 @@ function render(){
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
   ctx.restore();
-  drawStamps();drawProps();drawPortals();drawImpassable();
+  drawStamps();drawProps();drawPortals();drawImpassable();drawTraps();
   drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
@@ -2045,6 +2074,12 @@ canvas.addEventListener("pointerdown",e=>{
       canvas.setPointerCapture(e.pointerId);paintingImpassable=true;
       e.stopPropagation(); return;
     }
+    if(structureType==="trap"){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      traps[key(tx,ty)]=true;
+      canvas.setPointerCapture(e.pointerId);paintingTrap=true;
+      e.stopPropagation(); return;
+    }
   }
 
   if(activeVerb==="eraser"){
@@ -2065,6 +2100,10 @@ canvas.addEventListener("pointerdown",e=>{
       const[tx,ty]=worldToTile(wx,wy,TILE);
       delete impassable[key(tx,ty)];
       canvas.setPointerCapture(e.pointerId);erasingImpassable=true;
+    } else if(structureType==="trap"){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      delete traps[key(tx,ty)];
+      canvas.setPointerCapture(e.pointerId);erasingTrap=true;
     }
     e.stopPropagation(); return;
   }
@@ -2103,6 +2142,12 @@ canvas.addEventListener("pointermove",e=>{
     if(paintingImpassable) impassable[k]=true; else delete impassable[k];
     return;
   }
+  if(paintingTrap||erasingTrap){
+    const[tx,ty]=worldToTile(wx,wy,TILE);
+    const k=key(tx,ty);
+    if(paintingTrap) traps[k]=true; else delete traps[k];
+    return;
+  }
   if(!(activeCategory==="structure"&&activeVerb==="select")) return;
   if(!geoDragEp&&!geoDragLight) return;
   const gx=wx/TILE,gy=wy/TILE;
@@ -2113,6 +2158,11 @@ canvas.addEventListener("pointerup",e=>{
   if(paintingImpassable||erasingImpassable){
     paintingImpassable=false;erasingImpassable=false;
     saveImpassable(getMapName(),impassable);
+    return;
+  }
+  if(paintingTrap||erasingTrap){
+    paintingTrap=false;erasingTrap=false;
+    saveTraps(getMapName(),traps);
     return;
   }
   if(geoDragLight!==null){ geoDragLight=null; saveGeometry(); return; }
@@ -2652,6 +2702,17 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     // Update HP display
     const hpDisplay=document.getElementById("stc-hp-display");
     if(hpDisplay)hpDisplay.textContent=`${tok.hp??'—'} / ${tok.maxHp??'—'}`;
+    // Hostile toggle — only meaningful for NPCs
+    const hostileBtn=document.getElementById("stc-hostile");
+    if(hostileBtn){
+      hostileBtn.style.display=tok.type==="npc"?"":"none";
+      hostileBtn.classList.toggle("active",!!tok.hostile);
+      hostileBtn.style.color=tok.hostile?"#e0a040":"";
+      hostileBtn.style.borderColor=tok.hostile?"rgba(224,160,64,.4)":"";
+    }
+    // Unlock — only shown if this token is currently trapped
+    const unlockBtn=document.getElementById("stc-unlock");
+    if(unlockBtn) unlockBtn.style.display=tok.trapped?"":"none";
     panel.classList.add("open");
     document.getElementById("app").classList.add("sheet-open");
     if(tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__"){
@@ -2699,6 +2760,22 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     await deleteTokenRTDB(getMapName(),_inspectedTokId);
     delete tokens[_inspectedTokId];
     closeSheetPanelEd();
+  };
+  document.getElementById("stc-hostile").onclick=async()=>{
+    if(!_inspectedTokId)return;
+    const tok=tokens[_inspectedTokId];if(!tok)return;
+    tok.hostile=!tok.hostile;
+    await saveTokenRTDB(getMapName(),_inspectedTokId,tok);
+    openTokenInspector(_inspectedTokId); // refresh button state
+    toast(tok.hostile?`⚠ ${tok.name} marked hostile — players get a warning if seen`:`${tok.name} no longer marked hostile`);
+  };
+  document.getElementById("stc-unlock").onclick=async()=>{
+    if(!_inspectedTokId)return;
+    const tok=tokens[_inspectedTokId];if(!tok)return;
+    tok.trapped=false;
+    await saveTokenRTDB(getMapName(),_inspectedTokId,tok);
+    openTokenInspector(_inspectedTokId);
+    toast(`🔓 ${tok.name} released from the trap`);
   };
   document.getElementById("stc-hide-hp").onclick=async()=>{
     if(!_inspectedTokId)return;
