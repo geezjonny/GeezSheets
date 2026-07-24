@@ -175,8 +175,7 @@ async function _fetchCharPath(charId) {
   return { path, data: snap.val() };
 }
 
-window.longRest = async function(charId) {
-  if (!confirm("Take a Long Rest?\n\nThis restores HP to full, all spell slots, and all ability/feature charges.")) return;
+async function _executeLongRest(charId) {
   try {
     const found = await _fetchCharPath(charId);
     if (!found) return;
@@ -190,9 +189,9 @@ window.longRest = async function(charId) {
     await update(ref(db), updates);
     toast("🌙 Long rest complete — HP, spell slots, and abilities restored.");
   } catch(e) { console.error("Long rest failed:", e); }
-};
+}
 
-window.shortRest = async function(charId) {
+async function _executeShortRest(charId) {
   const hpInput = prompt("HP recovered from spending Hit Dice this short rest (enter an amount, or leave blank to skip HP recovery):", "");
   if (hpInput === null) return; // cancelled entirely
   try {
@@ -221,7 +220,67 @@ window.shortRest = async function(charId) {
     await update(ref(db), updates);
     toast(`☕ Short rest complete${heal>0?` — recovered ${heal} HP`:""}${restoredAbility||restoredSlots?", abilities restored":""}.`);
   } catch(e) { console.error("Short rest failed:", e); }
-};
+}
+
+// ── Party rest votes ─────────────────────────────────────────────────────────
+// A rest can't just be clicked and happen instantly -- every present PC has to
+// vote yes, and then the DM has to confirm it's actually safe, before anyone's
+// HP/slots/charges actually get restored. Session-wide, not per-character.
+
+/** Player clicks Short/Long Rest on their own sheet -- this proposes a vote
+ *  rather than resting immediately. */
+window.longRest = async function(charId) { await proposeRest(charId, "long"); };
+window.shortRest = async function(charId) { await proposeRest(charId, "short"); };
+
+export async function proposeRest(charId, type) {
+  const existing = (await get(ref(db, "session/restRequest"))).val();
+  if (existing && existing.status !== "denied" && existing.status !== "approved") {
+    toast("A rest is already being voted on.");
+    return;
+  }
+  await set(ref(db, "session/restRequest"), {
+    type, initiatedBy: charId,
+    votes: { [charId]: true },
+    status: "voting",
+  });
+}
+
+export async function voteRest(charId, yes) {
+  if (!yes) {
+    await update(ref(db, "session/restRequest"), { status: "denied" });
+    return;
+  }
+  await set(ref(db, `session/restRequest/votes/${charId}`), true);
+}
+
+/** Called by whichever client notices every present PC has voted yes --
+ *  safe to call redundantly from multiple clients, same value either way. */
+export async function checkAllVoted(presentPcCharIds) {
+  const snap = await get(ref(db, "session/restRequest"));
+  const req = snap.val();
+  if (!req || req.status !== "voting") return;
+  const allVoted = presentPcCharIds.length > 0 && presentPcCharIds.every(id => req.votes?.[id]);
+  if (allVoted) await update(ref(db, "session/restRequest"), { status: "awaiting_dm" });
+}
+
+export async function dmResolveRest(approve) {
+  await update(ref(db, "session/restRequest"), { status: approve ? "approved" : "denied" });
+}
+
+export function subscribeRestRequest(cb) {
+  return onValue(ref(db, "session/restRequest"), snap => cb(snap.val()));
+}
+
+/** Called once per player, when their own client sees status flip to
+ *  "approved" and their character was part of the vote. */
+export async function runApprovedRest(charId, type) {
+  if (type === "long") await _executeLongRest(charId);
+  else await _executeShortRest(charId);
+}
+
+export async function clearRestRequest() {
+  await set(ref(db, "session/restRequest"), null);
+}
 
 window.removeItem = (charId, idx) => removeItem(charId, idx);
 

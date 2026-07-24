@@ -470,6 +470,14 @@ canvas{display:block;cursor:crosshair}
   </div>
 </div>
 
+<div id="rest-dm-banner" style="display:none;position:fixed;top:92px;left:50%;transform:translateX(-50%);z-index:200;background:var(--panel);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;padding:14px 20px;box-shadow:0 8px 32px rgba(0,0,0,.6);text-align:center">
+  <div id="rest-dm-text" style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold,#c8a84b);margin-bottom:10px"></div>
+  <div style="display:flex;gap:10px;justify-content:center">
+    <button onclick="window._dmApproveRest()" style="height:30px;padding:0 16px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--gold-dim,#a8935a);border-radius:4px;background:rgba(80,160,80,.15);color:#8fd08f;cursor:pointer">✓ Approve — Safe to Rest</button>
+    <button onclick="window._dmDenyRest()" style="height:30px;padding:0 16px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--gold-dim,#a8935a);border-radius:4px;background:rgba(160,80,80,.15);color:#d08f8f;cursor:pointer">✕ Deny</button>
+  </div>
+</div>
+
 <!-- ── Options bar (context-sensitive, below topbar) ── -->
 <!-- ── App container (just for grid children that need it) ── -->
 <div id="app">
@@ -750,7 +758,7 @@ window.addEventListener("keydown", e => {
     toggleGlossarySearch();
 });
 import { saveStamp, savePropsLocal, savePortals, saveImpassable, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
-import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
+import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
@@ -1309,6 +1317,21 @@ document.getElementById("lockPlayersBtn").onclick=async()=>{
   await set(ref(db,"session/locked"),!_playersLocked);
   toast(_playersLocked?"Players unlocked — map visible":"Players locked — showing waiting screen");
 };
+
+// ── Party rest votes — DM confirmation ────────────────────────────────────────
+window._dmApproveRest=async()=>{await dmResolveRest(true);setTimeout(clearRestRequest,3000);};
+window._dmDenyRest=async()=>{await dmResolveRest(false);setTimeout(clearRestRequest,3000);};
+subscribeRestRequest(req=>{
+  const banner=document.getElementById("rest-dm-banner");
+  const textEl=document.getElementById("rest-dm-text");
+  if(!banner)return;
+  if(!req||req.status!=="awaiting_dm"){banner.style.display="none";return;}
+  const typeLabel=req.type==="long"?"Long Rest":"Short Rest";
+  const votedCount=Object.keys(req.votes||{}).length;
+  textEl.textContent=`🗳 The party (${votedCount} member${votedCount===1?"":"s"}) has agreed to a ${typeLabel}. Confirm it's safe to proceed?`;
+  banner.style.display="block";
+});
+
 document.getElementById("vttFileInput").addEventListener("change",async e=>{
   const file=e.target.files[0];if(!file)return;e.target.value="";
   try{
