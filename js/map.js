@@ -36,6 +36,10 @@ export async function savePortals(mapName, portals) {
   await set(ref(db, `maps/${mapName}/portals`), Object.keys(portals).length ? portals : null);
 }
 
+export async function saveImpassable(mapName, impassable) {
+  await set(ref(db, `maps/${mapName}/impassable`), Object.keys(impassable).length ? impassable : null);
+}
+
 /** If (tx,ty) is a portal cell, returns the {x,y} of the other cell sharing
  *  its link value (first match), or null if it's not a portal or has no
  *  linked partner yet. Shared by both the DM editor and the player view so

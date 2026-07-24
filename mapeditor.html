@@ -434,6 +434,7 @@ canvas{display:block;cursor:crosshair}
     <button class="opt-btn struct-type-btn"        data-structtype="light" title="Light">💡 Light</button>
     <button class="opt-btn struct-type-btn"        data-structtype="door"  title="Door">🚪 Door</button>
     <button class="opt-btn struct-type-btn"        data-structtype="portal" title="Portal">🌀 Portal</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="impassable" title="Impassable — blocks movement only, not sight">🚫 Impassable</button>
   </div>
 
   <!-- Tokens sub-panel -->
@@ -748,14 +749,14 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { saveStamp, savePropsLocal, savePortals, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
+import { saveStamp, savePropsLocal, savePortals, saveImpassable, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},tokens={},stamps={},roofs={},props={},portals={},chains={};
+const tiles={},tokens={},stamps={},roofs={},props={},portals={},impassable={},chains={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
 let customProps=[];
@@ -767,6 +768,7 @@ const geometry = { walls:[], doors:[], lights:[], timeOfDay:"day", lightingParam
 let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
 let geoDragLight = null; // light id being dragged
+let paintingImpassable=false, erasingImpassable=false;
 let geoSelected  = null; // selected wall/light id
 
 // Combined lights: geometry lights + any token-attached lights
@@ -903,6 +905,7 @@ function subscribeLive(){
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in portals)delete portals[k];
+    for(const k in impassable)delete impassable[k];
     for(const k in chains)delete chains[k];
     if(data){
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
@@ -910,6 +913,7 @@ function subscribeLive(){
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
       if(data.portals)Object.assign(portals,data.portals);
+      if(data.impassable)Object.assign(impassable,data.impassable);
       if(data.chains)Object.assign(chains,data.chains);
       // Load geometry (walls, lights, doors for lighting system)
       geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
@@ -1596,6 +1600,25 @@ function drawProps(){
 }
 
 function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}ctx.restore();}
+function drawImpassable(){
+  ctx.save();
+  for(const k in impassable){
+    const[x,y]=k.split(",").map(Number);
+    const px=x*TILE,py=y*TILE;
+    ctx.fillStyle="rgba(200,60,40,0.18)";
+    ctx.fillRect(px,py,TILE,TILE);
+    ctx.strokeStyle="rgba(200,60,40,0.5)";ctx.lineWidth=Math.max(1,TILE*0.03);
+    ctx.save();ctx.beginPath();ctx.rect(px,py,TILE,TILE);ctx.clip();
+    const step=TILE*0.28;
+    for(let o=-TILE;o<TILE*2;o+=step){
+      ctx.beginPath();ctx.moveTo(px+o,py);ctx.lineTo(px+o-TILE,py+TILE);ctx.stroke();
+    }
+    ctx.restore();
+    ctx.strokeStyle="rgba(200,60,40,0.7)";ctx.lineWidth=Math.max(1,TILE*0.045);
+    ctx.strokeRect(px+1,py+1,TILE-2,TILE-2);
+  }
+  ctx.restore();
+}
 function drawPortals(){
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
   const img=propTextures["portal"];
@@ -1653,7 +1676,7 @@ function render(){
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
   ctx.restore();
-  drawStamps();drawProps();drawPortals();
+  drawStamps();drawProps();drawPortals();drawImpassable();
   drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
@@ -1993,6 +2016,12 @@ canvas.addEventListener("pointerdown",e=>{
       toast(`Portal #${trimmed} set — link another cell with the same # to connect it`);
       e.stopPropagation(); return;
     }
+    if(structureType==="impassable"){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      impassable[key(tx,ty)]=true;
+      canvas.setPointerCapture(e.pointerId);paintingImpassable=true;
+      e.stopPropagation(); return;
+    }
   }
 
   if(activeVerb==="eraser"){
@@ -2009,6 +2038,10 @@ canvas.addEventListener("pointerdown",e=>{
       const[tx,ty]=worldToTile(wx,wy,TILE);
       const pk=key(tx,ty);
       if(portals[pk]){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
+    } else if(structureType==="impassable"){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      delete impassable[key(tx,ty)];
+      canvas.setPointerCapture(e.pointerId);erasingImpassable=true;
     }
     e.stopPropagation(); return;
   }
@@ -2040,14 +2073,25 @@ canvas.addEventListener("pointerdown",e=>{
   }
 },{capture:true});
 canvas.addEventListener("pointermove",e=>{
+  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
+  if(paintingImpassable||erasingImpassable){
+    const[tx,ty]=worldToTile(wx,wy,TILE);
+    const k=key(tx,ty);
+    if(paintingImpassable) impassable[k]=true; else delete impassable[k];
+    return;
+  }
   if(!(activeCategory==="structure"&&activeVerb==="select")) return;
   if(!geoDragEp&&!geoDragLight) return;
-  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
   const gx=wx/TILE,gy=wy/TILE;
   if(geoDragEp){ moveEndpoint(geometry.walls,geoDragEp,gx,gy); }
   if(geoDragLight!==null){ const l=geometry.lights.find(x=>x.id===geoDragLight); if(l){l.x=gx;l.y=gy;} }
 });
 canvas.addEventListener("pointerup",e=>{
+  if(paintingImpassable||erasingImpassable){
+    paintingImpassable=false;erasingImpassable=false;
+    saveImpassable(getMapName(),impassable);
+    return;
+  }
   if(geoDragLight!==null){ geoDragLight=null; saveGeometry(); return; }
   if(geoDragEp){ geoDragEp=null; saveGeometry(); }
 });
