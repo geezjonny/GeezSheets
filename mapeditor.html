@@ -1325,10 +1325,10 @@ subscribeRestRequest(req=>{
   const banner=document.getElementById("rest-dm-banner");
   const textEl=document.getElementById("rest-dm-text");
   if(!banner)return;
-  if(!req||req.status!=="awaiting_dm"){banner.style.display="none";return;}
+  if(!req||req.status!=="voting"){banner.style.display="none";return;}
   const typeLabel=req.type==="long"?"Long Rest":"Short Rest";
   const votedCount=Object.keys(req.votes||{}).length;
-  textEl.textContent=`🗳 The party (${votedCount} member${votedCount===1?"":"s"}) has agreed to a ${typeLabel}. Confirm it's safe to proceed?`;
+  textEl.textContent=`🗳 ${typeLabel} requested — ${votedCount} vote${votedCount===1?"":"s"} so far (see chat). Approve when ready:`;
   banner.style.display="block";
 });
 

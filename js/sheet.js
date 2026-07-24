@@ -4,6 +4,7 @@
 
 import { db } from "./firebase.js";
 import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import { sendChat } from "./chat.js";
 import {
   LIGHT_SOURCES, HEAL_ITEMS, CONDITION_REMOVERS,
   itemKey, getLightDef, useItem, removeItem, addItem, giveLight, extinguishLight,
@@ -226,44 +227,49 @@ async function _executeShortRest(charId) {
 // A rest can't just be clicked and happen instantly -- every present PC has to
 // vote yes, and then the DM has to confirm it's actually safe, before anyone's
 // HP/slots/charges actually get restored. Session-wide, not per-character.
+// Every vote is announced in chat with a running count -- the DM watches that
+// count (and the chat log) and decides when it's enough, rather than the app
+// trying to compute who's "present" and auto-advancing.
 
-/** Player clicks Short/Long Rest on their own sheet -- this proposes a vote
- *  rather than resting immediately. */
-window.longRest = async function(charId) { await proposeRest(charId, "long"); };
-window.shortRest = async function(charId) { await proposeRest(charId, "short"); };
+/** Player clicks Short/Long Rest on their own sheet -- this casts (or starts)
+ *  a vote rather than resting immediately, and announces it in chat. */
+window.longRest = async function(charId) { await requestOrJoinRest(charId, "long"); };
+window.shortRest = async function(charId) { await requestOrJoinRest(charId, "short"); };
 
-export async function proposeRest(charId, type) {
-  const existing = (await get(ref(db, "session/restRequest"))).val();
-  if (existing && existing.status !== "denied" && existing.status !== "approved") {
-    toast("A rest is already being voted on.");
-    return;
-  }
-  await set(ref(db, "session/restRequest"), {
-    type, initiatedBy: charId,
-    votes: { [charId]: true },
-    status: "voting",
-  });
-}
+export async function requestOrJoinRest(charId, type) {
+  const found = await _fetchCharPath(charId);
+  const name = found?.data?.name || "A player";
+  const typeLabel = type === "long" ? "Long Rest" : "Short Rest";
 
-export async function voteRest(charId, yes) {
-  if (!yes) {
-    await update(ref(db, "session/restRequest"), { status: "denied" });
-    return;
-  }
-  await set(ref(db, `session/restRequest/votes/${charId}`), true);
-}
-
-/** Called by whichever client notices every present PC has voted yes --
- *  safe to call redundantly from multiple clients, same value either way. */
-export async function checkAllVoted(presentPcCharIds) {
   const snap = await get(ref(db, "session/restRequest"));
-  const req = snap.val();
-  if (!req || req.status !== "voting") return;
-  const allVoted = presentPcCharIds.length > 0 && presentPcCharIds.every(id => req.votes?.[id]);
-  if (allVoted) await update(ref(db, "session/restRequest"), { status: "awaiting_dm" });
+  const existing = snap.val();
+
+  if (!existing || existing.status === "denied" || existing.status === "approved") {
+    // Starting a fresh vote
+    await set(ref(db, "session/restRequest"), { type, votes: { [charId]: true }, status: "voting" });
+    await sendChat(`🗳️ ${name} has requested a ${typeLabel}. Click ${typeLabel} on your own sheet to vote yes. (1 vote so far)`, "GM", "system");
+    return;
+  }
+
+  if (existing.type !== type) {
+    toast(`A vote for a ${existing.type === "long" ? "Long" : "Short"} Rest is already in progress.`);
+    return;
+  }
+  if (existing.votes?.[charId]) {
+    toast("You've already voted for this.");
+    return;
+  }
+  const votes = { ...(existing.votes || {}), [charId]: true };
+  await set(ref(db, "session/restRequest/votes"), votes);
+  await sendChat(`🗳️ ${name} voted yes for the ${typeLabel}. (${Object.keys(votes).length} votes so far)`, "GM", "system");
 }
 
 export async function dmResolveRest(approve) {
+  const snap = await get(ref(db, "session/restRequest"));
+  const req = snap.val();
+  if (!req) return;
+  const typeLabel = req.type === "long" ? "Long Rest" : "Short Rest";
+  await sendChat(approve ? `✅ The DM has approved the ${typeLabel}.` : `❌ The DM has denied the ${typeLabel} request.`, "GM", "system");
   await update(ref(db, "session/restRequest"), { status: approve ? "approved" : "denied" });
 }
 
