@@ -930,24 +930,6 @@ function draw(){
   }
   ctx.restore();
 
-  ctx.save();
-  for(const k in impassable){
-    const[x,y]=k.split(",").map(Number);
-    const px=x*TILE,py=y*TILE;
-    ctx.fillStyle="rgba(200,60,40,0.18)";
-    ctx.fillRect(px,py,TILE,TILE);
-    ctx.strokeStyle="rgba(200,60,40,0.5)";ctx.lineWidth=Math.max(1,TILE*0.03);
-    ctx.save();ctx.beginPath();ctx.rect(px,py,TILE,TILE);ctx.clip();
-    const step=TILE*0.28;
-    for(let o=-TILE;o<TILE*2;o+=step){
-      ctx.beginPath();ctx.moveTo(px+o,py);ctx.lineTo(px+o-TILE,py+TILE);ctx.stroke();
-    }
-    ctx.restore();
-    ctx.strokeStyle="rgba(200,60,40,0.7)";ctx.lineWidth=Math.max(1,TILE*0.045);
-    ctx.strokeRect(px+1,py+1,TILE-2,TILE-2);
-  }
-  ctx.restore();
-
   for(const[k,p]of Object.entries(props)){
     let rx,ry;
     if(p.attachedTo&&tokens[p.attachedTo]){rx=tokens[p.attachedTo].x+(p.offsetX||0);ry=tokens[p.attachedTo].y+(p.offsetY||0);}
