@@ -996,10 +996,10 @@ function draw(){
     _geoLX.globalCompositeOperation="source-over";
     _geoLX.restore();
     ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
-  } else if(myCharacterId){
+  } else {
     // Day: no darkness to tint, but still limit sight to line-of-sight so
     // players can't see through walls or across the whole map in daylight.
-    const myTok=Object.values(tokens).find(t=>t.characterId===myCharacterId);
+    const myTok=myCharacterId&&Object.values(tokens).find(t=>t.characterId===myCharacterId);
     if(myTok){
       const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
       const DAY_SIGHT_RANGE=30; // generous — bounded mainly by walls, not this number
@@ -1016,6 +1016,12 @@ function draw(){
         _geoLX.restore();
         ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
       }
+    } else {
+      // No character selected yet, or their token isn't on this map --
+      // fail closed: hide the whole map rather than showing it fully open.
+      ctx.save();ctx.setTransform(1,0,0,1,0,0);
+      ctx.fillStyle="rgba(0,0,0,1)";ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.restore();
     }
   }}
   drawWeather(ctx,canvas.width,canvas.height);
