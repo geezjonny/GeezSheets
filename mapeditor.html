@@ -2802,7 +2802,7 @@ function buildCard(char){
       const maxS=sp.slots?.[String(lvl)]??sp.slots?.[lvl]??0;if(!maxS)continue;
       const usedS=sp.slots_used?.[String(lvl)]??sp.slots_used?.[lvl]??0;
       let pips='';
-      for(let i=0;i<maxS;i++)pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;
+      for(let i=0;i<maxS;i++)pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this,event)"></div>`;
       slotRowsHtml+=`<div class="slot-level-row"><div class="slot-level-label">${spellLevelLabel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;
     }
     const spells=sp.spells||[];
@@ -2885,6 +2885,10 @@ function buildCard(char){
         <button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button>
         <button class="hp-btn dmg"  onclick="window.adjustHp('${char.id}',false)">&#8722; Dmg</button>
       </div>
+      <div class="hp-controls" style="margin-top:4px">
+        <button class="hp-btn" style="flex:1" onclick="window.shortRest('${char.id}')">☕ Short Rest</button>
+        <button class="hp-btn" style="flex:1" onclick="window.longRest('${char.id}')">🌙 Long Rest</button>
+      </div>
     </div>
     <div class="stats-row">
       <div class="stat-cell"><div class="stat-label">AC</div><div class="stat-val">${c.ac??'&#8212;'}</div></div>
@@ -2929,7 +2933,8 @@ window.togglePanel=function(panelId,btnId){
   const open=panel.classList.toggle('open');btn.classList.toggle('open',open);
 };
 
-window.toggleSlot=function(pip){
+window.toggleSlot=function(pip,ev){
+  ev?.stopPropagation();
   const charId=pip.dataset.charid,lvl=pip.dataset.lvl,idx=parseInt(pip.dataset.idx,10),max=parseInt(pip.dataset.max,10);
   const pips=[...pip.parentElement.querySelectorAll('.slot-pip')];
   const clamped=Math.max(0,Math.min(max,pip.classList.contains('used')?idx:idx+1));

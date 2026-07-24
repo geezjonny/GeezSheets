@@ -127,7 +127,8 @@ window.togglePanel = function(panelId, btnId) {
   b.classList.toggle("open", open);
 };
 
-window.toggleSlot = function(pip) {
+window.toggleSlot = function(pip, ev) {
+  ev?.stopPropagation();
   const { charid, lvl, idx, max } = pip.dataset;
   const pips = [...pip.parentElement.querySelectorAll(".slot-pip")];
   const clamped = Math.max(0, Math.min(+max, pip.classList.contains("used") ? +idx : +idx+1));
@@ -135,7 +136,8 @@ window.toggleSlot = function(pip) {
   set(ref(db, `characters/pcs/${charid}/spellcasting/slots_used/${lvl}`), clamped).catch(console.error);
 };
 
-window.toggleCharge = function(pip) {
+window.toggleCharge = function(pip, ev) {
+  ev?.stopPropagation();
   const { charid, abkey, idx, max } = pip.dataset;
   const pips = [...pip.parentElement.querySelectorAll(".charge-pip")];
   const clamped = Math.max(0, Math.min(+max, pip.classList.contains("used") ? +idx : +idx+1));
@@ -164,6 +166,62 @@ window.adjustHp = async function(charId, isHeal) {
 };
 
 window.useItem = (charId, idx) => useItem(charId, idx, toast);
+
+async function _fetchCharPath(charId) {
+  let path = `characters/pcs/${charId}`;
+  let snap = await get(ref(db, path));
+  if (!snap.exists()) { path = `characters/npcs/${charId}`; snap = await get(ref(db, path)); }
+  if (!snap.exists()) return null;
+  return { path, data: snap.val() };
+}
+
+window.longRest = async function(charId) {
+  if (!confirm("Take a Long Rest?\n\nThis restores HP to full, all spell slots, and all ability/feature charges.")) return;
+  try {
+    const found = await _fetchCharPath(charId);
+    if (!found) return;
+    const { path, data: c } = found;
+    const updates = {};
+    updates[`${path}/combat/hp_current`] = c.combat?.hp_max ?? c.hp_max ?? 1;
+    if (c.spellcasting?.slots) updates[`${path}/spellcasting/slots_used`] = null;
+    for (const [abKey, ab] of Object.entries(c.abilities || {})) {
+      if (ab?.kind === "charge" && ab.max) updates[`${path}/abilities/${abKey}/current`] = ab.max;
+    }
+    await update(ref(db), updates);
+    toast("🌙 Long rest complete — HP, spell slots, and abilities restored.");
+  } catch(e) { console.error("Long rest failed:", e); }
+};
+
+window.shortRest = async function(charId) {
+  const hpInput = prompt("HP recovered from spending Hit Dice this short rest (enter an amount, or leave blank to skip HP recovery):", "");
+  if (hpInput === null) return; // cancelled entirely
+  try {
+    const found = await _fetchCharPath(charId);
+    if (!found) return;
+    const { path, data: c } = found;
+    const updates = {};
+    const heal = parseInt(hpInput, 10) || 0;
+    if (heal > 0) {
+      const max = c.combat?.hp_max ?? 1, cur = c.combat?.hp_current ?? 0;
+      updates[`${path}/combat/hp_current`] = Math.min(max, cur + heal);
+    }
+    let restoredAbility = false;
+    for (const [abKey, ab] of Object.entries(c.abilities || {})) {
+      if (ab?.kind === "charge" && ab.max && /short/i.test(ab.recharge || "")) {
+        updates[`${path}/abilities/${abKey}/current`] = ab.max;
+        restoredAbility = true;
+      }
+    }
+    // Warlocks (Pact Magic) recover spell slots on a short rest, unlike other casters
+    let restoredSlots = false;
+    if (c.spellcasting?.slots && /warlock/i.test(c.class || "")) {
+      updates[`${path}/spellcasting/slots_used`] = null;
+      restoredSlots = true;
+    }
+    await update(ref(db), updates);
+    toast(`☕ Short rest complete${heal>0?` — recovered ${heal} HP`:""}${restoredAbility||restoredSlots?", abilities restored":""}.`);
+  } catch(e) { console.error("Short rest failed:", e); }
+};
 
 window.removeItem = (charId, idx) => removeItem(charId, idx);
 
@@ -404,7 +462,7 @@ export function buildSheetCard(char, editable = false) {
       const usedS = sp.slots_used?.[String(lvl)] ?? sp.slots_used?.[lvl] ?? 0;
       let pips = '';
       for (let i = 0; i < maxS; i++) {
-        pips += `<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;
+        pips += `<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this,event)"></div>`;
       }
       slotRows += `<div class="slot-level-row"><div class="slot-level-label">${sSpellLevel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;
     }
@@ -464,7 +522,7 @@ export function buildSheetCard(char, editable = false) {
     if (ab.kind==='charge' && ab.max) {
       const used = ab.max - (ab.current ?? ab.max);
       const meta = [ab.die?`${ab.die}`:null, ab.recharge?`recharge: ${ab.recharge}`:null].filter(Boolean).join(' · ');
-      const pips = Array.from({length:ab.max},(_,i)=>`<div class="charge-pip${i<used?' used':''}" data-charid="${char.id}" data-abkey="${abKey}" data-idx="${i}" data-max="${ab.max}" onclick="window.toggleCharge(this)"></div>`).join('');
+      const pips = Array.from({length:ab.max},(_,i)=>`<div class="charge-pip${i<used?' used':''}" data-charid="${char.id}" data-abkey="${abKey}" data-idx="${i}" data-max="${ab.max}" onclick="window.toggleCharge(this,event)"></div>`).join('');
       return `<div class="ability-charge">
         <div class="ability-charge-top"><span class="ability-charge-name">${sEsc(ab.label)}</span>${meta?`<span class="ability-charge-meta">${sEsc(meta)}</span>`:''}</div>
         <div class="charge-pips">${pips}</div>
@@ -520,6 +578,10 @@ export function buildSheetCard(char, editable = false) {
         <input class="hp-delta" id="hpdelta-${char.id}" type="number" min="1" placeholder="amt"/>
         <button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button>
         <button class="hp-btn dmg"  onclick="window.adjustHp('${char.id}',false)">− Dmg</button>
+      </div>
+      <div class="hp-controls" style="margin-top:4px">
+        <button class="hp-btn" style="flex:1" onclick="window.shortRest('${char.id}')">☕ Short Rest</button>
+        <button class="hp-btn" style="flex:1" onclick="window.longRest('${char.id}')">🌙 Long Rest</button>
       </div>
     </div>
     ${lightBanner}
