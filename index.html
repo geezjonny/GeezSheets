@@ -793,6 +793,14 @@ function subscribeLive(){
   },()=>{setStatus("error","RTDB error");overlayEl.classList.add("hidden");});
 }
 function doFit(){
+  if(myCharacterId){
+    const myTok=Object.values(tokens).find(t=>t.type==="pc"&&(t.characterId===myCharacterId||t.name?.toLowerCase()===playerName.toLowerCase()));
+    if(myTok){
+      camera.x=canvas.width/2-(myTok.x+0.5)*TILE*camera.zoom;
+      camera.y=canvas.height/2-(myTok.y+0.5)*TILE*camera.zoom;
+      return;
+    }
+  }
   if(Object.keys(tiles).length){fitCamera(tiles,TILE,canvas.width,canvas.height);return;}
   if(bgImage){const s=TILE/(bgPpi||70);const mapW=bgImage.width*s,mapH=bgImage.height*s;camera.zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);camera.x=canvas.width/2-mapW/2*camera.zoom;camera.y=canvas.height/2-mapH/2*camera.zoom;}
 }
