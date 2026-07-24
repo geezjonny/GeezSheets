@@ -625,6 +625,7 @@ canvas{display:block;cursor:crosshair}
   <div id="prop-ctx-detach" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--text-dim);display:none">🔓 Detach from token</div>
   <div style="height:1px;background:var(--border);margin:3px 0"></div>
   <div id="prop-ctx-notes" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">📝 Investigation notes…</div>
+  <div id="prop-ctx-container" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">📦 Flag as container…</div>
   <div style="height:1px;background:var(--border);margin:3px 0"></div>
   <div id="prop-ctx-delete" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--red-bright)">✕ Delete prop</div>
 </div>
@@ -1287,6 +1288,19 @@ document.getElementById("prop-ctx-notes").onclick=async()=>{
   if(trimmed) p.notes=trimmed; else delete p.notes;
   await savePropsLocal(getMapName(),props);
   toast(trimmed?"Notes saved":"Notes cleared");
+};
+document.getElementById("prop-ctx-container").onclick=async()=>{
+  propCtxMenu.style.display="none";
+  if(!ctxPropKey||!props[ctxPropKey])return;
+  const p=props[ctxPropKey];
+  const val=prompt("Loot tier for this container (0, 3, 6, 11, or 16 — matching the CR bands in the Loot panel).\n\nLeave blank to remove container flag:", p.container?String(p.container.tier):"0");
+  if(val===null)return; // cancelled
+  const trimmed=val.trim();
+  if(!trimmed){ delete p.container; await savePropsLocal(getMapName(),props); toast("No longer a container"); return; }
+  const tier=[0,3,6,11,16].reduce((best,v)=>Math.abs(v-(parseInt(trimmed,10)||0))<Math.abs(best-(parseInt(trimmed,10)||0))?v:best,0);
+  p.container={tier,looted:false};
+  await savePropsLocal(getMapName(),props);
+  toast(`Flagged as a container — tier ${tier}`);
 };
 document.getElementById("prop-ctx-delete").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey)return;delete props[ctxPropKey];await savePropsLocal(getMapName(),props);toast("Prop deleted");};
 document.getElementById("attach-cancel").onclick=()=>document.getElementById("attach-modal").classList.add("hidden");

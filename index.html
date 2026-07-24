@@ -442,6 +442,7 @@ import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { startMicListener, stopMicListener, subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { subscribePassphrase, checkPassphrase, hasPassphraseSet, saveAuthSession, loadAuthSession } from "./js/auth.js";
 import { sendChat, renderChat } from "./js/chat.js";
+import { loadLootData, generateContainerLoot, summarizeLoot } from "./js/loot.js";
 import { rollDie } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative } from "./js/initiative.js";
 import { resolvePortal } from "./js/map.js";
@@ -1029,6 +1030,33 @@ function propAtTile(tx,ty){
   }
   return null;
 }
+
+// ── Containers — right-click to open, rolled fresh at the moment you open it ──
+loadLootData();
+viewport.addEventListener("contextmenu",e=>{
+  e.preventDefault();
+  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+  const pk=propAtTile(tx,ty);
+  if(!pk||!props[pk]?.container) return;
+  const container=props[pk].container;
+  if(container.looted){ toast("It's already empty."); return; }
+  if(!myCharacterId){ toast("Pick a character first."); return; }
+  const{coins,items}=generateContainerLoot(container.tier);
+  (async()=>{
+    const snap=await get(ref(db,`characters/pcs/${myCharacterId}/inventory`));
+    const inv=snap.exists()?snap.val():{};
+    items.forEach(item=>{
+      const key=(item.index||item.name.toLowerCase().replace(/[^a-z0-9]/g,"_"))+"_"+Date.now()+"_"+Math.floor(Math.random()*1000);
+      inv[key]={name:item.name,qty:1,magic:!!item._magic,rarity:item.rarity?.name||null};
+    });
+    await update(ref(db,`characters/pcs/${myCharacterId}`),{inventory:inv});
+    await set(ref(db,`maps/${currentMap}/props/${pk}/container/looted`),true);
+    props[pk].container.looted=true;
+    sendChat(`🎒 ${myCharacterName||playerName} searched it and found: ${summarizeLoot(coins,items)}.`,"GM","system");
+    toast(`You found: ${summarizeLoot(coins,items)}`);
+  })();
+});
+
 let _lastInvestigateText=null;
 function updateInvestigateBanner(){
   const banner=document.getElementById("investigate-banner");
