@@ -606,6 +606,7 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-action="hide-name" style="display:none">🏷 Hide name tag</div>
   <div class="ctx-item" data-action="show-name" style="display:none">🏷 Show name tag</div>
   <div class="ctx-item" data-action="adjust-hp" style="display:none">❤️ Adjust HP…</div>
+  <div class="ctx-item" data-action="unlock" style="display:none;color:#8fd08f">🔓 Unlock (release from trap)</div>
   <div class="ctx-item" data-action="delete" style="color:var(--red-bright)">✕ Delete token</div>
 </div>
 
@@ -1136,6 +1137,10 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
     const cond=item.dataset.condition,action=item.dataset.action;
     if(cond)applyCondition(mapInput.value.trim()||"dungeon-1",ctxTokenId,cond,tokens);
+    if(action==="unlock"){
+      const tok=tokens[ctxTokenId];
+      if(tok){tok.trapped=false;await saveTokenRTDB(getMapName(),ctxTokenId,tok);toast(`🔓 ${tok.name} released from the trap`);}
+    }
     if(action==="delete")deleteTokenRTDB(getMapName(),ctxTokenId);
     if(action==="sheet"){
       const _tok=tokens[ctxTokenId];
@@ -2469,6 +2474,7 @@ canvas.addEventListener("contextmenu",e=>{
     document.querySelector('.ctx-item[data-action="hide-hp"]').style.display=(!tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="show-hp"]').style.display=(tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display="flex";
+    document.querySelector('.ctx-item[data-action="unlock"]').style.display=tok.trapped?"flex":"none";
     document.querySelector('.ctx-item[data-action="light-add"]').style.display=tok.light?"none":"flex";
     document.querySelector('.ctx-item[data-action="light-remove"]').style.display=tok.light?"flex":"none";
     document.querySelector('.ctx-item[data-action="hide-name"]').style.display=tok.hideName?"none":"flex";
