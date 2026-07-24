@@ -305,14 +305,6 @@ canvas{display:block;width:100%;height:100%}
 <body>
 
 <!-- ── Login Modal ── -->
-<div id="investigate-modal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
-  <div style="background:var(--panel);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;padding:24px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.6)">
-    <h2 style="font-family:'Cinzel',serif;font-size:16px;color:var(--gold,#c8a84b);margin:0 0 4px;letter-spacing:.05em">🔍 Investigate</h2>
-    <p id="investigate-text" style="font-family:'IM Fell English',serif;font-size:14px;line-height:1.6;color:var(--text,#d4c49a);margin-top:10px;white-space:pre-wrap"></p>
-    <div style="margin-top:16px;text-align:right"><button onclick="document.getElementById('investigate-modal').classList.add('hidden')" style="height:32px;padding:0 16px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--gold-dim,#a8935a);border-radius:4px;background:rgba(200,168,75,.1);color:var(--gold,#c8a84b);cursor:pointer">Close</button></div>
-  </div>
-</div>
-
 <div id="login-modal" class="modal-overlay">
   <div class="login-box">
     <div class="login-title">⚔ GeezVTT</div>
@@ -396,6 +388,7 @@ canvas{display:block;width:100%;height:100%}
     <div id="weather-indicator"></div>
     <canvas id="tom-fog" style="position:absolute;inset:0;display:none;z-index:5000;pointer-events:none"></canvas>
     <div id="tom-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:5001;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;color:var(--gold-dim,#a8935a);text-transform:uppercase;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.8)">🎭 Theater of the Mind</div>
+    <div id="investigate-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:400;max-width:70%;background:rgba(20,16,10,.88);border:1px solid var(--gold-dim,#a8935a);border-radius:6px;padding:8px 16px;font-family:'IM Fell English',serif;font-size:14px;line-height:1.5;color:var(--text,#d4c49a);text-align:center;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.6)"></div>
   </div>
 
   <div id="initiative-bar">
@@ -881,6 +874,7 @@ function drawTileAt(x,y,terrain){
 }
 
 function draw(){
+  updateInvestigateBanner();
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
@@ -1001,7 +995,8 @@ function draw(){
 }
 
 // ── Pointer events ────────────────────────────────────────────────────────────
-// ── Investigate (right-click a prop) ───────────────────────────────────────────
+// ── Investigate (proximity-based) — notes appear automatically while your
+//    token is next to a prop that has them, no click needed ────────────────────
 function propAtTile(tx,ty){
   for(const[k,p]of Object.entries(props)){
     let px,py;
@@ -1013,15 +1008,33 @@ function propAtTile(tx,ty){
   }
   return null;
 }
-viewport.addEventListener("contextmenu",e=>{
-  e.preventDefault();
-  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
-  const pk=propAtTile(tx,ty);
-  if(!pk)return;
-  const p=props[pk];
-  document.getElementById("investigate-text").textContent=p.notes||"You find nothing noteworthy here.";
-  document.getElementById("investigate-modal").classList.remove("hidden");
-});
+let _lastInvestigateText=null;
+function updateInvestigateBanner(){
+  const banner=document.getElementById("investigate-banner");
+  if(!banner) return;
+  const myTok=myCharacterId&&Object.values(tokens).find(t=>t.type==="pc"&&(t.characterId===myCharacterId||t.name?.toLowerCase()===playerName?.toLowerCase()));
+  let found=null;
+  if(myTok){
+    const mx=myTok.x+0.5,my=myTok.y+0.5;
+    for(const[k,p]of Object.entries(props)){
+      if(!p.notes) continue;
+      let px,py;
+      if(p.attachedTo&&tokens[p.attachedTo]){px=tokens[p.attachedTo].x+(p.offsetX||0);py=tokens[p.attachedTo].y+(p.offsetY||0);}
+      else{[px,py]=k.split(",").map(Number);}
+      const def=propDefs[p.propId]||{w:1,h:1};
+      const w=p.w||def.w||1,h=p.h||def.h||1;
+      const cx=px+w/2,cy=py+h/2;
+      // "Directly in front" — within about 1 tile of the prop's footprint
+      const dx=Math.max(px-mx,0,mx-(px+w)),dy=Math.max(py-my,0,my-(py+h));
+      if(Math.hypot(dx,dy)<=1.05){ found=p.notes; break; }
+    }
+  }
+  if(found!==_lastInvestigateText){
+    _lastInvestigateText=found;
+    if(found){ banner.textContent="🔍 "+found; banner.style.display="block"; }
+    else{ banner.style.display="none"; }
+  }
+}
 
 viewport.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
