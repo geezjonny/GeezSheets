@@ -998,8 +998,6 @@ viewport.addEventListener("pointerdown",e=>{
   if(tokId){
     const tok=tokens[tokId];
     if(tok.type==="pc"&&(tok.name?.toLowerCase()===playerName.toLowerCase()||tok.characterId===myCharacterId)){
-      if(playersLocked){toast("🔒 Movement is locked");openCharSheet(tok.characterId,tok.name,false);return;}
-      draggingToken={id:tokId,offsetTX:tx-tok.x,offsetTY:ty-tok.y};viewport.setPointerCapture(e.pointerId);
       openCharSheet(tok.characterId,tok.name,false);return;
     }
     openCharSheet(tok.characterId,tok.name,false);return;
