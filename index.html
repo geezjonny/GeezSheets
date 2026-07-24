@@ -305,6 +305,14 @@ canvas{display:block;width:100%;height:100%}
 <body>
 
 <!-- ── Login Modal ── -->
+<div id="investigate-modal" class="modal-overlay hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div style="background:var(--panel);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;padding:24px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.6)">
+    <h2 style="font-family:'Cinzel',serif;font-size:16px;color:var(--gold,#c8a84b);margin:0 0 4px;letter-spacing:.05em">🔍 Investigate</h2>
+    <p id="investigate-text" style="font-family:'IM Fell English',serif;font-size:14px;line-height:1.6;color:var(--text,#d4c49a);margin-top:10px;white-space:pre-wrap"></p>
+    <div style="margin-top:16px;text-align:right"><button onclick="document.getElementById('investigate-modal').classList.add('hidden')" style="height:32px;padding:0 16px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--gold-dim,#a8935a);border-radius:4px;background:rgba(200,168,75,.1);color:var(--gold,#c8a84b);cursor:pointer">Close</button></div>
+  </div>
+</div>
+
 <div id="login-modal" class="modal-overlay">
   <div class="login-box">
     <div class="login-title">⚔ GeezVTT</div>
@@ -993,6 +1001,28 @@ function draw(){
 }
 
 // ── Pointer events ────────────────────────────────────────────────────────────
+// ── Investigate (right-click a prop) ───────────────────────────────────────────
+function propAtTile(tx,ty){
+  for(const[k,p]of Object.entries(props)){
+    let px,py;
+    if(p.attachedTo&&tokens[p.attachedTo]){px=tokens[p.attachedTo].x+(p.offsetX||0);py=tokens[p.attachedTo].y+(p.offsetY||0);}
+    else{[px,py]=k.split(",").map(Number);}
+    const def=propDefs[p.propId]||{w:1,h:1};
+    const w=p.w||def.w||1,h=p.h||def.h||1;
+    if(tx>=px&&tx<px+w&&ty>=py&&ty<py+h)return k;
+  }
+  return null;
+}
+viewport.addEventListener("contextmenu",e=>{
+  e.preventDefault();
+  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+  const pk=propAtTile(tx,ty);
+  if(!pk)return;
+  const p=props[pk];
+  document.getElementById("investigate-text").textContent=p.notes||"You find nothing noteworthy here.";
+  document.getElementById("investigate-modal").classList.remove("hidden");
+});
+
 viewport.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
   if(pingMode){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}

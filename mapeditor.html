@@ -610,6 +610,8 @@ canvas{display:block;cursor:crosshair}
   <div id="prop-ctx-attach" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--text-dim)">🔗 Attach to token…</div>
   <div id="prop-ctx-detach" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--text-dim);display:none">🔓 Detach from token</div>
   <div style="height:1px;background:var(--border);margin:3px 0"></div>
+  <div id="prop-ctx-notes" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">📝 Investigation notes…</div>
+  <div style="height:1px;background:var(--border);margin:3px 0"></div>
   <div id="prop-ctx-delete" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--red-bright)">✕ Delete prop</div>
 </div>
 
@@ -1255,6 +1257,17 @@ document.getElementById("prop-ctx-attach").onclick=()=>{
   document.getElementById("attach-modal").classList.remove("hidden");
 };
 document.getElementById("prop-ctx-detach").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey||!props[ctxPropKey])return;const p=props[ctxPropKey];if(p.attachedTo&&tokens[p.attachedTo]){const nk=key(tokens[p.attachedTo].x+(p.offsetX||0),tokens[p.attachedTo].y+(p.offsetY||0));props[nk]={propId:p.propId,w:p.w,h:p.h};delete props[ctxPropKey];}await savePropsLocal(getMapName(),props);toast("Prop detached");};
+document.getElementById("prop-ctx-notes").onclick=async()=>{
+  propCtxMenu.style.display="none";
+  if(!ctxPropKey||!props[ctxPropKey])return;
+  const p=props[ctxPropKey];
+  const val=prompt("Investigation notes for this prop — shown to a player who right-clicks it and investigates.\n\nLeave blank to remove:", p.notes||"");
+  if(val===null)return; // cancelled
+  const trimmed=val.trim();
+  if(trimmed) p.notes=trimmed; else delete p.notes;
+  await savePropsLocal(getMapName(),props);
+  toast(trimmed?"Notes saved":"Notes cleared");
+};
 document.getElementById("prop-ctx-delete").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey)return;delete props[ctxPropKey];await savePropsLocal(getMapName(),props);toast("Prop deleted");};
 document.getElementById("attach-cancel").onclick=()=>document.getElementById("attach-modal").classList.add("hidden");
 
