@@ -32,6 +32,27 @@ export async function savePropsLocal(mapName, props) {
   await set(ref(db, `maps/${mapName}/props`), Object.keys(props).length ? props : null);
 }
 
+export async function savePortals(mapName, portals) {
+  await set(ref(db, `maps/${mapName}/portals`), Object.keys(portals).length ? portals : null);
+}
+
+/** If (tx,ty) is a portal cell, returns the {x,y} of the other cell sharing
+ *  its link value (first match), or null if it's not a portal or has no
+ *  linked partner yet. Shared by both the DM editor and the player view so
+ *  a token "hits" the same warp logic whoever's dragging it. */
+export function resolvePortal(portals, tx, ty) {
+  const here = portals[`${tx},${ty}`];
+  if (!here || !here.link) return null;
+  for (const [k, o] of Object.entries(portals)) {
+    if (k === `${tx},${ty}`) continue;
+    if (o.link === here.link) {
+      const [dx, dy] = k.split(",").map(Number);
+      return { x: dx, y: dy };
+    }
+  }
+  return null;
+}
+
 export async function saveTokenLocal(mapName, id, data) {
   await set(ref(db, `maps/${mapName}/tokens/${id}`), data);
 }
@@ -39,7 +60,7 @@ export async function saveTokenLocal(mapName, id, data) {
 // ── Clear helpers ─────────────────────────────────────────────────────────────
 
 export async function clearMapSection(mapName, section, state) {
-  const {tiles, fogGroups, wallGroups, doors, tokens, stamps, props} = state;
+  const {tiles, fogGroups, wallGroups, doors, tokens, stamps, props, portals} = state;
 
   if (section==="bg"||section==="all")    { await set(ref(db,`maps/${mapName}/background`),null); await set(ref(db,`maps/${mapName}/backgroundPpi`),null); }
   if (section==="tiles"||section==="all") { for(const k in tiles)delete tiles[k]; await set(ref(db,`maps/${mapName}/tiles`),null); }
@@ -49,6 +70,7 @@ export async function clearMapSection(mapName, section, state) {
   if (section==="tokens"||section==="all"){ for(const k in tokens)delete tokens[k]; await set(ref(db,`maps/${mapName}/tokens`),null); }
   if (section==="stamps"||section==="all"){ for(const k in stamps)delete stamps[k]; await set(ref(db,`maps/${mapName}/stamps`),null); }
   if (section==="props"||section==="all") { for(const k in props)delete props[k]; await set(ref(db,`maps/${mapName}/props`),null); }
+  if (section==="portals"||section==="all") { if(portals)for(const k in portals)delete portals[k]; await set(ref(db,`maps/${mapName}/portals`),null); }
 }
 
 // ── Subscribe ─────────────────────────────────────────────────────────────────
@@ -82,6 +104,7 @@ export function subscribeMap(mapName, state, callbacks = {}) {
     for (const k in state.tokens)     delete state.tokens[k];
     for (const k in state.stamps)     delete state.stamps[k];
     for (const k in state.props)      delete state.props[k];
+    if (state.portals) for (const k in state.portals) delete state.portals[k];
     if (state.chains) for (const k in state.chains) delete state.chains[k];
     if (state.roofs)  for (const k in state.roofs)  delete state.roofs[k];
 
@@ -103,6 +126,7 @@ export function subscribeMap(mapName, state, callbacks = {}) {
         Object.assign(state.props, data.props);
         for (const p of Object.values(data.props)) tryLoadPropTexture(p.propId);
       }
+      if (data.portals && state.portals) Object.assign(state.portals, data.portals);
       if (data.chains && state.chains) Object.assign(state.chains, data.chains);
       if (data.roofs  && state.roofs)  Object.assign(state.roofs,  data.roofs);
 

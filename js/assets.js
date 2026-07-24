@@ -5,6 +5,12 @@ import { db } from "./firebase.js";
 import { get, ref } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { TEXTURE_PATH, TOKEN_PATH, PROP_PATH } from "./config.js";
 
+// Cache-busting: one value per page load, appended to every asset URL below.
+// Without this, browsers can keep serving an old cached copy of a texture
+// even after you've replaced the file on the server and reloaded the page --
+// the URL has to actually change for the browser to treat it as new.
+const _cacheBust = Date.now();
+
 export const textures      = {}; // terrain id → HTMLImageElement
 export const tokenTextures = {}; // cacheKey → HTMLImageElement | null
 export const propTextures  = {}; // propId → HTMLImageElement | null
@@ -20,7 +26,7 @@ export async function loadTerrainTextures(terrains) {
     const img = new Image();
     img.onload  = () => { textures[t.id] = img; resolve(); };
     img.onerror = () => resolve();
-    img.src = `${TEXTURE_PATH}${t.id}.png`;
+    img.src = `${TEXTURE_PATH}${t.id}.png?v=${_cacheBust}`;
   })));
 }
 
@@ -37,7 +43,7 @@ export function tryLoadTokenTexture(characterId, name) {
       if (b64) { const i = new Image(); i.onload = () => { tokenTextures[cacheKey] = i; }; i.src = b64; }
     });
   };
-  img.src = `${TOKEN_PATH}${fname}.png`;
+  img.src = `${TOKEN_PATH}${fname}.png?v=${_cacheBust}`;
 }
 
 export function tryLoadPropTexture(id) {
@@ -51,5 +57,5 @@ export function tryLoadPropTexture(id) {
       if (b64) { const i = new Image(); i.onload = () => { propTextures[i] = i; }; i.src = b64; }
     });
   };
-  img.src = `${PROP_PATH}${id}.png`;
+  img.src = `${PROP_PATH}${id}.png?v=${_cacheBust}`;
 }

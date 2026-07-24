@@ -108,13 +108,8 @@ canvas{display:block;width:100%;height:100%}
 .init-card .init-hp{font-size:9px;font-family:'Cinzel',serif}
 
 /* ── Context menu ── */
-#ctx-menu{position:fixed;z-index:200;background:var(--panel);border:1px solid var(--border);border-radius:5px;padding:4px 0;display:none;min-width:160px;box-shadow:0 6px 24px rgba(0,0,0,.6)}
-#ctx-menu.open{display:block}
-.ctx-item{padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.05em;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--dim);transition:background .1s}
-.ctx-item:hover{background:rgba(200,168,75,.08);color:var(--text)}
-.ctx-item .ctx-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.ctx-sep{height:1px;background:var(--border);margin:3px 0}
-.ctx-label{padding:4px 14px;font-family:'Cinzel',serif;font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
+
+
 
 /* ── Left slide-in sheet panel ── */
 #sheet-panel{
@@ -357,24 +352,6 @@ canvas{display:block;width:100%;height:100%}
   <p id="overlay-msg">Loading…</p>
 </div>
 
-<!-- ── Context menu ── -->
-<div id="ctx-menu">
-  <div class="ctx-label">Conditions</div>
-  <div class="ctx-item" data-condition="poisoned"  ><div class="ctx-dot" style="background:#5aaa5a"></div>Poisoned</div>
-  <div class="ctx-item" data-condition="stunned"   ><div class="ctx-dot" style="background:#aaaa30"></div>Stunned</div>
-  <div class="ctx-item" data-condition="prone"     ><div class="ctx-dot" style="background:#888888"></div>Prone</div>
-  <div class="ctx-item" data-condition="burning"   ><div class="ctx-dot" style="background:#e07030"></div>Burning</div>
-  <div class="ctx-item" data-condition="frozen"    ><div class="ctx-dot" style="background:#50c0e0"></div>Frozen</div>
-  <div class="ctx-item" data-condition="blinded"   ><div class="ctx-dot" style="background:#dddddd"></div>Blinded</div>
-  <div class="ctx-item" data-condition="charmed"   ><div class="ctx-dot" style="background:#e070c0"></div>Charmed</div>
-  <div class="ctx-item" data-condition="frightened"><div class="ctx-dot" style="background:#9060d0"></div>Frightened</div>
-  <div class="ctx-sep"></div>
-  <div class="ctx-item" data-condition="clear" style="color:var(--red)">✕ Clear conditions</div>
-  <div class="ctx-sep"></div>
-  <div class="ctx-label">Token</div>
-  <div class="ctx-item" data-action="delete" style="color:var(--red)">✕ Delete token</div>
-</div>
-
 <!-- ── Left slide-in sheet panel ── -->
 <div id="sheet-panel">
   <div id="sheet-panel-header">
@@ -409,6 +386,8 @@ canvas{display:block;width:100%;height:100%}
     <canvas id="canvas"></canvas>
     <div id="scale-label">100%</div>
     <div id="weather-indicator"></div>
+    <canvas id="tom-fog" style="position:absolute;inset:0;display:none;z-index:5000;pointer-events:none"></canvas>
+    <div id="tom-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:5001;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;color:var(--gold-dim,#a8935a);text-transform:uppercase;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.8)">🎭 Theater of the Mind</div>
   </div>
 
   <div id="initiative-bar">
@@ -446,32 +425,32 @@ canvas{display:block;width:100%;height:100%}
 <div id="ping-toast"></div>
 
 <script type="module">
-import { getDatabase, ref, onValue, set, push, remove, update, get }
+import { ref, onValue, set, push, remove, update, get }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { db }                from "./js/firebase.js";
-import { loadConfig, getTERRAINS, getCONDITIONS, getDICE, TILE } from "./js/config.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getDICE, TILE } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
-import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
+import { textures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
-import { drawToken, tokenAtTile, applyCondition, deleteToken } from "./js/tokens.js";
+import { drawToken, tokenAtTile } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
-import { computeVisibilityPolygon, activeOccluders, drawLight, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, pathBlocked, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { startMicListener, stopMicListener, subscribeTalking, getShakeOffset } from "./js/mic.js";
-import { subscribePassphrase, checkPassphrase, hasPassphraseSet, fetchCharacterRoster, saveAuthSession, loadAuthSession } from "./js/auth.js";
+import { subscribePassphrase, checkPassphrase, hasPassphraseSet, saveAuthSession, loadAuthSession } from "./js/auth.js";
 import { sendChat, renderChat } from "./js/chat.js";
-import { rollDie, animateDiceResult } from "./js/dice.js";
-import { subscribeTokenStrip, rollInitiative, startCombat, endCombat, lockInitiativeOrder } from "./js/initiative.js";
-import { subscribeMap, findDoorAtPoint, tileInFog } from "./js/map.js";
+import { rollDie } from "./js/dice.js";
+import { subscribeTokenStrip, rollInitiative } from "./js/initiative.js";
+import { resolvePortal } from "./js/map.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
+import { subscribeTheaterMode, startTheaterFog, stopTheaterFog } from "./js/theater.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},chains={};
-const wallGroups={},doors={};
+let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},portals={},chains={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
 let _geoLC=null,_geoLX=null;
@@ -497,7 +476,6 @@ let micEnabled=false;
 let micPermission="unknown"; // "unknown" | "granted" | "denied"
 let myCharacterId=null,myCharacterName=null;
 let initiative={order:[],active:null};
-let ctxTokenId=null;
 let liveUnsub=null;
 let allRosterChars=[]; // [{id, name, campaign}]
 
@@ -515,7 +493,6 @@ const nameDisplay= document.getElementById("player-name-display");
 const chatLog    = document.getElementById("chat-log");
 const chatInput  = document.getElementById("chat-input");
 const initTrack  = document.getElementById("init-track");
-const ctxMenu    = document.getElementById("ctx-menu");
 const micBtn     = document.getElementById("micBtn");
 
 // Login elements
@@ -788,18 +765,16 @@ function subscribeLive(){
     for(const k in tiles)delete tiles[k];for(const k in fog)delete fog[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
+    for(const k in portals)delete portals[k];
     for(const k in chains)delete chains[k];
-    for(const k in wallGroups)delete wallGroups[k];
-    for(const k in doors)delete doors[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fog,data.fog);
-      if(data.wallGroups)Object.assign(wallGroups,data.wallGroups);
-      if(data.doors)Object.assign(doors,data.doors);
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
+      if(data.portals)Object.assign(portals,data.portals);
       if(data.chains)Object.assign(chains,data.chains);
       geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
       if(data.geometry){
@@ -821,23 +796,28 @@ function doFit(){
   if(Object.keys(tiles).length){fitCamera(tiles,TILE,canvas.width,canvas.height);return;}
   if(bgImage){const s=TILE/(bgPpi||70);const mapW=bgImage.width*s,mapH=bgImage.height*s;camera.zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);camera.x=canvas.width/2-mapW/2*camera.zoom;camera.y=canvas.height/2-mapH/2*camera.zoom;}
 }
+let playersLocked=false;
+onValue(ref(db,"session/locked"),snap=>{playersLocked=!!snap.val();});
+
 onValue(ref(db,"session/currentMap"),snap=>{
   const name=snap.val();if(!name)return;
   mapInput.value=name;currentMap=name;firstLoad=true;subscribeLive();
   setTimeout(doFit,1200);
 });
 
-// ── Context menu ──────────────────────────────────────────────────────────────
-document.querySelectorAll(".ctx-item").forEach(item=>{
-  item.onclick=()=>{
-    if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
-    const cond=item.dataset.condition,action=item.dataset.action;
-    if(cond)applyCondition(currentMap,ctxTokenId,cond,tokens);
-    if(action==="delete")deleteToken(currentMap,ctxTokenId,tokens);
-    ctxMenu.classList.remove("open");ctxTokenId=null;
-  };
+// ── Theater of the Mind ──────────────────────────────────────────────────────
+subscribeTheaterMode(active=>{
+  const fogEl=document.getElementById("tom-fog"),bannerEl=document.getElementById("tom-banner"),initBar=document.getElementById("initiative-bar");
+  if(active){
+    fogEl.style.display="block";bannerEl.style.display="block";
+    if(initBar)initBar.style.display="none";
+    startTheaterFog(fogEl);
+  }else{
+    stopTheaterFog();
+    fogEl.style.display="none";bannerEl.style.display="none";
+    if(initBar)initBar.style.display="";
+  }
 });
-document.addEventListener("click",()=>ctxMenu.classList.remove("open"));
 
 // ── Chat & Dice ───────────────────────────────────────────────────────────────
 document.getElementById("chat-send").onclick=()=>{
@@ -903,43 +883,28 @@ function draw(){
     ctx.restore();
   }
 
-  // Wall groups — perimeter edges only
-  ctx.strokeStyle="#c0392b";ctx.lineWidth=2.5/camera.zoom;ctx.lineCap="round";
-  for(const gid in wallGroups){
-    const cells=wallGroups[gid].cells||{};
-    for(const ck in cells){
-      const[x,y]=ck.split(",").map(Number);const px=x*TILE,py=y*TILE;
-      [[0,-1,px,py,px+TILE,py],[0,1,px,py+TILE,px+TILE,py+TILE],[-1,0,px,py,px,py+TILE],[1,0,px+TILE,py,px+TILE,py+TILE]].forEach(([dx,dy,x1,y1,x2,y2])=>{
-        if(!cells[`${x+dx},${y+dy}`]){ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
-      });
-    }
-  }
-
-  // Doors
-  for(const did in doors){
-    const d=doors[did];
-    const px=d.x*TILE,py=d.y*TILE;
-    const edgeCoords={n:[px,py,px+TILE,py],s:[px,py+TILE,px+TILE,py+TILE],w:[px,py,px,py+TILE],e:[px+TILE,py,px+TILE,py+TILE]};
-    const[x1,y1,x2,y2]=edgeCoords[d.edge]||edgeCoords.n;
-    const mx=(x1+x2)/2,my=(y1+y2)/2;
-    if(d.open){
-      ctx.strokeStyle="#8a6a2a";ctx.lineWidth=2/camera.zoom;
-      const len=TILE*0.25;const isH=d.edge==="n"||d.edge==="s";
-      ctx.beginPath();
-      if(isH){ctx.moveTo(x1,y1-len);ctx.lineTo(x1,y1+len);ctx.moveTo(x2,y2-len);ctx.lineTo(x2,y2+len);}
-      else{ctx.moveTo(x1-len,y1);ctx.lineTo(x1+len,y1);ctx.moveTo(x2-len,y2);ctx.lineTo(x2+len,y2);}
-      ctx.stroke();
-    } else {
-      ctx.strokeStyle=d.locked?"#8a2a2a":"#8a6a2a";ctx.lineWidth=3.5/camera.zoom;
-      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-      const sz=4/camera.zoom;
-      ctx.fillStyle=d.locked?"#c04040":"#c0a040";
-      ctx.fillRect(mx-sz/2,my-sz/2,sz,sz);
-    }
-  }
+  drawDoorsWithArt(ctx,geometry.doors,TILE,propTextures,{zoom:camera.zoom});
 
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
   for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
+  ctx.restore();
+
+  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
+  const portalImg=propTextures["portal"];
+  for(const[k,p]of Object.entries(portals)){
+    if(p.hidden) continue; // invisible to players — like a trap door, but still works if stepped on
+    const[x,y]=k.split(",").map(Number);
+    const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
+    // Players see the portal itself, never the link # — no hint of the destination
+    if(portalImg){
+      ctx.drawImage(portalImg,x*TILE,y*TILE,TILE,TILE);
+    } else {
+      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
+      ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+      ctx.font=`${Math.round(TILE*0.32)}px serif`;ctx.fillStyle="#c8a84b";
+      ctx.fillText("🌀",cx,cy);
+    }
+  }
   ctx.restore();
 
   for(const[k,p]of Object.entries(props)){
@@ -949,8 +914,13 @@ function draw(){
     const def=propDefs[p.propId]||{emoji:"📦",w:1,h:1};
     const px=rx*TILE,py=ry*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
     const img=propTextures[p.propId];
-    if(img)ctx.drawImage(img,px,py,pw,ph);
-    else{ctx.save();ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);ctx.restore();}
+    const rot=(p.rotation||0)*Math.PI/180;
+    ctx.save();
+    if(rot){ctx.translate(px+pw/2,py+ph/2);ctx.rotate(rot);ctx.translate(-pw/2,-ph/2);}
+    else{ctx.translate(px,py);}
+    if(img)ctx.drawImage(img,0,0,pw,ph);
+    else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,pw/2,ph/2);}
+    ctx.restore();
   }
 
   drawChains(ctx,chains,tokens,camera.zoom);
@@ -985,6 +955,27 @@ function draw(){
     _geoLX.globalCompositeOperation="source-over";
     _geoLX.restore();
     ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
+  } else if(myCharacterId){
+    // Day: no darkness to tint, but still limit sight to line-of-sight so
+    // players can't see through walls or across the whole map in daylight.
+    const myTok=Object.values(tokens).find(t=>t.characterId===myCharacterId);
+    if(myTok){
+      const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
+      const DAY_SIGHT_RANGE=30; // generous — bounded mainly by walls, not this number
+      const poly=computeVisibilityPolygon(myTok.x+0.5,myTok.y+0.5,_occ,DAY_SIGHT_RANGE);
+      if(poly.length>=3){
+        if(!_geoLC||_geoLC.width!==canvas.width||_geoLC.height!==canvas.height){_geoLC=document.createElement("canvas");_geoLC.width=canvas.width;_geoLC.height=canvas.height;_geoLX=_geoLC.getContext("2d");}
+        _geoLX.clearRect(0,0,_geoLC.width,_geoLC.height);
+        _geoLX.fillStyle="rgba(0,0,0,1)";_geoLX.fillRect(0,0,_geoLC.width,_geoLC.height);
+        _geoLX.save();_geoLX.translate(camera.x,camera.y);_geoLX.scale(camera.zoom,camera.zoom);
+        _geoLX.globalCompositeOperation="destination-out";
+        _geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);
+        for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);
+        _geoLX.closePath();_geoLX.fillStyle="rgba(0,0,0,1)";_geoLX.fill();
+        _geoLX.restore();
+        ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
+      }
+    }
   }}
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
@@ -994,12 +985,6 @@ function draw(){
 }
 
 // ── Pointer events ────────────────────────────────────────────────────────────
-viewport.addEventListener("contextmenu",e=>{
-  e.preventDefault();const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
-  const tokId=tokenAtTile(tokens,tx,ty);
-  if(tokId){ctxTokenId=tokId;ctxMenu.style.left=e.clientX+"px";ctxMenu.style.top=e.clientY+"px";ctxMenu.classList.add("open");}
-});
-
 viewport.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
   if(pingMode){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}
@@ -1013,20 +998,24 @@ viewport.addEventListener("pointerdown",e=>{
   if(tokId){
     const tok=tokens[tokId];
     if(tok.type==="pc"&&(tok.name?.toLowerCase()===playerName.toLowerCase()||tok.characterId===myCharacterId)){
+      if(playersLocked){toast("🔒 Movement is locked");openCharSheet(tok.characterId,tok.name,false);return;}
       draggingToken={id:tokId,offsetTX:tx-tok.x,offsetTY:ty-tok.y};viewport.setPointerCapture(e.pointerId);
       openCharSheet(tok.characterId,tok.name,false);return;
     }
     openCharSheet(tok.characterId,tok.name,false);return;
   }
 
-  // Door click — check all doors for proximity to click point
-  const clickedDoor=findDoorAtPoint(doors,wx,wy,TILE);
-  if(clickedDoor){
-    const d=doors[clickedDoor];
-    if(d.locked){
-      toast(`🔒 ${d.lockReason||"This door is locked."}`);
-    } else {
-      update(ref(db,`maps/${currentMap}/doors/${clickedDoor}`),{open:!d.open});
+  // Door click — geometry doors are the only door system now
+  const clickedDoorSeg=segmentAtPoint([],geometry.doors,wx/TILE,wy/TILE,0.4);
+  if(clickedDoorSeg){
+    const d=geometry.doors.find(x=>x.id===clickedDoorSeg.id);
+    if(d){
+      if(d.locked){
+        toast(`🔒 This door is locked.`);
+      } else {
+        d.closed=!d.closed;
+        set(ref(db,`maps/${currentMap}/geometry/doors`), geometry.doors.length?geometry.doors:null);
+      }
     }
     return;
   }
@@ -1046,7 +1035,10 @@ viewport.addEventListener("pointermove",e=>{
 viewport.addEventListener("pointerup",e=>{
   if(rulerActive)return;
   if(draggingToken){
-    update(ref(db,`maps/${currentMap}/tokens/${draggingToken.id}`),{x:tokens[draggingToken.id].x,y:tokens[draggingToken.id].y});
+    const tok=tokens[draggingToken.id];
+    const dest=resolvePortal(portals,tok.x,tok.y);
+    if(dest){ tok.x=dest.x; tok.y=dest.y; }
+    update(ref(db,`maps/${currentMap}/tokens/${draggingToken.id}`),{x:tok.x,y:tok.y});
     draggingToken=null;return;
   }
   clearTimeout(pingHoldTimer);
@@ -1067,6 +1059,31 @@ window.addEventListener("keydown",e=>{
     if(rulerMode){rulerMode=false;document.getElementById("rulerBtn").classList.remove("active");viewport.style.cursor="";}
     closeSheetPanel();
   }
+});
+
+// ── Keyboard movement (arrow keys) — own token only, wall-blocked ─────────────
+let _lastMoveTime=0;
+window.addEventListener("keydown",e=>{
+  const dirs={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]};
+  const d=dirs[e.key];
+  if(!d) return;
+  if(e.target.matches("input,textarea,select,[contenteditable]")) return;
+  e.preventDefault();
+  const now=Date.now();
+  if(now-_lastMoveTime<140) return; // throttle key-repeat so it can't flood Firebase
+  const entry=Object.entries(tokens).find(([id,t])=>t.type==="pc"&&(t.name?.toLowerCase()===playerName.toLowerCase()||t.characterId===myCharacterId));
+  if(!entry) return;
+  const[tokId,tok]=entry;
+  if(playersLocked){toast("🔒 Movement is locked");return;}
+  const[dx,dy]=d;
+  const fromX=tok.x,fromY=tok.y,toX=fromX+dx,toY=fromY+dy;
+  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+  if(pathBlocked(fromX+0.5,fromY+0.5,toX+0.5,toY+0.5,occ)) return; // blocked by a wall/closed door
+  _lastMoveTime=now;
+  tok.x=toX;tok.y=toY;
+  const dest=resolvePortal(portals,tok.x,tok.y);
+  if(dest){tok.x=dest.x;tok.y=dest.y;}
+  update(ref(db,`maps/${currentMap}/tokens/${tokId}`),{x:tok.x,y:tok.y});
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -1092,6 +1109,8 @@ window.addEventListener("keydown",e=>{
   });
 
   await loadTerrainTextures(getTERRAINS());
+  getPROPS().forEach(p=>{ propDefs[p.id]=p; tryLoadPropTexture(p.id); });
+  ["door","doorclosed","portal"].forEach(id=>tryLoadPropTexture(id));
 
   // Wire sheet toast function
   setSheetToastFn(msg=>{const el=document.getElementById("ping-toast");if(!el)return;el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2500);});

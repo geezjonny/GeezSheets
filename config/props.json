@@ -1,14 +1,26 @@
 [
-  {"id":"barrel",    "label":"Barrel",    "emoji":"🛢", "w":1,"h":1},
-  {"id":"chest",     "label":"Chest",     "emoji":"📦", "w":1,"h":1},
-  {"id":"table",     "label":"Table",     "emoji":"🪵", "w":2,"h":1},
-  {"id":"bookshelf", "label":"Bookshelf", "emoji":"📚", "w":1,"h":2},
-  {"id":"cauldron",  "label":"Cauldron",  "emoji":"🫕", "w":1,"h":1},
-  {"id":"throne",    "label":"Throne",    "emoji":"💺", "w":1,"h":1},
-  {"id":"campfire",  "label":"Campfire",  "emoji":"🔥", "w":1,"h":1},
-  {"id":"well",      "label":"Well",      "emoji":"⭕", "w":1,"h":1},
-  {"id":"altar",     "label":"Altar",     "emoji":"🗿", "w":2,"h":1},
-  {"id":"pillar",    "label":"Pillar",    "emoji":"🏛", "w":1,"h":1},
-  {"id":"crate",     "label":"Crate",     "emoji":"📫", "w":1,"h":1},
-  {"id":"bed",       "label":"Bed",       "emoji":"🛏", "w":1,"h":2}
+  {"id": "chair",       "label": "Chair",          "emoji": "🪑", "w": 1, "h": 1},
+  {"id": "desk",        "label": "Desk",           "emoji": "🗄️", "w": 2, "h": 1},
+  {"id": "rug",         "label": "Rug",            "emoji": "🖼️", "w": 2, "h": 3},
+  {"id": "mirror",      "label": "Mirror",         "emoji": "🪞", "w": 1, "h": 1},
+
+  {"id": "door",        "label": "Door",           "emoji": "🚪", "w": 1, "h": 1},
+  {"id": "trapdoor",    "label": "Trapdoor",       "emoji": "🕳️", "w": 1, "h": 1},
+  {"id": "ladder",      "label": "Ladder",         "emoji": "🪜", "w": 1, "h": 1},
+  {"id": "statue",      "label": "Statue",         "emoji": "🗽", "w": 1, "h": 1},
+  {"id": "fountain",    "label": "Fountain",       "emoji": "⛲", "w": 2, "h": 2},
+  {"id": "rubble",      "label": "Rubble",         "emoji": "🪨", "w": 1, "h": 1},
+  {"id": "cage",        "label": "Cage",           "emoji": "⛓️", "w": 1, "h": 1},
+
+  {"id": "tree",        "label": "Tree",           "emoji": "🌳", "w": 2, "h": 2},
+  {"id": "bush",        "label": "Bush / Cover",   "emoji": "🌿", "w": 1, "h": 1},
+  {"id": "wagon",       "label": "Wagon / Cart",   "emoji": "🛒", "w": 2, "h": 3},
+  {"id": "tent",        "label": "Tent",           "emoji": "⛺", "w": 2, "h": 2},
+  {"id": "grave",       "label": "Grave",          "emoji": "🪦", "w": 1, "h": 1},
+
+  {"id": "magic_circle","label": "Magic Circle",   "emoji": "🔮", "w": 2, "h": 2},
+  {"id": "portal",      "label": "Portal",         "emoji": "🌀", "w": 2, "h": 2},
+  {"id": "treasure",    "label": "Treasure Pile",  "emoji": "💰", "w": 1, "h": 1},
+  {"id": "skeleton",    "label": "Corpse / Bones", "emoji": "💀", "w": 1, "h": 1},
+  {"id": "shrine",      "label": "Shrine",         "emoji": "⛩️", "w": 2, "h": 2}
 ]

@@ -55,9 +55,11 @@ function showTooltip(el, content, avoidEl = null) {
     // over the anchor row, so the tooltip can't cover other rows in the list.
     const pr = avoidEl.getBoundingClientRect();
     const r  = el.getBoundingClientRect();
-    left = pr.left - ttW - 8;
-    if (left < 8) left = pr.right + 8; // not enough room on the left, try the right
-    top  = Math.min(Math.max(r.top, 8), window.innerHeight - ttH - 8);
+    left = pr.left - ttW - 6;
+    if (left < 8) left = pr.right + 6; // not enough room on the left, try the right
+    // Center vertically on the row that was actually clicked, so the
+    // tooltip reads as attached to it rather than floating below it.
+    top  = Math.min(Math.max(r.top + r.height / 2 - ttH / 2, 8), window.innerHeight - ttH - 8);
   } else {
     // Position near anchor
     const r = el.getBoundingClientRect();
@@ -302,6 +304,12 @@ export async function registerTerms(containerEl) {
 // ── Search widget ─────────────────────────────────────────────────────────────
 // Creates a floating search box (🔍 button in HUD)
 let _searchEl = null;
+let _addTokenFn = null; // set only by mapeditor.html — players never get this button
+
+/** Lets the DM tool arm a "➕ Add to Map" action on monster search results.
+ *  fn receives the raw monster object (from data/monsters.json). Never set
+ *  in index.html/sheet.html, so players never see the button. */
+export function setAddTokenHandler(fn) { _addTokenFn = fn; }
 
 export function toggleGlossarySearch() {
   if (_searchEl) { _searchEl.remove(); _searchEl = null; return; }
@@ -343,17 +351,28 @@ export function toggleGlossarySearch() {
       results.innerHTML = "";
       for (const { type, item } of hits) {
         const el = document.createElement("div");
-        el.style.cssText = "padding:8px 10px;border-radius:4px;border:1px solid var(--border,#3d2e1a);background:rgba(255,255,255,.02);cursor:pointer;transition:background .1s";
-        el.innerHTML = `
+        el.style.cssText = "padding:8px 10px;border-radius:4px;border:1px solid var(--border,#3d2e1a);background:rgba(255,255,255,.02);cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:8px";
+        const info = document.createElement("div");
+        info.style.cssText = "flex:1;min-width:0";
+        info.innerHTML = `
           <div style="font-family:'Cinzel',serif;font-size:.55rem;color:var(--gold,#c8a84b);letter-spacing:.08em;text-transform:uppercase">${type}</div>
           <div style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--text,#d4c49a)">${item.name}</div>
           ${item.desc ? `<div style="font-size:.68rem;color:var(--dim,#6b5a38);margin-top:2px;font-style:italic">${descSnippet(Array.isArray(item.desc)?item.desc[0]:item.desc, 80)}</div>` : ""}`;
+        info.onclick = async () => {
+          const content = await lookupTerm(item.name);
+          if (content) { showTooltip(info, content, _searchEl); }
+        };
         el.onmouseenter = () => el.style.background = "rgba(200,168,75,.07)";
         el.onmouseleave = () => el.style.background = "rgba(255,255,255,.02)";
-        el.onclick = async () => {
-          const content = await lookupTerm(item.name);
-          if (content) { showTooltip(el, content, _searchEl); }
-        };
+        el.appendChild(info);
+        if (type === "Monster" && _addTokenFn) {
+          const addBtn = document.createElement("button");
+          addBtn.textContent = "➕";
+          addBtn.title = "Add to map";
+          addBtn.style.cssText = "flex-shrink:0;border:1px solid var(--gold-dim,#a8935a);background:rgba(200,168,75,.1);color:var(--gold,#c8a84b);border-radius:4px;width:26px;height:26px;font-size:13px;cursor:pointer";
+          addBtn.onclick = (e) => { e.stopPropagation(); _addTokenFn(item); };
+          el.appendChild(addBtn);
+        }
         results.appendChild(el);
       }
     }, 280);
