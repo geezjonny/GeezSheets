@@ -975,7 +975,7 @@ function draw(){
     _geoLX.globalCompositeOperation="destination-out";
     const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
     for(const li of getActiveLights()){const segs=li.shadows?_occ:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;_geoLX.save();_geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,g2=_geoLX.createRadialGradient(cx,cy,0,cx,cy,r),pun=Math.min(1,li.intensity*(lp.lightPunch||1));g2.addColorStop(0,`rgba(0,0,0,${pun})`);g2.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=g2;_geoLX.fillRect(cx-r,cy-r,r*2,r*2);_geoLX.restore();}
-    if(myCharacterId){const myTok=Object.values(tokens).find(t=>t.characterId===myCharacterId);if(myTok){const c=pcsData[myCharacterId]||{},dvT=parseInt(c.darkvision||c.senses?.darkvision||0)/5;if(dvT>0){const dvPoly=computeVisibilityPolygon(myTok.x+0.5,myTok.y+0.5,_occ,dvT);if(dvPoly.length>=3){const tx=(myTok.x+0.5)*TILE,ty=(myTok.y+0.5)*TILE,dr=dvT*TILE;_geoLX.save();_geoLX.globalCompositeOperation="destination-out";_geoLX.beginPath();_geoLX.moveTo(dvPoly[0].x*TILE,dvPoly[0].y*TILE);for(let i=1;i<dvPoly.length;i++)_geoLX.lineTo(dvPoly[i].x*TILE,dvPoly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const dg=_geoLX.createRadialGradient(tx,ty,0,tx,ty,dr);dg.addColorStop(0,"rgba(0,0,0,0.9)");dg.addColorStop(0.65,"rgba(0,0,0,0.4)");dg.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=dg;_geoLX.fillRect(tx-dr,ty-dr,dr*2,dr*2);_geoLX.restore();}}}}
+    if(myCharacterId){const myTok=Object.values(tokens).find(t=>t.type==="pc"&&(t.characterId===myCharacterId||t.name?.toLowerCase()===playerName?.toLowerCase()));if(myTok){const c=pcsData[myCharacterId]||{},dvT=parseInt(c.darkvision||c.senses?.darkvision||0)/5;if(dvT>0){const dvPoly=computeVisibilityPolygon(myTok.x+0.5,myTok.y+0.5,_occ,dvT);if(dvPoly.length>=3){const tx=(myTok.x+0.5)*TILE,ty=(myTok.y+0.5)*TILE,dr=dvT*TILE;_geoLX.save();_geoLX.globalCompositeOperation="destination-out";_geoLX.beginPath();_geoLX.moveTo(dvPoly[0].x*TILE,dvPoly[0].y*TILE);for(let i=1;i<dvPoly.length;i++)_geoLX.lineTo(dvPoly[i].x*TILE,dvPoly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const dg=_geoLX.createRadialGradient(tx,ty,0,tx,ty,dr);dg.addColorStop(0,"rgba(0,0,0,0.9)");dg.addColorStop(0.65,"rgba(0,0,0,0.4)");dg.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=dg;_geoLX.fillRect(tx-dr,ty-dr,dr*2,dr*2);_geoLX.restore();}}}}
     _geoLX.globalCompositeOperation="lighter";
     for(const li of getActiveLights()){const segs=li.shadows?_occ:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;_geoLX.save();_geoLX.beginPath();_geoLX.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)_geoLX.lineTo(poly[i].x*TILE,poly[i].y*TILE);_geoLX.closePath();_geoLX.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,col=li.color||"ffeccd88",rr=parseInt(col.slice(0,2),16),gg=parseInt(col.slice(2,4),16),bb=parseInt(col.slice(4,6),16),aa=((parseInt(col.slice(6,8)||"88",16)/255)*Math.min(1,li.intensity*(lp.lightPunch||1))).toFixed(2);const ggr=_geoLX.createRadialGradient(cx,cy,0,cx,cy,r);ggr.addColorStop(0,"rgba("+rr+","+gg+","+bb+","+aa+")");ggr.addColorStop(1,"rgba(0,0,0,0)");_geoLX.fillStyle=ggr;_geoLX.fillRect(cx-r,cy-r,r*2,r*2);_geoLX.restore();}
     _geoLX.globalCompositeOperation="source-over";
@@ -984,7 +984,7 @@ function draw(){
   } else {
     // Day: no darkness to tint, but still limit sight to line-of-sight so
     // players can't see through walls or across the whole map in daylight.
-    const myTok=myCharacterId&&Object.values(tokens).find(t=>t.characterId===myCharacterId);
+    const myTok=myCharacterId&&Object.values(tokens).find(t=>t.type==="pc"&&(t.characterId===myCharacterId||t.name?.toLowerCase()===playerName?.toLowerCase()));
     if(myTok){
       const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
       const DAY_SIGHT_RANGE=30; // generous — bounded mainly by walls, not this number
@@ -1031,11 +1031,11 @@ function propAtTile(tx,ty){
   return null;
 }
 
-// ── Containers — right-click to open, rolled fresh at the moment you open it ──
+// ── Containers — right-click OR shift+click to open, rolled fresh at the
+//    moment you open it (shift+click added as a trackpad-friendly alternate
+//    to right-click, same as every other right-click action in this file) ──
 loadLootData();
-viewport.addEventListener("contextmenu",e=>{
-  e.preventDefault();
-  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+function openContainerAt(tx,ty){
   const pk=propAtTile(tx,ty);
   if(!pk||!props[pk]?.container) return;
   const container=props[pk].container;
@@ -1055,6 +1055,11 @@ viewport.addEventListener("contextmenu",e=>{
     sendChat(`🎒 ${myCharacterName||playerName} searched it and found: ${summarizeLoot(coins,items)}.`,"GM","system");
     toast(`You found: ${summarizeLoot(coins,items)}`);
   })();
+}
+viewport.addEventListener("contextmenu",e=>{
+  e.preventDefault();
+  const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+  openContainerAt(tx,ty);
 });
 
 let _lastInvestigateText=null;
@@ -1094,6 +1099,7 @@ viewport.addEventListener("pointerdown",e=>{
     return;
   }
   const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+  if(e.shiftKey){ openContainerAt(tx,ty); return; }
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
     const tok=tokens[tokId];
@@ -1201,6 +1207,7 @@ window.addEventListener("keydown",e=>{
   const[tokId,tok]=entry;
   if(playersLocked){toast("🔒 Movement is locked");return;}
   if(tok.trapped){toast("🪤 You're trapped! The GM needs to release you.");return;}
+  if(tok.moveLocked){toast("🔒 The GM has locked your movement.");return;}
   const[dx,dy]=d;
   const fromX=tok.x,fromY=tok.y,toX=fromX+dx,toY=fromY+dy;
   const occ=activeOccluders(geometry.walls,geometry.doors||[]);
