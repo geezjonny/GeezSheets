@@ -55,7 +55,7 @@ export function sHpColor(cur,max) {
 
 // ── Spell/item API data cache ─────────────────────────────────────────────────
 // These are lazy-loaded when the sheet is first opened
-import { getSpells, getEquipment, getMagicItems, getSkills } from "./data.js";
+import { getSpells, getEquipment, getMagicItems, getSkills, getClassLevels, getClasses, getFeatures } from "./data.js";
 
 let spellsDb = {}, equipDb = {}, magicDb = {}, skillsDb = null, apiLoaded = false;
 
@@ -176,6 +176,88 @@ async function _fetchCharPath(charId) {
   return { path, data: snap.val() };
 }
 
+window.levelUpChar = async function(charId) {
+  const found = await _fetchCharPath(charId);
+  if (!found) return;
+  const { path, data: c } = found;
+  const curLevel = parseInt(c.level, 10) || 1;
+
+  const targetStr = prompt(`Level up ${c.name || "this character"} from level ${curLevel} to:`, String(curLevel + 1));
+  if (targetStr === null) return;
+  const targetLevel = parseInt(targetStr, 10);
+  if (!targetLevel || targetLevel <= curLevel || targetLevel > 20) {
+    toast("Enter a level higher than the current one (1-20).");
+    return;
+  }
+
+  const classKey = (c.class || "").toLowerCase().trim();
+  const [allLevels, allClasses, allFeatures] = await Promise.all([getClassLevels(), getClasses(), getFeatures()]);
+  const levels = allLevels[classKey];
+  if (!levels) {
+    toast(`Couldn't find "${c.class}" in the class data — check the class name matches SRD spelling (e.g. "Wizard", "Fighter").`);
+    return;
+  }
+  const classInfo = allClasses.find(cl => cl.index === classKey);
+  const hitDie = classInfo?.hit_die || 8;
+
+  // Walk every level from curLevel+1 through targetLevel, collecting what changed along the way
+  const gainedFeatures = [];
+  let newProfBonus = c.proficiency_bonus ?? 2;
+  let newSlots = null;
+  let latestClassSpecific = null;
+  for (let lv = curLevel + 1; lv <= targetLevel; lv++) {
+    const entry = levels.find(l => l.level === lv);
+    if (!entry) continue;
+    if (entry.prof_bonus != null) newProfBonus = entry.prof_bonus;
+    if (entry.spellcasting) {
+      newSlots = {};
+      for (let sl = 1; sl <= 9; sl++) {
+        const v = entry.spellcasting[`spell_slots_level_${sl}`];
+        if (v) newSlots[sl] = v;
+      }
+    }
+    if (entry.class_specific && Object.keys(entry.class_specific).length) latestClassSpecific = entry.class_specific;
+    for (const f of (entry.features || [])) {
+      const detail = allFeatures.find(ft => ft.index === f.index);
+      gainedFeatures.push({ name: f.name, level: lv, desc: detail?.desc?.[0] || "" });
+    }
+  }
+
+  const levelsGained = targetLevel - curLevel;
+  const avgHpPerLevel = Math.floor(hitDie / 2) + 1;
+  const suggestedHp = avgHpPerLevel * levelsGained;
+  const hpInput = prompt(
+    `HP gained over ${levelsGained} level${levelsGained > 1 ? "s" : ""} (d${hitDie} hit die).\n` +
+    `Roll ${levelsGained} × d${hitDie} yourself, or just use the average (${suggestedHp}):`,
+    String(suggestedHp)
+  );
+  if (hpInput === null) return;
+  const hpGained = parseInt(hpInput, 10) || 0;
+
+  const updates = { level: targetLevel, proficiency_bonus: newProfBonus };
+  if (c.combat) {
+    updates["combat/hp_max"] = (c.combat.hp_max || 0) + hpGained;
+    updates["combat/hp_current"] = (c.combat.hp_current || 0) + hpGained;
+  }
+  if (newSlots) {
+    for (const [sl, v] of Object.entries(newSlots)) updates[`spellcasting/slots/${sl}`] = v;
+  }
+  if (gainedFeatures.length) {
+    const existingText = c.text_blocks?.features_traits || "";
+    const newText = gainedFeatures.map(f => `Level ${f.level} — ${f.name}${f.desc ? ": " + f.desc : ""}`).join("\n\n");
+    updates["text_blocks/features_traits"] = existingText ? `${existingText}\n\n${newText}` : newText;
+  }
+
+  const flatUpdates = {};
+  for (const [k, v] of Object.entries(updates)) flatUpdates[`${path}/${k}`] = v;
+  await update(ref(db), flatUpdates);
+
+  let summary = `⬆ ${c.name || "Character"} is now level ${targetLevel}!\n\nProficiency bonus: +${newProfBonus}\nHP: +${hpGained}`;
+  if (gainedFeatures.length) summary += `\n\nNew features:\n${gainedFeatures.map(f=>"• "+f.name).join("\n")}`;
+  if (latestClassSpecific) summary += `\n\n⚠ Class resources changed — update these manually if you're tracking them as charges:\n${Object.entries(latestClassSpecific).map(([k,v])=>`${k}: ${v}`).join("\n")}`;
+  alert(summary);
+};
+
 async function _executeLongRest(charId) {
   try {
     const found = await _fetchCharPath(charId);
@@ -221,6 +303,14 @@ async function _executeShortRest(charId) {
     await update(ref(db), updates);
     toast(`☕ Short rest complete${heal>0?` — recovered ${heal} HP`:""}${restoredAbility||restoredSlots?", abilities restored":""}.`);
   } catch(e) { console.error("Short rest failed:", e); }
+}
+
+/** DM grants a rest directly to one character, bypassing the party vote --
+ *  same execution logic as an approved vote, just triggered immediately. */
+export async function grantRest(charId, type, charName) {
+  await sendChat(`🎁 The DM has granted ${charName||"a player"} a ${type==="long"?"Long":"Short"} Rest.`, "GM", "system");
+  if (type === "long") await _executeLongRest(charId);
+  else await _executeShortRest(charId);
 }
 
 // ── Party rest votes ─────────────────────────────────────────────────────────
@@ -648,6 +738,9 @@ export function buildSheetCard(char, editable = false) {
         <button class="hp-btn" style="flex:1" onclick="window.shortRest('${char.id}')">☕ Short Rest</button>
         <button class="hp-btn" style="flex:1" onclick="window.longRest('${char.id}')">🌙 Long Rest</button>
       </div>
+      ${editable?`<div class="hp-controls" style="margin-top:4px">
+        <button class="hp-btn" style="flex:1;color:var(--gold,#c8a84b);border-color:rgba(200,168,75,.4)" onclick="window.levelUpChar('${char.id}')">⬆ Level Up</button>
+      </div>`:''}
     </div>
     ${lightBanner}
     <div class="stats-row">
