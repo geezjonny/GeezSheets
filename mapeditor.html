@@ -832,6 +832,59 @@ let hoverTileX=0,hoverTileY=0,hoverWX=0,hoverWY=0,roofOpacity=0.5;
 let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
 let moveOffX=0,moveOffY=0,moveStartWorldX=0,moveStartWorldY=0;
 let selStamps={},selProps={},selTokenIds=[];
+
+// ── Marquee select + copy/paste (Select verb, baseline) — genuinely new,
+//    distinct from the old dead select-and-move system above. Copy keeps the
+//    original in place; paste stamps a copy wherever you click, repeatably. ──
+let clipSelecting=false, clipSelStartX=0, clipSelStartY=0;
+let clipSelMinX=null, clipSelMinY=null, clipSelMaxX=null, clipSelMaxY=null;
+let mapClipboard=null;
+let pasteArmed=false;
+
+function captureClipboard(minX,minY,maxX,maxY){
+  const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[]};
+  for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){
+    const k=key(x,y);
+    if(tiles[k]) clip.tiles[`${x-minX},${y-minY}`]={...tiles[k]};
+    if(stamps[k]) clip.stamps[`${x-minX},${y-minY}`]=stamps[k];
+    if(props[k]) clip.props[`${x-minX},${y-minY}`]={...props[k]};
+  }
+  for(const tok of Object.values(tokens)){
+    if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY){
+      clip.tokens.push({...tok,_dx:tok.x-minX,_dy:tok.y-minY});
+    }
+  }
+  return clip;
+}
+
+async function commitPaste(anchorX,anchorY){
+  if(!mapClipboard) return;
+  pushUndo();
+  for(const[rel,t]of Object.entries(mapClipboard.tiles)){
+    const[dx,dy]=rel.split(",").map(Number);
+    tiles[key(anchorX+dx,anchorY+dy)]={...t};
+  }
+  for(const[rel,emoji]of Object.entries(mapClipboard.stamps)){
+    const[dx,dy]=rel.split(",").map(Number);
+    const nk=key(anchorX+dx,anchorY+dy);
+    stamps[nk]=emoji; saveStamp(getMapName(),nk,emoji);
+  }
+  for(const[rel,p]of Object.entries(mapClipboard.props)){
+    const[dx,dy]=rel.split(",").map(Number);
+    props[key(anchorX+dx,anchorY+dy)]={...p};
+  }
+  for(const tok of mapClipboard.tokens){
+    const newId="tok_"+Date.now()+"_"+Math.floor(Math.random()*10000);
+    const newTok={...tok,x:anchorX+tok._dx,y:anchorY+tok._dy};
+    delete newTok._dx; delete newTok._dy;
+    tokens[newId]=newTok;
+    saveTokenRTDB(getMapName(),newId,newTok);
+  }
+  scheduleSave();
+  await savePropsLocal(getMapName(),props);
+  toast("Pasted — click again to paste more, Esc to stop");
+}
+
 let draggingToken=null,draggingProp=null,placingToken=null;
 let pingMode=false,isHolding=false,pingHoldTimer=null,myLaserRef=null;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0,spaceDown=false;
@@ -1750,6 +1803,53 @@ function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/cam
 
 function drawPreview(){if(!(activeCategory==="background"&&activeVerb==="pencil"))return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
 
+function drawClipSelection(){
+  // Live drag-in-progress rectangle
+  if(clipSelecting){
+    const minX=Math.min(clipSelStartX,hoverTileX),maxX=Math.max(clipSelStartX,hoverTileX);
+    const minY=Math.min(clipSelStartY,hoverTileY),maxY=Math.max(clipSelStartY,hoverTileY);
+    ctx.fillStyle="rgba(100,160,255,0.15)";
+    ctx.fillRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);
+    ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=1.5/camera.zoom;
+    ctx.setLineDash([5/camera.zoom,3/camera.zoom]);
+    ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);
+    ctx.setLineDash([]);
+  }
+  // Finalized selection outline (persists until cleared, copied from, or replaced)
+  else if(clipSelMinX!=null){
+    ctx.strokeStyle="rgba(100,160,255,0.7)";ctx.lineWidth=1.5/camera.zoom;
+    ctx.setLineDash([5/camera.zoom,3/camera.zoom]);
+    ctx.strokeRect(clipSelMinX*TILE,clipSelMinY*TILE,(clipSelMaxX-clipSelMinX+1)*TILE,(clipSelMaxY-clipSelMinY+1)*TILE);
+    ctx.setLineDash([]);
+  }
+  // Transparent paste preview, following the cursor
+  if(pasteArmed&&mapClipboard&&hoverTileX!=null){
+    const ax=hoverTileX,ay=hoverTileY;
+    ctx.save();ctx.globalAlpha=0.5;
+    for(const[rel,t]of Object.entries(mapClipboard.tiles)){
+      const[dx,dy]=rel.split(",").map(Number);
+      drawTileAt(ax+dx,ay+dy,t.terrain);
+    }
+    for(const[rel,emoji]of Object.entries(mapClipboard.stamps)){
+      const[dx,dy]=rel.split(",").map(Number);
+      ctx.font=`${Math.round(TILE*.65)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.fillText(emoji,(ax+dx)*TILE+TILE/2,(ay+dy)*TILE+TILE/2);
+    }
+    for(const[rel,p]of Object.entries(mapClipboard.props)){
+      const[dx,dy]=rel.split(",").map(Number);
+      const def=customProps.find(d=>d.id===p.propId)||{emoji:"📦",w:1,h:1};
+      const px=(ax+dx)*TILE,py=(ay+dy)*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
+      const img=propTextures[p.propId];
+      if(img)ctx.drawImage(img,px,py,pw,ph);
+      else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);}
+    }
+    ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=2/camera.zoom;
+    ctx.setLineDash([4/camera.zoom,3/camera.zoom]);
+    ctx.strokeRect(ax*TILE,ay*TILE,mapClipboard.w*TILE,mapClipboard.h*TILE);
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+}
 function drawSelection(){if(currentShape!=="select")return;if(selectPhase==="marquee"&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(100,160,255,0.15)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=1.5/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(minX*TILE,minY*TILE,(maxX-minX+1)*TILE,(maxY-minY+1)*TILE);ctx.setLineDash([]);return;}if(selectPhase==="selected"||selectPhase==="moving"){const ox=moveOffX,oy=moveOffY;const TERRAINS=getTERRAINS();for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);const{terrain}=selectTiles[k];const px=(tx+ox)*TILE,py=(ty+oy)*TILE;const def=TERRAINS.find(t=>t.id===terrain);if(textures[terrain])ctx.drawImage(textures[terrain],px,py,TILE,TILE);else{ctx.fillStyle=def?.color||"#333";ctx.fillRect(px,py,TILE,TILE);}}const px=(selMinX+ox)*TILE,py=(selMinY+oy)*TILE,pw=(selMaxX-selMinX+1)*TILE,ph=(selMaxY-selMinY+1)*TILE;ctx.fillStyle="rgba(100,160,255,0.18)";ctx.fillRect(px,py,pw,ph);ctx.strokeStyle="rgba(100,160,255,0.95)";ctx.lineWidth=2/camera.zoom;ctx.setLineDash([5/camera.zoom,3/camera.zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);}}
 
 // ── Selection helpers ─────────────────────────────────────────────────────────
@@ -1808,6 +1908,7 @@ function render(){
   if(roofMode&&dragging){const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.save();if(currentTerrain==="erase"){ctx.globalAlpha=0.5;ctx.fillStyle="rgba(220,60,60,0.5)";for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else{ctx.globalAlpha=roofOpacity*0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)drawTileAt(x,y,currentTerrain);}ctx.restore();}
   drawGrid();
   if(currentShape==="select")drawSelection();else drawPreview();
+  drawClipSelection();
   ctx.restore();
 
   // ── Geometry editor indicators (camera space) ─────────────────────────────
@@ -1949,7 +2050,25 @@ function render(){
 // ── Pointer events ────────────────────────────────────────────────────────────
 window.addEventListener("keydown",e=>{
   if(e.code==="Space"){spaceDown=true;canvas.style.cursor="grab";}
-  if(e.code==="Escape"){if(placingToken){placingToken=null;toast("Cancelled.");}if(selectPhase&&selectPhase!=="marquee")commitSelection();rulerStart=null;rulerEnd=null;rulerActive=false;closeSheetPanel();}
+  if(e.code==="Escape"){
+    if(placingToken){placingToken=null;toast("Cancelled.");}
+    if(selectPhase&&selectPhase!=="marquee")commitSelection();
+    if(pasteArmed){pasteArmed=false;toast("Paste cancelled");}
+    else if(clipSelMinX!=null){clipSelMinX=clipSelMinY=clipSelMaxX=clipSelMaxY=null;}
+    rulerStart=null;rulerEnd=null;rulerActive=false;closeSheetPanel();
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==="c"&&!e.target.matches("input,textarea,select,[contenteditable]")){
+    if(clipSelMinX==null) return;
+    e.preventDefault();
+    mapClipboard=captureClipboard(clipSelMinX,clipSelMinY,clipSelMaxX,clipSelMaxY);
+    toast(`Copied ${mapClipboard.w}×${mapClipboard.h} area — Ctrl+V to paste`);
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==="v"&&!e.target.matches("input,textarea,select,[contenteditable]")){
+    if(!mapClipboard) return;
+    e.preventDefault();
+    pasteArmed=true;
+    toast(`Click where to paste (${mapClipboard.w}×${mapClipboard.h}) — Esc to stop`);
+  }
   if((e.ctrlKey||e.metaKey)&&e.code==="KeyZ"&&!e.shiftKey){e.preventDefault();undo();}
   if((e.ctrlKey||e.metaKey)&&(e.code==="KeyY"||(e.code==="KeyZ"&&e.shiftKey))){e.preventDefault();redo();}
 });
@@ -2400,6 +2519,17 @@ canvas.addEventListener("pointerdown",e=>{
     // Prop drag
     const pk=propAtTile(tx,ty);
     if(pk){canvas.setPointerCapture(e.pointerId);const p=props[pk];let ox,oy;if(p.attachedTo&&tokens[p.attachedTo]){ox=tokens[p.attachedTo].x+(p.offsetX||0);oy=tokens[p.attachedTo].y+(p.offsetY||0);}else{[ox,oy]=pk.split(",").map(Number);}draggingProp={oldKey:pk,offsetTX:tx-ox,offsetTY:ty-oy};return;}
+
+    // Paste — click anywhere to stamp the clipboard, stays armed for repeat pastes
+    if(pasteArmed&&mapClipboard){ commitPaste(tx,ty); return; }
+
+    // Nothing else claimed this click — start a marquee selection (Select verb only)
+    if(activeVerb==="select"){
+      canvas.setPointerCapture(e.pointerId);
+      clipSelecting=true;
+      clipSelStartX=tx; clipSelStartY=ty;
+      return;
+    }
   }
 });
 
@@ -2466,6 +2596,15 @@ canvas.addEventListener("pointerup",e=>{
 
   // Prop drag end
   if(draggingProp){savePropsLocal(getMapName(),props);draggingProp=null;return;}
+
+  // Marquee selection end
+  if(clipSelecting){
+    clipSelecting=false;
+    clipSelMinX=Math.min(clipSelStartX,hoverTileX); clipSelMaxX=Math.max(clipSelStartX,hoverTileX);
+    clipSelMinY=Math.min(clipSelStartY,hoverTileY); clipSelMaxY=Math.max(clipSelStartY,hoverTileY);
+    toast(`Selected ${clipSelMaxX-clipSelMinX+1}×${clipSelMaxY-clipSelMinY+1} — Ctrl+C to copy`);
+    return;
+  }
 
   if(!dragging) return;
   dragging=false;
