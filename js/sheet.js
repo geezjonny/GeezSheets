@@ -99,13 +99,13 @@ function sheetItemCat(item) {
   if (!item) return null;
   return item.equipment_category?.name ?? item.gear_category?.name ?? item.rarity?.name ?? null;
 }
-function sheetSpellDesc(name) {
+export function sheetSpellDesc(name) {
   const s = spellsDb[name?.toLowerCase()];
   if (!s) return "";
   const d = s.desc ?? [];
   return Array.isArray(d) ? d[0] ?? "" : `${d}`;
 }
-function sheetSpellMeta(name) {
+export function sheetSpellMeta(name) {
   const s = spellsDb[name?.toLowerCase()];
   if (!s) return "";
   const parts = [];

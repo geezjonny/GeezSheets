@@ -302,10 +302,13 @@ canvas{display:block;width:100%;height:100%}
 @keyframes spin{to{transform:rotate(360deg)}}
 .turn-menu-btn{display:block;width:100%;text-align:left;background:none;border:none;border-radius:4px;padding:8px 10px;font-family:'Cinzel',serif;font-size:12px;color:var(--text,#d4c49a);cursor:pointer;transition:background .12s}
 .turn-menu-btn:hover{background:rgba(200,168,75,.1)}
-.turn-menu-item{display:block;width:100%;text-align:left;background:none;border:none;border-radius:4px;padding:7px 10px;font-family:'IM Fell English',serif;font-size:12px;color:var(--text,#d4c49a);cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.04)}
-.turn-menu-item:hover{background:rgba(200,168,75,.1)}
+.turn-menu-item{display:block;width:100%;text-align:left;background:none;border:none;border-radius:4px;padding:8px 10px;font-family:'IM Fell English',serif;font-size:12px;color:var(--text,#d4c49a);border-bottom:1px solid rgba(255,255,255,.04)}
 .turn-menu-item .tmi-name{color:var(--gold,#c8a84b);font-family:'Cinzel',serif;font-size:11px}
 .turn-menu-item .tmi-meta{color:var(--dim,#6b5a38);font-size:10px;margin-top:1px}
+.turn-menu-item .tmi-howto{color:#8fa8d0;font-size:10.5px;margin-top:4px;font-style:italic}
+.turn-menu-item .tmi-desc{color:var(--text,#d4c49a);font-size:11px;line-height:1.4;margin-top:4px}
+.tmi-action-btn{flex-shrink:0;font-family:'Cinzel',serif;font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid var(--gold-dim,#a8935a);background:rgba(200,168,75,.1);color:var(--gold,#c8a84b);cursor:pointer;white-space:nowrap}
+.tmi-action-btn:disabled{opacity:.4;cursor:default}
 </style>
 </head>
 <body>
@@ -473,7 +476,7 @@ import { rollDie } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, nextTurn } from "./js/initiative.js";
 import { resolvePortal } from "./js/map.js";
 import { subscribeRestRequest, runApprovedRest } from "./js/sheet.js";
-import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
+import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMeta, loadSheetApi } from "./js/sheet.js";
 import { subscribeTheaterMode, startTheaterFog, stopTheaterFog } from "./js/theater.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
@@ -888,10 +891,21 @@ function showTurnMenuSub(items,emptyMsg){
     return;
   }
   for(const item of items){
-    const el=document.createElement("button");
+    const el=document.createElement("div");
     el.className="turn-menu-item";
-    el.innerHTML=`<div class="tmi-name">${item.name}</div>${item.meta?`<div class="tmi-meta">${item.meta}</div>`:""}`;
-    el.onclick=item.onClick;
+    el.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+        <div class="tmi-name">${item.name}</div>
+        ${item.btnLabel?`<button class="tmi-action-btn">${item.btnLabel}</button>`:""}
+      </div>
+      ${item.meta?`<div class="tmi-meta">${item.meta}</div>`:""}
+      ${item.howTo?`<div class="tmi-howto">${item.howTo}</div>`:""}
+      ${item.desc?`<div class="tmi-desc">${item.desc}</div>`:""}
+    `;
+    if(item.onBtnClick){
+      const btn=el.querySelector(".tmi-action-btn");
+      if(btn) btn.onclick=(e)=>{e.stopPropagation();item.onBtnClick();};
+    }
     list.appendChild(el);
   }
 }
@@ -902,41 +916,46 @@ function buildActionList(){
     const raw=a.to_hit!=null&&a.to_hit!==""?a.to_hit:(a.attack_bonus??0);
     const atk=(parseInt(String(raw).replace(/[^0-9-]/g,""),10)||0);
     const atkStr=(atk>=0?"+":"")+atk;
+    const notes=[a.properties,a.notes].filter(Boolean).join(" · ");
     items.push({
       name:`⚔ ${a.name||"Unnamed attack"}`,
-      meta:`${atkStr} to hit · ${a.damage||"—"}${a.damage_type?" "+a.damage_type:""}${a.range?" · "+a.range:""}`,
-      onClick:()=>{
-        sendChat(`⚔ ${myCharacterName||playerName} attacks with **${a.name}**: ${atkStr} to hit, ${a.damage||"—"}${a.damage_type?" "+a.damage_type:""}.`,playerName,"chat");
-        showTurnMenuMain();
-      }
+      meta:`Attack ${atkStr} · Damage ${a.damage||"—"}${a.damage_type?" "+a.damage_type:""}${a.range?" · Range "+a.range:""}`,
+      howTo:`To use: roll a d20 ${atkStr} vs their AC. If it hits, roll ${a.damage||"—"} damage.`,
+      desc:notes,
     });
   }
-  const spells=c.spellcasting?.spells||[];
-  const slotsMax=c.spellcasting?.slots||{},slotsUsed=c.spellcasting?.slots_used||{};
+  const sp=c.spellcasting||{};
+  const spells=sp.spells||[];
+  const slotsMax=sp.slots||{},slotsUsed=sp.slots_used||{};
+  const dc=sp.spell_save_dc,atkBonus=sp.spell_attack_bonus;
   for(const s of spells){
     const isCantrip=s.level===0||s.prepared_type==="cantrip";
+    const metaHtml=sheetSpellMeta(s.name); // already-formatted "Cast/Range/Duration" spans
+    const desc=sheetSpellDesc(s.name);
     if(isCantrip){
       items.push({
         name:`✨ ${s.name} (Cantrip)`,
-        meta:"",
-        onClick:()=>{
-          sendChat(`✨ ${myCharacterName||playerName} casts **${s.name}**.`,playerName,"chat");
-          showTurnMenuMain();
-        }
+        meta:metaHtml.replace(/<\/?div[^>]*>/g,""),
+        howTo:(dc||atkBonus!=null)?`To use: ${atkBonus!=null?`spell attack ${atkBonus>=0?"+":""}${atkBonus}`:`target saves DC ${dc}`}.`:"",
+        desc,
       });
     }else{
       const lvl=s.level||1;
       const max=slotsMax[String(lvl)]??slotsMax[lvl]??0;
       const used=slotsUsed[String(lvl)]??slotsUsed[lvl]??0;
-      if(max-used<=0) continue; // no slot available -- don't show it
+      const remaining=max-used;
+      if(max<=0) continue; // character doesn't have slots at this level at all
       items.push({
         name:`✨ ${s.name} (Lv ${lvl})`,
-        meta:`${max-used} slot${max-used===1?"":"s"} remaining`,
-        onClick:async()=>{
+        meta:`${metaHtml.replace(/<\/?div[^>]*>/g,"")} · ${remaining} slot${remaining===1?"":"s"} remaining`,
+        howTo:(dc||atkBonus!=null)?`To use: ${atkBonus!=null?`spell attack ${atkBonus>=0?"+":""}${atkBonus}`:`target saves DC ${dc}`}.`:"",
+        desc,
+        btnLabel:remaining>0?"− Use Slot":"No slots left",
+        onBtnClick:remaining>0?async()=>{
           await set(ref(db,`characters/pcs/${myCharacterId}/spellcasting/slots_used/${lvl}`),used+1);
-          sendChat(`✨ ${myCharacterName||playerName} casts **${s.name}** (Level ${lvl} slot).`,playerName,"chat");
-          showTurnMenuMain();
-        }
+          toast(`Used a Level ${lvl} slot for ${s.name}`);
+          showTurnMenuSub(buildActionList(),"No attacks or castable spells found on your sheet.");
+        }:null,
       });
     }
   }
@@ -947,14 +966,23 @@ function buildBonusList(){
   const items=[];
   for(const[abKey,ab]of Object.entries(c.abilities||{})){
     if(!ab||!ab.label) continue;
-    items.push({
-      name:`⚡ ${ab.label}`,
-      meta:ab.effect_desc||"",
-      onClick:()=>{
-        sendChat(`⚡ ${myCharacterName||playerName} uses **${ab.label}**.`,playerName,"chat");
-        showTurnMenuMain();
-      }
-    });
+    if(ab.kind==="charge"&&ab.max){
+      const used=ab.max-(ab.current??ab.max);
+      const remaining=ab.max-used;
+      items.push({
+        name:`⚡ ${ab.label}`,
+        meta:[ab.die,ab.recharge?`recharge: ${ab.recharge}`:null,`${remaining}/${ab.max} remaining`].filter(Boolean).join(" · "),
+        desc:ab.effect_desc||"",
+        btnLabel:remaining>0?"− Use Charge":"No charges left",
+        onBtnClick:remaining>0?async()=>{
+          await set(ref(db,`characters/pcs/${myCharacterId}/abilities/${abKey}/current`),ab.max-used-1);
+          toast(`Used a charge of ${ab.label}`);
+          showTurnMenuSub(buildBonusList(),"No bonus-action-eligible features listed — check your sheet's Features & Traits.");
+        }:null,
+      });
+    }else{
+      items.push({ name:`⚡ ${ab.label}`, meta:"", desc:ab.effect_desc||"" });
+    }
   }
   return items;
 }
@@ -1427,6 +1455,7 @@ window.addEventListener("keydown",e=>{
   subscribePassphrase();
   subscribeTalking();
   await loadConfig();
+  loadSheetApi();
   buildConditionsMap();
 
   // Dice buttons in HUD
