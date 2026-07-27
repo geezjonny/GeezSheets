@@ -300,6 +300,12 @@ canvas{display:block;width:100%;height:100%}
 #overlay p{font-family:'Cinzel',serif;font-size:.85rem;color:var(--dim)}
 .spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.turn-menu-btn{display:block;width:100%;text-align:left;background:none;border:none;border-radius:4px;padding:8px 10px;font-family:'Cinzel',serif;font-size:12px;color:var(--text,#d4c49a);cursor:pointer;transition:background .12s}
+.turn-menu-btn:hover{background:rgba(200,168,75,.1)}
+.turn-menu-item{display:block;width:100%;text-align:left;background:none;border:none;border-radius:4px;padding:7px 10px;font-family:'IM Fell English',serif;font-size:12px;color:var(--text,#d4c49a);cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.04)}
+.turn-menu-item:hover{background:rgba(200,168,75,.1)}
+.turn-menu-item .tmi-name{color:var(--gold,#c8a84b);font-family:'Cinzel',serif;font-size:11px}
+.turn-menu-item .tmi-meta{color:var(--dim,#6b5a38);font-size:10px;margin-top:1px}
 </style>
 </head>
 <body>
@@ -389,6 +395,26 @@ canvas{display:block;width:100%;height:100%}
     <canvas id="tom-fog" style="position:absolute;inset:0;display:none;z-index:5000;pointer-events:none"></canvas>
     <div id="tom-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:5001;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;color:var(--gold-dim,#a8935a);text-transform:uppercase;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.8)">🎭 Theater of the Mind</div>
     <div id="investigate-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:400;max-width:70%;background:rgba(20,16,10,.88);border:1px solid var(--gold-dim,#a8935a);border-radius:6px;padding:8px 16px;font-family:'IM Fell English',serif;font-size:14px;line-height:1.5;color:var(--text,#d4c49a);text-align:center;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.6)"></div>
+
+    <div id="turn-menu" style="position:absolute;bottom:16px;right:16px;display:none;z-index:410;background:rgba(20,16,10,.94);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.6);font-family:'Cinzel',serif;width:230px;overflow:hidden">
+      <div style="padding:8px 12px;border-bottom:1px solid var(--border,#3d2e1a);font-size:11px;color:var(--gold,#c8a84b);letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center">
+        <span>⚔ Your Turn</span>
+        <span id="turn-menu-collapse" style="cursor:pointer;color:var(--dim,#6b5a38);font-size:14px;line-height:1" title="Minimize">–</span>
+      </div>
+      <div id="turn-menu-body">
+        <div id="turn-menu-main" style="display:flex;flex-direction:column;padding:6px">
+          <button class="turn-menu-btn" data-tm="move">🏃 Move</button>
+          <button class="turn-menu-btn" data-tm="action">⚔ Action</button>
+          <button class="turn-menu-btn" data-tm="bonus">⚡ Bonus Action</button>
+          <button class="turn-menu-btn" data-tm="end" style="color:#e08a8a">⏭ End Turn</button>
+        </div>
+        <div id="turn-menu-sub" style="display:none;flex-direction:column;padding:6px;max-height:280px;overflow-y:auto">
+          <button id="turn-menu-back" style="align-self:flex-start;background:none;border:none;color:var(--dim,#6b5a38);font-family:'Cinzel',serif;font-size:10px;cursor:pointer;padding:4px 6px;margin-bottom:2px">← Back</button>
+          <div id="turn-menu-sub-list"></div>
+        </div>
+      </div>
+    </div>
+    <div id="turn-menu-tab" style="position:absolute;bottom:16px;right:16px;display:none;z-index:410;background:rgba(20,16,10,.94);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;padding:8px 14px;font-family:'Cinzel',serif;font-size:11px;color:var(--gold,#c8a84b);cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.6)">⚔ Your Turn</div>
   </div>
 
   <div id="initiative-bar">
@@ -444,7 +470,7 @@ import { subscribePassphrase, checkPassphrase, hasPassphraseSet, saveAuthSession
 import { sendChat, renderChat } from "./js/chat.js";
 import { loadLootData, generateContainerLoot, summarizeLoot } from "./js/loot.js";
 import { rollDie } from "./js/dice.js";
-import { subscribeTokenStrip, rollInitiative } from "./js/initiative.js";
+import { subscribeTokenStrip, rollInitiative, nextTurn } from "./js/initiative.js";
 import { resolvePortal } from "./js/map.js";
 import { subscribeRestRequest, runApprovedRest } from "./js/sheet.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn } from "./js/sheet.js";
@@ -829,8 +855,124 @@ let playersLocked=false;
 onValue(ref(db,"session/locked"),snap=>{playersLocked=!!snap.val();});
 
 let inCombat=false,initiativeState={order:[],active:null};
-onValue(ref(db,"session/inCombat"),snap=>{inCombat=!!snap.val();});
-onValue(ref(db,"initiative"),snap=>{const d=snap.val()||{};initiativeState={order:d.order||[],active:d.active||null};});
+onValue(ref(db,"session/inCombat"),snap=>{inCombat=!!snap.val();updateTurnMenu();});
+onValue(ref(db,"initiative"),snap=>{const d=snap.val()||{};initiativeState={order:d.order||[],active:d.active||null};updateTurnMenu();});
+
+// ── Turn menu — shows on your turn, surfaces what your sheet says you can do.
+//    Selecting something announces it in chat; it doesn't roll or resolve
+//    anything itself, except marking a spell slot used when you cast. ────────
+let _turnMenuCollapsed=false;
+function myOwnTokenEntry(){
+  return Object.entries(tokens).find(([id,t])=>t.type==="pc"&&(t.name?.toLowerCase()===playerName.toLowerCase()||t.characterId===myCharacterId));
+}
+function updateTurnMenu(){
+  const menu=document.getElementById("turn-menu"),tab=document.getElementById("turn-menu-tab");
+  if(!menu||!tab) return;
+  const entry=myOwnTokenEntry();
+  const isMyTurn=inCombat&&initiativeState.order.length&&entry&&initiativeState.active===(entry[1].id||entry[0]);
+  if(!isMyTurn){ menu.style.display="none"; tab.style.display="none"; return; }
+  if(_turnMenuCollapsed){ menu.style.display="none"; tab.style.display="block"; }
+  else{ menu.style.display="block"; tab.style.display="none"; showTurnMenuMain(); }
+}
+function showTurnMenuMain(){
+  document.getElementById("turn-menu-main").style.display="flex";
+  document.getElementById("turn-menu-sub").style.display="none";
+}
+function showTurnMenuSub(items,emptyMsg){
+  document.getElementById("turn-menu-main").style.display="none";
+  const sub=document.getElementById("turn-menu-sub");sub.style.display="flex";
+  const list=document.getElementById("turn-menu-sub-list");
+  list.innerHTML="";
+  if(!items.length){
+    list.innerHTML=`<div style="padding:10px;font-family:'IM Fell English',serif;font-size:11px;color:var(--dim,#6b5a38);font-style:italic">${emptyMsg}</div>`;
+    return;
+  }
+  for(const item of items){
+    const el=document.createElement("button");
+    el.className="turn-menu-item";
+    el.innerHTML=`<div class="tmi-name">${item.name}</div>${item.meta?`<div class="tmi-meta">${item.meta}</div>`:""}`;
+    el.onclick=item.onClick;
+    list.appendChild(el);
+  }
+}
+function buildActionList(){
+  const c=pcsData[myCharacterId]||{};
+  const items=[];
+  for(const a of (c.attacks||[])){
+    const raw=a.to_hit!=null&&a.to_hit!==""?a.to_hit:(a.attack_bonus??0);
+    const atk=(parseInt(String(raw).replace(/[^0-9-]/g,""),10)||0);
+    const atkStr=(atk>=0?"+":"")+atk;
+    items.push({
+      name:`⚔ ${a.name||"Unnamed attack"}`,
+      meta:`${atkStr} to hit · ${a.damage||"—"}${a.damage_type?" "+a.damage_type:""}${a.range?" · "+a.range:""}`,
+      onClick:()=>{
+        sendChat(`⚔ ${myCharacterName||playerName} attacks with **${a.name}**: ${atkStr} to hit, ${a.damage||"—"}${a.damage_type?" "+a.damage_type:""}.`,playerName,"chat");
+        showTurnMenuMain();
+      }
+    });
+  }
+  const spells=c.spellcasting?.spells||[];
+  const slotsMax=c.spellcasting?.slots||{},slotsUsed=c.spellcasting?.slots_used||{};
+  for(const s of spells){
+    const isCantrip=s.level===0||s.prepared_type==="cantrip";
+    if(isCantrip){
+      items.push({
+        name:`✨ ${s.name} (Cantrip)`,
+        meta:"",
+        onClick:()=>{
+          sendChat(`✨ ${myCharacterName||playerName} casts **${s.name}**.`,playerName,"chat");
+          showTurnMenuMain();
+        }
+      });
+    }else{
+      const lvl=s.level||1;
+      const max=slotsMax[String(lvl)]??slotsMax[lvl]??0;
+      const used=slotsUsed[String(lvl)]??slotsUsed[lvl]??0;
+      if(max-used<=0) continue; // no slot available -- don't show it
+      items.push({
+        name:`✨ ${s.name} (Lv ${lvl})`,
+        meta:`${max-used} slot${max-used===1?"":"s"} remaining`,
+        onClick:async()=>{
+          await set(ref(db,`characters/pcs/${myCharacterId}/spellcasting/slots_used/${lvl}`),used+1);
+          sendChat(`✨ ${myCharacterName||playerName} casts **${s.name}** (Level ${lvl} slot).`,playerName,"chat");
+          showTurnMenuMain();
+        }
+      });
+    }
+  }
+  return items;
+}
+function buildBonusList(){
+  const c=pcsData[myCharacterId]||{};
+  const items=[];
+  for(const[abKey,ab]of Object.entries(c.abilities||{})){
+    if(!ab||!ab.label) continue;
+    items.push({
+      name:`⚡ ${ab.label}`,
+      meta:ab.effect_desc||"",
+      onClick:()=>{
+        sendChat(`⚡ ${myCharacterName||playerName} uses **${ab.label}**.`,playerName,"chat");
+        showTurnMenuMain();
+      }
+    });
+  }
+  return items;
+}
+document.getElementById("turn-menu-collapse").onclick=()=>{_turnMenuCollapsed=true;updateTurnMenu();};
+document.getElementById("turn-menu-tab").onclick=()=>{_turnMenuCollapsed=false;updateTurnMenu();};
+document.getElementById("turn-menu-back").onclick=showTurnMenuMain;
+document.querySelectorAll(".turn-menu-btn").forEach(btn=>{
+  btn.onclick=async()=>{
+    const action=btn.dataset.tm;
+    if(action==="move"){ _turnMenuCollapsed=true; updateTurnMenu(); }
+    else if(action==="action"){ showTurnMenuSub(buildActionList(),"No attacks or castable spells found on your sheet."); }
+    else if(action==="bonus"){ showTurnMenuSub(buildBonusList(),"No bonus-action-eligible features listed — check your sheet's Features & Traits."); }
+    else if(action==="end"){
+      const entry=myOwnTokenEntry();
+      if(entry) await nextTurn({order:initiativeState.order,active:initiativeState.active},myCharacterName||playerName,currentMap);
+    }
+  };
+});
 
 // ── Party rest votes — silent auto-execute once the DM approves in chat ───────
 let _restHandledApproval=false;
