@@ -2283,16 +2283,20 @@ canvas.addEventListener("contextmenu",e=>{
     const light=geometry.lights.find(l=>l.id===li);
     if(!light)return;
     const choice=prompt(
-      `Light — Range: ${light.range} tiles | Intensity: ${light.intensity}\n\nEnter new values as "range,intensity" (e.g. 6,1.5)\nOr type "delete" to remove:`,
-      `${light.range},${light.intensity}`
+      `Light — Range: ${light.range} tiles | Intensity: ${light.intensity} | Blocked by walls: ${light.shadows!==false?"Yes":"NO — shines through walls!"}\n\n`+
+      `Enter new values as "range,intensity,shadows" (e.g. 6,1.5,yes — shadows is yes/no, whether this light is blocked by walls)\n`+
+      `Or type "delete" to remove:`,
+      `${light.range},${light.intensity},${light.shadows!==false?"yes":"no"}`
     );
     if(!choice)return;
     if(choice.trim().toLowerCase()==="delete"){
       deleteById(geometry.lights,li);geoSelected=null;toast("Light removed");
     } else {
-      const[r,i]=choice.split(",").map(Number);
+      const parts=choice.split(",").map(s=>s.trim());
+      const r=parseFloat(parts[0]),i=parseFloat(parts[1]);
       if(!isNaN(r)&&r>0)light.range=r;
       if(!isNaN(i)&&i>0)light.intensity=i;
+      if(parts[2]!==undefined) light.shadows=!/^(n|no|false|0)$/i.test(parts[2]);
     }
     saveGeometry();return;
   }

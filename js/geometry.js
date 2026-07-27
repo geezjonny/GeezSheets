@@ -499,9 +499,10 @@ export function drawLightsGeometry(ctx, lights, TILE, { zoom, selectedId } = {})
   ctx.save();
   for (const l of lights) {
     const cx = l.x * TILE, cy = l.y * TILE;
+    const noShadows = l.shadows === false;
     ctx.beginPath();
     ctx.arc(cx, cy, l.range * TILE, 0, Math.PI * 2);
-    ctx.strokeStyle = "rgba(255,220,120,0.25)";
+    ctx.strokeStyle = noShadows ? "rgba(255,80,80,0.35)" : "rgba(255,220,120,0.25)";
     ctx.lineWidth = 1 / (zoom || 1);
     ctx.setLineDash([4 / (zoom || 1), 4 / (zoom || 1)]);
     ctx.stroke();
@@ -510,9 +511,17 @@ export function drawLightsGeometry(ctx, lights, TILE, { zoom, selectedId } = {})
     ctx.arc(cx, cy, 5 / (zoom || 1), 0, Math.PI * 2);
     ctx.fillStyle = l.id === selectedId ? "#ffcc44" : "#ffe09a";
     ctx.fill();
-    ctx.strokeStyle = "#7a5c20";
-    ctx.lineWidth = 1.5 / (zoom || 1);
+    ctx.strokeStyle = noShadows ? "#ff5050" : "#7a5c20";
+    ctx.lineWidth = noShadows ? 2.5 / (zoom || 1) : 1.5 / (zoom || 1);
     ctx.stroke();
+    if (noShadows) {
+      ctx.font = `${Math.round(12/(zoom||1))}px serif`;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3/(zoom||1);
+      ctx.strokeText("⚠", cx, cy - 10/(zoom||1));
+      ctx.fillStyle = "#ff5050";
+      ctx.fillText("⚠", cx, cy - 10/(zoom||1));
+    }
   }
   ctx.restore();
 }
