@@ -476,7 +476,7 @@ import { rollDie } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, nextTurn } from "./js/initiative.js";
 import { resolvePortal } from "./js/map.js";
 import { subscribeRestRequest, runApprovedRest } from "./js/sheet.js";
-import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMeta, loadSheetApi } from "./js/sheet.js";
+import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMetaText, loadSheetApi } from "./js/sheet.js";
 import { subscribeTheaterMode, startTheaterFog, stopTheaterFog } from "./js/theater.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
@@ -930,12 +930,12 @@ function buildActionList(){
   const dc=sp.spell_save_dc,atkBonus=sp.spell_attack_bonus;
   for(const s of spells){
     const isCantrip=s.level===0||s.prepared_type==="cantrip";
-    const metaHtml=sheetSpellMeta(s.name); // already-formatted "Cast/Range/Duration" spans
+    const metaText=sheetSpellMetaText(s.name);
     const desc=sheetSpellDesc(s.name);
     if(isCantrip){
       items.push({
         name:`✨ ${s.name} (Cantrip)`,
-        meta:metaHtml.replace(/<\/?div[^>]*>/g,""),
+        meta:metaText,
         howTo:(dc||atkBonus!=null)?`To use: ${atkBonus!=null?`spell attack ${atkBonus>=0?"+":""}${atkBonus}`:`target saves DC ${dc}`}.`:"",
         desc,
       });
@@ -947,7 +947,7 @@ function buildActionList(){
       if(max<=0) continue; // character doesn't have slots at this level at all
       items.push({
         name:`✨ ${s.name} (Lv ${lvl})`,
-        meta:`${metaHtml.replace(/<\/?div[^>]*>/g,"")} · ${remaining} slot${remaining===1?"":"s"} remaining`,
+        meta:`${metaText}${metaText?" · ":""}${remaining} slot${remaining===1?"":"s"} remaining`,
         howTo:(dc||atkBonus!=null)?`To use: ${atkBonus!=null?`spell attack ${atkBonus>=0?"+":""}${atkBonus}`:`target saves DC ${dc}`}.`:"",
         desc,
         btnLabel:remaining>0?"− Use Slot":"No slots left",

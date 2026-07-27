@@ -114,6 +114,17 @@ export function sheetSpellMeta(name) {
   if (s.duration)     parts.push(`Duration: <span>${s.duration}</span>`);
   return parts.length ? `<div class="spell-meta">${parts.map(p=>`<span>${p}</span>`).join("")}</div>` : "";
 }
+/** Plain-text version of the same info, properly separated -- for contexts
+ *  (like the turn menu) that don't use the sheet's own flex-spaced CSS. */
+export function sheetSpellMetaText(name) {
+  const s = spellsDb[name?.toLowerCase()];
+  if (!s) return "";
+  const parts = [];
+  if (s.casting_time) parts.push(`Cast: ${s.casting_time}`);
+  if (s.range)        parts.push(`Range: ${s.range}`);
+  if (s.duration)     parts.push(`Duration: ${s.duration}`);
+  return parts.join(" · ");
+}
 
 // ── Global window handlers (set once, safe to call from HTML) ─────────────────
 let _toastFn = null;
