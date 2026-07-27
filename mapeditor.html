@@ -531,6 +531,10 @@ canvas{display:block;cursor:crosshair}
     <canvas id="canvas" style="width:100%;height:100%;display:block"></canvas>
     <div id="coords">0, 0</div>
     <div id="toast"></div>
+    <div id="paste-mode-banner" style="display:none;position:fixed;top:92px;left:50%;transform:translateX(-50%);z-index:210;background:var(--panel);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;padding:8px 10px 8px 16px;box-shadow:0 8px 32px rgba(0,0,0,.6);align-items:center;gap:12px;font-family:'Cinzel',serif;font-size:12px;color:var(--gold,#c8a84b)">
+      <span>📋 Paste mode — click to place, click again for more</span>
+      <button id="paste-mode-cancel" style="height:26px;padding:0 12px;font-family:'Cinzel',serif;font-size:10px;border:1px solid var(--red-bright,#e04040);border-radius:4px;background:rgba(224,64,64,.1);color:#fca5a5;cursor:pointer">✕ Cancel</button>
+    </div>
     <div id="ping-toast"></div>
     <div id="drop-overlay" style="display:none;position:absolute;inset:0;border:3px dashed var(--gold);background:rgba(200,168,75,.06);pointer-events:none;z-index:50">
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cinzel',serif;font-size:18px;color:var(--gold);letter-spacing:.15em">🖼 Drop PNG here</div>
@@ -842,9 +846,11 @@ let mapClipboard=null;
 let pasteArmed=false;
 
 function captureClipboard(minX,minY,maxX,maxY){
+  console.log(`[clip debug] capturing bounds (${minX},${minY}) to (${maxX},${maxY})`);
   const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[]};
   for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){
     const k=key(x,y);
+    console.log(`[clip debug] cell (${x},${y}) key="${k}" tiles[k]=`,tiles[k],`stamps[k]=`,stamps[k],`props[k]=`,props[k]);
     if(tiles[k]) clip.tiles[`${x-minX},${y-minY}`]={...tiles[k]};
     if(stamps[k]) clip.stamps[`${x-minX},${y-minY}`]=stamps[k];
     if(props[k]) clip.props[`${x-minX},${y-minY}`]={...props[k]};
@@ -854,6 +860,7 @@ function captureClipboard(minX,minY,maxX,maxY){
       clip.tokens.push({...tok,_dx:tok.x-minX,_dy:tok.y-minY});
     }
   }
+  console.log(`[clip debug] final clipboard:`,JSON.parse(JSON.stringify(clip)));
   return clip;
 }
 
@@ -1420,6 +1427,7 @@ onValue(ref(db,"session/locked"),snap=>{
   btn.textContent=_playersLocked?"🔓 Unlock Players":"🔒 Lock Players";
   btn.classList.toggle("active",_playersLocked);
 });
+document.getElementById("paste-mode-cancel").onclick=()=>{pasteArmed=false;toast("Paste cancelled");};
 document.getElementById("lockPlayersBtn").onclick=async()=>{
   await set(ref(db,"session/locked"),!_playersLocked);
   toast(_playersLocked?"Players unlocked — map visible":"Players locked — showing waiting screen");
@@ -1883,6 +1891,8 @@ function drawMovementRange(){
 }
 
 function render(){
+  const pasteBanner=document.getElementById("paste-mode-banner");
+  if(pasteBanner) pasteBanner.style.display=pasteArmed?"flex":"none";
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
   if(bgImage){
@@ -2105,6 +2115,7 @@ function setCategory(cat){
   if(activeCategory===cat) cat=null;
   activeCategory = cat;
   geoWallStart = null; geoDoorStart = null; geoSelected = null;
+  if(pasteArmed){pasteArmed=false;toast("Paste cancelled");}
   document.querySelectorAll(".cat-btn").forEach(b=>b.classList.remove("active"));
   if(cat) document.getElementById("cat-"+cat)?.classList.add("active");
   document.querySelectorAll(".ctx-panel").forEach(p=>p.style.display="none");
@@ -2115,6 +2126,7 @@ function setCategory(cat){
 
 function setVerb(v){
   activeVerb = v;
+  if(pasteArmed){pasteArmed=false;toast("Paste cancelled");}
   document.querySelectorAll(".verb-btn").forEach(b=>b.classList.remove("active"));
   document.getElementById("verb-"+v)?.classList.add("active");
   canvas.style.cursor = cursorFor();
@@ -2647,6 +2659,7 @@ canvas.addEventListener("pointerup",e=>{
 // Right-click — erase/context depending on tool
 canvas.addEventListener("contextmenu",e=>{
   e.preventDefault();
+  if(pasteArmed){pasteArmed=false;toast("Paste cancelled");return;}
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
 
   // 1. Prop — always check first
