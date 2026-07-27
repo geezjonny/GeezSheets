@@ -2080,7 +2080,7 @@ function render(){
       lCtx.globalCompositeOperation="destination-out";
       const occluders=activeOccluders(geometry.walls,geometry.doors||[]);
       for(const light of geometry.lights){
-        const segs=light.shadows?occluders:[];
+        const segs=light.shadows!==false?occluders:[];
         const poly=computeVisibilityPolygon(light.x,light.y,segs,light.range);
         if(poly.length<3) continue;
         lCtx.save();
@@ -2121,7 +2121,7 @@ function render(){
       }
       // Glow drawn INSIDE darkness canvas — cannot escape walls
       lCtx.globalCompositeOperation="lighter";
-      for(const li of getActiveLights()){const segs=li.shadows?occluders:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;lCtx.save();lCtx.beginPath();lCtx.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)lCtx.lineTo(poly[i].x*TILE,poly[i].y*TILE);lCtx.closePath();lCtx.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,col=li.color||"ffeccd88",rr=parseInt(col.slice(0,2),16),gg=parseInt(col.slice(2,4),16),bb=parseInt(col.slice(4,6),16),aa=((parseInt(col.slice(6,8)||"88",16)/255)*Math.min(1,li.intensity*(lp.lightPunch||1))).toFixed(2);const ggr=lCtx.createRadialGradient(cx,cy,0,cx,cy,r);ggr.addColorStop(0,"rgba("+rr+","+gg+","+bb+","+aa+")");ggr.addColorStop(1,"rgba(0,0,0,0)");lCtx.fillStyle=ggr;lCtx.fillRect(cx-r,cy-r,r*2,r*2);lCtx.restore();}
+      for(const li of getActiveLights()){const segs=li.shadows!==false?occluders:[],poly=computeVisibilityPolygon(li.x,li.y,segs,li.range);if(poly.length<3)continue;lCtx.save();lCtx.beginPath();lCtx.moveTo(poly[0].x*TILE,poly[0].y*TILE);for(let i=1;i<poly.length;i++)lCtx.lineTo(poly[i].x*TILE,poly[i].y*TILE);lCtx.closePath();lCtx.clip();const cx=li.x*TILE,cy=li.y*TILE,r=li.range*TILE,col=li.color||"ffeccd88",rr=parseInt(col.slice(0,2),16),gg=parseInt(col.slice(2,4),16),bb=parseInt(col.slice(4,6),16),aa=((parseInt(col.slice(6,8)||"88",16)/255)*Math.min(1,li.intensity*(lp.lightPunch||1))).toFixed(2);const ggr=lCtx.createRadialGradient(cx,cy,0,cx,cy,r);ggr.addColorStop(0,"rgba("+rr+","+gg+","+bb+","+aa+")");ggr.addColorStop(1,"rgba(0,0,0,0)");lCtx.fillStyle=ggr;lCtx.fillRect(cx-r,cy-r,r*2,r*2);lCtx.restore();}
       lCtx.globalCompositeOperation="source-over";
       lCtx.restore();
       // Composite darkness mask onto main canvas

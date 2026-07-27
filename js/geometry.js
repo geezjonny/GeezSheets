@@ -351,10 +351,11 @@ export function wallGroupsToSegments(wallGroups, doors = {}) {
  * Draws one light source with shadows: computes its visibility polygon
  * (clipped to range) against current occluders, then fills it with a
  * radial-gradient glow in the light's color, fading to transparent at range.
- * If `light.shadows` is false, skips occlusion entirely (a plain glow).
+ * If `light.shadows` is explicitly false, skips occlusion entirely (a plain
+ * glow) -- any other value, including missing/undefined, casts shadows.
  */
 export function drawLight(ctx, light, occluders, TILE) {
-  const segments = light.shadows ? occluders : [];
+  const segments = light.shadows !== false ? occluders : [];
   const polygon = computeVisibilityPolygon(light.x, light.y, segments, light.range);
   ctx.save();
   clipToVisibilityPolygon(ctx, polygon, TILE);
@@ -408,7 +409,7 @@ export function drawAmbientDarkness(ctx, worldRect, preset) {
 export function drawAmbientLights(ctx, lights, walls, doors, TILE, darknessAmount) {
   const occluders = activeOccluders(walls, doors);
   for (const light of lights) {
-    const segments = light.shadows ? occluders : [];
+    const segments = light.shadows !== false ? occluders : [];
     const polygon = computeVisibilityPolygon(light.x, light.y, segments, light.range);
     if (darknessAmount > 0) {
       ctx.save();
