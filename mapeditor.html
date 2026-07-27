@@ -787,7 +787,7 @@ const activePings={},activeLasers={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
 let currentShape="rect",currentTerrain="grass",wallsEnabled=false;
 // ── Geometry state ────────────────────────────────────────────────────────────
-const geometry = { walls:[], doors:[], lights:[], timeOfDay:"day", lightingParams:{tintAlpha:1, blackAlpha:0.92, dvPunch:0.8, lightPunch:1} };
+const geometry = { walls:[], doors:[], lights:[], timeOfDay:"day", lightingParams:{tintAlpha:1, blackAlpha:1, dvPunch:0.8, lightPunch:1} };
 let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
 let geoDragLight = null; // light id being dragged
