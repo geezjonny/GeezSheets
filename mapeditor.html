@@ -812,21 +812,34 @@ function getActiveLights() {
 
 async function saveGeometry() {
   const m = mapInput.value.trim() || "dungeon-1";
-  await set(ref(db,`maps/${m}/geometry`), {
-    walls:  geometry.walls.length  ? geometry.walls  : null,
-    lights: geometry.lights.length ? geometry.lights : null,
-    doors:  geometry.doors.length  ? geometry.doors  : null,
-    timeOfDay: geometry.timeOfDay,
-    lightingParams: geometry.lightingParams,
-  }).catch(e => toast("Geo save failed: " + e.message));
+  isSavingGeometry = true;
+  try {
+    await set(ref(db,`maps/${m}/geometry`), {
+      walls:  geometry.walls.length  ? geometry.walls  : null,
+      lights: geometry.lights.length ? geometry.lights : null,
+      doors:  geometry.doors.length  ? geometry.doors  : null,
+      timeOfDay: geometry.timeOfDay,
+      lightingParams: geometry.lightingParams,
+    });
+  } catch(e) {
+    toast("Geo save failed: " + e.message);
+  } finally {
+    isSavingGeometry = false;
+  }
 }
 // Targeted write for just the doors list -- used for open/close toggling,
 // so it can't clobber a concurrent wall/light edit the way a full
 // saveGeometry() overwrite could.
 async function saveGeometryDoors() {
   const m = mapInput.value.trim() || "dungeon-1";
-  await set(ref(db,`maps/${m}/geometry/doors`), geometry.doors.length ? geometry.doors : null)
-    .catch(e => toast("Door save failed: " + e.message));
+  isSavingGeometry = true;
+  try {
+    await set(ref(db,`maps/${m}/geometry/doors`), geometry.doors.length ? geometry.doors : null);
+  } catch(e) {
+    toast("Door save failed: " + e.message);
+  } finally {
+    isSavingGeometry = false;
+  }
 }
 let roofMode=false;
 let currentProp=null;
@@ -865,7 +878,6 @@ function captureClipboard(minX,minY,maxX,maxY){
   // ambiguous partial copies of a wall that only partly overlaps the selection.
   const inBox=(x,y)=>x>=minX&&x<=maxX+1&&y>=minY&&y<=maxY+1;
   for(const w of geometry.walls){
-    if(w.perimeter) continue; // imported map-boundary walls, not user-placed
     if(inBox(w.x1,w.y1)&&inBox(w.x2,w.y2)){
       clip.walls.push({x1:w.x1-minX,y1:w.y1-minY,x2:w.x2-minX,y2:w.y2-minY});
     }
@@ -885,11 +897,13 @@ function captureClipboard(minX,minY,maxX,maxY){
 
 async function commitPaste(anchorX,anchorY){
   if(!mapClipboard) return;
+  console.log(`[paste debug] clipboard has: tiles=${Object.keys(mapClipboard.tiles).length} stamps=${Object.keys(mapClipboard.stamps).length} props=${Object.keys(mapClipboard.props).length} tokens=${mapClipboard.tokens.length} walls=${mapClipboard.walls?.length||0} doors=${mapClipboard.doors?.length||0} lights=${mapClipboard.lights?.length||0}`);
   pushUndo();
   for(const[rel,t]of Object.entries(mapClipboard.tiles)){
     const[dx,dy]=rel.split(",").map(Number);
     tiles[key(anchorX+dx,anchorY+dy)]={...t};
   }
+  console.log(`[paste debug] after tiles loop, local tiles object now has ${Object.keys(tiles).length} total entries`);
   for(const[rel,emoji]of Object.entries(mapClipboard.stamps)){
     const[dx,dy]=rel.split(",").map(Number);
     const nk=key(anchorX+dx,anchorY+dy);
@@ -912,7 +926,8 @@ async function commitPaste(anchorX,anchorY){
     traps[key(anchorX+dx,anchorY+dy)]=true;
   }
   for(const w of (mapClipboard.walls||[])){
-    addWall(geometry.walls,anchorX+w.x1,anchorY+w.y1,anchorX+w.x2,anchorY+w.y2);
+    const newWall=addWall(geometry.walls,anchorX+w.x1,anchorY+w.y1,anchorX+w.x2,anchorY+w.y2);
+    console.log(`[paste debug] added wall:`,newWall,`geometry.walls now has ${geometry.walls.length} total`);
   }
   for(const d of (mapClipboard.doors||[])){
     addDoor(geometry.doors,anchorX+d.x1,anchorY+d.y1,anchorX+d.x2,anchorY+d.y2,{closed:d.closed});
@@ -927,15 +942,28 @@ async function commitPaste(anchorX,anchorY){
     tokens[newId]=newTok;
     saveTokenRTDB(getMapName(),newId,newTok);
   }
-  // All writes below are immediate/awaited, not debounced -- see note above
-  // about why a debounced tiles save specifically caused pasted tiles to get
-  // clobbered by a stale echo from the live map subscription.
-  await saveTiles(getMapName(),tiles);
+  console.log(`[paste debug] about to save. local tiles=${Object.keys(tiles).length} local geometry.walls=${geometry.walls.length}`);
+  try{
+    isSavingTiles=true;
+    await saveTiles(getMapName(),tiles);
+    console.log(`[paste debug] saveTiles completed without error`);
+  }catch(err){
+    console.error(`[paste debug] saveTiles THREW:`,err);
+  }finally{
+    isSavingTiles=false;
+  }
   await savePropsLocal(getMapName(),props);
   if(Object.keys(mapClipboard.portals||{}).length) await savePortals(getMapName(),portals);
   if(Object.keys(mapClipboard.impassable||{}).length) await saveImpassable(getMapName(),impassable);
   if(Object.keys(mapClipboard.traps||{}).length) await saveTraps(getMapName(),traps);
-  if((mapClipboard.walls?.length)||(mapClipboard.doors?.length)||(mapClipboard.lights?.length)) await saveGeometry();
+  if((mapClipboard.walls?.length)||(mapClipboard.doors?.length)||(mapClipboard.lights?.length)){
+    try{
+      await saveGeometry();
+      console.log(`[paste debug] saveGeometry completed without error`);
+    }catch(err){
+      console.error(`[paste debug] saveGeometry THREW:`,err);
+    }
+  }
   toast("Pasted — click again to paste more, Esc to stop");
 }
 
@@ -945,7 +973,7 @@ let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0,spaceDown=fals
 let rulerStart=null,rulerEnd=null,rulerActive=false,rulerMode=false;
 let initiative={order:[],active:null};
 let ctxTokenId=null,ctxPropKey=null;
-let liveUnsub=null,saveTimer=null,isSavingTiles=false;
+let liveUnsub=null,saveTimer=null,isSavingTiles=false,isSavingGeometry=false;
 let _firstMapLoad=true;
 let dropBase64=null,dropFilename="",dropTileX=0,dropTileY=0,dropType="map";
 let CONDITIONS={};
@@ -1045,13 +1073,15 @@ function subscribeLive(){
       if(data.traps)Object.assign(traps,data.traps);
       if(data.chains)Object.assign(chains,data.chains);
       // Load geometry (walls, lights, doors for lighting system)
-      geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
-      if(data.geometry){
-        if(data.geometry.walls)geometry.walls.push(...Object.values(data.geometry.walls));
-        if(data.geometry.lights)geometry.lights.push(...Object.values(data.geometry.lights));
-        if(data.geometry.doors)geometry.doors.push(...Object.values(data.geometry.doors));
-        if(data.geometry.timeOfDay)geometry.timeOfDay=data.geometry.timeOfDay;
-        if(data.geometry.lightingParams)Object.assign(geometry.lightingParams,data.geometry.lightingParams);
+      if(!isSavingGeometry){
+        geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
+        if(data.geometry){
+          if(data.geometry.walls)geometry.walls.push(...Object.values(data.geometry.walls));
+          if(data.geometry.lights)geometry.lights.push(...Object.values(data.geometry.lights));
+          if(data.geometry.doors)geometry.doors.push(...Object.values(data.geometry.doors));
+          if(data.geometry.timeOfDay)geometry.timeOfDay=data.geometry.timeOfDay;
+          if(data.geometry.lightingParams)Object.assign(geometry.lightingParams,data.geometry.lightingParams);
+        }
       }
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
