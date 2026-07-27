@@ -958,6 +958,16 @@ function buildBonusList(){
   }
   return items;
 }
+document.addEventListener("click",e=>{
+  const tm=document.getElementById("turn-menu");
+  if(tm&&tm.style.display!=="none"){
+    const r=tm.getBoundingClientRect();
+    if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
+      console.log(`[turn-menu debug] click at (${e.clientX},${e.clientY}) inside turn-menu bounds, actual target:`,e.target,e.target.className);
+    }
+  }
+},{capture:true});
+
 document.getElementById("turn-menu-collapse").onclick=()=>{_turnMenuCollapsed=true;updateTurnMenu();};
 document.getElementById("turn-menu-tab").onclick=()=>{_turnMenuCollapsed=false;updateTurnMenu();};
 document.getElementById("turn-menu-back").onclick=showTurnMenuMain;
