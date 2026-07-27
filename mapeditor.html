@@ -772,7 +772,7 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { saveStamp, savePropsLocal, savePortals, saveImpassable, saveTraps, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
+import { saveStamp, savePropsLocal, savePortals, saveImpassable, saveTraps, saveTiles, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest, grantRest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { setLayer } from "./js/layers.js";
@@ -846,21 +846,40 @@ let mapClipboard=null;
 let pasteArmed=false;
 
 function captureClipboard(minX,minY,maxX,maxY){
-  console.log(`[clip debug] capturing bounds (${minX},${minY}) to (${maxX},${maxY})`);
-  const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[]};
+  const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[],portals:{},impassable:{},traps:{},walls:[],doors:[],lights:[]};
   for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){
     const k=key(x,y);
-    console.log(`[clip debug] cell (${x},${y}) key="${k}" tiles[k]=`,tiles[k],`stamps[k]=`,stamps[k],`props[k]=`,props[k]);
     if(tiles[k]) clip.tiles[`${x-minX},${y-minY}`]={...tiles[k]};
     if(stamps[k]) clip.stamps[`${x-minX},${y-minY}`]=stamps[k];
     if(props[k]) clip.props[`${x-minX},${y-minY}`]={...props[k]};
+    if(portals[k]) clip.portals[`${x-minX},${y-minY}`]={...portals[k]};
+    if(impassable[k]) clip.impassable[`${x-minX},${y-minY}`]=true;
+    if(traps[k]) clip.traps[`${x-minX},${y-minY}`]=true;
   }
   for(const tok of Object.values(tokens)){
     if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY){
       clip.tokens.push({...tok,_dx:tok.x-minX,_dy:tok.y-minY});
     }
   }
-  console.log(`[clip debug] final clipboard:`,JSON.parse(JSON.stringify(clip)));
+  // Walls/doors: only include if BOTH endpoints are inside the box, to avoid
+  // ambiguous partial copies of a wall that only partly overlaps the selection.
+  const inBox=(x,y)=>x>=minX&&x<=maxX+1&&y>=minY&&y<=maxY+1;
+  for(const w of geometry.walls){
+    if(w.perimeter) continue; // imported map-boundary walls, not user-placed
+    if(inBox(w.x1,w.y1)&&inBox(w.x2,w.y2)){
+      clip.walls.push({x1:w.x1-minX,y1:w.y1-minY,x2:w.x2-minX,y2:w.y2-minY});
+    }
+  }
+  for(const d of geometry.doors){
+    if(inBox(d.x1,d.y1)&&inBox(d.x2,d.y2)){
+      clip.doors.push({x1:d.x1-minX,y1:d.y1-minY,x2:d.x2-minX,y2:d.y2-minY,closed:d.closed,locked:d.locked});
+    }
+  }
+  for(const l of geometry.lights){
+    if(l.x>=minX&&l.x<=maxX+1&&l.y>=minY&&l.y<=maxY+1){
+      clip.lights.push({...l,x:l.x-minX,y:l.y-minY});
+    }
+  }
   return clip;
 }
 
@@ -880,6 +899,27 @@ async function commitPaste(anchorX,anchorY){
     const[dx,dy]=rel.split(",").map(Number);
     props[key(anchorX+dx,anchorY+dy)]={...p};
   }
+  for(const[rel,p]of Object.entries(mapClipboard.portals||{})){
+    const[dx,dy]=rel.split(",").map(Number);
+    portals[key(anchorX+dx,anchorY+dy)]={...p};
+  }
+  for(const rel of Object.keys(mapClipboard.impassable||{})){
+    const[dx,dy]=rel.split(",").map(Number);
+    impassable[key(anchorX+dx,anchorY+dy)]=true;
+  }
+  for(const rel of Object.keys(mapClipboard.traps||{})){
+    const[dx,dy]=rel.split(",").map(Number);
+    traps[key(anchorX+dx,anchorY+dy)]=true;
+  }
+  for(const w of (mapClipboard.walls||[])){
+    addWall(geometry.walls,anchorX+w.x1,anchorY+w.y1,anchorX+w.x2,anchorY+w.y2);
+  }
+  for(const d of (mapClipboard.doors||[])){
+    addDoor(geometry.doors,anchorX+d.x1,anchorY+d.y1,anchorX+d.x2,anchorY+d.y2,{closed:d.closed});
+  }
+  for(const l of (mapClipboard.lights||[])){
+    addLight(geometry.lights,anchorX+l.x,anchorY+l.y,{range:l.range,intensity:l.intensity,shadows:l.shadows,color:l.color});
+  }
   for(const tok of mapClipboard.tokens){
     const newId="tok_"+Date.now()+"_"+Math.floor(Math.random()*10000);
     const newTok={...tok,x:anchorX+tok._dx,y:anchorY+tok._dy};
@@ -887,8 +927,15 @@ async function commitPaste(anchorX,anchorY){
     tokens[newId]=newTok;
     saveTokenRTDB(getMapName(),newId,newTok);
   }
-  scheduleSave();
+  // All writes below are immediate/awaited, not debounced -- see note above
+  // about why a debounced tiles save specifically caused pasted tiles to get
+  // clobbered by a stale echo from the live map subscription.
+  await saveTiles(getMapName(),tiles);
   await savePropsLocal(getMapName(),props);
+  if(Object.keys(mapClipboard.portals||{}).length) await savePortals(getMapName(),portals);
+  if(Object.keys(mapClipboard.impassable||{}).length) await saveImpassable(getMapName(),impassable);
+  if(Object.keys(mapClipboard.traps||{}).length) await saveTraps(getMapName(),traps);
+  if((mapClipboard.walls?.length)||(mapClipboard.doors?.length)||(mapClipboard.lights?.length)) await saveGeometry();
   toast("Pasted — click again to paste more, Esc to stop");
 }
 
@@ -1850,6 +1897,31 @@ function drawClipSelection(){
       const img=propTextures[p.propId];
       if(img)ctx.drawImage(img,px,py,pw,ph);
       else{ctx.font=`${Math.round(Math.min(pw,ph)*0.7)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(def.emoji,px+pw/2,py+ph/2);}
+    }
+    for(const rel of Object.keys(mapClipboard.impassable||{})){
+      const[dx,dy]=rel.split(",").map(Number);
+      ctx.fillStyle="rgba(200,60,40,0.25)";ctx.fillRect((ax+dx)*TILE,(ay+dy)*TILE,TILE,TILE);
+    }
+    for(const rel of Object.keys(mapClipboard.traps||{})){
+      const[dx,dy]=rel.split(",").map(Number);
+      ctx.fillStyle="rgba(140,60,200,0.25)";ctx.fillRect((ax+dx)*TILE,(ay+dy)*TILE,TILE,TILE);
+    }
+    for(const[rel]of Object.entries(mapClipboard.portals||{})){
+      const[dx,dy]=rel.split(",").map(Number);
+      ctx.strokeStyle="rgba(200,168,75,0.8)";ctx.lineWidth=Math.max(1,TILE*0.04);
+      ctx.beginPath();ctx.arc((ax+dx)*TILE+TILE/2,(ay+dy)*TILE+TILE/2,TILE*0.32,0,Math.PI*2);ctx.stroke();
+    }
+    for(const w of (mapClipboard.walls||[])){
+      ctx.strokeStyle="rgba(200,60,40,0.8)";ctx.lineWidth=Math.max(1.5,TILE*0.04);
+      ctx.beginPath();ctx.moveTo((ax+w.x1)*TILE,(ay+w.y1)*TILE);ctx.lineTo((ax+w.x2)*TILE,(ay+w.y2)*TILE);ctx.stroke();
+    }
+    for(const d of (mapClipboard.doors||[])){
+      ctx.strokeStyle="rgba(160,110,60,0.8)";ctx.lineWidth=Math.max(1.5,TILE*0.045);
+      ctx.beginPath();ctx.moveTo((ax+d.x1)*TILE,(ay+d.y1)*TILE);ctx.lineTo((ax+d.x2)*TILE,(ay+d.y2)*TILE);ctx.stroke();
+    }
+    for(const l of (mapClipboard.lights||[])){
+      ctx.fillStyle="rgba(255,220,150,0.6)";
+      ctx.beginPath();ctx.arc((ax+l.x)*TILE,(ay+l.y)*TILE,TILE*0.15,0,Math.PI*2);ctx.fill();
     }
     ctx.strokeStyle="rgba(100,160,255,0.9)";ctx.lineWidth=2/camera.zoom;
     ctx.setLineDash([4/camera.zoom,3/camera.zoom]);
