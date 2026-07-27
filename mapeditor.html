@@ -607,6 +607,9 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-action="show-name" style="display:none">🏷 Show name tag</div>
   <div class="ctx-item" data-action="adjust-hp" style="display:none">❤️ Adjust HP…</div>
   <div class="ctx-item" data-action="unlock" style="display:none;color:#8fd08f">🔓 Unlock (release from trap)</div>
+  <div class="ctx-item" data-action="movelock">🔒 Lock Movement</div>
+  <div class="ctx-item" data-action="grant-short" style="display:none;color:var(--gold-dim,#a8935a)">🎁 Grant Short Rest</div>
+  <div class="ctx-item" data-action="grant-long" style="display:none;color:var(--gold-dim,#a8935a)">🎁 Grant Long Rest</div>
   <div class="ctx-item" data-action="delete" style="color:var(--red-bright)">✕ Delete token</div>
 </div>
 
@@ -755,6 +758,7 @@ import {
   TIME_OF_DAY_PRESETS,
   addWall, addLight, addDoor, deleteById,
   segmentAtPoint, lightAtPoint, endpointAtPoint, moveEndpoint,
+  pathBlocked, computeReachableTiles,
 } from "./js/geometry.js";
 import { subscribeTokenStrip, rollInitiative } from "./js/initiative.js";
 import { toggleGlossarySearch, registerTerms, setAddTokenHandler } from "./js/glossary.js";
@@ -765,7 +769,7 @@ window.addEventListener("keydown", e => {
     toggleGlossarySearch();
 });
 import { saveStamp, savePropsLocal, savePortals, saveImpassable, saveTraps, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
-import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest } from "./js/sheet.js";
+import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest, grantRest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
@@ -1020,6 +1024,7 @@ function rewireStrip() {
     playerName,
     onOpenSheet:      (charId, name) => openCharSheet(charId, name, true),
     onRollInitiative: rollInitiative,
+    mapName:          getMapName(),
   });
 }
 
@@ -1137,9 +1142,28 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     if(!ctxTokenId){ctxMenu.classList.remove("open");return;}
     const cond=item.dataset.condition,action=item.dataset.action;
     if(cond)applyCondition(mapInput.value.trim()||"dungeon-1",ctxTokenId,cond,tokens);
+    if(action==="grant-short"||action==="grant-long"){
+      const tok=tokens[ctxTokenId];
+      if(tok&&tok.characterId){
+        await grantRest(tok.characterId,action==="grant-long"?"long":"short",tok.name);
+        toast(`🎁 ${tok.name} granted a ${action==="grant-long"?"Long":"Short"} Rest`);
+      }
+    }
+    if(action==="movelock"){
+      const tok=tokens[ctxTokenId];
+      if(tok){
+        tok.moveLocked=!tok.moveLocked;
+        await update(ref(db,`maps/${getMapName()}/tokens/${ctxTokenId}`),{moveLocked:tok.moveLocked});
+        toast(tok.moveLocked?`🔒 ${tok.name}'s movement locked`:`🔓 ${tok.name}'s movement unlocked`);
+      }
+    }
     if(action==="unlock"){
       const tok=tokens[ctxTokenId];
-      if(tok){tok.trapped=false;await saveTokenRTDB(getMapName(),ctxTokenId,tok);toast(`🔓 ${tok.name} released from the trap`);}
+      if(tok){
+        tok.trapped=false;
+        await update(ref(db,`maps/${getMapName()}/tokens/${ctxTokenId}`),{trapped:false});
+        toast(`🔓 ${tok.name} released from the trap`);
+      }
     }
     if(action==="delete")deleteTokenRTDB(getMapName(),ctxTokenId);
     if(action==="sheet"){
@@ -1334,6 +1358,9 @@ document.getElementById("loadVttBtn").onclick=()=>document.getElementById("vttFi
 
 // ── Lock Players ──────────────────────────────────────────────────────────────
 let _playersLocked=false;
+let inCombat=false,initiativeState={order:[],active:null};
+onValue(ref(db,"session/inCombat"),snap=>{inCombat=!!snap.val();});
+onValue(ref(db,"initiative"),snap=>{const d=snap.val()||{};initiativeState={order:d.order||[],active:d.active||null};});
 onValue(ref(db,"session/locked"),snap=>{
   _playersLocked=!!snap.val();
   const btn=document.getElementById("lockPlayersBtn");
@@ -1733,6 +1760,28 @@ function liftSelection(minX,minY,maxX,maxY){selectTiles={};selMinX=minX;selMinY=
 function commitSelection(){pushUndo();const ox=moveOffX,oy=moveOffY;for(const k in selectTiles){const[tx,ty]=k.split(",").map(Number);tiles[key(tx+ox,ty+oy)]={...selectTiles[k]};}for(const k in selStamps){const[tx,ty]=k.split(",").map(Number);const nk=key(tx+ox,ty+oy);stamps[nk]=selStamps[k];saveStamp(getMapName(),nk,selStamps[k]);}for(const k in selProps){const[tx,ty]=k.split(",").map(Number);props[key(tx+ox,ty+oy)]={...selProps[k]};}for(const id of selTokenIds){if(tokens[id]){tokens[id].x+=ox;tokens[id].y+=oy;saveTokenRTDB(getMapName(),id,tokens[id]);}}selectTiles={};selStamps={};selProps={};selTokenIds=[];selectPhase=null;moveOffX=0;moveOffY=0;scheduleSave();savePropsLocal(getMapName(),props);}
 
 // ── Main render loop ──────────────────────────────────────────────────────────
+function drawMovementRange(){
+  if(!inCombat||!initiativeState.order.length||!initiativeState.active) return;
+  const activeTok=tokens[initiativeState.active];
+  if(!activeTok||activeTok.type!=="pc") return;
+  const speedTiles=Math.max(1,Math.round((pcsData[activeTok.characterId]?.speed??30)/5));
+  const remaining=speedTiles-(activeTok.turnMovedTiles||0);
+  if(remaining<=0) return;
+  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+  const blocked=new Set(Object.keys(impassable));
+  const reachable=computeReachableTiles(activeTok.x,activeTok.y,remaining,occ,blocked);
+  ctx.save();
+  for(const[key]of reachable){
+    if(key===`${activeTok.x},${activeTok.y}`) continue;
+    const[x,y]=key.split(",").map(Number);
+    ctx.fillStyle="rgba(90,170,230,0.22)";
+    ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    ctx.strokeStyle="rgba(90,170,230,0.45)";ctx.lineWidth=Math.max(1,TILE*0.02);
+    ctx.strokeRect(x*TILE+0.5,y*TILE+0.5,TILE-1,TILE-1);
+  }
+  ctx.restore();
+}
+
 function render(){
   ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
@@ -1767,6 +1816,7 @@ function render(){
   const _structureActive = activeCategory==="structure"&&activeVerb;
   drawWallsGeometry(ctx,geometry.walls,TILE,{zoom:camera.zoom,selectedId:geoSelected});
   drawDoorsWithArt(ctx,geometry.doors,TILE,propTextures,{zoom:camera.zoom,selectedId:geoSelected,showLockIcons:true});
+  drawMovementRange();
   if((_structureActive&&(activeVerb==="select"||structureType==="light"))||!_isDay)
     drawLightsGeometry(ctx,geometry.lights,TILE,{zoom:camera.zoom,selectedId:geoSelected});
   // Hover range circle for nearest light while editing/placing lights
@@ -2475,6 +2525,11 @@ canvas.addEventListener("contextmenu",e=>{
     document.querySelector('.ctx-item[data-action="show-hp"]').style.display=(tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display="flex";
     document.querySelector('.ctx-item[data-action="unlock"]').style.display=tok.trapped?"flex":"none";
+    const movelockItem=document.querySelector('.ctx-item[data-action="movelock"]');
+    movelockItem.textContent=tok.moveLocked?"🔓 Unlock Movement":"🔒 Lock Movement";
+    const isPc=tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__";
+    document.querySelector('.ctx-item[data-action="grant-short"]').style.display=isPc?"flex":"none";
+    document.querySelector('.ctx-item[data-action="grant-long"]').style.display=isPc?"flex":"none";
     document.querySelector('.ctx-item[data-action="light-add"]').style.display=tok.light?"none":"flex";
     document.querySelector('.ctx-item[data-action="light-remove"]').style.display=tok.light?"flex":"none";
     document.querySelector('.ctx-item[data-action="hide-name"]').style.display=tok.hideName?"none":"flex";
@@ -2756,7 +2811,7 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     const delta=parseInt(document.getElementById("stc-hp-val").value)||5;
     const newHp=Math.min(tok.maxHp,tok.hp+delta);
     tokens[_inspectedTokId].hp=newHp;
-    await saveTokenRTDB(getMapName(),_inspectedTokId,tokens[_inspectedTokId]);
+    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{hp:newHp});
     if(tok.characterId&&tok.characterId!=="__npc__")
       await update(ref(db,`characters/pcs/${tok.characterId}/combat`),{hp_current:newHp});
     toast(`❤ ${tok.name} +${delta} HP`);
@@ -2767,7 +2822,7 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     const delta=parseInt(document.getElementById("stc-hp-val").value)||5;
     const newHp=Math.max(0,tok.hp-delta);
     tokens[_inspectedTokId].hp=newHp;
-    await saveTokenRTDB(getMapName(),_inspectedTokId,tokens[_inspectedTokId]);
+    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{hp:newHp});
     if(tok.characterId&&tok.characterId!=="__npc__")
       await update(ref(db,`characters/pcs/${tok.characterId}/combat`),{hp_current:newHp});
     toast(`💔 ${tok.name} −${delta} HP`);
@@ -2785,7 +2840,7 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     if(!_inspectedTokId)return;
     const tok=tokens[_inspectedTokId];if(!tok)return;
     tok.hostile=!tok.hostile;
-    await saveTokenRTDB(getMapName(),_inspectedTokId,tok);
+    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{hostile:tok.hostile});
     openTokenInspector(_inspectedTokId); // refresh button state
     toast(tok.hostile?`⚠ ${tok.name} marked hostile — players get a warning if seen`:`${tok.name} no longer marked hostile`);
   };
@@ -2793,7 +2848,7 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     if(!_inspectedTokId)return;
     const tok=tokens[_inspectedTokId];if(!tok)return;
     tok.trapped=false;
-    await saveTokenRTDB(getMapName(),_inspectedTokId,tok);
+    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{trapped:false});
     openTokenInspector(_inspectedTokId);
     toast(`🔓 ${tok.name} released from the trap`);
   };
@@ -2801,13 +2856,13 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     if(!_inspectedTokId)return;
     const tok=tokens[_inspectedTokId];if(!tok)return;
     tok.hideHp=!tok.hideHp;
-    await saveTokenRTDB(getMapName(),_inspectedTokId,tok);
+    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{hideHp:tok.hideHp});
     toast(tok.hideHp?"HP bar hidden":"HP bar shown");
   };
   document.getElementById("stc-clear-cond").onclick=async()=>{
     if(!_inspectedTokId)return;
     tokens[_inspectedTokId].conditions=[];
-    await saveTokenRTDB(getMapName(),_inspectedTokId,tokens[_inspectedTokId]);
+    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{conditions:[]});
     toast("Conditions cleared");
   };
   document.querySelectorAll("[data-stc-cond]").forEach(btn=>{

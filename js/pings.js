@@ -12,11 +12,12 @@ export async function sendPing(tx, ty, playerName) {
   setTimeout(() => remove(pingRef), 4000);
 }
 
-export function drawPings(ctx, activePings, toScreen) {
+export function drawPings(ctx, activePings, toScreen, isVisible) {
   const now = Date.now();
   for (const [id, ping] of Object.entries(activePings)) {
     const age = (now - ping.startTime) / 1000;
     if (age > 3) { delete activePings[id]; continue; }
+    if (isVisible && !isVisible(ping)) continue;
     const alpha = 1 - age / 3;
     const [sx, sy] = toScreen(ping.wx, ping.wy);
     for (let i = 0; i < 3; i++) {

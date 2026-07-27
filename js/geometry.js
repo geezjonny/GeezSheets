@@ -271,6 +271,32 @@ export function pathBlocked(x1, y1, x2, y2, occluders) {
   return false;
 }
 
+/** 4-directional BFS of every tile reachable from (startX,startY) within
+ *  maxSteps, blocked by the same wall/door occluders and impassable cells
+ *  that movement itself already respects. Returns a Map of "x,y" -> steps
+ *  required to reach it (the start tile itself is included at 0 steps). */
+export function computeReachableTiles(startX, startY, maxSteps, occluders, blockedCells) {
+  const visited = new Map();
+  const startKey = `${startX},${startY}`;
+  visited.set(startKey, 0);
+  if (maxSteps <= 0) return visited;
+  const queue = [[startX, startY, 0]];
+  while (queue.length) {
+    const [x, y, steps] = queue.shift();
+    if (steps >= maxSteps) continue;
+    for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+      const nx = x + dx, ny = y + dy;
+      const nkey = `${nx},${ny}`;
+      if (visited.has(nkey)) continue;
+      if (blockedCells && blockedCells.has(nkey)) continue;
+      if (pathBlocked(x + 0.5, y + 0.5, nx + 0.5, ny + 0.5, occluders)) continue;
+      visited.set(nkey, steps + 1);
+      queue.push([nx, ny, steps + 1]);
+    }
+  }
+  return visited;
+}
+
 /**
  * Converts hand-painted tile walls (wallGroups) into the same {x1,y1,x2,y2}
  * segment shape as dd2vtt-imported/hand-drawn walls, so a tile-painted map

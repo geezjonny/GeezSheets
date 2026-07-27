@@ -51,7 +51,7 @@ export async function rollInitiative(tokenId, name, dexModifier, callerName) {
   return total;
 }
 
-export async function lockInitiativeOrder(rolls, callerName) {
+export async function lockInitiativeOrder(rolls, callerName, mapName) {
   const order = Object.values(rolls)
     .sort((a, b) => b.total - a.total || b.dexMod - a.dexMod)
     .map((r, i) => ({
@@ -64,6 +64,9 @@ export async function lockInitiativeOrder(rolls, callerName) {
     }));
   const first = order[0];
   await update(ref(db, "initiative"), { order, active: first?.tokenId || null });
+  if (mapName && first) {
+    await update(ref(db, `maps/${mapName}/tokens/${first.tokenId}`), { turnMovedTiles: 0 }).catch(()=>{});
+  }
   if (callerName && first) {
     await push(ref(db, "chat"), {
       sender: "System", type: "system",
@@ -73,12 +76,15 @@ export async function lockInitiativeOrder(rolls, callerName) {
   }
 }
 
-export async function nextTurn(initiative, callerName) {
+export async function nextTurn(initiative, callerName, mapName) {
   const order = initiative.order || [];
   if (!order.length) return;
   const idx  = order.findIndex(e => e.tokenId === initiative.active);
   const next = order[(idx + 1) % order.length];
   await update(ref(db, "initiative"), { active: next.tokenId });
+  if (mapName) {
+    await update(ref(db, `maps/${mapName}/tokens/${next.tokenId}`), { turnMovedTiles: 0 }).catch(()=>{});
+  }
   if (callerName) {
     await push(ref(db, "chat"), {
       sender: "System", type: "system",
@@ -132,7 +138,7 @@ export async function reorderInitiative(newOrder) {
 export function renderTokenStrip(containerEl, state, options = {}) {
   if (!containerEl) return;
   const { tokens={}, pcsData={}, presence={}, initiative={}, inCombat=false, rolls={} } = state;
-  const { isGM=false, playerName="", myCharacterId="", onOpenSheet=null, onRollInitiative=null } = options;
+  const { isGM=false, playerName="", myCharacterId="", onOpenSheet=null, onRollInitiative=null, mapName="" } = options;
 
   const hasOrder = (initiative.order || []).length > 0;
   const activeId = initiative.active;
@@ -198,6 +204,34 @@ export function renderTokenStrip(containerEl, state, options = {}) {
     pill.onmouseenter = () => { pill.style.background = "rgba(255,255,255,.04)"; };
     pill.onmouseleave = () => { pill.style.background = isActive ? "rgba(200,168,75,.1)" : ""; };
     pill.onclick = () => { if (onOpenSheet && charId && charId !== "__npc__") onOpenSheet(charId, tok.name, isGM); };
+
+    // Drag-to-reorder — GM only, only once the initiative order is locked
+    if (isGM && inCombat && hasOrder) {
+      pill.draggable = true;
+      pill.style.cursor = "grab";
+      pill.ondragstart = (e) => {
+        e.dataTransfer.setData("text/plain", tok.id || tokId);
+        e.dataTransfer.effectAllowed = "move";
+        pill.style.opacity = "0.4";
+      };
+      pill.ondragend = () => { pill.style.opacity = ""; };
+      pill.ondragover = (e) => { e.preventDefault(); pill.style.background = "rgba(200,168,75,.18)"; };
+      pill.ondragleave = () => { pill.style.background = isActive ? "rgba(200,168,75,.1)" : ""; };
+      pill.ondrop = async (e) => {
+        e.preventDefault();
+        pill.style.background = isActive ? "rgba(200,168,75,.1)" : "";
+        const draggedId = e.dataTransfer.getData("text/plain");
+        const targetId = tok.id || tokId;
+        if (!draggedId || draggedId === targetId) return;
+        const order = [...(initiative.order || [])];
+        const fromIdx = order.findIndex(o => o.tokenId === draggedId);
+        const toIdx   = order.findIndex(o => o.tokenId === targetId);
+        if (fromIdx === -1 || toIdx === -1) return;
+        const [moved] = order.splice(fromIdx, 1);
+        order.splice(toIdx, 0, moved);
+        await reorderInitiative(order);
+      };
+    }
 
     // Portrait circle
     const portrait = document.createElement("div");
@@ -289,12 +323,12 @@ export function renderTokenStrip(containerEl, state, options = {}) {
     } else if (!hasOrder) {
       const allRolled = ordered.every(([,t]) => rolls[safeKey(t.id||"")]);
       ctrl.appendChild(gmBtn("🔒 Lock", async () => {
-        await lockInitiativeOrder(rolls, playerName||"GM");
+        await lockInitiativeOrder(rolls, playerName||"GM", mapName);
       }, "#c8a84b"));
       ctrl.appendChild(gmBtn("✕ Cancel", async () => await endCombat(), "#fca5a5"));
     } else {
       ctrl.appendChild(gmBtn("▶ Next", async () => {
-        await nextTurn({ order: initiative.order, active: activeId }, playerName||"GM");
+        await nextTurn({ order: initiative.order, active: activeId }, playerName||"GM", mapName);
       }, "#c8a84b"));
       ctrl.appendChild(gmBtn("✕ End", async () => await endCombat(), "#fca5a5"));
     }
