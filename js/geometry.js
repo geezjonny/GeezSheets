@@ -134,8 +134,15 @@ function rayIntersectSegment(ox, oy, dx, dy, x1, y1, x2, y2) {
   if (Math.abs(denom) < 1e-12) return Infinity; // parallel
   const t = ((x1 - ox) * sy - (y1 - oy) * sx) / denom;
   const u = ((x1 - ox) * dy - (y1 - oy) * dx) / denom;
-  if (t < 0 || u < 0 || u > 1) return Infinity;
-  return t;
+  // A light sitting exactly on (or extremely close to) a wall -- e.g. a
+  // wall-mounted torch -- can compute t as a tiny negative number here due
+  // to floating-point rounding, even though the ray is genuinely starting
+  // right at that wall. Treating that as "no intersection" (the old t<0
+  // check) let light leak straight through the very wall it's mounted on.
+  // A small epsilon tolerance treats "essentially at the origin" as blocked.
+  const T_EPS = 1e-6;
+  if (t < -T_EPS || u < 0 || u > 1) return Infinity;
+  return Math.max(0, t);
 }
 
 /** Distance from point (px,py) to segment (x1,y1)-(x2,y2). Used for
