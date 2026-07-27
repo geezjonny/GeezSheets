@@ -961,15 +961,32 @@ function buildBonusList(){
 document.getElementById("turn-menu-collapse").onclick=()=>{_turnMenuCollapsed=true;updateTurnMenu();};
 document.getElementById("turn-menu-tab").onclick=()=>{_turnMenuCollapsed=false;updateTurnMenu();};
 document.getElementById("turn-menu-back").onclick=showTurnMenuMain;
-document.querySelectorAll(".turn-menu-btn").forEach(btn=>{
+const _turnMenuBtns=document.querySelectorAll(".turn-menu-btn");
+console.log(`[turn-menu debug] found ${_turnMenuBtns.length} .turn-menu-btn elements`);
+_turnMenuBtns.forEach(btn=>{
+  console.log(`[turn-menu debug] wiring button data-tm="${btn.dataset.tm}"`);
   btn.onclick=async()=>{
     const action=btn.dataset.tm;
-    if(action==="move"){ _turnMenuCollapsed=true; updateTurnMenu(); }
-    else if(action==="action"){ showTurnMenuSub(buildActionList(),"No attacks or castable spells found on your sheet."); }
-    else if(action==="bonus"){ showTurnMenuSub(buildBonusList(),"No bonus-action-eligible features listed — check your sheet's Features & Traits."); }
-    else if(action==="end"){
-      const entry=myOwnTokenEntry();
-      if(entry) await nextTurn({order:initiativeState.order,active:initiativeState.active},myCharacterName||playerName,currentMap);
+    console.log(`[turn-menu debug] clicked "${action}"`);
+    try{
+      if(action==="move"){ _turnMenuCollapsed=true; updateTurnMenu(); }
+      else if(action==="action"){
+        const list=buildActionList();
+        console.log(`[turn-menu debug] buildActionList() returned ${list.length} items`,list);
+        showTurnMenuSub(list,"No attacks or castable spells found on your sheet.");
+      }
+      else if(action==="bonus"){
+        const list=buildBonusList();
+        console.log(`[turn-menu debug] buildBonusList() returned ${list.length} items`,list);
+        showTurnMenuSub(list,"No bonus-action-eligible features listed — check your sheet's Features & Traits.");
+      }
+      else if(action==="end"){
+        const entry=myOwnTokenEntry();
+        console.log(`[turn-menu debug] end turn, entry=`,entry);
+        if(entry) await nextTurn({order:initiativeState.order,active:initiativeState.active},myCharacterName||playerName,currentMap);
+      }
+    }catch(err){
+      console.error(`[turn-menu debug] error handling "${action}":`,err);
     }
   };
 });
