@@ -35,7 +35,6 @@ export async function startMicListener(playerName) {
 
   const data = new Uint8Array(analyser.frequencyBinCount);
   const safeKey = playerName.replace(/\./g, "_");
-  let _lastDebugLog = 0;
 
   function tick() {
     analyser.getByteFrequencyData(data);
@@ -44,19 +43,11 @@ export async function startMicListener(playerName) {
     const avg = sum / data.length;
     const isTalking = avg > THRESHOLD;
 
-    // TEMP DEBUG — remove once shake is confirmed working again
-    const now2 = Date.now();
-    if (now2 - _lastDebugLog > 500) {
-      _lastDebugLog = now2;
-      console.log(`[mic debug] avg=${avg.toFixed(1)} threshold=${THRESHOLD} isTalking=${isTalking} writeKey=cursors/${safeKey}/talking`);
-    }
-
     const now = Date.now();
     if (isTalking !== lastState && now - lastWriteTime > WRITE_THROTTLE) {
       lastState = isTalking;
       lastWriteTime = now;
       set(ref(db, `cursors/${safeKey}/talking`), isTalking);
-      console.log(`[mic debug] WROTE talking=${isTalking} to cursors/${safeKey}/talking`);
     }
     rafId = requestAnimationFrame(tick);
   }
@@ -83,24 +74,14 @@ export function subscribeTalking() {
     for (const [name, info] of Object.entries(data)) {
       if (info && info.talking) talkingPlayers[name.replace(/_/g, " ").toLowerCase()] = true;
     }
-    // TEMP DEBUG — remove once shake is confirmed working again
-    console.log("[mic debug] talkingPlayers now:", Object.keys(talkingPlayers));
   });
 }
 
 // Returns a small shake offset {dx, dy} if this token's owner is talking, else {dx:0,dy:0}
-let _lastShakeDebug = 0;
 export function getShakeOffset(tokenName) {
   if (!tokenName) return { dx: 0, dy: 0 };
   const key = tokenName.toLowerCase();
-  const isTalking = !!talkingPlayers[key];
-  // TEMP DEBUG — remove once shake is confirmed working again
-  const now = Date.now();
-  if (now - _lastShakeDebug > 2000) {
-    _lastShakeDebug = now;
-    console.log(`[mic debug] getShakeOffset("${tokenName}") -> key="${key}" isTalking=${isTalking} knownKeys=`, Object.keys(talkingPlayers));
-  }
-  if (!isTalking) return { dx: 0, dy: 0 };
+  if (!talkingPlayers[key]) return { dx: 0, dy: 0 };
   const t = Date.now() / 50;
   return { dx: Math.sin(t) * 1.5, dy: Math.cos(t * 1.3) * 1.5 };
 }

@@ -958,45 +958,18 @@ function buildBonusList(){
   }
   return items;
 }
-document.addEventListener("click",e=>{
-  const tm=document.getElementById("turn-menu");
-  if(tm&&tm.style.display!=="none"){
-    const r=tm.getBoundingClientRect();
-    if(e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom){
-      console.log(`[turn-menu debug] click at (${e.clientX},${e.clientY}) inside turn-menu bounds, actual target:`,e.target,e.target.className);
-    }
-  }
-},{capture:true});
-
 document.getElementById("turn-menu-collapse").onclick=()=>{_turnMenuCollapsed=true;updateTurnMenu();};
 document.getElementById("turn-menu-tab").onclick=()=>{_turnMenuCollapsed=false;updateTurnMenu();};
 document.getElementById("turn-menu-back").onclick=showTurnMenuMain;
-const _turnMenuBtns=document.querySelectorAll(".turn-menu-btn");
-console.log(`[turn-menu debug] found ${_turnMenuBtns.length} .turn-menu-btn elements`);
-_turnMenuBtns.forEach(btn=>{
-  console.log(`[turn-menu debug] wiring button data-tm="${btn.dataset.tm}"`);
+document.querySelectorAll(".turn-menu-btn").forEach(btn=>{
   btn.onclick=async()=>{
     const action=btn.dataset.tm;
-    console.log(`[turn-menu debug] clicked "${action}"`);
-    try{
-      if(action==="move"){ _turnMenuCollapsed=true; updateTurnMenu(); }
-      else if(action==="action"){
-        const list=buildActionList();
-        console.log(`[turn-menu debug] buildActionList() returned ${list.length} items`,list);
-        showTurnMenuSub(list,"No attacks or castable spells found on your sheet.");
-      }
-      else if(action==="bonus"){
-        const list=buildBonusList();
-        console.log(`[turn-menu debug] buildBonusList() returned ${list.length} items`,list);
-        showTurnMenuSub(list,"No bonus-action-eligible features listed — check your sheet's Features & Traits.");
-      }
-      else if(action==="end"){
-        const entry=myOwnTokenEntry();
-        console.log(`[turn-menu debug] end turn, entry=`,entry);
-        if(entry) await nextTurn({order:initiativeState.order,active:initiativeState.active},myCharacterName||playerName,currentMap);
-      }
-    }catch(err){
-      console.error(`[turn-menu debug] error handling "${action}":`,err);
+    if(action==="move"){ _turnMenuCollapsed=true; updateTurnMenu(); }
+    else if(action==="action"){ showTurnMenuSub(buildActionList(),"No attacks or castable spells found on your sheet."); }
+    else if(action==="bonus"){ showTurnMenuSub(buildBonusList(),"No bonus-action-eligible features listed — check your sheet's Features & Traits."); }
+    else if(action==="end"){
+      const entry=myOwnTokenEntry();
+      if(entry) await nextTurn({order:initiativeState.order,active:initiativeState.active},myCharacterName||playerName,currentMap);
     }
   };
 });
@@ -1267,6 +1240,7 @@ function openContainerAt(tx,ty){
   })();
 }
 viewport.addEventListener("contextmenu",e=>{
+  if(e.target.closest("#turn-menu,#turn-menu-tab")) return;
   e.preventDefault();
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
   openContainerAt(tx,ty);
@@ -1301,6 +1275,7 @@ function updateInvestigateBanner(){
 }
 
 viewport.addEventListener("pointerdown",e=>{
+  if(e.target.closest("#turn-menu,#turn-menu-tab")) return; // let UI overlay clicks through untouched
   const[sx,sy]=screenPos(e);
   if(pingMode){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}
   if(rulerMode){
@@ -1361,6 +1336,7 @@ viewport.addEventListener("pointerup",e=>{
 });
 
 viewport.addEventListener("wheel",e=>{
+  if(e.target.closest("#turn-menu")) return; // let the submenu list scroll normally
   e.preventDefault();
   const[sx,sy]=screenPos(e);
   applyZoom(e.deltaY<0?1.1:.9,sx,sy);
