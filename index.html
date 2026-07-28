@@ -1178,10 +1178,16 @@ function draw(){
 
   // ── Geometry lighting pass ────────────────────────────────────────────────
   {const _p=TIME_OF_DAY_PRESETS[geometry.timeOfDay]||TIME_OF_DAY_PRESETS.day,lp=geometry.lightingParams,da=lp.blackAlpha;
-  if(_p.darkness>0&&da>0.01){
+  if(_p.darkness>0){
     if(!_geoLC||_geoLC.width!==canvas.width||_geoLC.height!==canvas.height){_geoLC=document.createElement("canvas");_geoLC.width=canvas.width;_geoLC.height=canvas.height;_geoLX=_geoLC.getContext("2d");}
     _geoLX.clearRect(0,0,_geoLC.width,_geoLC.height);
-    _geoLX.fillStyle=`rgba(${_p.tint},${da})`;_geoLX.fillRect(0,0,_geoLC.width,_geoLC.height);
+    // Occlusion base -- ALWAYS fully opaque, regardless of the Darkness
+    // slider. What you can't see must always be fully hidden; the slider
+    // now only controls an ambient mood tint applied afterward on top of
+    // what you CAN see (below), never whether something outside your
+    // vision leaks through, which is what the old approach did by using
+    // this same value as the occlusion layer's own opacity.
+    _geoLX.fillStyle=`rgba(${_p.tint},1)`;_geoLX.fillRect(0,0,_geoLC.width,_geoLC.height);
     _geoLX.save();_geoLX.translate(camera.x,camera.y);_geoLX.scale(camera.zoom,camera.zoom);
     const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
     // getActiveLights() returns EVERY light on the whole map, with no
@@ -1215,7 +1221,14 @@ function draw(){
     _geoLX.globalCompositeOperation="source-over";
     }
     _geoLX.restore();
-    ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);ctx.restore();
+    ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(_geoLC,0,0);
+    // Ambient mood tint -- applied AFTER compositing, on top of everything.
+    // Areas that are already fully occluded are already opaque black, so
+    // this has no visible effect there; visible/lit areas get an additional
+    // darkening wash proportional to the Darkness slider, achieving a
+    // moodier look WITHOUT ever compromising strict occlusion.
+    if(da>0.01){ctx.fillStyle=`rgba(${_p.tint},${Math.min(1,da)*0.55})`;ctx.fillRect(0,0,canvas.width,canvas.height);}
+    ctx.restore();
   } else {
     // Day: no darkness to tint, but still limit sight to line-of-sight so
     // players can't see through walls or across the whole map in daylight.

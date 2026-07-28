@@ -390,10 +390,8 @@ export function drawAllLights(ctx, lights, walls, doors, TILE) {
 // so lights visibly matter more at night than at noon.
 
 export const TIME_OF_DAY_PRESETS = {
-  day:   { label: "☀️ Day",   darkness: 0,    tint: "20,20,35"    },
-  dawn:  { label: "🌅 Dawn",  darkness: 0.35, tint: "255,190,150" },
-  dusk:  { label: "🌇 Dusk",  darkness: 0.55, tint: "255,130,80"  },
-  night: { label: "🌙 Night", darkness: 0.85, tint: "10,12,40"    },
+  day:   { label: "☀️ Day",   darkness: 0,    tint: "20,20,35" },
+  night: { label: "🌙 Night", darkness: 0.85, tint: "10,12,40" },
 };
 
 /** Fills `worldRect` (the camera's visible area, in world/grid-px units --
