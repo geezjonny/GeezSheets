@@ -1419,6 +1419,11 @@ function openEditTokenModal(tokId){
   document.getElementById("token-modal").classList.remove("hidden");
 }
 
+function generatePuzzleGroupId(){
+  let n=1;
+  while(puzzleGroups[`puzzle_${n}`]) n++;
+  return `puzzle_${n}`;
+}
 function memberCountForGroup(groupId){
   let n=0;
   for(const k in triggers) if(triggers[k].groupId===groupId) n++;
@@ -1568,9 +1573,9 @@ document.getElementById("prop-ctx-trigger").onclick=async()=>{
   const modeTrim=modeVal.trim().toLowerCase();
   if(!modeTrim){ delete p.trigger; await savePropsLocal(getMapName(),props); toast("No longer a trigger"); return; }
   const mode=modeTrim.startsWith("b")?"momentary":"latch";
-  const groupName=prompt("Puzzle group name for this "+(mode==="latch"?"lever":"button")+" (existing name to add to it, or a new name to start one):",existing?existing.groupId:(currentPlateGroup||""));
-  if(!groupName||!groupName.trim())return;
-  const groupId=groupName.trim();
+  const groupName=prompt("Puzzle group name — leave blank if this "+(mode==="latch"?"lever":"button")+" is standalone (just controls its own door); type a name only if it shares a condition with other plates/levers/buttons:",existing?existing.groupId:"");
+  if(groupName===null)return; // cancelled
+  const groupId=groupName.trim()||generatePuzzleGroupId();
   if(!puzzleGroups[groupId]) puzzleGroups[groupId]={name:groupId,targetDoorId:null};
   p.trigger={groupId,mode,active:false,activatedAt:0};
   await savePropsLocal(getMapName(),props);
@@ -2516,9 +2521,9 @@ canvas.addEventListener("pointerdown",e=>{
     }
     if(structureType==="plate"||structureType==="tripwire"){
       const mode=structureType==="plate"?"latch":"momentary";
-      const groupName=prompt(`Puzzle group name for this ${mode==="latch"?"plate":"tripwire"} (existing name to add to it, or a new name to start one):`,currentPlateGroup||"");
-      if(!groupName||!groupName.trim()){ e.stopPropagation(); return; }
-      currentPlateMode=mode; currentPlateGroup=groupName.trim();
+      const groupName=prompt(`Puzzle group name — leave blank if this ${mode==="latch"?"plate":"tripwire"} is standalone (just controls its own door); type a name only if it needs to be stepped on together with other plates/levers/buttons:`,"");
+      if(groupName===null){ e.stopPropagation(); return; } // cancelled
+      currentPlateMode=mode; currentPlateGroup=groupName.trim()||generatePuzzleGroupId();
       if(!puzzleGroups[currentPlateGroup]) puzzleGroups[currentPlateGroup]={name:currentPlateGroup,targetDoorId:null};
       const[tx,ty]=worldToTile(wx,wy,TILE);
       triggers[key(tx,ty)]={groupId:currentPlateGroup,mode:currentPlateMode,triggered:false};
