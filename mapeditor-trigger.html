@@ -737,8 +737,8 @@ canvas{display:block;cursor:crosshair}
   <div class="modal-box" style="min-width:380px;max-width:460px">
     <h2 id="node-modal-title">Configure Trigger Node</h2>
     <div class="modal-row" style="margin-top:10px">
-      <div class="modal-section"><label>Condition</label>
-        <select id="node-condition">
+      <div class="modal-section"><label>Trigger</label>
+        <select id="node-trigger">
           <option value="step">Step — triggered by occupancy</option>
           <option value="flip">Flip — triggered by clicking it</option>
         </select>
@@ -746,7 +746,21 @@ canvas{display:block;cursor:crosshair}
       <div class="modal-section"><label>Persistence</label>
         <select id="node-persistence">
           <option value="latch">Latch — stays triggered once met</option>
-          <option value="momentary">Momentary — only while condition holds</option>
+          <option value="momentary">Momentary — only while trigger holds</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-row" style="margin-top:10px">
+      <div class="modal-section"><label>Condition (optional)</label>
+        <select id="node-condition-target">
+          <option value="">(none — trigger alone is enough)</option>
+        </select>
+      </div>
+      <div class="modal-section" id="node-condition-state-row" style="display:none">
+        <label>Must be</label>
+        <select id="node-condition-state">
+          <option value="active">On / active</option>
+          <option value="inactive">Off / inactive</option>
         </select>
       </div>
     </div>
@@ -758,7 +772,7 @@ canvas{display:block;cursor:crosshair}
         <option value="effect">Effect — show a custom message</option>
       </select>
     </div>
-    <div class="modal-section" id="node-link-row" style="margin-top:10px"><label>Links to</label>
+    <div class="modal-section" id="node-link-row" style="margin-top:10px"><label>Effect targets</label>
       <select id="node-link-target"></select>
     </div>
     <div class="modal-section" id="node-damage-row" style="margin-top:10px;display:none"><label>Damage (dice notation)</label>
@@ -1430,12 +1444,12 @@ function openEditTokenModal(tokId){
 }
 
 const NODE_TYPE_DEFAULTS={
-  portal:{condition:"step",persistence:"momentary",effect:"move"},
-  tripwire:{condition:"step",persistence:"momentary",effect:"effect"},
-  trap:{condition:"step",persistence:"momentary",effect:"damage"},
-  latch:{condition:"flip",persistence:"latch",effect:"activate"},
-  lever:{condition:"flip",persistence:"latch",effect:"activate"},
-  plate:{condition:"step",persistence:"latch",effect:"activate"},
+  portal:{trigger:"step",persistence:"momentary",effect:"move"},
+  tripwire:{trigger:"step",persistence:"momentary",effect:"effect"},
+  trap:{trigger:"step",persistence:"momentary",effect:"damage"},
+  latch:{trigger:"flip",persistence:"latch",effect:"activate"},
+  lever:{trigger:"flip",persistence:"latch",effect:"activate"},
+  plate:{trigger:"step",persistence:"latch",effect:"activate"},
 };
 const NODE_ICONS={portal:"🌀",tripwire:"🔳",trap:"🪤",latch:"🔐",lever:"🎚️",plate:"🔲"};
 let _nodeModalKey=null, _nodeModalType=null;
@@ -1443,16 +1457,18 @@ function openNodeConfigModal(cellKey,nodeType){
   const existing=triggerNodes[cellKey];
   _nodeModalKey=cellKey;
   _nodeModalType=existing?existing.type:nodeType;
-  const defaults=NODE_TYPE_DEFAULTS[_nodeModalType]||{condition:"step",persistence:"latch",effect:"activate"};
+  const defaults=NODE_TYPE_DEFAULTS[_nodeModalType]||{trigger:"step",persistence:"latch",effect:"activate"};
   const label=_nodeModalType.charAt(0).toUpperCase()+_nodeModalType.slice(1);
   document.getElementById("node-modal-title").textContent=`${NODE_ICONS[_nodeModalType]||""} Configure ${label}`;
-  document.getElementById("node-condition").value=existing?existing.condition:defaults.condition;
+  document.getElementById("node-trigger").value=existing?existing.trigger:defaults.trigger;
   document.getElementById("node-persistence").value=existing?existing.persistence:defaults.persistence;
   document.getElementById("node-effect").value=existing?existing.effect:defaults.effect;
   document.getElementById("node-damage-amount").value=existing?.damageAmount||"2d6";
   document.getElementById("node-effect-text").value=existing?.effectText||"";
+  document.getElementById("node-condition-state").value=existing?.conditionState||"active";
   document.getElementById("node-delete").style.display=existing?"block":"none";
   populateNodeLinkTargets(existing);
+  populateNodeConditionTargets(existing);
   updateNodeModalFieldVisibility();
   document.getElementById("node-modal").classList.remove("hidden");
 }
@@ -1461,8 +1477,10 @@ function updateNodeModalFieldVisibility(){
   document.getElementById("node-link-row").style.display=(effect==="move"||effect==="activate")?"block":"none";
   document.getElementById("node-damage-row").style.display=effect==="damage"?"block":"none";
   document.getElementById("node-effecttext-row").style.display=effect==="effect"?"block":"none";
+  document.getElementById("node-condition-state-row").style.display=document.getElementById("node-condition-target").value?"block":"none";
 }
 document.getElementById("node-effect").onchange=updateNodeModalFieldVisibility;
+document.getElementById("node-condition-target").onchange=updateNodeModalFieldVisibility;
 function populateNodeLinkTargets(existing){
   const sel=document.getElementById("node-link-target");
   sel.innerHTML="";
@@ -1484,33 +1502,54 @@ function populateNodeLinkTargets(existing){
     sel.appendChild(opt);
   });
 }
+function populateNodeConditionTargets(existing){
+  const sel=document.getElementById("node-condition-target");
+  sel.innerHTML="";
+  const noneOpt=document.createElement("option");noneOpt.value="";noneOpt.textContent="(none — trigger alone is enough)";sel.appendChild(noneOpt);
+  for(const[k,n]of Object.entries(triggerNodes)){
+    if(k===_nodeModalKey) continue; // can't gate on itself
+    const[x,y]=k.split(",").map(Number);
+    const opt=document.createElement("option");
+    opt.value=n.id;
+    opt.textContent=`${NODE_ICONS[n.type]||""} ${n.type} at (${x},${y})`;
+    if(existing?.conditionLinkTo===n.id) opt.selected=true;
+    sel.appendChild(opt);
+  }
+}
 document.getElementById("node-cancel").onclick=()=>document.getElementById("node-modal").classList.add("hidden");
 document.getElementById("node-delete").onclick=async()=>{
   if(!_nodeModalKey||!triggerNodes[_nodeModalKey]) return;
-  if(!confirm("Delete this trigger node? Any links pointing to it will be cleared."))return;
+  if(!confirm("Delete this trigger node? Any effect-links or condition-gates pointing to it will be cleared."))return;
   const removedId=triggerNodes[_nodeModalKey].id;
   delete triggerNodes[_nodeModalKey];
-  for(const n of Object.values(triggerNodes)) if(n.linkTo===removedId){ n.linkTo=null; n.linkKind=null; }
+  for(const n of Object.values(triggerNodes)){
+    if(n.linkTo===removedId){ n.linkTo=null; n.linkKind=null; }
+    if(n.conditionLinkTo===removedId){ n.conditionLinkTo=null; }
+  }
   await saveTriggerNodes(getMapName(),triggerNodes);
   document.getElementById("node-modal").classList.add("hidden");
   toast("Trigger node deleted");
 };
 document.getElementById("node-save").onclick=async()=>{
-  const condition=document.getElementById("node-condition").value;
+  const trigger=document.getElementById("node-trigger").value;
   const persistence=document.getElementById("node-persistence").value;
   const effect=document.getElementById("node-effect").value;
   const linkVal=document.getElementById("node-link-target").value;
   const[linkKind,linkTo]=linkVal?linkVal.split(":"):[null,null];
+  const conditionLinkTo=document.getElementById("node-condition-target").value||null;
+  const conditionState=document.getElementById("node-condition-state").value;
   const damageAmount=document.getElementById("node-damage-amount").value.trim()||"2d6";
   const effectText=document.getElementById("node-effect-text").value.trim();
   const existing=triggerNodes[_nodeModalKey];
   const node=existing||{id:genNodeId(),type:_nodeModalType,triggered:false,active:false,activatedAt:0};
   node.type=_nodeModalType;
-  node.condition=condition;
+  node.trigger=trigger;
   node.persistence=persistence;
   node.effect=effect;
   node.linkKind=(effect==="move"||effect==="activate")?(linkKind||null):null;
   node.linkTo=(effect==="move"||effect==="activate")?(linkTo||null):null;
+  node.conditionLinkTo=conditionLinkTo;
+  node.conditionState=conditionState;
   node.damageAmount=damageAmount;
   node.effectText=effectText;
   triggerNodes[_nodeModalKey]=node;
@@ -1958,7 +1997,7 @@ function drawTriggerNodes(){
   for(const[k,n]of Object.entries(triggerNodes)){
     const[x,y]=k.split(",").map(Number);
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.34;
-    const active=isNodeActive(n,k,occupiedKeys);
+    const active=isNodeActive(n,k,occupiedKeys,triggerNodes);
     const color=active?"143,208,143":"200,168,75"; // green when active, gold when not
     ctx.strokeStyle=`rgba(${color},0.9)`;ctx.lineWidth=Math.max(1,TILE*0.045);
     ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
@@ -1968,8 +2007,12 @@ function drawTriggerNodes(){
       ctx.font=`${Math.round(TILE*0.16)}px serif`;ctx.fillStyle="rgba(200,168,75,0.9)";
       ctx.fillText("🔗",cx+r*0.75,cy-r*0.75);
     }
+    if(n.conditionLinkTo){
+      ctx.font=`${Math.round(TILE*0.16)}px serif`;ctx.fillStyle="rgba(160,120,220,0.9)";
+      ctx.fillText("⛓️",cx-r*0.75,cy-r*0.75);
+    }
     ctx.font=`${Math.round(TILE*0.16)}px 'Cinzel',serif`;ctx.fillStyle=`rgba(${color},0.8)`;
-    ctx.fillText(`${n.condition}·${n.effect}`,cx,cy+r+TILE*0.14);
+    ctx.fillText(`${n.trigger}·${n.effect}`,cx,cy+r+TILE*0.14);
   }
   ctx.restore();
 }

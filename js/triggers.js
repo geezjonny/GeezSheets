@@ -1,24 +1,33 @@
 // Trigger Nodes — unified relay system replacing the old Portal, Trap, and
 // group-based puzzle prototype. One node shape covers all six visual types;
-// behavior comes entirely from independent condition/persistence/effect
-// parameters plus a DIRECTED link to another node or a door. Because links
-// point at a specific node (not a shared symmetric number the way the old
-// Portal did), chains and loops fall out naturally: A->B->C->A is just three
-// nodes each linking to the next.
+// behavior comes from independent trigger/persistence/condition/effect
+// parameters plus DIRECTED links. Because links point at a specific node
+// (not a shared symmetric number the way the old Portal did), chains and
+// loops fall out naturally: A->B->C->A is just three nodes each linking to
+// the next.
 //
 // Node shape (stored in maps/{map}/triggerNodes, keyed by cell "x,y"):
 // {
 //   id,                          -- stable unique id, independent of position
 //   type: "portal"|"tripwire"|"trap"|"latch"|"lever"|"plate",  -- visual only
-//   condition: "step"|"flip",    -- step = occupancy, flip = click/interact
+//   trigger: "step"|"flip",      -- step = occupancy, flip = click/interact
 //   persistence: "latch"|"momentary",
+//   conditionLinkTo: id|null,    -- OPTIONAL external gate: another node's id.
+//                                   If set, this node's effect only fires when
+//                                   ITS OWN trigger is satisfied AND the linked
+//                                   node is in conditionState. e.g. a plate
+//                                   (trigger=step) with conditionLinkTo=lever1,
+//                                   conditionState="active" only opens its
+//                                   door while the plate is stepped on AND
+//                                   lever1 is flipped on.
+//   conditionState: "active"|"inactive",  -- required state of the condition link
 //   effect: "move"|"activate"|"damage"|"effect",
-//   linkKind: "node"|"door"|null,  -- what linkTo addresses
+//   linkKind: "node"|"door"|null,  -- what linkTo addresses (the EFFECT's target)
 //   linkTo: id|null,               -- directed target for move/activate
 //   damageAmount,                  -- effect=damage, e.g. "2d6"
 //   effectText,                    -- effect=effect, custom narrative message
-//   triggered: false,              -- persisted state for condition=step + persistence=latch
-//   active: false, activatedAt: 0, -- persisted state for condition=flip
+//   triggered: false,              -- persisted state for trigger=step + persistence=latch
+//   active: false, activatedAt: 0, -- persisted state for trigger=flip
 // }
 
 import { db } from "./firebase.js";
@@ -34,20 +43,39 @@ export function genNodeId() {
   return "node_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
 }
 
-/** Is this node currently satisfied, right now? */
-export function isNodeActive(node, key, occupiedKeys) {
-  if (node.condition === "step") {
+/** Is this node's OWN trigger currently satisfied, ignoring any condition gate. */
+function isOwnTriggerActive(node, key, occupiedKeys) {
+  if (node.trigger === "step") {
     if (node.persistence === "momentary") return occupiedKeys.has(key);
     return !!node.triggered;
   }
-  // condition === "flip"
+  // trigger === "flip"
   if (node.persistence === "momentary") {
     return !!node.active && (Date.now() - (node.activatedAt || 0)) < BUTTON_PULSE_MS;
   }
   return !!node.active;
 }
 
-/** Finds the node a given node links to, if any. */
+/** Is this node currently satisfied, right now -- own trigger AND (if set) its
+ *  external condition gate. `nodes` is the full map keyed by "x,y", needed to
+ *  resolve the condition link and recurse into it. `_visited` guards against
+ *  circular condition chains (A's condition is B, B's condition is A). */
+export function isNodeActive(node, key, occupiedKeys, nodes, _visited) {
+  if (!isOwnTriggerActive(node, key, occupiedKeys)) return false;
+  if (!node.conditionLinkTo || !nodes) return true;
+  const visited = _visited || new Set();
+  if (visited.has(node.id)) return false; // circular condition chain -- fail closed
+  visited.add(node.id);
+  let condEntry = null;
+  for (const [k, n] of Object.entries(nodes)) if (n.id === node.conditionLinkTo) { condEntry = [k, n]; break; }
+  if (!condEntry) return false; // dangling condition link -- fail closed
+  const [condKey, condNode] = condEntry;
+  const condActive = isNodeActive(condNode, condKey, occupiedKeys, nodes, visited);
+  const wantActive = node.conditionState !== "inactive"; // default: require active
+  return condActive === wantActive;
+}
+
+/** Finds the node a given node's EFFECT links to, if any. */
 export function resolveLinkedNode(node, nodes) {
   if (node.linkKind !== "node" || !node.linkTo) return null;
   for (const n of Object.values(nodes)) if (n.id === node.linkTo) return n;
@@ -71,16 +99,16 @@ export function rollDamage(diceStr) {
 }
 
 /** For every effect="activate" node, keeps its linked door/node state synced
- *  to its own current active state. Safe to call from every client on every
- *  update -- writes are idempotent (re-writing the same correct value is a
- *  no-op in effect). This is what makes momentary activate-effects reverse
- *  automatically when their condition drops, without any special-casing. */
+ *  to its own current active state (trigger AND condition gate combined).
+ *  Safe to call from every client on every update -- writes are idempotent.
+ *  This is what makes momentary activate-effects reverse automatically when
+ *  their trigger or condition drops, without any special-casing. */
 export async function syncActivateEffects(mapName, nodes, doors, occupiedKeys) {
   let doorsChanged = false;
   const nodeWrites = {};
   for (const [key, node] of Object.entries(nodes)) {
     if (node.effect !== "activate" || !node.linkTo) continue;
-    const isActive = isNodeActive(node, key, occupiedKeys);
+    const isActive = isNodeActive(node, key, occupiedKeys, nodes);
     if (node.linkKind === "door") {
       const door = doors.find(d => d.id === node.linkTo);
       if (!door) continue;
@@ -91,7 +119,7 @@ export async function syncActivateEffects(mapName, nodes, doors, occupiedKeys) {
     } else if (node.linkKind === "node") {
       for (const [tKey, target] of Object.entries(nodes)) {
         if (target.id !== node.linkTo) continue;
-        if (target.condition !== "flip") continue; // only flip-condition nodes can be externally activated
+        if (target.trigger !== "flip") continue; // only flip-trigger nodes can be externally activated
         if (!!target.active === isActive) continue;
         nodeWrites[tKey] = { ...target, active: isActive, activatedAt: isActive ? Date.now() : target.activatedAt };
       }
@@ -103,5 +131,3 @@ export async function syncActivateEffects(mapName, nodes, doors, occupiedKeys) {
     await saveTriggerNodes(mapName, nodes);
   }
 }
-
-
