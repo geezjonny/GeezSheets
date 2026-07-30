@@ -1,100 +1,107 @@
-// Triggers — puzzle mechanics: occupancy plates (pressure plate / tripwire)
-// and interaction switches (lever / button), grouped into puzzle groups that
-// drive a target door's locked/closed state directly. Nothing else in the
-// app needs to know a door is puzzle-controlled -- it's just a normal door
-// whose fields happen to be written by this system instead of a DM click.
+// Trigger Nodes — unified relay system replacing the old Portal, Trap, and
+// group-based puzzle prototype. One node shape covers all six visual types;
+// behavior comes entirely from independent condition/persistence/effect
+// parameters plus a DIRECTED link to another node or a door. Because links
+// point at a specific node (not a shared symmetric number the way the old
+// Portal did), chains and loops fall out naturally: A->B->C->A is just three
+// nodes each linking to the next.
 //
-// Two independent parameters cover the whole taxonomy:
-//   method: "occupancy" (something is standing on it) | "interaction" (clicked)
-//   mode:   "latch" (stays triggered once met) | "momentary" (only while true)
-//
-// occupancy + latch      = Pressure Plate
-// occupancy + momentary  = Momentary Pressure Plate / Tripwire
-// interaction + latch    = Lever
-// interaction + momentary= Button (pulses for BUTTON_PULSE_MS after click)
+// Node shape (stored in maps/{map}/triggerNodes, keyed by cell "x,y"):
+// {
+//   id,                          -- stable unique id, independent of position
+//   type: "portal"|"tripwire"|"trap"|"latch"|"lever"|"plate",  -- visual only
+//   condition: "step"|"flip",    -- step = occupancy, flip = click/interact
+//   persistence: "latch"|"momentary",
+//   effect: "move"|"activate"|"damage"|"effect",
+//   linkKind: "node"|"door"|null,  -- what linkTo addresses
+//   linkTo: id|null,               -- directed target for move/activate
+//   damageAmount,                  -- effect=damage, e.g. "2d6"
+//   effectText,                    -- effect=effect, custom narrative message
+//   triggered: false,              -- persisted state for condition=step + persistence=latch
+//   active: false, activatedAt: 0, -- persisted state for condition=flip
+// }
 
 import { db } from "./firebase.js";
-import { ref, set, get } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import { ref, set } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
 export const BUTTON_PULSE_MS = 3000;
 
-// ── Save helpers ──────────────────────────────────────────────────────────────
-
-export async function saveTriggers(mapName, triggers) {
-  await set(ref(db, `maps/${mapName}/triggers`), Object.keys(triggers).length ? triggers : null);
+export async function saveTriggerNodes(mapName, nodes) {
+  await set(ref(db, `maps/${mapName}/triggerNodes`), Object.keys(nodes).length ? nodes : null);
 }
 
-export async function savePuzzleGroups(mapName, groups) {
-  await set(ref(db, `maps/${mapName}/puzzleGroups`), Object.keys(groups).length ? groups : null);
+export function genNodeId() {
+  return "node_" + Date.now() + "_" + Math.floor(Math.random() * 10000);
 }
 
-// ── Live "is this trigger currently satisfied" checks ─────────────────────────
-
-/** Occupancy trigger (plate) -- true if the mode's condition currently holds.
- *  occupiedKeys: a Set of "x,y" strings for every cell a token currently sits on. */
-export function isPlateActive(plateData, key, occupiedKeys) {
-  if (plateData.mode === "momentary") return occupiedKeys.has(key);
-  return !!plateData.triggered; // latch: persisted, never auto-clears
-}
-
-/** Interaction trigger (lever/button prop) -- true if currently satisfied. */
-export function isPropTriggerActive(trigger) {
-  if (!trigger) return false;
-  if (trigger.mode === "momentary") {
-    return !!trigger.active && (Date.now() - (trigger.activatedAt || 0)) < BUTTON_PULSE_MS;
+/** Is this node currently satisfied, right now? */
+export function isNodeActive(node, key, occupiedKeys) {
+  if (node.condition === "step") {
+    if (node.persistence === "momentary") return occupiedKeys.has(key);
+    return !!node.triggered;
   }
-  return !!trigger.active; // latch: stays wherever it was last set
+  // condition === "flip"
+  if (node.persistence === "momentary") {
+    return !!node.active && (Date.now() - (node.activatedAt || 0)) < BUTTON_PULSE_MS;
+  }
+  return !!node.active;
 }
 
-/** Is every trigger belonging to `groupId` currently active? Pure function --
- *  callers write the result to a door's locked/closed fields themselves. */
-export function isGroupSolved(groupId, triggers, props, occupiedKeys) {
-  const plateEntries = Object.entries(triggers).filter(([, t]) => t.groupId === groupId);
-  const propEntries = Object.entries(props).filter(([, p]) => p.trigger?.groupId === groupId);
-  if (!plateEntries.length && !propEntries.length) return false; // empty group, never "solved"
-  for (const [key, t] of plateEntries) {
-    if (!isPlateActive(t, key, occupiedKeys)) return false;
-  }
-  for (const [, p] of propEntries) {
-    if (!isPropTriggerActive(p.trigger)) return false;
-  }
-  return true;
+/** Finds the node a given node links to, if any. */
+export function resolveLinkedNode(node, nodes) {
+  if (node.linkKind !== "node" || !node.linkTo) return null;
+  for (const n of Object.values(nodes)) if (n.id === node.linkTo) return n;
+  return null;
 }
 
-/** Recomputes a group's solved state and, if it changed, writes the new
- *  open/locked state to its target door. Call this after any trigger change
- *  (movement, lever/button click). Safe to call even if the group has no
- *  target door configured (no-op in that case). */
-export async function syncGroupDoor(mapName, groupId, group, triggers, props, doors, occupiedKeys) {
-  if (!group?.targetDoorId) return;
-  const door = doors.find(d => d.id === group.targetDoorId);
-  if (!door) return;
-  const solved = isGroupSolved(groupId, triggers, props, occupiedKeys);
-  const shouldBeOpen = solved;
-  if (door.locked === !shouldBeOpen && door.closed === !shouldBeOpen) return; // already correct
-  door.locked = !shouldBeOpen;
-  door.closed = !shouldBeOpen;
-  await set(ref(db, `maps/${mapName}/geometry/doors`), doors);
+export function resolveLinkedDoor(node, doors) {
+  if (node.linkKind !== "door" || !node.linkTo) return null;
+  return doors.find(d => d.id === node.linkTo) || null;
 }
 
-/** Clears all latch state for every trigger in a group -- the DM's "reset
- *  puzzle" action. Momentary triggers need no reset (they're never persisted
- *  as triggered in the first place). */
-export async function resetPuzzleGroup(mapName, groupId, triggers, props) {
-  let changed = false;
-  for (const [key, t] of Object.entries(triggers)) {
-    if (t.groupId === groupId && t.mode === "latch" && t.triggered) { t.triggered = false; changed = true; }
-  }
-  const propUpdates = {};
-  for (const [key, p] of Object.entries(props)) {
-    if (p.trigger?.groupId === groupId && p.trigger.mode === "latch" && p.trigger.active) {
-      p.trigger.active = false;
-      propUpdates[key] = p;
-      changed = true;
+/** Rolls a simple dice string like "2d6" or "1d4+2". Returns {total, text}. */
+export function rollDamage(diceStr) {
+  const m = /^(\d+)d(\d+)([+-]\d+)?$/i.exec((diceStr || "1d6").trim());
+  if (!m) return { total: 0, text: "0" };
+  const count = parseInt(m[1], 10), sides = parseInt(m[2], 10), mod = parseInt(m[3] || "0", 10);
+  let total = mod;
+  const rolls = [];
+  for (let i = 0; i < count; i++) { const r = 1 + Math.floor(Math.random() * sides); rolls.push(r); total += r; }
+  return { total: Math.max(0, total), text: `${diceStr} (${rolls.join("+")}${mod ? (mod > 0 ? "+" + mod : mod) : ""})` };
+}
+
+/** For every effect="activate" node, keeps its linked door/node state synced
+ *  to its own current active state. Safe to call from every client on every
+ *  update -- writes are idempotent (re-writing the same correct value is a
+ *  no-op in effect). This is what makes momentary activate-effects reverse
+ *  automatically when their condition drops, without any special-casing. */
+export async function syncActivateEffects(mapName, nodes, doors, occupiedKeys) {
+  let doorsChanged = false;
+  const nodeWrites = {};
+  for (const [key, node] of Object.entries(nodes)) {
+    if (node.effect !== "activate" || !node.linkTo) continue;
+    const isActive = isNodeActive(node, key, occupiedKeys);
+    if (node.linkKind === "door") {
+      const door = doors.find(d => d.id === node.linkTo);
+      if (!door) continue;
+      const shouldBeOpen = isActive;
+      if (door.locked === !shouldBeOpen && door.closed === !shouldBeOpen) continue;
+      door.locked = !shouldBeOpen; door.closed = !shouldBeOpen;
+      doorsChanged = true;
+    } else if (node.linkKind === "node") {
+      for (const [tKey, target] of Object.entries(nodes)) {
+        if (target.id !== node.linkTo) continue;
+        if (target.condition !== "flip") continue; // only flip-condition nodes can be externally activated
+        if (!!target.active === isActive) continue;
+        nodeWrites[tKey] = { ...target, active: isActive, activatedAt: isActive ? Date.now() : target.activatedAt };
+      }
     }
   }
-  if (changed) {
-    await saveTriggers(mapName, triggers);
-    if (Object.keys(propUpdates).length) await set(ref(db, `maps/${mapName}/props`), Object.keys(props).length ? props : null);
+  if (doorsChanged) await set(ref(db, `maps/${mapName}/geometry/doors`), doors);
+  if (Object.keys(nodeWrites).length) {
+    Object.assign(nodes, nodeWrites);
+    await saveTriggerNodes(mapName, nodes);
   }
 }
+
+

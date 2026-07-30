@@ -358,7 +358,7 @@ canvas{display:block;cursor:crosshair}
   <div class="tb-sep"></div>
 
   <button class="tb-btn cat-btn" id="cat-background" title="Background — dd2vtt import or tile painting (cosmetic)">🗺 Background</button>
-  <button class="tb-btn cat-btn" id="cat-structure"  title="Structure — walls, lights, doors, portals (gameplay-affecting)">🧱 Structure</button>
+  <button class="tb-btn cat-btn" id="cat-structure"  title="Structure — walls, lights, doors, trigger nodes (gameplay-affecting)">🧱 Structure</button>
   <button class="tb-btn cat-btn" id="cat-tokens"      title="Tokens — PCs and NPCs">⚔ Tokens</button>
   <button class="tb-btn cat-btn" id="cat-props"       title="Props — furniture, clutter, decals">🪑 Props</button>
   <button class="tb-btn cat-btn" id="cat-setting"     title="Setting — time of day, lighting, weather, Theater of Mind">🌗 Setting</button>
@@ -388,7 +388,6 @@ canvas{display:block;cursor:crosshair}
   <input type="file" id="vttFileInput" accept=".dd2vtt,.json" hidden>
 
   <button class="tb-btn" id="lockPlayersBtn" title="Lock player view while setting up">🔒</button>
-  <button class="tb-btn" id="puzzleGroupsBtn" title="Manage puzzle groups">🧩</button>
   <button class="tb-btn" id="glossaryBtn" title="Glossary Search (G)">📖</button>
   <button class="tb-btn" id="notesBtn" title="Session Notes (N)">📝</button>
   <button class="tb-btn" id="lootBtn" title="Loot Generator">🎲 Loot</button>
@@ -434,11 +433,13 @@ canvas{display:block;cursor:crosshair}
     <button class="opt-btn struct-type-btn active" data-structtype="wall"   title="Wall">🧱 Wall</button>
     <button class="opt-btn struct-type-btn"        data-structtype="light" title="Light">💡 Light</button>
     <button class="opt-btn struct-type-btn"        data-structtype="door"  title="Door">🚪 Door</button>
-    <button class="opt-btn struct-type-btn"        data-structtype="portal" title="Portal">🌀 Portal</button>
     <button class="opt-btn struct-type-btn"        data-structtype="impassable" title="Impassable — blocks movement only, not sight">🚫 Impassable</button>
-    <button class="opt-btn struct-type-btn"        data-structtype="trap" title="Trap — locks the player's movement until the GM unlocks their token">🪤 Trap</button>
-    <button class="opt-btn struct-type-btn"        data-structtype="plate" title="Pressure Plate — stays triggered once stepped on, part of a puzzle group">🔲 Plate</button>
-    <button class="opt-btn struct-type-btn"        data-structtype="tripwire" title="Tripwire — only triggered while something is standing on it, part of a puzzle group">🔳 Tripwire</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-portal" title="Portal — link it to another node with effect=move">🌀 Portal</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-tripwire" title="Tripwire — condition/effect fully configurable, this is just the icon">🔳 Tripwire</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-trap" title="Trap — condition/effect fully configurable, this is just the icon">🪤 Trap</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-latch" title="Latch — condition/effect fully configurable, this is just the icon">🔐 Latch</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-lever" title="Lever — condition/effect fully configurable, this is just the icon">🎚️ Lever</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-plate" title="Plate — condition/effect fully configurable, this is just the icon">🔲 Plate</button>
   </div>
 
   <!-- Tokens sub-panel -->
@@ -509,7 +510,6 @@ canvas{display:block;cursor:crosshair}
     </div>
     <div style="display:flex;gap:4px;flex-wrap:wrap">
       <button class="gm-tool-btn" id="stc-hostile" style="flex:1;min-width:60px" title="Toggles line-of-sight detection — players get a chat warning if seen">⚠ Hostile</button>
-      <button class="gm-tool-btn" id="stc-unlock" style="flex:1;min-width:60px;display:none;color:#8fd08f;border-color:rgba(80,160,80,.3)" title="Release a player caught in a trap">🔓 Unlock</button>
     </div>
     <!-- Conditions -->
     <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
@@ -611,7 +611,6 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-action="hide-name" style="display:none">🏷 Hide name tag</div>
   <div class="ctx-item" data-action="show-name" style="display:none">🏷 Show name tag</div>
   <div class="ctx-item" data-action="adjust-hp" style="display:none">❤️ Adjust HP…</div>
-  <div class="ctx-item" data-action="unlock" style="display:none;color:#8fd08f">🔓 Unlock (release from trap)</div>
   <div class="ctx-item" data-action="movelock">🔒 Lock Movement</div>
   <div class="ctx-item" data-action="grant-short" style="display:none;color:var(--gold-dim,#a8935a)">🎁 Grant Short Rest</div>
   <div class="ctx-item" data-action="grant-long" style="display:none;color:var(--gold-dim,#a8935a)">🎁 Grant Long Rest</div>
@@ -635,7 +634,6 @@ canvas{display:block;cursor:crosshair}
   <div style="height:1px;background:var(--border);margin:3px 0"></div>
   <div id="prop-ctx-notes" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">📝 Investigation notes…</div>
   <div id="prop-ctx-container" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">📦 Flag as container…</div>
-  <div id="prop-ctx-trigger" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">🎚️ Flag as trigger…</div>
   <div style="height:1px;background:var(--border);margin:3px 0"></div>
   <div id="prop-ctx-delete" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--red-bright)">✕ Delete prop</div>
 </div>
@@ -735,13 +733,47 @@ canvas{display:block;cursor:crosshair}
   </div>
 </div>
 
-<div id="puzzle-groups-modal" class="modal-overlay hidden">
-  <div class="modal-box" style="min-width:420px;max-width:520px">
-    <h2>🧩 Puzzle Groups</h2>
-    <p>Plates, tripwires, levers, and buttons are grouped by name. When every member of a group is simultaneously active, the group's target door unlocks and opens — if it later becomes unsolved (a momentary trigger drops out), the door re-locks automatically.</p>
-    <div id="puzzle-groups-list" style="display:flex;flex-direction:column;gap:10px;margin-top:10px;max-height:360px;overflow-y:auto"></div>
-    <div id="puzzle-groups-empty" style="display:none;font-family:'IM Fell English',serif;font-size:12px;color:var(--dim);font-style:italic;padding:12px 0">No puzzle groups yet — paint a Plate/Tripwire or flag a prop as a Lever/Button to create one.</div>
-    <div class="modal-btns" style="margin-top:14px"><button id="puzzle-groups-close">Close</button></div>
+<div id="node-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="min-width:380px;max-width:460px">
+    <h2 id="node-modal-title">Configure Trigger Node</h2>
+    <div class="modal-row" style="margin-top:10px">
+      <div class="modal-section"><label>Condition</label>
+        <select id="node-condition">
+          <option value="step">Step — triggered by occupancy</option>
+          <option value="flip">Flip — triggered by clicking it</option>
+        </select>
+      </div>
+      <div class="modal-section"><label>Persistence</label>
+        <select id="node-persistence">
+          <option value="latch">Latch — stays triggered once met</option>
+          <option value="momentary">Momentary — only while condition holds</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-section" style="margin-top:10px"><label>Effect</label>
+      <select id="node-effect">
+        <option value="move">Move — teleport whoever triggered it to the linked node</option>
+        <option value="activate">Activate — toggle a linked door or node</option>
+        <option value="damage">Damage — hurt whoever triggered it</option>
+        <option value="effect">Effect — show a custom message</option>
+      </select>
+    </div>
+    <div class="modal-section" id="node-link-row" style="margin-top:10px"><label>Links to</label>
+      <select id="node-link-target"></select>
+    </div>
+    <div class="modal-section" id="node-damage-row" style="margin-top:10px;display:none"><label>Damage (dice notation)</label>
+      <input id="node-damage-amount" type="text" placeholder="2d6" value="2d6">
+    </div>
+    <div class="modal-section" id="node-effecttext-row" style="margin-top:10px;display:none"><label>Message</label>
+      <input id="node-effect-text" type="text" placeholder="The wall grinds open...">
+    </div>
+    <div class="modal-btns" style="margin-top:14px;justify-content:space-between;display:flex">
+      <button id="node-delete" style="color:var(--red-bright)">✕ Delete</button>
+      <div style="display:flex;gap:8px">
+        <button id="node-cancel">Cancel</button>
+        <button id="node-save">Save</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -784,15 +816,15 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { saveStamp, savePropsLocal, savePortals, saveImpassable, saveTraps, saveTiles, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
-import { saveTriggers, savePuzzleGroups, isGroupSolved, isPlateActive, resetPuzzleGroup, syncGroupDoor } from "./js/triggers.js";
+import { saveStamp, savePropsLocal, saveImpassable, saveTiles, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
+import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, resolveLinkedDoor, syncActivateEffects, rollDamage, BUTTON_PULSE_MS } from "./js/triggers.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest, grantRest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},tokens={},stamps={},roofs={},props={},portals={},impassable={},traps={},chains={},triggers={},puzzleGroups={};
+const tiles={},tokens={},stamps={},roofs={},props={},impassable={},chains={},triggerNodes={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
 let customProps=[];
@@ -805,8 +837,6 @@ let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
 let geoDragLight = null; // light id being dragged
 let paintingImpassable=false, erasingImpassable=false;
-let paintingTrap=false, erasingTrap=false;
-let paintingPlate=false, erasingPlate=false, currentPlateMode="latch", currentPlateGroup=null;
 let geoSelected  = null; // selected wall/light id
 
 // Combined lights: geometry lights + any token-attached lights
@@ -873,15 +903,14 @@ let mapClipboard=null;
 let pasteArmed=false;
 
 function captureClipboard(minX,minY,maxX,maxY){
-  const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[],portals:{},impassable:{},traps:{},walls:[],doors:[],lights:[]};
+  const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[],triggerNodes:{},impassable:{},walls:[],doors:[],lights:[]};
   for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){
     const k=key(x,y);
     if(tiles[k]) clip.tiles[`${x-minX},${y-minY}`]={...tiles[k]};
     if(stamps[k]) clip.stamps[`${x-minX},${y-minY}`]=stamps[k];
     if(props[k]) clip.props[`${x-minX},${y-minY}`]={...props[k]};
-    if(portals[k]) clip.portals[`${x-minX},${y-minY}`]={...portals[k]};
+    if(triggerNodes[k]) clip.triggerNodes[`${x-minX},${y-minY}`]={...triggerNodes[k]};
     if(impassable[k]) clip.impassable[`${x-minX},${y-minY}`]=true;
-    if(traps[k]) clip.traps[`${x-minX},${y-minY}`]=true;
   }
   for(const tok of Object.values(tokens)){
     if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY){
@@ -927,21 +956,30 @@ async function commitPaste(anchorX,anchorY){
     const[dx,dy]=rel.split(",").map(Number);
     props[key(anchorX+dx,anchorY+dy)]={...p};
   }
-  for(const[rel,p]of Object.entries(mapClipboard.portals||{})){
+  // Trigger nodes: generate fresh IDs for each pasted node, then remap any
+  // links that point at ANOTHER node included in this same paste (internal
+  // links stay wired together); links to nodes outside the copy get dropped,
+  // since the original target wasn't duplicated. Door-links are left as-is,
+  // since doors aren't copied/duplicated -- pointing at the same door is correct.
+  const idRemap={};
+  for(const[rel,n]of Object.entries(mapClipboard.triggerNodes||{})){
+    idRemap[n.id]=genNodeId();
+  }
+  for(const[rel,n]of Object.entries(mapClipboard.triggerNodes||{})){
     const[dx,dy]=rel.split(",").map(Number);
-    portals[key(anchorX+dx,anchorY+dy)]={...p};
+    const newNode={...n,id:idRemap[n.id]};
+    if(newNode.linkKind==="node"){
+      newNode.linkTo=idRemap[newNode.linkTo]||null;
+      if(!newNode.linkTo) newNode.linkKind=null;
+    }
+    triggerNodes[key(anchorX+dx,anchorY+dy)]=newNode;
   }
   for(const rel of Object.keys(mapClipboard.impassable||{})){
     const[dx,dy]=rel.split(",").map(Number);
     impassable[key(anchorX+dx,anchorY+dy)]=true;
   }
-  for(const rel of Object.keys(mapClipboard.traps||{})){
-    const[dx,dy]=rel.split(",").map(Number);
-    traps[key(anchorX+dx,anchorY+dy)]=true;
-  }
   for(const w of (mapClipboard.walls||[])){
-    const newWall=addWall(geometry.walls,anchorX+w.x1,anchorY+w.y1,anchorX+w.x2,anchorY+w.y2);
-    console.log(`[paste debug] added wall:`,newWall,`geometry.walls now has ${geometry.walls.length} total`);
+    addWall(geometry.walls,anchorX+w.x1,anchorY+w.y1,anchorX+w.x2,anchorY+w.y2);
   }
   for(const d of (mapClipboard.doors||[])){
     addDoor(geometry.doors,anchorX+d.x1,anchorY+d.y1,anchorX+d.x2,anchorY+d.y2,{closed:d.closed});
@@ -956,27 +994,13 @@ async function commitPaste(anchorX,anchorY){
     tokens[newId]=newTok;
     saveTokenRTDB(getMapName(),newId,newTok);
   }
-  console.log(`[paste debug] about to save. local tiles=${Object.keys(tiles).length} local geometry.walls=${geometry.walls.length}`);
-  try{
-    isSavingTiles=true;
-    await saveTiles(getMapName(),tiles);
-    console.log(`[paste debug] saveTiles completed without error`);
-  }catch(err){
-    console.error(`[paste debug] saveTiles THREW:`,err);
-  }finally{
-    isSavingTiles=false;
-  }
+  isSavingTiles=true;
+  try{ await saveTiles(getMapName(),tiles); } finally{ isSavingTiles=false; }
   await savePropsLocal(getMapName(),props);
-  if(Object.keys(mapClipboard.portals||{}).length) await savePortals(getMapName(),portals);
+  if(Object.keys(mapClipboard.triggerNodes||{}).length) await saveTriggerNodes(getMapName(),triggerNodes);
   if(Object.keys(mapClipboard.impassable||{}).length) await saveImpassable(getMapName(),impassable);
-  if(Object.keys(mapClipboard.traps||{}).length) await saveTraps(getMapName(),traps);
   if((mapClipboard.walls?.length)||(mapClipboard.doors?.length)||(mapClipboard.lights?.length)){
-    try{
-      await saveGeometry();
-      console.log(`[paste debug] saveGeometry completed without error`);
-    }catch(err){
-      console.error(`[paste debug] saveGeometry THREW:`,err);
-    }
+    await saveGeometry();
   }
   toast("Pasted — click again to paste more, Esc to stop");
 }
@@ -1073,23 +1097,17 @@ function subscribeLive(){
     }
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
-    for(const k in portals)delete portals[k];
     for(const k in impassable)delete impassable[k];
-    for(const k in traps)delete traps[k];
     for(const k in chains)delete chains[k];
-    for(const k in triggers)delete triggers[k];
-    for(const k in puzzleGroups)delete puzzleGroups[k];
+    for(const k in triggerNodes)delete triggerNodes[k];
     if(data){
       if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
-      if(data.portals)Object.assign(portals,data.portals);
       if(data.impassable)Object.assign(impassable,data.impassable);
-      if(data.traps)Object.assign(traps,data.traps);
       if(data.chains)Object.assign(chains,data.chains);
-      if(data.triggers)Object.assign(triggers,data.triggers);
-      if(data.puzzleGroups)Object.assign(puzzleGroups,data.puzzleGroups);
+      if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
       // Load geometry (walls, lights, doors for lighting system)
       if(!isSavingGeometry){
         geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
@@ -1312,14 +1330,6 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
         toast(tok.moveLocked?`🔒 ${tok.name}'s movement locked`:`🔓 ${tok.name}'s movement unlocked`);
       }
     }
-    if(action==="unlock"){
-      const tok=tokens[ctxTokenId];
-      if(tok){
-        tok.trapped=false;
-        await update(ref(db,`maps/${getMapName()}/tokens/${ctxTokenId}`),{trapped:false});
-        toast(`🔓 ${tok.name} released from the trap`);
-      }
-    }
     if(action==="delete")deleteTokenRTDB(getMapName(),ctxTokenId);
     if(action==="sheet"){
       const _tok=tokens[ctxTokenId];
@@ -1419,82 +1429,95 @@ function openEditTokenModal(tokId){
   document.getElementById("token-modal").classList.remove("hidden");
 }
 
-function generatePuzzleGroupId(){
-  let n=1;
-  while(puzzleGroups[`puzzle_${n}`]) n++;
-  return `puzzle_${n}`;
+const NODE_TYPE_DEFAULTS={
+  portal:{condition:"step",persistence:"momentary",effect:"move"},
+  tripwire:{condition:"step",persistence:"momentary",effect:"effect"},
+  trap:{condition:"step",persistence:"momentary",effect:"damage"},
+  latch:{condition:"flip",persistence:"latch",effect:"activate"},
+  lever:{condition:"flip",persistence:"latch",effect:"activate"},
+  plate:{condition:"step",persistence:"latch",effect:"activate"},
+};
+const NODE_ICONS={portal:"🌀",tripwire:"🔳",trap:"🪤",latch:"🔐",lever:"🎚️",plate:"🔲"};
+let _nodeModalKey=null, _nodeModalType=null;
+function openNodeConfigModal(cellKey,nodeType){
+  const existing=triggerNodes[cellKey];
+  _nodeModalKey=cellKey;
+  _nodeModalType=existing?existing.type:nodeType;
+  const defaults=NODE_TYPE_DEFAULTS[_nodeModalType]||{condition:"step",persistence:"latch",effect:"activate"};
+  const label=_nodeModalType.charAt(0).toUpperCase()+_nodeModalType.slice(1);
+  document.getElementById("node-modal-title").textContent=`${NODE_ICONS[_nodeModalType]||""} Configure ${label}`;
+  document.getElementById("node-condition").value=existing?existing.condition:defaults.condition;
+  document.getElementById("node-persistence").value=existing?existing.persistence:defaults.persistence;
+  document.getElementById("node-effect").value=existing?existing.effect:defaults.effect;
+  document.getElementById("node-damage-amount").value=existing?.damageAmount||"2d6";
+  document.getElementById("node-effect-text").value=existing?.effectText||"";
+  document.getElementById("node-delete").style.display=existing?"block":"none";
+  populateNodeLinkTargets(existing);
+  updateNodeModalFieldVisibility();
+  document.getElementById("node-modal").classList.remove("hidden");
 }
-function memberCountForGroup(groupId){
-  let n=0;
-  for(const k in triggers) if(triggers[k].groupId===groupId) n++;
-  for(const k in props) if(props[k].trigger?.groupId===groupId) n++;
-  return n;
+function updateNodeModalFieldVisibility(){
+  const effect=document.getElementById("node-effect").value;
+  document.getElementById("node-link-row").style.display=(effect==="move"||effect==="activate")?"block":"none";
+  document.getElementById("node-damage-row").style.display=effect==="damage"?"block":"none";
+  document.getElementById("node-effecttext-row").style.display=effect==="effect"?"block":"none";
 }
-function openPuzzleGroupsModal(){
-  const list=document.getElementById("puzzle-groups-list");
-  const empty=document.getElementById("puzzle-groups-empty");
-  const groupIds=Object.keys(puzzleGroups);
-  list.innerHTML="";
-  empty.style.display=groupIds.length?"none":"block";
-  const occupiedKeys=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
-  for(const groupId of groupIds){
-    const g=puzzleGroups[groupId];
-    const solved=isGroupSolved(groupId,triggers,props,occupiedKeys);
-    const memberCount=memberCountForGroup(groupId);
-    const row=document.createElement("div");
-    row.style.cssText="border:1px solid var(--border);border-radius:6px;padding:10px;background:var(--panel2)";
-    row.innerHTML=`
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div style="font-family:'Cinzel',serif;font-size:12px;color:var(--gold,#c8a84b)">${groupId} <span style="font-size:9px;color:${solved?"#8fd08f":"var(--dim)"}">● ${solved?"SOLVED":"unsolved"}</span></div>
-        <div style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim)">${memberCount} member${memberCount===1?"":"s"}</div>
-      </div>
-      <div style="margin-top:6px;display:flex;gap:6px;align-items:center">
-        <label style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim)">Door:</label>
-        <select class="pg-door-select" data-group="${groupId}" style="flex:1;font-size:10px;padding:3px"></select>
-      </div>
-      <div style="margin-top:8px;display:flex;gap:6px">
-        <button class="opt-btn pg-reset-btn" data-group="${groupId}" style="font-size:9px">↺ Reset</button>
-        <button class="opt-btn pg-delete-btn" data-group="${groupId}" style="font-size:9px;color:var(--red-bright)">✕ Delete group</button>
-      </div>`;
-    list.appendChild(row);
-    const sel=row.querySelector(".pg-door-select");
-    const noneOpt=document.createElement("option");noneOpt.value="";noneOpt.textContent="(none)";sel.appendChild(noneOpt);
-    geometry.doors.forEach(d=>{
-      const opt=document.createElement("option");
-      opt.value=d.id;
-      opt.textContent=`Door (${Math.round(d.x1)},${Math.round(d.y1)})–(${Math.round(d.x2)},${Math.round(d.y2)})`;
-      if(g.targetDoorId===d.id) opt.selected=true;
-      sel.appendChild(opt);
-    });
-    sel.onchange=async()=>{ g.targetDoorId=sel.value||null; await savePuzzleGroups(getMapName(),puzzleGroups); toast(`"${groupId}" now controls that door`); };
+document.getElementById("node-effect").onchange=updateNodeModalFieldVisibility;
+function populateNodeLinkTargets(existing){
+  const sel=document.getElementById("node-link-target");
+  sel.innerHTML="";
+  const noneOpt=document.createElement("option");noneOpt.value="";noneOpt.textContent="(none)";sel.appendChild(noneOpt);
+  for(const[k,n]of Object.entries(triggerNodes)){
+    if(k===_nodeModalKey) continue; // can't link to itself
+    const[x,y]=k.split(",").map(Number);
+    const opt=document.createElement("option");
+    opt.value="node:"+n.id;
+    opt.textContent=`${NODE_ICONS[n.type]||""} ${n.type} at (${x},${y})`;
+    if(existing?.linkKind==="node"&&existing.linkTo===n.id) opt.selected=true;
+    sel.appendChild(opt);
   }
-  document.querySelectorAll(".pg-reset-btn").forEach(btn=>{
-    btn.onclick=async()=>{
-      const gid=btn.dataset.group;
-      if(!confirm(`Reset all latched plates/levers in "${gid}"?`)) return;
-      await resetPuzzleGroup(getMapName(),gid,triggers,props);
-      toast(`"${gid}" reset`);
-      openPuzzleGroupsModal();
-    };
+  geometry.doors.forEach(d=>{
+    const opt=document.createElement("option");
+    opt.value="door:"+d.id;
+    opt.textContent=`🚪 Door at (${Math.round(d.x1)},${Math.round(d.y1)})–(${Math.round(d.x2)},${Math.round(d.y2)})`;
+    if(existing?.linkKind==="door"&&existing.linkTo===d.id) opt.selected=true;
+    sel.appendChild(opt);
   });
-  document.querySelectorAll(".pg-delete-btn").forEach(btn=>{
-    btn.onclick=async()=>{
-      const gid=btn.dataset.group;
-      if(!confirm(`Delete puzzle group "${gid}"? This also removes the group tag from every plate/tripwire/lever/button in it (they stop being part of any puzzle, but aren't deleted as map objects).`)) return;
-      for(const k in triggers) if(triggers[k].groupId===gid) delete triggers[k];
-      for(const k in props) if(props[k].trigger?.groupId===gid) delete props[k].trigger;
-      delete puzzleGroups[gid];
-      await saveTriggers(getMapName(),triggers);
-      await savePropsLocal(getMapName(),props);
-      await savePuzzleGroups(getMapName(),puzzleGroups);
-      toast(`"${gid}" deleted`);
-      openPuzzleGroupsModal();
-    };
-  });
-  document.getElementById("puzzle-groups-modal").classList.remove("hidden");
 }
-document.getElementById("puzzleGroupsBtn").onclick=openPuzzleGroupsModal;
-document.getElementById("puzzle-groups-close").onclick=()=>document.getElementById("puzzle-groups-modal").classList.add("hidden");
+document.getElementById("node-cancel").onclick=()=>document.getElementById("node-modal").classList.add("hidden");
+document.getElementById("node-delete").onclick=async()=>{
+  if(!_nodeModalKey||!triggerNodes[_nodeModalKey]) return;
+  if(!confirm("Delete this trigger node? Any links pointing to it will be cleared."))return;
+  const removedId=triggerNodes[_nodeModalKey].id;
+  delete triggerNodes[_nodeModalKey];
+  for(const n of Object.values(triggerNodes)) if(n.linkTo===removedId){ n.linkTo=null; n.linkKind=null; }
+  await saveTriggerNodes(getMapName(),triggerNodes);
+  document.getElementById("node-modal").classList.add("hidden");
+  toast("Trigger node deleted");
+};
+document.getElementById("node-save").onclick=async()=>{
+  const condition=document.getElementById("node-condition").value;
+  const persistence=document.getElementById("node-persistence").value;
+  const effect=document.getElementById("node-effect").value;
+  const linkVal=document.getElementById("node-link-target").value;
+  const[linkKind,linkTo]=linkVal?linkVal.split(":"):[null,null];
+  const damageAmount=document.getElementById("node-damage-amount").value.trim()||"2d6";
+  const effectText=document.getElementById("node-effect-text").value.trim();
+  const existing=triggerNodes[_nodeModalKey];
+  const node=existing||{id:genNodeId(),type:_nodeModalType,triggered:false,active:false,activatedAt:0};
+  node.type=_nodeModalType;
+  node.condition=condition;
+  node.persistence=persistence;
+  node.effect=effect;
+  node.linkKind=(effect==="move"||effect==="activate")?(linkKind||null):null;
+  node.linkTo=(effect==="move"||effect==="activate")?(linkTo||null):null;
+  node.damageAmount=damageAmount;
+  node.effectText=effectText;
+  triggerNodes[_nodeModalKey]=node;
+  await saveTriggerNodes(getMapName(),triggerNodes);
+  document.getElementById("node-modal").classList.add("hidden");
+  toast(`${_nodeModalType} configured`);
+};
 
 function openChainModal(tokId){
   const list=document.getElementById("chain-token-list");list.innerHTML="";
@@ -1562,25 +1585,6 @@ document.getElementById("prop-ctx-container").onclick=async()=>{
   p.container={tier,looted:false};
   await savePropsLocal(getMapName(),props);
   toast(`Flagged as a container — tier ${tier}`);
-};
-document.getElementById("prop-ctx-trigger").onclick=async()=>{
-  propCtxMenu.style.display="none";
-  if(!ctxPropKey||!props[ctxPropKey])return;
-  const p=props[ctxPropKey];
-  const existing=p.trigger;
-  const modeVal=prompt("Lever or button?\n\n\"lever\" = stays wherever it's set until flipped again\n\"button\" = automatically pops back after a few seconds\n\nLeave blank to remove the trigger flag:",existing?existing.mode:"lever");
-  if(modeVal===null)return;
-  const modeTrim=modeVal.trim().toLowerCase();
-  if(!modeTrim){ delete p.trigger; await savePropsLocal(getMapName(),props); toast("No longer a trigger"); return; }
-  const mode=modeTrim.startsWith("b")?"momentary":"latch";
-  const groupName=prompt("Puzzle group name — leave blank if this "+(mode==="latch"?"lever":"button")+" is standalone (just controls its own door); type a name only if it shares a condition with other plates/levers/buttons:",existing?existing.groupId:"");
-  if(groupName===null)return; // cancelled
-  const groupId=groupName.trim()||generatePuzzleGroupId();
-  if(!puzzleGroups[groupId]) puzzleGroups[groupId]={name:groupId,targetDoorId:null};
-  p.trigger={groupId,mode,active:false,activatedAt:0};
-  await savePropsLocal(getMapName(),props);
-  await savePuzzleGroups(getMapName(),puzzleGroups);
-  toast(`Flagged as a ${mode==="latch"?"lever":"button"} — group "${groupId}"`);
 };
 document.getElementById("prop-ctx-delete").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey)return;delete props[ctxPropKey];await savePropsLocal(getMapName(),props);toast("Prop deleted");};
 document.getElementById("attach-cancel").onclick=()=>document.getElementById("attach-modal").classList.add("hidden");
@@ -1929,46 +1933,6 @@ function drawProps(){
 }
 
 function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}ctx.restore();}
-function drawTriggerPlates(){
-  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
-  const occupiedKeys=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
-  for(const k in triggers){
-    const t=triggers[k];
-    const[x,y]=k.split(",").map(Number);
-    const px=x*TILE,py=y*TILE;
-    const active=isPlateActive(t,k,occupiedKeys);
-    const baseColor=t.mode==="latch"?"200,168,75":"90,170,230"; // gold=latch(plate), blue=momentary(tripwire)
-    ctx.fillStyle=`rgba(${baseColor},${active?0.35:0.15})`;
-    ctx.fillRect(px,py,TILE,TILE);
-    ctx.strokeStyle=`rgba(${baseColor},${active?0.9:0.5})`;ctx.lineWidth=Math.max(1,TILE*0.03);
-    ctx.strokeRect(px+2,py+2,TILE-4,TILE-4);
-    ctx.font=`${Math.round(TILE*0.35)}px serif`;
-    ctx.fillStyle=`rgba(${baseColor},0.9)`;
-    ctx.fillText(t.mode==="latch"?"🔲":"🔳",px+TILE/2,py+TILE/2);
-  }
-  ctx.restore();
-}
-function drawTraps(){
-  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
-  for(const k in traps){
-    const[x,y]=k.split(",").map(Number);
-    const px=x*TILE,py=y*TILE;
-    ctx.fillStyle="rgba(140,60,200,0.18)";
-    ctx.fillRect(px,py,TILE,TILE);
-    ctx.strokeStyle="rgba(140,60,200,0.5)";ctx.lineWidth=Math.max(1,TILE*0.03);
-    ctx.save();ctx.beginPath();ctx.rect(px,py,TILE,TILE);ctx.clip();
-    const step=TILE*0.28;
-    for(let o=-TILE;o<TILE*2;o+=step){
-      ctx.beginPath();ctx.moveTo(px+o,py);ctx.lineTo(px+o-TILE,py+TILE);ctx.stroke();
-    }
-    ctx.restore();
-    ctx.strokeStyle="rgba(140,60,200,0.7)";ctx.lineWidth=Math.max(1,TILE*0.045);
-    ctx.strokeRect(px+1,py+1,TILE-2,TILE-2);
-    ctx.font=`${Math.round(TILE*0.4)}px serif`;ctx.fillStyle="rgba(140,60,200,0.9)";
-    ctx.fillText("🪤",px+TILE/2,py+TILE/2);
-  }
-  ctx.restore();
-}
 function drawImpassable(){
   ctx.save();
   for(const k in impassable){
@@ -1988,34 +1952,28 @@ function drawImpassable(){
   }
   ctx.restore();
 }
-function drawPortals(){
+function drawTriggerNodes(){
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
-  const img=propTextures["portal"];
-  for(const[k,p]of Object.entries(portals)){
+  const occupiedKeys=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
+  for(const[k,n]of Object.entries(triggerNodes)){
     const[x,y]=k.split(",").map(Number);
-    const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
-    ctx.save();
-    if(p.hidden) ctx.globalAlpha=0.4;
-    if(img){
-      ctx.drawImage(img,x*TILE,y*TILE,TILE,TILE);
-    } else {
-      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
-      if(p.hidden) ctx.setLineDash([4,3]);
-      ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-      ctx.setLineDash([]);
+    const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.34;
+    const active=isNodeActive(n,k,occupiedKeys);
+    const color=active?"143,208,143":"200,168,75"; // green when active, gold when not
+    ctx.strokeStyle=`rgba(${color},0.9)`;ctx.lineWidth=Math.max(1,TILE*0.045);
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    ctx.font=`${Math.round(TILE*0.32)}px serif`;ctx.fillStyle=`rgba(${color},0.95)`;
+    ctx.fillText(NODE_ICONS[n.type]||"❓",cx,cy);
+    if(n.linkKind){
+      ctx.font=`${Math.round(TILE*0.16)}px serif`;ctx.fillStyle="rgba(200,168,75,0.9)";
+      ctx.fillText("🔗",cx+r*0.75,cy-r*0.75);
     }
-    if(p.hidden){
-      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.03);ctx.setLineDash([3,2]);
-      ctx.beginPath();ctx.arc(cx,cy,r*1.25,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
-    }
-    ctx.font=`${Math.round(TILE*0.3)}px 'Cinzel',serif`;ctx.fillStyle="#c8a84b";
-    ctx.strokeStyle="rgba(0,0,0,.6)";ctx.lineWidth=3;
-    const label=(p.link??"")+(p.hidden?" 👁‍🗨":"");
-    ctx.strokeText(label,cx,cy);ctx.fillText(label,cx,cy);
-    ctx.restore();
+    ctx.font=`${Math.round(TILE*0.16)}px 'Cinzel',serif`;ctx.fillStyle=`rgba(${color},0.8)`;
+    ctx.fillText(`${n.condition}·${n.effect}`,cx,cy+r+TILE*0.14);
   }
   ctx.restore();
 }
+
 
 function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/camera.zoom;const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,r=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
@@ -2065,14 +2023,13 @@ function drawClipSelection(){
       const[dx,dy]=rel.split(",").map(Number);
       ctx.fillStyle="rgba(200,60,40,0.25)";ctx.fillRect((ax+dx)*TILE,(ay+dy)*TILE,TILE,TILE);
     }
-    for(const rel of Object.keys(mapClipboard.traps||{})){
+    for(const[rel,n]of Object.entries(mapClipboard.triggerNodes||{})){
       const[dx,dy]=rel.split(",").map(Number);
-      ctx.fillStyle="rgba(140,60,200,0.25)";ctx.fillRect((ax+dx)*TILE,(ay+dy)*TILE,TILE,TILE);
-    }
-    for(const[rel]of Object.entries(mapClipboard.portals||{})){
-      const[dx,dy]=rel.split(",").map(Number);
+      const cx=(ax+dx)*TILE+TILE/2,cy=(ay+dy)*TILE+TILE/2;
       ctx.strokeStyle="rgba(200,168,75,0.8)";ctx.lineWidth=Math.max(1,TILE*0.04);
-      ctx.beginPath();ctx.arc((ax+dx)*TILE+TILE/2,(ay+dy)*TILE+TILE/2,TILE*0.32,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.arc(cx,cy,TILE*0.32,0,Math.PI*2);ctx.stroke();
+      ctx.font=`${Math.round(TILE*0.28)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.fillStyle="rgba(200,168,75,0.9)";ctx.fillText(NODE_ICONS[n.type]||"❓",cx,cy);
     }
     for(const w of (mapClipboard.walls||[])){
       ctx.strokeStyle="rgba(200,60,40,0.8)";ctx.lineWidth=Math.max(1.5,TILE*0.04);
@@ -2141,7 +2098,7 @@ function render(){
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
   ctx.restore();
-  drawStamps();drawProps();drawPortals();drawImpassable();drawTraps();drawTriggerPlates();
+  drawStamps();drawProps();drawImpassable();drawTriggerNodes();
   drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
@@ -2405,10 +2362,8 @@ canvas.addEventListener("contextmenu",e=>{
   const gx=wx/TILE,gy=wy/TILE;
   const[tx,ty]=worldToTile(wx,wy,TILE);
   const pk=key(tx,ty);
-  if(portals[pk]){
-    portals[pk].hidden=!portals[pk].hidden;
-    savePortals(getMapName(),portals);
-    toast(portals[pk].hidden?"Portal hidden from players":"Portal visible to players");
+  if(triggerNodes[pk]){
+    openNodeConfigModal(pk,triggerNodes[pk].type);
     return;
   }
   const li=lightAtPoint(geometry.lights,gx,gy,0.6);
@@ -2491,43 +2446,16 @@ canvas.addEventListener("pointerdown",e=>{
       saveGeometry();
       e.stopPropagation(); return;
     }
-    if(structureType==="portal"){
-      const[tx,ty]=worldToTile(wx,wy,TILE);
-      const pk=key(tx,ty);
-      const existing=portals[pk];
-      const val=prompt(existing?"Portal link # (clear the field to remove this portal):":"Link # for this portal cell (enter the same # on another cell to link them):", existing?existing.link:"");
-      if(val===null){ e.stopPropagation(); return; }
-      const trimmed=val.trim();
-      if(!trimmed){
-        if(existing){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
-        e.stopPropagation(); return;
-      }
-      portals[pk]={link:trimmed};
-      savePortals(getMapName(),portals);
-      toast(`Portal #${trimmed} set — link another cell with the same # to connect it`);
-      e.stopPropagation(); return;
-    }
     if(structureType==="impassable"){
       const[tx,ty]=worldToTile(wx,wy,TILE);
       impassable[key(tx,ty)]=true;
       canvas.setPointerCapture(e.pointerId);paintingImpassable=true;
       e.stopPropagation(); return;
     }
-    if(structureType==="trap"){
+    if(structureType.startsWith("node-")){
+      const nodeType=structureType.slice(5);
       const[tx,ty]=worldToTile(wx,wy,TILE);
-      traps[key(tx,ty)]=true;
-      canvas.setPointerCapture(e.pointerId);paintingTrap=true;
-      e.stopPropagation(); return;
-    }
-    if(structureType==="plate"||structureType==="tripwire"){
-      const mode=structureType==="plate"?"latch":"momentary";
-      const groupName=prompt(`Puzzle group name — leave blank if this ${mode==="latch"?"plate":"tripwire"} is standalone (just controls its own door); type a name only if it needs to be stepped on together with other plates/levers/buttons:`,"");
-      if(groupName===null){ e.stopPropagation(); return; } // cancelled
-      currentPlateMode=mode; currentPlateGroup=groupName.trim()||generatePuzzleGroupId();
-      if(!puzzleGroups[currentPlateGroup]) puzzleGroups[currentPlateGroup]={name:currentPlateGroup,targetDoorId:null};
-      const[tx,ty]=worldToTile(wx,wy,TILE);
-      triggers[key(tx,ty)]={groupId:currentPlateGroup,mode:currentPlateMode,triggered:false};
-      canvas.setPointerCapture(e.pointerId);paintingPlate=true;
+      openNodeConfigModal(key(tx,ty),nodeType);
       e.stopPropagation(); return;
     }
   }
@@ -2542,22 +2470,20 @@ canvas.addEventListener("pointerdown",e=>{
     } else if(structureType==="door"){
       const seg=segmentAtPoint([],geometry.doors,gx,gy,0.35);
       if(seg){ deleteById(geometry.doors,seg.id); saveGeometry(); toast("Door removed"); }
-    } else if(structureType==="portal"){
-      const[tx,ty]=worldToTile(wx,wy,TILE);
-      const pk=key(tx,ty);
-      if(portals[pk]){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
     } else if(structureType==="impassable"){
       const[tx,ty]=worldToTile(wx,wy,TILE);
       delete impassable[key(tx,ty)];
       canvas.setPointerCapture(e.pointerId);erasingImpassable=true;
-    } else if(structureType==="trap"){
+    } else if(structureType.startsWith("node-")){
       const[tx,ty]=worldToTile(wx,wy,TILE);
-      delete traps[key(tx,ty)];
-      canvas.setPointerCapture(e.pointerId);erasingTrap=true;
-    } else if(structureType==="plate"||structureType==="tripwire"){
-      const[tx,ty]=worldToTile(wx,wy,TILE);
-      delete triggers[key(tx,ty)];
-      canvas.setPointerCapture(e.pointerId);erasingPlate=true;
+      const k=key(tx,ty);
+      if(triggerNodes[k]){
+        const removedId=triggerNodes[k].id;
+        delete triggerNodes[k];
+        for(const n of Object.values(triggerNodes)) if(n.linkTo===removedId){ n.linkTo=null; n.linkKind=null; }
+        saveTriggerNodes(getMapName(),triggerNodes);
+        toast("Trigger node removed (any links pointing to it were cleared)");
+      }
     }
     e.stopPropagation(); return;
   }
@@ -2596,18 +2522,6 @@ canvas.addEventListener("pointermove",e=>{
     if(paintingImpassable) impassable[k]=true; else delete impassable[k];
     return;
   }
-  if(paintingTrap||erasingTrap){
-    const[tx,ty]=worldToTile(wx,wy,TILE);
-    const k=key(tx,ty);
-    if(paintingTrap) traps[k]=true; else delete traps[k];
-    return;
-  }
-  if(paintingPlate||erasingPlate){
-    const[tx,ty]=worldToTile(wx,wy,TILE);
-    const k=key(tx,ty);
-    if(paintingPlate) triggers[k]={groupId:currentPlateGroup,mode:currentPlateMode,triggered:false}; else delete triggers[k];
-    return;
-  }
   if(!(activeCategory==="structure"&&activeVerb==="select")) return;
   if(!geoDragEp&&!geoDragLight) return;
   const gx=wx/TILE,gy=wy/TILE;
@@ -2618,17 +2532,6 @@ canvas.addEventListener("pointerup",e=>{
   if(paintingImpassable||erasingImpassable){
     paintingImpassable=false;erasingImpassable=false;
     saveImpassable(getMapName(),impassable);
-    return;
-  }
-  if(paintingTrap||erasingTrap){
-    paintingTrap=false;erasingTrap=false;
-    saveTraps(getMapName(),traps);
-    return;
-  }
-  if(paintingPlate||erasingPlate){
-    paintingPlate=false;erasingPlate=false;
-    saveTriggers(getMapName(),triggers);
-    savePuzzleGroups(getMapName(),puzzleGroups);
     return;
   }
   if(geoDragLight!==null){ geoDragLight=null; saveGeometry(); return; }
@@ -2864,8 +2767,6 @@ canvas.addEventListener("pointerup",e=>{
       openTokenInspector(draggingToken.id);
     } else {
       const tok=tokens[draggingToken.id];
-      const dest=resolvePortal(portals,tok.x,tok.y);
-      if(dest){ tok.x=dest.x; tok.y=dest.y; toast("Warped!"); }
       saveTokenRTDB(getMapName(),draggingToken.id,tok);
       savePropsLocal(getMapName(),props);
     }
@@ -2942,7 +2843,6 @@ canvas.addEventListener("contextmenu",e=>{
     document.querySelector('.ctx-item[data-action="hide-hp"]').style.display=(!tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="show-hp"]').style.display=(tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display="flex";
-    document.querySelector('.ctx-item[data-action="unlock"]').style.display=tok.trapped?"flex":"none";
     const movelockItem=document.querySelector('.ctx-item[data-action="movelock"]');
     movelockItem.textContent=tok.moveLocked?"🔓 Unlock Movement":"🔒 Lock Movement";
     const isPc=tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__";
@@ -3203,9 +3103,6 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
       hostileBtn.style.color=tok.hostile?"#e0a040":"";
       hostileBtn.style.borderColor=tok.hostile?"rgba(224,160,64,.4)":"";
     }
-    // Unlock — only shown if this token is currently trapped
-    const unlockBtn=document.getElementById("stc-unlock");
-    if(unlockBtn) unlockBtn.style.display=tok.trapped?"":"none";
     panel.classList.add("open");
     document.getElementById("app").classList.add("sheet-open");
     if(tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__"){
@@ -3261,14 +3158,6 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{hostile:tok.hostile});
     openTokenInspector(_inspectedTokId); // refresh button state
     toast(tok.hostile?`⚠ ${tok.name} marked hostile — players get a warning if seen`:`${tok.name} no longer marked hostile`);
-  };
-  document.getElementById("stc-unlock").onclick=async()=>{
-    if(!_inspectedTokId)return;
-    const tok=tokens[_inspectedTokId];if(!tok)return;
-    tok.trapped=false;
-    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{trapped:false});
-    openTokenInspector(_inspectedTokId);
-    toast(`🔓 ${tok.name} released from the trap`);
   };
   document.getElementById("stc-hide-hp").onclick=async()=>{
     if(!_inspectedTokId)return;
