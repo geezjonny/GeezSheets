@@ -440,6 +440,7 @@ canvas{display:block;cursor:crosshair}
     <button class="opt-btn struct-type-btn"        data-structtype="node-latch" title="Latch — condition/effect fully configurable, this is just the icon">🔐 Latch</button>
     <button class="opt-btn struct-type-btn"        data-structtype="node-lever" title="Lever — condition/effect fully configurable, this is just the icon">🎚️ Lever</button>
     <button class="opt-btn struct-type-btn"        data-structtype="node-plate" title="Plate — condition/effect fully configurable, this is just the icon">🔲 Plate</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-connect" title="Connect — drag from one node's output to another node's input (or a door) to wire them together. Hold Shift while dragging to make a condition-gate wire instead of an effect wire.">🔌 Connect</button>
   </div>
 
   <!-- Tokens sub-panel -->
@@ -750,13 +751,9 @@ canvas{display:block;cursor:crosshair}
         </select>
       </div>
     </div>
-    <div class="modal-row" style="margin-top:10px">
-      <div class="modal-section"><label>Condition (optional)</label>
-        <select id="node-condition-target">
-          <option value="">(none — trigger alone is enough)</option>
-        </select>
-      </div>
-      <div class="modal-section" id="node-condition-state-row" style="display:none">
+    <div class="modal-section" style="margin-top:10px"><label>Condition (optional)</label>
+      <div id="node-condition-display" style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim);padding:6px 0">(none — trigger alone is enough)</div>
+      <div id="node-condition-state-row" style="display:none;margin-top:4px">
         <label>Must be</label>
         <select id="node-condition-state">
           <option value="active">On / active</option>
@@ -766,14 +763,14 @@ canvas{display:block;cursor:crosshair}
     </div>
     <div class="modal-section" style="margin-top:10px"><label>Effect</label>
       <select id="node-effect">
-        <option value="move">Move — teleport whoever triggered it to the linked node</option>
-        <option value="activate">Activate — toggle a linked door or node</option>
+        <option value="move">Move — teleport whoever triggered it to the connected node</option>
+        <option value="activate">Activate — toggle a connected door or node</option>
         <option value="damage">Damage — hurt whoever triggered it</option>
         <option value="effect">Effect — show a custom message</option>
       </select>
     </div>
-    <div class="modal-section" id="node-link-row" style="margin-top:10px"><label>Effect targets</label>
-      <select id="node-link-target"></select>
+    <div class="modal-section" id="node-link-row" style="margin-top:10px"><label>Effect connection</label>
+      <div id="node-link-display" style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim);padding:6px 0">Not connected — close this and use the 🔌 Connect tool to wire it to a target</div>
     </div>
     <div class="modal-section" id="node-damage-row" style="margin-top:10px;display:none"><label>Damage (dice notation)</label>
       <input id="node-damage-amount" type="text" placeholder="2d6" value="2d6">
@@ -851,6 +848,7 @@ let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
 let geoDragLight = null; // light id being dragged
 let paintingImpassable=false, erasingImpassable=false;
+let wireDragSource=null, wireDragIsCondition=false;
 let geoSelected  = null; // selected wall/light id
 
 // Combined lights: geometry lights + any token-attached lights
@@ -1453,6 +1451,13 @@ const NODE_TYPE_DEFAULTS={
 };
 const NODE_ICONS={portal:"🌀",tripwire:"🔳",trap:"🪤",latch:"🔐",lever:"🎚️",plate:"🔲"};
 let _nodeModalKey=null, _nodeModalType=null;
+function nodeLabel(n,key){
+  const[x,y]=key.split(",").map(Number);
+  return `${NODE_ICONS[n.type]||""} ${n.type} at (${x},${y})`;
+}
+function doorLabel(d){
+  return `🚪 Door at (${Math.round(d.x1)},${Math.round(d.y1)})–(${Math.round(d.x2)},${Math.round(d.y2)})`;
+}
 function openNodeConfigModal(cellKey,nodeType){
   const existing=triggerNodes[cellKey];
   _nodeModalKey=cellKey;
@@ -1467,8 +1472,28 @@ function openNodeConfigModal(cellKey,nodeType){
   document.getElementById("node-effect-text").value=existing?.effectText||"";
   document.getElementById("node-condition-state").value=existing?.conditionState||"active";
   document.getElementById("node-delete").style.display=existing?"block":"none";
-  populateNodeLinkTargets(existing);
-  populateNodeConditionTargets(existing);
+  // Condition/effect connection status -- read-only here, set by dragging with the 🔌 Connect tool
+  const condDisplay=document.getElementById("node-condition-display");
+  if(existing?.conditionLinkTo){
+    let found=null;
+    for(const[k,n]of Object.entries(triggerNodes)) if(n.id===existing.conditionLinkTo){ found=nodeLabel(n,k); break; }
+    condDisplay.textContent=found?`Gated by: ${found}`:"Gated by a node that no longer exists";
+  } else {
+    condDisplay.textContent="(none — trigger alone is enough)";
+  }
+  const linkDisplay=document.getElementById("node-link-display");
+  if(existing?.linkTo){
+    let found=null;
+    if(existing.linkKind==="node"){
+      for(const[k,n]of Object.entries(triggerNodes)) if(n.id===existing.linkTo){ found=nodeLabel(n,k); break; }
+    } else if(existing.linkKind==="door"){
+      const d=geometry.doors.find(d=>d.id===existing.linkTo);
+      if(d) found=doorLabel(d);
+    }
+    linkDisplay.textContent=found?`Connected to: ${found}`:"Connected to a target that no longer exists";
+  } else {
+    linkDisplay.textContent="Not connected — close this and use the 🔌 Connect tool to wire it to a target";
+  }
   updateNodeModalFieldVisibility();
   document.getElementById("node-modal").classList.remove("hidden");
 }
@@ -1477,45 +1502,10 @@ function updateNodeModalFieldVisibility(){
   document.getElementById("node-link-row").style.display=(effect==="move"||effect==="activate")?"block":"none";
   document.getElementById("node-damage-row").style.display=effect==="damage"?"block":"none";
   document.getElementById("node-effecttext-row").style.display=effect==="effect"?"block":"none";
-  document.getElementById("node-condition-state-row").style.display=document.getElementById("node-condition-target").value?"block":"none";
+  const existing=triggerNodes[_nodeModalKey];
+  document.getElementById("node-condition-state-row").style.display=existing?.conditionLinkTo?"block":"none";
 }
 document.getElementById("node-effect").onchange=updateNodeModalFieldVisibility;
-document.getElementById("node-condition-target").onchange=updateNodeModalFieldVisibility;
-function populateNodeLinkTargets(existing){
-  const sel=document.getElementById("node-link-target");
-  sel.innerHTML="";
-  const noneOpt=document.createElement("option");noneOpt.value="";noneOpt.textContent="(none)";sel.appendChild(noneOpt);
-  for(const[k,n]of Object.entries(triggerNodes)){
-    if(k===_nodeModalKey) continue; // can't link to itself
-    const[x,y]=k.split(",").map(Number);
-    const opt=document.createElement("option");
-    opt.value="node:"+n.id;
-    opt.textContent=`${NODE_ICONS[n.type]||""} ${n.type} at (${x},${y})`;
-    if(existing?.linkKind==="node"&&existing.linkTo===n.id) opt.selected=true;
-    sel.appendChild(opt);
-  }
-  geometry.doors.forEach(d=>{
-    const opt=document.createElement("option");
-    opt.value="door:"+d.id;
-    opt.textContent=`🚪 Door at (${Math.round(d.x1)},${Math.round(d.y1)})–(${Math.round(d.x2)},${Math.round(d.y2)})`;
-    if(existing?.linkKind==="door"&&existing.linkTo===d.id) opt.selected=true;
-    sel.appendChild(opt);
-  });
-}
-function populateNodeConditionTargets(existing){
-  const sel=document.getElementById("node-condition-target");
-  sel.innerHTML="";
-  const noneOpt=document.createElement("option");noneOpt.value="";noneOpt.textContent="(none — trigger alone is enough)";sel.appendChild(noneOpt);
-  for(const[k,n]of Object.entries(triggerNodes)){
-    if(k===_nodeModalKey) continue; // can't gate on itself
-    const[x,y]=k.split(",").map(Number);
-    const opt=document.createElement("option");
-    opt.value=n.id;
-    opt.textContent=`${NODE_ICONS[n.type]||""} ${n.type} at (${x},${y})`;
-    if(existing?.conditionLinkTo===n.id) opt.selected=true;
-    sel.appendChild(opt);
-  }
-}
 document.getElementById("node-cancel").onclick=()=>document.getElementById("node-modal").classList.add("hidden");
 document.getElementById("node-delete").onclick=async()=>{
   if(!_nodeModalKey||!triggerNodes[_nodeModalKey]) return;
@@ -1534,21 +1524,15 @@ document.getElementById("node-save").onclick=async()=>{
   const trigger=document.getElementById("node-trigger").value;
   const persistence=document.getElementById("node-persistence").value;
   const effect=document.getElementById("node-effect").value;
-  const linkVal=document.getElementById("node-link-target").value;
-  const[linkKind,linkTo]=linkVal?linkVal.split(":"):[null,null];
-  const conditionLinkTo=document.getElementById("node-condition-target").value||null;
   const conditionState=document.getElementById("node-condition-state").value;
   const damageAmount=document.getElementById("node-damage-amount").value.trim()||"2d6";
   const effectText=document.getElementById("node-effect-text").value.trim();
   const existing=triggerNodes[_nodeModalKey];
-  const node=existing||{id:genNodeId(),type:_nodeModalType,triggered:false,active:false,activatedAt:0};
+  const node=existing||{id:genNodeId(),type:_nodeModalType,triggered:false,active:false,activatedAt:0,linkKind:null,linkTo:null,conditionLinkTo:null};
   node.type=_nodeModalType;
   node.trigger=trigger;
   node.persistence=persistence;
   node.effect=effect;
-  node.linkKind=(effect==="move"||effect==="activate")?(linkKind||null):null;
-  node.linkTo=(effect==="move"||effect==="activate")?(linkTo||null):null;
-  node.conditionLinkTo=conditionLinkTo;
   node.conditionState=conditionState;
   node.damageAmount=damageAmount;
   node.effectText=effectText;
@@ -1991,6 +1975,63 @@ function drawImpassable(){
   }
   ctx.restore();
 }
+function nodeCenterByKey(k){
+  const[x,y]=k.split(",").map(Number);
+  return[x*TILE+TILE/2,y*TILE+TILE/2];
+}
+function doorCenter(d){
+  return[((d.x1+d.x2)/2)*TILE,((d.y1+d.y2)/2)*TILE];
+}
+function drawWireLine(x1,y1,x2,y2,color,dashed){
+  ctx.save();
+  ctx.strokeStyle=color;ctx.lineWidth=Math.max(1.5,TILE*0.035);
+  if(dashed) ctx.setLineDash([TILE*0.12,TILE*0.08]);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.restore();
+}
+function drawTriggerWires(){
+  // Live in-progress drag preview
+  if(wireDragSource&&triggerNodes[wireDragSource]){
+    const[sx,sy]=nodeCenterByKey(wireDragSource);
+    const hx=hoverTileX*TILE+TILE/2,hy=hoverTileY*TILE+TILE/2;
+    drawWireLine(sx,sy,hx,hy,wireDragIsCondition?"rgba(160,120,220,0.9)":"rgba(90,170,230,0.9)",true);
+    return;
+  }
+  // Hover-based highlighting -- only show wires touching whatever node the
+  // cursor is currently over, not all wires all the time
+  const hoverKey=`${hoverTileX},${hoverTileY}`;
+  const hoverNode=triggerNodes[hoverKey];
+  if(!hoverNode) return;
+  const[hx,hy]=nodeCenterByKey(hoverKey);
+  // Outgoing effect-link
+  if(hoverNode.linkTo){
+    if(hoverNode.linkKind==="node"){
+      for(const[k,n]of Object.entries(triggerNodes)) if(n.id===hoverNode.linkTo){
+        const[tx,ty]=nodeCenterByKey(k);
+        drawWireLine(hx,hy,tx,ty,"rgba(90,170,230,0.85)",false);
+        break;
+      }
+    } else if(hoverNode.linkKind==="door"){
+      const d=geometry.doors.find(d=>d.id===hoverNode.linkTo);
+      if(d){ const[dx,dy]=doorCenter(d); drawWireLine(hx,hy,dx,dy,"rgba(90,170,230,0.85)",false); }
+    }
+  }
+  // Outgoing condition-gate
+  if(hoverNode.conditionLinkTo){
+    for(const[k,n]of Object.entries(triggerNodes)) if(n.id===hoverNode.conditionLinkTo){
+      const[tx,ty]=nodeCenterByKey(k);
+      drawWireLine(hx,hy,tx,ty,"rgba(160,120,220,0.85)",true);
+      break;
+    }
+  }
+  // Incoming wires from other nodes
+  for(const[k,n]of Object.entries(triggerNodes)){
+    if(n.id===hoverNode.id) continue;
+    const[sx,sy]=nodeCenterByKey(k);
+    if(n.linkKind==="node"&&n.linkTo===hoverNode.id) drawWireLine(sx,sy,hx,hy,"rgba(90,170,230,0.85)",false);
+    if(n.conditionLinkTo===hoverNode.id) drawWireLine(sx,sy,hx,hy,"rgba(160,120,220,0.85)",true);
+  }
+}
 function drawTriggerNodes(){
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
   const occupiedKeys=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
@@ -2141,7 +2182,7 @@ function render(){
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
   ctx.restore();
-  drawStamps();drawProps();drawImpassable();drawTriggerNodes();
+  drawStamps();drawProps();drawImpassable();drawTriggerNodes();drawTriggerWires();
   drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
@@ -2495,6 +2536,18 @@ canvas.addEventListener("pointerdown",e=>{
       canvas.setPointerCapture(e.pointerId);paintingImpassable=true;
       e.stopPropagation(); return;
     }
+    if(structureType==="node-connect"){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      const k=key(tx,ty);
+      if(triggerNodes[k]){
+        wireDragSource=k;
+        wireDragIsCondition=e.shiftKey;
+        canvas.setPointerCapture(e.pointerId);
+      } else {
+        toast("Click and drag FROM an existing trigger node to wire it to something");
+      }
+      e.stopPropagation(); return;
+    }
     if(structureType.startsWith("node-")){
       const nodeType=structureType.slice(5);
       const[tx,ty]=worldToTile(wx,wy,TILE);
@@ -2517,15 +2570,28 @@ canvas.addEventListener("pointerdown",e=>{
       const[tx,ty]=worldToTile(wx,wy,TILE);
       delete impassable[key(tx,ty)];
       canvas.setPointerCapture(e.pointerId);erasingImpassable=true;
+    } else if(structureType==="node-connect"){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      const k=key(tx,ty);
+      const n=triggerNodes[k];
+      if(n){
+        const hadLink=n.linkTo||n.conditionLinkTo;
+        n.linkTo=null; n.linkKind=null; n.conditionLinkTo=null;
+        saveTriggerNodes(getMapName(),triggerNodes);
+        toast(hadLink?"Wires disconnected from this node":"This node had no wires to disconnect");
+      }
     } else if(structureType.startsWith("node-")){
       const[tx,ty]=worldToTile(wx,wy,TILE);
       const k=key(tx,ty);
       if(triggerNodes[k]){
         const removedId=triggerNodes[k].id;
         delete triggerNodes[k];
-        for(const n of Object.values(triggerNodes)) if(n.linkTo===removedId){ n.linkTo=null; n.linkKind=null; }
+        for(const n of Object.values(triggerNodes)){
+          if(n.linkTo===removedId){ n.linkTo=null; n.linkKind=null; }
+          if(n.conditionLinkTo===removedId){ n.conditionLinkTo=null; }
+        }
         saveTriggerNodes(getMapName(),triggerNodes);
-        toast("Trigger node removed (any links pointing to it were cleared)");
+        toast("Trigger node removed (any wires to/from it were cleared)");
       }
     }
     e.stopPropagation(); return;
@@ -2572,6 +2638,50 @@ canvas.addEventListener("pointermove",e=>{
   if(geoDragLight!==null){ const l=geometry.lights.find(x=>x.id===geoDragLight); if(l){l.x=gx;l.y=gy;} }
 });
 canvas.addEventListener("pointerup",e=>{
+  if(wireDragSource){
+    const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
+    const gx=wx/TILE,gy=wy/TILE;
+    const[tx,ty]=worldToTile(wx,wy,TILE);
+    const targetKey=key(tx,ty);
+    const source=triggerNodes[wireDragSource];
+    if(!source){ wireDragSource=null; return; }
+    if(targetKey===wireDragSource){ toast("Can't wire a node to itself"); wireDragSource=null; return; }
+    let connected=false;
+    if(triggerNodes[targetKey]){
+      const target=triggerNodes[targetKey];
+      if(wireDragIsCondition){
+        source.conditionLinkTo=target.id;
+        connected=true;
+        toast(`⛓️ ${source.type} now gated by ${target.type}`);
+      } else {
+        if(source.effect!=="move"&&source.effect!=="activate"){
+          toast(`This node's effect (${source.effect}) doesn't connect to a target — change its effect to Move or Activate first`);
+        } else {
+          source.linkKind="node"; source.linkTo=target.id;
+          connected=true;
+          toast(`🔌 ${source.type} now wired to ${target.type}`);
+        }
+      }
+    } else {
+      const doorSeg=segmentAtPoint([],geometry.doors,gx,gy,0.4);
+      if(doorSeg){
+        if(wireDragIsCondition){
+          toast("Doors can't be used as a condition gate — only trigger nodes can");
+        } else if(source.effect!=="move"&&source.effect!=="activate"){
+          toast(`This node's effect (${source.effect}) doesn't connect to a target — change its effect to Move or Activate first`);
+        } else {
+          source.linkKind="door"; source.linkTo=doorSeg.id;
+          connected=true;
+          toast(`🔌 ${source.type} now wired to that door`);
+        }
+      } else {
+        toast("Drop the wire on another trigger node or a door to connect it");
+      }
+    }
+    if(connected) saveTriggerNodes(getMapName(),triggerNodes);
+    wireDragSource=null;
+    return;
+  }
   if(paintingImpassable||erasingImpassable){
     paintingImpassable=false;erasingImpassable=false;
     saveImpassable(getMapName(),impassable);
