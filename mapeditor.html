@@ -560,6 +560,7 @@ canvas{display:block;cursor:crosshair}
   <div style="display:flex;gap:6px;padding:6px 8px;border-top:1px solid var(--border);flex-shrink:0">
     <input id="chat-input" type="text" placeholder="Message…" maxlength="300" spellcheck="false" style="flex:1;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:12px;padding:4px 8px;border-radius:4px;outline:none">
     <button id="chat-send" style="padding:0 10px;height:26px;font-size:9px">Send</button>
+    <button id="chat-clear" title="Clear all chat history for everyone" style="padding:0 8px;height:26px;font-size:11px">🗑️</button>
   </div>
 </div>
 
@@ -3369,6 +3370,11 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     if(!playerName)return;
     const inp=document.getElementById("chat-input");
     sendChat(inp.value,playerName);inp.value="";
+  };
+  document.getElementById("chat-clear").onclick=async()=>{
+    if(!confirm("Clear all chat history for everyone? This can't be undone."))return;
+    await set(ref(db,"chat"),null);
+    toast("💬 Chat history cleared");
   };
   document.getElementById("chat-input").addEventListener("keydown",e=>{
     if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!playerName)return;const inp=document.getElementById("chat-input");sendChat(inp.value,playerName);inp.value="";}
