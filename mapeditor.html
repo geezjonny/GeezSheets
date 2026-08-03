@@ -1143,6 +1143,7 @@ function subscribeLive(){
     for(const k in mirrors)delete mirrors[k];
     for(const k in triggerNodes)delete triggerNodes[k];
     if(data){
+      if(data.mirrors)Object.assign(mirrors,data.mirrors);
       if(data.tokens){
         const deltas=[];
         for(const[tokId,t]of Object.entries(data.tokens)){
@@ -1164,7 +1165,6 @@ function subscribeLive(){
       if(data.props)Object.assign(props,data.props);
       if(data.impassable)Object.assign(impassable,data.impassable);
       if(data.chains)Object.assign(chains,data.chains);
-      if(data.mirrors)Object.assign(mirrors,data.mirrors);
       if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
       // Load geometry (walls, lights, doors for lighting system)
       if(!isSavingGeometry){
@@ -1488,6 +1488,13 @@ function openEditTokenModal(tokId){
   // Set size
   const sizeSelect=document.getElementById("tok-size");
   if(sizeSelect)sizeSelect.value=tok.size||1;
+  // Set the Character dropdown to match THIS token, not whatever it was
+  // last left on -- without this, saving would silently reassign this
+  // token's characterId (and therefore its artwork) to match a stale
+  // selection from editing/placing a completely different token earlier.
+  if(tok.characterId&&tok.characterId!=="__npc__") tokCharSel.value=tok.characterId;
+  else if(tok.nodeId) tokCharSel.value="board:"+tok.nodeId;
+  else tokCharSel.value="__npc__";
   // Update place button label
   document.getElementById("tok-place").textContent="Save Changes";
   document.getElementById("token-modal").classList.remove("hidden");
