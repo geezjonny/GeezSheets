@@ -7,7 +7,7 @@ import { TILE } from "./config.js";
 import { tokenTextures, tokenCacheKey } from "./assets.js";
 
 // Draw a single token onto ctx
-export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake = { dx: 0, dy: 0 }) {
+export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake = { dx: 0, dy: 0 }, forceShowInfo = false) {
   ctx.save(); ctx.globalAlpha = alpha;
   const s   = tok.size || 1;
   const px  = tok.x * TILE + (shake.dx || 0), py = tok.y * TILE + (shake.dy || 0);
@@ -82,7 +82,7 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
   if (isProne) { ctx.translate(cx, cy); ctx.rotate(-Math.PI / 2); ctx.translate(-cx, -cy); }
 
   // Name label with dark background
-  if (!tok.hideName) {
+  if (!tok.hideName || forceShowInfo) {
     ctx.font = `${Math.round(9 / zoom)}px Cinzel,serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     const nameLabel = tok.name || "";
@@ -92,8 +92,9 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
     ctx.fillStyle = "#fff"; ctx.fillText(nameLabel, cx, py + sh + 2 / zoom);
   }
 
-  // HP bar — suppressed if tok.hideHp is set (e.g. NPCs the GM wants to keep mysterious)
-  if (!tok.hideHp) {
+  // HP bar — suppressed if tok.hideHp is set (e.g. NPCs the GM wants to keep mysterious),
+  // unless forceShowInfo is set (the DM's own view, which should always see everything)
+  if (!tok.hideHp || forceShowInfo) {
     const bw  = sw * 0.85, bh = 5 / zoom;
     const bx  = px + (sw - bw) / 2, by = py + sh + 12 / zoom;
     ctx.fillStyle = "rgba(0,0,0,.5)"; ctx.fillRect(bx, by, bw, bh);

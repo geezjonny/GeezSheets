@@ -602,6 +602,7 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-action="light-add">🕯 Add Light</div>
   <div class="ctx-item" data-action="light-remove" style="display:none">🔦 Remove Light</div>
   <div class="ctx-item" data-action="chain">🔗 Chain to token…</div>
+  <div class="ctx-item" data-action="mirror">🪞 Mirror to token…</div>
   <div class="ctx-item" data-action="unchain" style="display:none">⛓✕ Remove chain</div>
   <div class="ctx-item" data-action="hide-hp" style="display:none">🙈 Hide HP bar</div>
   <div class="ctx-item" data-action="show-hp" style="display:none">❤️ Show HP bar</div>
@@ -731,6 +732,13 @@ canvas{display:block;cursor:crosshair}
   </div>
 </div>
 
+<div id="mirror-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="min-width:320px"><h2>Mirror to Token</h2><p>Pick the token this one should mirror — whenever it moves, this token moves the same amount. No visible link, movement only.</p>
+    <div id="mirror-token-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:200px;overflow-y:auto"></div>
+    <div class="modal-btns" style="margin-top:14px"><button id="mirror-cancel">Cancel</button></div>
+  </div>
+</div>
+
 <script type="module">
 import { ref, set, get, child, onValue, remove, push, update }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
@@ -748,6 +756,7 @@ import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.j
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { saveChain, deleteChain, chainsForToken, drawChains } from "./js/chains.js";
+import { saveMirror, deleteMirror, mirrorsForLeader, mirrorsForFollower, applyMirrorMovement } from "./js/mirrors.js";
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { sendChat, renderChat } from "./js/chat.js";
@@ -777,7 +786,8 @@ import { setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},tokens={},stamps={},roofs={},props={},portals={},impassable={},traps={},chains={};
+const tiles={},tokens={},stamps={},roofs={},props={},portals={},impassable={},traps={},chains={},mirrors={};
+let _prevTokenPos={}; // tokId -> {x,y}, used to compute movement deltas for mirror sync
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
 let customProps=[];
@@ -1061,8 +1071,26 @@ function subscribeLive(){
     for(const k in impassable)delete impassable[k];
     for(const k in traps)delete traps[k];
     for(const k in chains)delete chains[k];
+    for(const k in mirrors)delete mirrors[k];
     if(data){
-      if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));}
+      if(data.tokens){
+        // Detect movement deltas BEFORE overwriting local tokens, so mirror
+        // followers can be moved by the exact same amount their leader was.
+        const deltas=[];
+        for(const[tokId,t]of Object.entries(data.tokens)){
+          const prev=_prevTokenPos[tokId];
+          if(prev&&(prev.x!==t.x||prev.y!==t.y)) deltas.push({tokId,dx:t.x-prev.x,dy:t.y-prev.y});
+        }
+        Object.assign(tokens,data.tokens);
+        Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));
+        for(const{tokId,dx,dy}of deltas){
+          if(mirrorsForLeader(mirrors,tokId).length){
+            applyMirrorMovement(getMapName(),mirrors,tokens,tokId,dx,dy).catch(()=>{});
+          }
+        }
+        _prevTokenPos={};
+        for(const[tokId,t]of Object.entries(tokens)) _prevTokenPos[tokId]={x:t.x,y:t.y};
+      }
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
@@ -1070,6 +1098,7 @@ function subscribeLive(){
       if(data.impassable)Object.assign(impassable,data.impassable);
       if(data.traps)Object.assign(traps,data.traps);
       if(data.chains)Object.assign(chains,data.chains);
+      if(data.mirrors)Object.assign(mirrors,data.mirrors);
       // Load geometry (walls, lights, doors for lighting system)
       if(!isSavingGeometry){
         geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
@@ -1324,6 +1353,7 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
     }
     if(action==="edit"){ctxMenu.classList.remove("open");openEditTokenModal(ctxTokenId);return;}
     if(action==="chain")openChainModal(ctxTokenId);
+    if(action==="mirror")openMirrorModal(ctxTokenId);
     if(action==="unchain")removeChainsForToken(ctxTokenId);
     if(action==="hide-hp")setTokenHideHp(ctxTokenId,true);
     if(action==="show-hp")setTokenHideHp(ctxTokenId,false);
@@ -1398,6 +1428,45 @@ function openEditTokenModal(tokId){
   document.getElementById("tok-place").textContent="Save Changes";
   document.getElementById("token-modal").classList.remove("hidden");
 }
+
+function openMirrorModal(tokId){
+  const list=document.getElementById("mirror-token-list");list.innerHTML="";
+  const existing=mirrorsForFollower(mirrors,tokId);
+  if(existing.length){
+    const rmBtn=document.createElement("button");
+    rmBtn.style.cssText="width:100%;height:36px;text-align:left;padding:0 12px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--red-bright,#e04040);border-radius:4px;background:rgba(224,64,64,.08);color:#fca5a5;cursor:pointer";
+    rmBtn.textContent="✕ Remove mirror (stop following)";
+    rmBtn.onclick=async()=>{
+      const mapName=mapInput.value.trim()||"dungeon-1";
+      for(const[existingId]of existing) await deleteMirror(mapName,existingId,mirrors);
+      document.getElementById("mirror-modal").classList.add("hidden");
+      toast(`${tokens[tokId]?.name} no longer mirrors anything`);
+    };
+    list.appendChild(rmBtn);
+  }
+  for(const[id,tok]of Object.entries(tokens)){
+    if(id===tokId)continue;
+    const btn=document.createElement("button");
+    btn.style.cssText="width:100%;height:36px;text-align:left;padding:0 12px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text);cursor:pointer";
+    btn.textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;
+    btn.onmouseenter=()=>btn.style.borderColor="var(--gold-dim)";
+    btn.onmouseleave=()=>btn.style.borderColor="var(--border)";
+    btn.onclick=async()=>{
+      const mapName=mapInput.value.trim()||"dungeon-1";
+      // A follower only ever tracks one leader -- replace any existing mirror
+      for(const[existingId]of mirrorsForFollower(mirrors,tokId)) await deleteMirror(mapName,existingId,mirrors);
+      const mirrorId="mirror_"+Date.now();
+      await saveMirror(mapName,mirrorId,id,tokId);
+      mirrors[mirrorId]={leader:id,follower:tokId};
+      document.getElementById("mirror-modal").classList.add("hidden");
+      toast(`${tokens[tokId]?.name} now mirrors ${tok.name}'s movement`);
+    };
+    list.appendChild(btn);
+  }
+  if(!Object.keys(tokens).filter(id=>id!==tokId).length)list.innerHTML=`<p style="font-size:12px;color:var(--text-dim)">No other tokens on map</p>`;
+  document.getElementById("mirror-modal").classList.remove("hidden");
+}
+document.getElementById("mirror-cancel").onclick=()=>{document.getElementById("mirror-modal").classList.add("hidden");ctxTokenId=null;};
 
 function openChainModal(tokId){
   const list=document.getElementById("chain-token-list");list.innerHTML="";
@@ -1479,7 +1548,7 @@ async function clearSection(section){
   if(!confirm(confirm_msg[section]))return;
   if(section==="tiles"||section==="all")pushUndo();
   if(section==="bg"||section==="all"){bgImage=null;bgUrl="";bgPpi=70;await set(ref(db,`maps/${mapName}/background`),null);await set(ref(db,`maps/${mapName}/backgroundPpi`),null);}
-  if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);for(const k in chains)delete chains[k];await set(ref(db,`maps/${mapName}/chains`),null);}
+  if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);for(const k in chains)delete chains[k];await set(ref(db,`maps/${mapName}/chains`),null);for(const k in mirrors)delete mirrors[k];await set(ref(db,`maps/${mapName}/mirrors`),null);}
   if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
   if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);}
   if(section==="geometry"||section==="all"){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];await set(ref(db,`maps/${mapName}/geometry`),null);}
@@ -2008,8 +2077,8 @@ function render(){
   ctx.restore();
   drawStamps();drawProps();drawPortals();drawImpassable();drawTraps();
   drawChains(ctx,chains,tokens,camera.zoom);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),true);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),true);
   // Placing token preview
   if(placingToken){const alpha=0.6+0.2*Math.sin(Date.now()/300);drawToken(ctx,{...placingToken,x:hoverTileX,y:hoverTileY},camera.zoom,pcsData,CONDITIONS,alpha);}
   // Roofs
@@ -2145,7 +2214,7 @@ function render(){
   if(geometry.timeOfDay!=="day"&&geometry.lightingParams.blackAlpha>0.1){
     ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
     for(const[,tok]of Object.entries(tokens)){
-      drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name));
+      drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),true);
     }
     ctx.restore();
   }
