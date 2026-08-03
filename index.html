@@ -1416,11 +1416,7 @@ viewport.addEventListener("pointerdown",e=>{
   if(e.shiftKey){ openContainerAt(tx,ty); return; }
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
-    const tok=tokens[tokId];
-    if(tok.type==="pc"){
-      openCharSheet(tok.characterId,tok.name,false);
-    }
-    return;
+    return; // sheets only open from the initiative bar now, not by clicking tokens on the map
   }
 
   // Door click — geometry doors are the only door system now
