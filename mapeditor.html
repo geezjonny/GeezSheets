@@ -863,7 +863,6 @@ import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},tokens={},stamps={},roofs={},props={},impassable={},chains={},triggerNodes={},mirrors={};
-let _prevTokenPos={}; // tokId -> {x,y}, used to compute movement deltas for mirror sync
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
 let customProps=[];
@@ -1145,21 +1144,8 @@ function subscribeLive(){
     if(data){
       if(data.mirrors)Object.assign(mirrors,data.mirrors);
       if(data.tokens){
-        const deltas=[];
-        for(const[tokId,t]of Object.entries(data.tokens)){
-          if(draggingToken&&draggingToken.id===tokId) continue; // handled explicitly at drag-end instead
-          const prev=_prevTokenPos[tokId];
-          if(prev&&(prev.x!==t.x||prev.y!==t.y)) deltas.push({tokId,dx:t.x-prev.x,dy:t.y-prev.y});
-        }
         Object.assign(tokens,data.tokens);
         Object.values(data.tokens).forEach(t=>tryLoadTokenTexture(t.characterId,t.lookupName||t.name));
-        for(const{tokId,dx,dy}of deltas){
-          if(mirrorsForLeader(mirrors,tokId).length){
-            applyMirrorMovement(getMapName(),mirrors,tokens,tokId,dx,dy).catch(()=>{});
-          }
-        }
-        _prevTokenPos={};
-        for(const[tokId,t]of Object.entries(tokens)) _prevTokenPos[tokId]={x:t.x,y:t.y};
       }
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
@@ -1653,7 +1639,7 @@ function openMirrorModal(tokId){
       const followerTok=tok;
       if(followerTok&&leaderTok?.type==="pc"){
         followerTok.fillColor="#3a6aaa";followerTok.ringColor="#7ab0e0";
-        await saveTokenRTDB(mapName,id,followerTok);
+        await update(ref(db,`maps/${mapName}/tokens/${id}`),{fillColor:"#3a6aaa",ringColor:"#7ab0e0"});
       }
       document.getElementById("mirror-modal").classList.add("hidden");
       toast(`${tok.name} now mirrors ${tokens[tokId]?.name}'s movement`);
@@ -1953,9 +1939,17 @@ document.getElementById("tok-place").onclick=async()=>{
   }
 
   if(editingTokenId){
-    // Edit existing token in place
+    // Edit existing token in place -- targeted update, not a full-object
+    // overwrite, so an unrelated undefined field elsewhere on this token
+    // (moveLocked, turnMovedTiles, conditions, etc.) can't silently fail
+    // the whole write and drop the fields we're actually trying to change.
     const tok=tokens[editingTokenId];
-    if(tok){Object.assign(tok,{name,lookupName,type,hp,maxHp,size,fillColor,ringColor,characterId:charId,nodeId:nodeId||tok.nodeId||null});tryLoadTokenTexture(charId,lookupName);await saveTokenRTDB(getMapName(),editingTokenId,tok);}
+    if(tok){
+      const updates={name,lookupName,type,hp,maxHp,size,fillColor,ringColor,characterId:charId,nodeId:nodeId||tok.nodeId||null};
+      Object.assign(tok,updates);
+      tryLoadTokenTexture(charId,lookupName);
+      await update(ref(db,`maps/${getMapName()}/tokens/${editingTokenId}`),updates);
+    }
     editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";
     document.getElementById("token-modal").classList.add("hidden");toast("Token updated");
   }else{
@@ -3076,7 +3070,6 @@ canvas.addEventListener("pointerup",e=>{
       if(mirrorsForLeader(mirrors,draggingToken.id).length){
         applyMirrorMovement(getMapName(),mirrors,tokens,draggingToken.id,dx,dy).catch(()=>{});
       }
-      _prevTokenPos[draggingToken.id]={x:tok.x,y:tok.y}; // keep the cache in sync so the subscription doesn't re-detect this same move
     }
     draggingToken=null;return;
   }

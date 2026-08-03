@@ -467,6 +467,7 @@ import { drawFog } from "./js/fog.js";
 import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, pathBlocked, computeReachableTiles, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
+import { mirrorsForLeader, applyMirrorMovement } from "./js/mirrors.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { startMicListener, stopMicListener, subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { subscribePassphrase, checkPassphrase, hasPassphraseSet, saveAuthSession, loadAuthSession } from "./js/auth.js";
@@ -482,7 +483,7 @@ import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/p
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},chains={},triggerNodes={};
+let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},chains={},triggerNodes={},mirrors={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
 let _geoLC=null,_geoLX=null;
@@ -813,6 +814,7 @@ function subscribeLive(){
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in impassable)delete impassable[k];
     for(const k in chains)delete chains[k];
+    for(const k in mirrors)delete mirrors[k];
     for(const k in triggerNodes)delete triggerNodes[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
@@ -823,6 +825,7 @@ function subscribeLive(){
       if(data.props)Object.assign(props,data.props);
       if(data.impassable)Object.assign(impassable,data.impassable);
       if(data.chains)Object.assign(chains,data.chains);
+      if(data.mirrors)Object.assign(mirrors,data.mirrors);
       if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
       geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
       if(data.geometry){
@@ -1535,6 +1538,9 @@ window.addEventListener("keydown",e=>{
     updates.turnMovedTiles=tok.turnMovedTiles;
   }
   update(ref(db,`maps/${currentMap}/tokens/${tokId}`),updates);
+  if(mirrorsForLeader(mirrors,tokId).length){
+    applyMirrorMovement(currentMap,mirrors,tokens,tokId,dx,dy).catch(()=>{});
+  }
   checkNpcSight(tok);
   // Step-trigger node check -- latch nodes fire their one-shot effect only
   // the first time they're ever triggered; momentary nodes fire every time
