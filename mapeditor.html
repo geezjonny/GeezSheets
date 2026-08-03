@@ -358,7 +358,7 @@ canvas{display:block;cursor:crosshair}
   <div class="tb-sep"></div>
 
   <button class="tb-btn cat-btn" id="cat-background" title="Background — dd2vtt import or tile painting (cosmetic)">🗺 Background</button>
-  <button class="tb-btn cat-btn" id="cat-structure"  title="Structure — walls, lights, doors, portals (gameplay-affecting)">🧱 Structure</button>
+  <button class="tb-btn cat-btn" id="cat-structure"  title="Structure — walls, lights, doors, trigger nodes (gameplay-affecting)">🧱 Structure</button>
   <button class="tb-btn cat-btn" id="cat-tokens"      title="Tokens — PCs and NPCs">⚔ Tokens</button>
   <button class="tb-btn cat-btn" id="cat-props"       title="Props — furniture, clutter, decals">🪑 Props</button>
   <button class="tb-btn cat-btn" id="cat-setting"     title="Setting — time of day, lighting, weather, Theater of Mind">🌗 Setting</button>
@@ -433,9 +433,14 @@ canvas{display:block;cursor:crosshair}
     <button class="opt-btn struct-type-btn active" data-structtype="wall"   title="Wall">🧱 Wall</button>
     <button class="opt-btn struct-type-btn"        data-structtype="light" title="Light">💡 Light</button>
     <button class="opt-btn struct-type-btn"        data-structtype="door"  title="Door">🚪 Door</button>
-    <button class="opt-btn struct-type-btn"        data-structtype="portal" title="Portal">🌀 Portal</button>
     <button class="opt-btn struct-type-btn"        data-structtype="impassable" title="Impassable — blocks movement only, not sight">🚫 Impassable</button>
-    <button class="opt-btn struct-type-btn"        data-structtype="trap" title="Trap — locks the player's movement until the GM unlocks their token">🪤 Trap</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-portal" title="Portal — link it to another node with effect=move">🌀 Portal</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-tripwire" title="Tripwire — condition/effect fully configurable, this is just the icon">🔳 Tripwire</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-trap" title="Trap — condition/effect fully configurable, this is just the icon">🪤 Trap</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-latch" title="Latch — condition/effect fully configurable, this is just the icon">🔐 Latch</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-lever" title="Lever — condition/effect fully configurable, this is just the icon">🎚️ Lever</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-plate" title="Plate — condition/effect fully configurable, this is just the icon">🔲 Plate</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="node-connect" title="Connect — drag from one node's output to another node's input (or a door) to wire them together. Hold Shift while dragging to make a condition-gate wire instead of an effect wire.">🔌 Connect</button>
   </div>
 
   <!-- Tokens sub-panel -->
@@ -506,7 +511,6 @@ canvas{display:block;cursor:crosshair}
     </div>
     <div style="display:flex;gap:4px;flex-wrap:wrap">
       <button class="gm-tool-btn" id="stc-hostile" style="flex:1;min-width:60px" title="Toggles line-of-sight detection — players get a chat warning if seen">⚠ Hostile</button>
-      <button class="gm-tool-btn" id="stc-unlock" style="flex:1;min-width:60px;display:none;color:#8fd08f;border-color:rgba(80,160,80,.3)" title="Release a player caught in a trap">🔓 Unlock</button>
     </div>
     <!-- Conditions -->
     <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
@@ -609,7 +613,6 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-action="hide-name" style="display:none">🏷 Hide name tag</div>
   <div class="ctx-item" data-action="show-name" style="display:none">🏷 Show name tag</div>
   <div class="ctx-item" data-action="adjust-hp" style="display:none">❤️ Adjust HP…</div>
-  <div class="ctx-item" data-action="unlock" style="display:none;color:#8fd08f">🔓 Unlock (release from trap)</div>
   <div class="ctx-item" data-action="movelock">🔒 Lock Movement</div>
   <div class="ctx-item" data-action="grant-short" style="display:none;color:var(--gold-dim,#a8935a)">🎁 Grant Short Rest</div>
   <div class="ctx-item" data-action="grant-long" style="display:none;color:var(--gold-dim,#a8935a)">🎁 Grant Long Rest</div>
@@ -739,6 +742,67 @@ canvas{display:block;cursor:crosshair}
   </div>
 </div>
 
+<div id="node-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="min-width:380px;max-width:460px">
+    <h2 id="node-modal-title">Configure Trigger Node</h2>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      <span style="font-family:'Cinzel',serif;font-size:10px;color:var(--dim)">Rotation:</span>
+      <button type="button" id="node-rotate-left" class="opt-btn" style="padding:2px 8px;font-size:11px">↺</button>
+      <span id="node-rotation-display" style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold,#c8a84b);min-width:32px;text-align:center">0°</span>
+      <button type="button" id="node-rotate-right" class="opt-btn" style="padding:2px 8px;font-size:11px">↻</button>
+      <span style="font-family:'IM Fell English',serif;font-size:10px;color:var(--dim);font-style:italic">or press [ / ]</span>
+    </div>
+    <div class="modal-row" style="margin-top:10px">
+      <div class="modal-section"><label>Trigger</label>
+        <select id="node-trigger">
+          <option value="step">Step — triggered by occupancy</option>
+          <option value="flip">Flip — triggered by clicking it</option>
+        </select>
+      </div>
+      <div class="modal-section"><label>Persistence</label>
+        <select id="node-persistence">
+          <option value="latch">Latch — stays triggered once met</option>
+          <option value="momentary">Momentary — only while trigger holds</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-section" style="margin-top:10px"><label>Condition (optional)</label>
+      <div id="node-condition-display" style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim);padding:6px 0">(none — trigger alone is enough)</div>
+      <div id="node-condition-state-row" style="display:none;margin-top:4px">
+        <label>Must be</label>
+        <select id="node-condition-state">
+          <option value="active">On / active</option>
+          <option value="inactive">Off / inactive</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-section" style="margin-top:10px"><label>Effect</label>
+      <select id="node-effect">
+        <option value="move">Move — teleport whoever triggered it to the connected node</option>
+        <option value="activate">Activate — toggle a connected door or node</option>
+        <option value="damage">Damage — hurt whoever triggered it</option>
+        <option value="effect">Effect — show a custom message</option>
+      </select>
+    </div>
+    <div class="modal-section" id="node-link-row" style="margin-top:10px"><label>Effect connection</label>
+      <div id="node-link-display" style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim);padding:6px 0">Not connected — close this and use the 🔌 Connect tool to wire it to a target</div>
+    </div>
+    <div class="modal-section" id="node-damage-row" style="margin-top:10px;display:none"><label>Damage (dice notation)</label>
+      <input id="node-damage-amount" type="text" placeholder="2d6" value="2d6">
+    </div>
+    <div class="modal-section" id="node-effecttext-row" style="margin-top:10px;display:none"><label>Message</label>
+      <input id="node-effect-text" type="text" placeholder="The wall grinds open...">
+    </div>
+    <div class="modal-btns" style="margin-top:14px;justify-content:space-between;display:flex">
+      <button id="node-delete" style="color:var(--red-bright)">✕ Delete</button>
+      <div style="display:flex;gap:8px">
+        <button id="node-cancel">Cancel</button>
+        <button id="node-save">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 import { ref, set, get, child, onValue, remove, push, update }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
@@ -779,14 +843,15 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { saveStamp, savePropsLocal, savePortals, saveImpassable, saveTraps, saveTiles, resolvePortal, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
+import { saveStamp, savePropsLocal, saveImpassable, saveTiles, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
+import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, resolveLinkedDoor, syncActivateEffects, rollDamage, BUTTON_PULSE_MS } from "./js/triggers.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest, grantRest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},tokens={},stamps={},roofs={},props={},portals={},impassable={},traps={},chains={},mirrors={};
+const tiles={},tokens={},stamps={},roofs={},props={},impassable={},chains={},triggerNodes={},mirrors={};
 let _prevTokenPos={}; // tokId -> {x,y}, used to compute movement deltas for mirror sync
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
@@ -800,7 +865,7 @@ let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
 let geoDragLight = null; // light id being dragged
 let paintingImpassable=false, erasingImpassable=false;
-let paintingTrap=false, erasingTrap=false;
+let wireDragSource=null, wireDragIsCondition=false;
 let geoSelected  = null; // selected wall/light id
 
 // Combined lights: geometry lights + any token-attached lights
@@ -852,6 +917,7 @@ async function saveGeometryDoors() {
 let roofMode=false;
 let currentProp=null;
 let currentPropRotation=0; // degrees, 0/90/180/270 — applies to the next-placed prop
+let currentNodeRotation=0; // degrees, 0/90/180/270 — applies to the next-placed trigger node
 let dragging=false,startX=0,startY=0,curX=0,curY=0;
 let hoverTileX=0,hoverTileY=0,hoverWX=0,hoverWY=0,roofOpacity=0.5;
 let selectPhase=null,selectTiles={},selMinX=0,selMinY=0,selMaxX=0,selMaxY=0;
@@ -867,15 +933,14 @@ let mapClipboard=null;
 let pasteArmed=false;
 
 function captureClipboard(minX,minY,maxX,maxY){
-  const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[],portals:{},impassable:{},traps:{},walls:[],doors:[],lights:[]};
+  const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[],triggerNodes:{},impassable:{},walls:[],doors:[],lights:[]};
   for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){
     const k=key(x,y);
     if(tiles[k]) clip.tiles[`${x-minX},${y-minY}`]={...tiles[k]};
     if(stamps[k]) clip.stamps[`${x-minX},${y-minY}`]=stamps[k];
     if(props[k]) clip.props[`${x-minX},${y-minY}`]={...props[k]};
-    if(portals[k]) clip.portals[`${x-minX},${y-minY}`]={...portals[k]};
+    if(triggerNodes[k]) clip.triggerNodes[`${x-minX},${y-minY}`]={...triggerNodes[k]};
     if(impassable[k]) clip.impassable[`${x-minX},${y-minY}`]=true;
-    if(traps[k]) clip.traps[`${x-minX},${y-minY}`]=true;
   }
   for(const tok of Object.values(tokens)){
     if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY){
@@ -921,21 +986,30 @@ async function commitPaste(anchorX,anchorY){
     const[dx,dy]=rel.split(",").map(Number);
     props[key(anchorX+dx,anchorY+dy)]={...p};
   }
-  for(const[rel,p]of Object.entries(mapClipboard.portals||{})){
+  // Trigger nodes: generate fresh IDs for each pasted node, then remap any
+  // links that point at ANOTHER node included in this same paste (internal
+  // links stay wired together); links to nodes outside the copy get dropped,
+  // since the original target wasn't duplicated. Door-links are left as-is,
+  // since doors aren't copied/duplicated -- pointing at the same door is correct.
+  const idRemap={};
+  for(const[rel,n]of Object.entries(mapClipboard.triggerNodes||{})){
+    idRemap[n.id]=genNodeId();
+  }
+  for(const[rel,n]of Object.entries(mapClipboard.triggerNodes||{})){
     const[dx,dy]=rel.split(",").map(Number);
-    portals[key(anchorX+dx,anchorY+dy)]={...p};
+    const newNode={...n,id:idRemap[n.id]};
+    if(newNode.linkKind==="node"){
+      newNode.linkTo=idRemap[newNode.linkTo]||null;
+      if(!newNode.linkTo) newNode.linkKind=null;
+    }
+    triggerNodes[key(anchorX+dx,anchorY+dy)]=newNode;
   }
   for(const rel of Object.keys(mapClipboard.impassable||{})){
     const[dx,dy]=rel.split(",").map(Number);
     impassable[key(anchorX+dx,anchorY+dy)]=true;
   }
-  for(const rel of Object.keys(mapClipboard.traps||{})){
-    const[dx,dy]=rel.split(",").map(Number);
-    traps[key(anchorX+dx,anchorY+dy)]=true;
-  }
   for(const w of (mapClipboard.walls||[])){
-    const newWall=addWall(geometry.walls,anchorX+w.x1,anchorY+w.y1,anchorX+w.x2,anchorY+w.y2);
-    console.log(`[paste debug] added wall:`,newWall,`geometry.walls now has ${geometry.walls.length} total`);
+    addWall(geometry.walls,anchorX+w.x1,anchorY+w.y1,anchorX+w.x2,anchorY+w.y2);
   }
   for(const d of (mapClipboard.doors||[])){
     addDoor(geometry.doors,anchorX+d.x1,anchorY+d.y1,anchorX+d.x2,anchorY+d.y2,{closed:d.closed});
@@ -950,27 +1024,13 @@ async function commitPaste(anchorX,anchorY){
     tokens[newId]=newTok;
     saveTokenRTDB(getMapName(),newId,newTok);
   }
-  console.log(`[paste debug] about to save. local tiles=${Object.keys(tiles).length} local geometry.walls=${geometry.walls.length}`);
-  try{
-    isSavingTiles=true;
-    await saveTiles(getMapName(),tiles);
-    console.log(`[paste debug] saveTiles completed without error`);
-  }catch(err){
-    console.error(`[paste debug] saveTiles THREW:`,err);
-  }finally{
-    isSavingTiles=false;
-  }
+  isSavingTiles=true;
+  try{ await saveTiles(getMapName(),tiles); } finally{ isSavingTiles=false; }
   await savePropsLocal(getMapName(),props);
-  if(Object.keys(mapClipboard.portals||{}).length) await savePortals(getMapName(),portals);
+  if(Object.keys(mapClipboard.triggerNodes||{}).length) await saveTriggerNodes(getMapName(),triggerNodes);
   if(Object.keys(mapClipboard.impassable||{}).length) await saveImpassable(getMapName(),impassable);
-  if(Object.keys(mapClipboard.traps||{}).length) await saveTraps(getMapName(),traps);
   if((mapClipboard.walls?.length)||(mapClipboard.doors?.length)||(mapClipboard.lights?.length)){
-    try{
-      await saveGeometry();
-      console.log(`[paste debug] saveGeometry completed without error`);
-    }catch(err){
-      console.error(`[paste debug] saveGeometry THREW:`,err);
-    }
+    await saveGeometry();
   }
   toast("Pasted — click again to paste more, Esc to stop");
 }
@@ -1067,15 +1127,12 @@ function subscribeLive(){
     }
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
-    for(const k in portals)delete portals[k];
     for(const k in impassable)delete impassable[k];
-    for(const k in traps)delete traps[k];
     for(const k in chains)delete chains[k];
     for(const k in mirrors)delete mirrors[k];
+    for(const k in triggerNodes)delete triggerNodes[k];
     if(data){
       if(data.tokens){
-        // Detect movement deltas BEFORE overwriting local tokens, so mirror
-        // followers can be moved by the exact same amount their leader was.
         const deltas=[];
         for(const[tokId,t]of Object.entries(data.tokens)){
           const prev=_prevTokenPos[tokId];
@@ -1094,11 +1151,10 @@ function subscribeLive(){
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
-      if(data.portals)Object.assign(portals,data.portals);
       if(data.impassable)Object.assign(impassable,data.impassable);
-      if(data.traps)Object.assign(traps,data.traps);
       if(data.chains)Object.assign(chains,data.chains);
       if(data.mirrors)Object.assign(mirrors,data.mirrors);
+      if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
       // Load geometry (walls, lights, doors for lighting system)
       if(!isSavingGeometry){
         geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
@@ -1321,14 +1377,6 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
         toast(tok.moveLocked?`🔒 ${tok.name}'s movement locked`:`🔓 ${tok.name}'s movement unlocked`);
       }
     }
-    if(action==="unlock"){
-      const tok=tokens[ctxTokenId];
-      if(tok){
-        tok.trapped=false;
-        await update(ref(db,`maps/${getMapName()}/tokens/${ctxTokenId}`),{trapped:false});
-        toast(`🔓 ${tok.name} released from the trap`);
-      }
-    }
     if(action==="delete")deleteTokenRTDB(getMapName(),ctxTokenId);
     if(action==="sheet"){
       const _tok=tokens[ctxTokenId];
@@ -1429,6 +1477,115 @@ function openEditTokenModal(tokId){
   document.getElementById("token-modal").classList.remove("hidden");
 }
 
+const NODE_TYPE_DEFAULTS={
+  portal:{trigger:"step",persistence:"momentary",effect:"move"},
+  tripwire:{trigger:"step",persistence:"momentary",effect:"effect"},
+  trap:{trigger:"step",persistence:"momentary",effect:"damage"},
+  latch:{trigger:"flip",persistence:"latch",effect:"activate"},
+  lever:{trigger:"flip",persistence:"latch",effect:"activate"},
+  plate:{trigger:"step",persistence:"latch",effect:"activate"},
+};
+const NODE_ICONS={portal:"🌀",tripwire:"🔳",trap:"🪤",latch:"🔐",lever:"🎚️",plate:"🔲"};
+let _nodeModalKey=null, _nodeModalType=null, _nodeModalRotation=0;
+function nodeLabel(n,key){
+  const[x,y]=key.split(",").map(Number);
+  return `${NODE_ICONS[n.type]||""} ${n.type} at (${x},${y})`;
+}
+function doorLabel(d){
+  return `🚪 Door at (${Math.round(d.x1)},${Math.round(d.y1)})–(${Math.round(d.x2)},${Math.round(d.y2)})`;
+}
+function openNodeConfigModal(cellKey,nodeType){
+  const existing=triggerNodes[cellKey];
+  _nodeModalKey=cellKey;
+  _nodeModalType=existing?existing.type:nodeType;
+  _nodeModalRotation=existing?(existing.rotation||0):currentNodeRotation;
+  updateNodeRotationDisplay();
+  const defaults=NODE_TYPE_DEFAULTS[_nodeModalType]||{trigger:"step",persistence:"latch",effect:"activate"};
+  const label=_nodeModalType.charAt(0).toUpperCase()+_nodeModalType.slice(1);
+  document.getElementById("node-modal-title").textContent=`${NODE_ICONS[_nodeModalType]||""} Configure ${label}`;
+  document.getElementById("node-trigger").value=existing?existing.trigger:defaults.trigger;
+  document.getElementById("node-persistence").value=existing?existing.persistence:defaults.persistence;
+  document.getElementById("node-effect").value=existing?existing.effect:defaults.effect;
+  document.getElementById("node-damage-amount").value=existing?.damageAmount||"2d6";
+  document.getElementById("node-effect-text").value=existing?.effectText||"";
+  document.getElementById("node-condition-state").value=existing?.conditionState||"active";
+  document.getElementById("node-delete").style.display=existing?"block":"none";
+  // Condition/effect connection status -- read-only here, set by dragging with the 🔌 Connect tool
+  const condDisplay=document.getElementById("node-condition-display");
+  if(existing?.conditionLinkTo){
+    let found=null;
+    for(const[k,n]of Object.entries(triggerNodes)) if(n.id===existing.conditionLinkTo){ found=nodeLabel(n,k); break; }
+    condDisplay.textContent=found?`Gated by: ${found}`:"Gated by a node that no longer exists";
+  } else {
+    condDisplay.textContent="(none — trigger alone is enough)";
+  }
+  const linkDisplay=document.getElementById("node-link-display");
+  if(existing?.linkTo){
+    let found=null;
+    if(existing.linkKind==="node"){
+      for(const[k,n]of Object.entries(triggerNodes)) if(n.id===existing.linkTo){ found=nodeLabel(n,k); break; }
+    } else if(existing.linkKind==="door"){
+      const d=geometry.doors.find(d=>d.id===existing.linkTo);
+      if(d) found=doorLabel(d);
+    }
+    linkDisplay.textContent=found?`Connected to: ${found}`:"Connected to a target that no longer exists";
+  } else {
+    linkDisplay.textContent="Not connected — close this and use the 🔌 Connect tool to wire it to a target";
+  }
+  updateNodeModalFieldVisibility();
+  document.getElementById("node-modal").classList.remove("hidden");
+}
+function updateNodeModalFieldVisibility(){
+  const effect=document.getElementById("node-effect").value;
+  document.getElementById("node-link-row").style.display=(effect==="move"||effect==="activate")?"block":"none";
+  document.getElementById("node-damage-row").style.display=effect==="damage"?"block":"none";
+  document.getElementById("node-effecttext-row").style.display=effect==="effect"?"block":"none";
+  const existing=triggerNodes[_nodeModalKey];
+  document.getElementById("node-condition-state-row").style.display=existing?.conditionLinkTo?"block":"none";
+}
+document.getElementById("node-effect").onchange=updateNodeModalFieldVisibility;
+document.getElementById("node-cancel").onclick=()=>document.getElementById("node-modal").classList.add("hidden");
+document.getElementById("node-delete").onclick=async()=>{
+  if(!_nodeModalKey||!triggerNodes[_nodeModalKey]) return;
+  if(!confirm("Delete this trigger node? Any effect-links or condition-gates pointing to it will be cleared."))return;
+  const removedId=triggerNodes[_nodeModalKey].id;
+  delete triggerNodes[_nodeModalKey];
+  for(const n of Object.values(triggerNodes)){
+    if(n.linkTo===removedId){ n.linkTo=null; n.linkKind=null; }
+    if(n.conditionLinkTo===removedId){ n.conditionLinkTo=null; }
+  }
+  await saveTriggerNodes(getMapName(),triggerNodes);
+  document.getElementById("node-modal").classList.add("hidden");
+  toast("Trigger node deleted");
+};
+function updateNodeRotationDisplay(){
+  document.getElementById("node-rotation-display").textContent=`${_nodeModalRotation}°`;
+}
+document.getElementById("node-rotate-left").onclick=()=>{ _nodeModalRotation=(_nodeModalRotation-90+360)%360; updateNodeRotationDisplay(); };
+document.getElementById("node-rotate-right").onclick=()=>{ _nodeModalRotation=(_nodeModalRotation+90)%360; updateNodeRotationDisplay(); };
+document.getElementById("node-save").onclick=async()=>{
+  const trigger=document.getElementById("node-trigger").value;
+  const persistence=document.getElementById("node-persistence").value;
+  const effect=document.getElementById("node-effect").value;
+  const conditionState=document.getElementById("node-condition-state").value;
+  const damageAmount=document.getElementById("node-damage-amount").value.trim()||"2d6";
+  const effectText=document.getElementById("node-effect-text").value.trim();
+  const existing=triggerNodes[_nodeModalKey];
+  const node=existing||{id:genNodeId(),type:_nodeModalType,triggered:false,active:false,activatedAt:0,linkKind:null,linkTo:null,conditionLinkTo:null};
+  node.type=_nodeModalType;
+  node.trigger=trigger;
+  node.persistence=persistence;
+  node.effect=effect;
+  node.conditionState=conditionState;
+  node.damageAmount=damageAmount;
+  node.effectText=effectText;
+  node.rotation=_nodeModalRotation;
+  triggerNodes[_nodeModalKey]=node;
+  await saveTriggerNodes(getMapName(),triggerNodes);
+  document.getElementById("node-modal").classList.add("hidden");
+  toast(`${_nodeModalType} configured`);
+};
+
 function openMirrorModal(tokId){
   const list=document.getElementById("mirror-token-list");list.innerHTML="";
   const existing=mirrorsForFollower(mirrors,tokId);
@@ -1453,7 +1610,6 @@ function openMirrorModal(tokId){
     btn.onmouseleave=()=>btn.style.borderColor="var(--border)";
     btn.onclick=async()=>{
       const mapName=mapInput.value.trim()||"dungeon-1";
-      // A follower only ever tracks one leader -- replace any existing mirror
       for(const[existingId]of mirrorsForFollower(mirrors,tokId)) await deleteMirror(mapName,existingId,mirrors);
       const mirrorId="mirror_"+Date.now();
       await saveMirror(mapName,mirrorId,id,tokId);
@@ -1882,27 +2038,6 @@ function drawProps(){
 }
 
 function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}ctx.restore();}
-function drawTraps(){
-  ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
-  for(const k in traps){
-    const[x,y]=k.split(",").map(Number);
-    const px=x*TILE,py=y*TILE;
-    ctx.fillStyle="rgba(140,60,200,0.18)";
-    ctx.fillRect(px,py,TILE,TILE);
-    ctx.strokeStyle="rgba(140,60,200,0.5)";ctx.lineWidth=Math.max(1,TILE*0.03);
-    ctx.save();ctx.beginPath();ctx.rect(px,py,TILE,TILE);ctx.clip();
-    const step=TILE*0.28;
-    for(let o=-TILE;o<TILE*2;o+=step){
-      ctx.beginPath();ctx.moveTo(px+o,py);ctx.lineTo(px+o-TILE,py+TILE);ctx.stroke();
-    }
-    ctx.restore();
-    ctx.strokeStyle="rgba(140,60,200,0.7)";ctx.lineWidth=Math.max(1,TILE*0.045);
-    ctx.strokeRect(px+1,py+1,TILE-2,TILE-2);
-    ctx.font=`${Math.round(TILE*0.4)}px serif`;ctx.fillStyle="rgba(140,60,200,0.9)";
-    ctx.fillText("🪤",px+TILE/2,py+TILE/2);
-  }
-  ctx.restore();
-}
 function drawImpassable(){
   ctx.save();
   for(const k in impassable){
@@ -1922,34 +2057,98 @@ function drawImpassable(){
   }
   ctx.restore();
 }
-function drawPortals(){
+function nodeCenterByKey(k){
+  const[x,y]=k.split(",").map(Number);
+  return[x*TILE+TILE/2,y*TILE+TILE/2];
+}
+function doorCenter(d){
+  return[((d.x1+d.x2)/2)*TILE,((d.y1+d.y2)/2)*TILE];
+}
+function drawWireLine(x1,y1,x2,y2,color,dashed){
+  ctx.save();
+  ctx.strokeStyle=color;ctx.lineWidth=Math.max(1.5,TILE*0.035);
+  if(dashed) ctx.setLineDash([TILE*0.12,TILE*0.08]);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.restore();
+}
+function drawTriggerWires(){
+  // Live in-progress drag preview
+  if(wireDragSource&&triggerNodes[wireDragSource]){
+    const[sx,sy]=nodeCenterByKey(wireDragSource);
+    const hx=hoverTileX*TILE+TILE/2,hy=hoverTileY*TILE+TILE/2;
+    drawWireLine(sx,sy,hx,hy,wireDragIsCondition?"rgba(160,120,220,0.9)":"rgba(90,170,230,0.9)",true);
+    return;
+  }
+  // Hover-based highlighting -- only show wires touching whatever node the
+  // cursor is currently over, not all wires all the time
+  const hoverKey=`${hoverTileX},${hoverTileY}`;
+  const hoverNode=triggerNodes[hoverKey];
+  if(!hoverNode) return;
+  const[hx,hy]=nodeCenterByKey(hoverKey);
+  // Outgoing effect-link
+  if(hoverNode.linkTo){
+    if(hoverNode.linkKind==="node"){
+      for(const[k,n]of Object.entries(triggerNodes)) if(n.id===hoverNode.linkTo){
+        const[tx,ty]=nodeCenterByKey(k);
+        drawWireLine(hx,hy,tx,ty,"rgba(90,170,230,0.85)",false);
+        break;
+      }
+    } else if(hoverNode.linkKind==="door"){
+      const d=geometry.doors.find(d=>d.id===hoverNode.linkTo);
+      if(d){ const[dx,dy]=doorCenter(d); drawWireLine(hx,hy,dx,dy,"rgba(90,170,230,0.85)",false); }
+    }
+  }
+  // Outgoing condition-gate
+  if(hoverNode.conditionLinkTo){
+    for(const[k,n]of Object.entries(triggerNodes)) if(n.id===hoverNode.conditionLinkTo){
+      const[tx,ty]=nodeCenterByKey(k);
+      drawWireLine(hx,hy,tx,ty,"rgba(160,120,220,0.85)",true);
+      break;
+    }
+  }
+  // Incoming wires from other nodes
+  for(const[k,n]of Object.entries(triggerNodes)){
+    if(n.id===hoverNode.id) continue;
+    const[sx,sy]=nodeCenterByKey(k);
+    if(n.linkKind==="node"&&n.linkTo===hoverNode.id) drawWireLine(sx,sy,hx,hy,"rgba(90,170,230,0.85)",false);
+    if(n.conditionLinkTo===hoverNode.id) drawWireLine(sx,sy,hx,hy,"rgba(160,120,220,0.85)",true);
+  }
+}
+function drawTriggerNodes(){
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
-  const img=propTextures["portal"];
-  for(const[k,p]of Object.entries(portals)){
+  const occupiedKeys=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
+  for(const[k,n]of Object.entries(triggerNodes)){
     const[x,y]=k.split(",").map(Number);
-    const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
+    const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.34;
+    const active=isNodeActive(n,k,occupiedKeys,triggerNodes);
+    const color=active?"143,208,143":"200,168,75"; // green when active, gold when not
+    ctx.strokeStyle=`rgba(${color},0.9)`;ctx.lineWidth=Math.max(1,TILE*0.045);
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    const img=propTextures[n.type];
+    const rot=(n.rotation||0)*Math.PI/180;
     ctx.save();
-    if(p.hidden) ctx.globalAlpha=0.4;
+    ctx.translate(cx,cy);ctx.rotate(rot);
     if(img){
-      ctx.drawImage(img,x*TILE,y*TILE,TILE,TILE);
+      ctx.drawImage(img,-TILE/2,-TILE/2,TILE,TILE);
     } else {
-      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
-      if(p.hidden) ctx.setLineDash([4,3]);
-      ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.font=`${Math.round(TILE*0.32)}px serif`;ctx.fillStyle=`rgba(${color},0.95)`;
+      ctx.fillText(NODE_ICONS[n.type]||"❓",0,0);
     }
-    if(p.hidden){
-      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.03);ctx.setLineDash([3,2]);
-      ctx.beginPath();ctx.arc(cx,cy,r*1.25,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
-    }
-    ctx.font=`${Math.round(TILE*0.3)}px 'Cinzel',serif`;ctx.fillStyle="#c8a84b";
-    ctx.strokeStyle="rgba(0,0,0,.6)";ctx.lineWidth=3;
-    const label=(p.link??"")+(p.hidden?" 👁‍🗨":"");
-    ctx.strokeText(label,cx,cy);ctx.fillText(label,cx,cy);
     ctx.restore();
+    if(n.linkKind){
+      ctx.font=`${Math.round(TILE*0.16)}px serif`;ctx.fillStyle="rgba(200,168,75,0.9)";
+      ctx.fillText("🔗",cx+r*0.75,cy-r*0.75);
+    }
+    if(n.conditionLinkTo){
+      ctx.font=`${Math.round(TILE*0.16)}px serif`;ctx.fillStyle="rgba(160,120,220,0.9)";
+      ctx.fillText("⛓️",cx-r*0.75,cy-r*0.75);
+    }
+    ctx.font=`${Math.round(TILE*0.16)}px 'Cinzel',serif`;ctx.fillStyle=`rgba(${color},0.8)`;
+    ctx.fillText(`${n.trigger}·${n.effect}`,cx,cy+r+TILE*0.14);
   }
   ctx.restore();
 }
+
 
 function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/camera.zoom;const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,r=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
@@ -1999,14 +2198,17 @@ function drawClipSelection(){
       const[dx,dy]=rel.split(",").map(Number);
       ctx.fillStyle="rgba(200,60,40,0.25)";ctx.fillRect((ax+dx)*TILE,(ay+dy)*TILE,TILE,TILE);
     }
-    for(const rel of Object.keys(mapClipboard.traps||{})){
+    for(const[rel,n]of Object.entries(mapClipboard.triggerNodes||{})){
       const[dx,dy]=rel.split(",").map(Number);
-      ctx.fillStyle="rgba(140,60,200,0.25)";ctx.fillRect((ax+dx)*TILE,(ay+dy)*TILE,TILE,TILE);
-    }
-    for(const[rel]of Object.entries(mapClipboard.portals||{})){
-      const[dx,dy]=rel.split(",").map(Number);
+      const cx=(ax+dx)*TILE+TILE/2,cy=(ay+dy)*TILE+TILE/2;
       ctx.strokeStyle="rgba(200,168,75,0.8)";ctx.lineWidth=Math.max(1,TILE*0.04);
-      ctx.beginPath();ctx.arc((ax+dx)*TILE+TILE/2,(ay+dy)*TILE+TILE/2,TILE*0.32,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.arc(cx,cy,TILE*0.32,0,Math.PI*2);ctx.stroke();
+      const img=propTextures[n.type];
+      const rot=(n.rotation||0)*Math.PI/180;
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(rot);
+      if(img){ ctx.drawImage(img,-TILE/2,-TILE/2,TILE,TILE); }
+      else{ ctx.font=`${Math.round(TILE*0.28)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillStyle="rgba(200,168,75,0.9)";ctx.fillText(NODE_ICONS[n.type]||"❓",0,0); }
+      ctx.restore();
     }
     for(const w of (mapClipboard.walls||[])){
       ctx.strokeStyle="rgba(200,60,40,0.8)";ctx.lineWidth=Math.max(1.5,TILE*0.04);
@@ -2075,7 +2277,7 @@ function render(){
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
   ctx.restore();
-  drawStamps();drawProps();drawPortals();drawImpassable();drawTraps();
+  drawStamps();drawProps();drawImpassable();drawTriggerNodes();drawTriggerWires();
   drawChains(ctx,chains,tokens,camera.zoom);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),true);
   for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),true);
@@ -2339,10 +2541,8 @@ canvas.addEventListener("contextmenu",e=>{
   const gx=wx/TILE,gy=wy/TILE;
   const[tx,ty]=worldToTile(wx,wy,TILE);
   const pk=key(tx,ty);
-  if(portals[pk]){
-    portals[pk].hidden=!portals[pk].hidden;
-    savePortals(getMapName(),portals);
-    toast(portals[pk].hidden?"Portal hidden from players":"Portal visible to players");
+  if(triggerNodes[pk]){
+    openNodeConfigModal(pk,triggerNodes[pk].type);
     return;
   }
   const li=lightAtPoint(geometry.lights,gx,gy,0.6);
@@ -2425,32 +2625,28 @@ canvas.addEventListener("pointerdown",e=>{
       saveGeometry();
       e.stopPropagation(); return;
     }
-    if(structureType==="portal"){
-      const[tx,ty]=worldToTile(wx,wy,TILE);
-      const pk=key(tx,ty);
-      const existing=portals[pk];
-      const val=prompt(existing?"Portal link # (clear the field to remove this portal):":"Link # for this portal cell (enter the same # on another cell to link them):", existing?existing.link:"");
-      if(val===null){ e.stopPropagation(); return; }
-      const trimmed=val.trim();
-      if(!trimmed){
-        if(existing){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
-        e.stopPropagation(); return;
-      }
-      portals[pk]={link:trimmed};
-      savePortals(getMapName(),portals);
-      toast(`Portal #${trimmed} set — link another cell with the same # to connect it`);
-      e.stopPropagation(); return;
-    }
     if(structureType==="impassable"){
       const[tx,ty]=worldToTile(wx,wy,TILE);
       impassable[key(tx,ty)]=true;
       canvas.setPointerCapture(e.pointerId);paintingImpassable=true;
       e.stopPropagation(); return;
     }
-    if(structureType==="trap"){
+    if(structureType==="node-connect"){
       const[tx,ty]=worldToTile(wx,wy,TILE);
-      traps[key(tx,ty)]=true;
-      canvas.setPointerCapture(e.pointerId);paintingTrap=true;
+      const k=key(tx,ty);
+      if(triggerNodes[k]){
+        wireDragSource=k;
+        wireDragIsCondition=e.shiftKey;
+        canvas.setPointerCapture(e.pointerId);
+      } else {
+        toast("Click and drag FROM an existing trigger node to wire it to something");
+      }
+      e.stopPropagation(); return;
+    }
+    if(structureType.startsWith("node-")){
+      const nodeType=structureType.slice(5);
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      openNodeConfigModal(key(tx,ty),nodeType);
       e.stopPropagation(); return;
     }
   }
@@ -2465,18 +2661,33 @@ canvas.addEventListener("pointerdown",e=>{
     } else if(structureType==="door"){
       const seg=segmentAtPoint([],geometry.doors,gx,gy,0.35);
       if(seg){ deleteById(geometry.doors,seg.id); saveGeometry(); toast("Door removed"); }
-    } else if(structureType==="portal"){
-      const[tx,ty]=worldToTile(wx,wy,TILE);
-      const pk=key(tx,ty);
-      if(portals[pk]){ delete portals[pk]; savePortals(getMapName(),portals); toast("Portal removed"); }
     } else if(structureType==="impassable"){
       const[tx,ty]=worldToTile(wx,wy,TILE);
       delete impassable[key(tx,ty)];
       canvas.setPointerCapture(e.pointerId);erasingImpassable=true;
-    } else if(structureType==="trap"){
+    } else if(structureType==="node-connect"){
       const[tx,ty]=worldToTile(wx,wy,TILE);
-      delete traps[key(tx,ty)];
-      canvas.setPointerCapture(e.pointerId);erasingTrap=true;
+      const k=key(tx,ty);
+      const n=triggerNodes[k];
+      if(n){
+        const hadLink=n.linkTo||n.conditionLinkTo;
+        n.linkTo=null; n.linkKind=null; n.conditionLinkTo=null;
+        saveTriggerNodes(getMapName(),triggerNodes);
+        toast(hadLink?"Wires disconnected from this node":"This node had no wires to disconnect");
+      }
+    } else if(structureType.startsWith("node-")){
+      const[tx,ty]=worldToTile(wx,wy,TILE);
+      const k=key(tx,ty);
+      if(triggerNodes[k]){
+        const removedId=triggerNodes[k].id;
+        delete triggerNodes[k];
+        for(const n of Object.values(triggerNodes)){
+          if(n.linkTo===removedId){ n.linkTo=null; n.linkKind=null; }
+          if(n.conditionLinkTo===removedId){ n.conditionLinkTo=null; }
+        }
+        saveTriggerNodes(getMapName(),triggerNodes);
+        toast("Trigger node removed (any wires to/from it were cleared)");
+      }
     }
     e.stopPropagation(); return;
   }
@@ -2515,12 +2726,6 @@ canvas.addEventListener("pointermove",e=>{
     if(paintingImpassable) impassable[k]=true; else delete impassable[k];
     return;
   }
-  if(paintingTrap||erasingTrap){
-    const[tx,ty]=worldToTile(wx,wy,TILE);
-    const k=key(tx,ty);
-    if(paintingTrap) traps[k]=true; else delete traps[k];
-    return;
-  }
   if(!(activeCategory==="structure"&&activeVerb==="select")) return;
   if(!geoDragEp&&!geoDragLight) return;
   const gx=wx/TILE,gy=wy/TILE;
@@ -2528,14 +2733,53 @@ canvas.addEventListener("pointermove",e=>{
   if(geoDragLight!==null){ const l=geometry.lights.find(x=>x.id===geoDragLight); if(l){l.x=gx;l.y=gy;} }
 });
 canvas.addEventListener("pointerup",e=>{
+  if(wireDragSource){
+    const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
+    const gx=wx/TILE,gy=wy/TILE;
+    const[tx,ty]=worldToTile(wx,wy,TILE);
+    const targetKey=key(tx,ty);
+    const source=triggerNodes[wireDragSource];
+    if(!source){ wireDragSource=null; return; }
+    if(targetKey===wireDragSource){ toast("Can't wire a node to itself"); wireDragSource=null; return; }
+    let connected=false;
+    if(triggerNodes[targetKey]){
+      const target=triggerNodes[targetKey];
+      if(wireDragIsCondition){
+        source.conditionLinkTo=target.id;
+        connected=true;
+        toast(`⛓️ ${source.type} now gated by ${target.type}`);
+      } else {
+        if(source.effect!=="move"&&source.effect!=="activate"){
+          toast(`This node's effect (${source.effect}) doesn't connect to a target — change its effect to Move or Activate first`);
+        } else {
+          source.linkKind="node"; source.linkTo=target.id;
+          connected=true;
+          toast(`🔌 ${source.type} now wired to ${target.type}`);
+        }
+      }
+    } else {
+      const doorSeg=segmentAtPoint([],geometry.doors,gx,gy,0.4);
+      if(doorSeg){
+        if(wireDragIsCondition){
+          toast("Doors can't be used as a condition gate — only trigger nodes can");
+        } else if(source.effect!=="move"&&source.effect!=="activate"){
+          toast(`This node's effect (${source.effect}) doesn't connect to a target — change its effect to Move or Activate first`);
+        } else {
+          source.linkKind="door"; source.linkTo=doorSeg.id;
+          connected=true;
+          toast(`🔌 ${source.type} now wired to that door`);
+        }
+      } else {
+        toast("Drop the wire on another trigger node or a door to connect it");
+      }
+    }
+    if(connected) saveTriggerNodes(getMapName(),triggerNodes);
+    wireDragSource=null;
+    return;
+  }
   if(paintingImpassable||erasingImpassable){
     paintingImpassable=false;erasingImpassable=false;
     saveImpassable(getMapName(),impassable);
-    return;
-  }
-  if(paintingTrap||erasingTrap){
-    paintingTrap=false;erasingTrap=false;
-    saveTraps(getMapName(),traps);
     return;
   }
   if(geoDragLight!==null){ geoDragLight=null; saveGeometry(); return; }
@@ -2563,11 +2807,17 @@ window.addEventListener("keydown",e=>{
   if(e.key==="w"||e.key==="W"){ document.getElementById("cat-structure").click(); document.querySelector('.struct-type-btn[data-structtype="wall"]')?.click(); }
   if((e.key==="["||e.key==="]") && !(currentProp&&currentProp.isStamp)){
     const delta = e.key==="[" ? -90 : 90;
-    if(draggingProp){
+    if(!document.getElementById("node-modal").classList.contains("hidden")){
+      _nodeModalRotation=(_nodeModalRotation+delta+360)%360;
+      updateNodeRotationDisplay();
+    } else if(draggingProp){
       const p=props[draggingProp.oldKey];
       if(p){ p.rotation=((p.rotation||0)+delta+360)%360; }
     } else if(activeCategory==="props"&&activeVerb==="pencil"&&currentProp&&currentProp!=="erase"){
       currentPropRotation=(currentPropRotation+delta+360)%360;
+    } else if(activeCategory==="structure"&&activeVerb==="pencil"&&structureType?.startsWith("node-")&&structureType!=="node-connect"){
+      currentNodeRotation=(currentNodeRotation+delta+360)%360;
+      toast(`Next node rotation: ${currentNodeRotation}°`);
     }
   }
   if(e.key==="l"||e.key==="L"){ document.getElementById("cat-structure").click(); document.querySelector('.struct-type-btn[data-structtype="light"]')?.click(); }
@@ -2771,8 +3021,6 @@ canvas.addEventListener("pointerup",e=>{
       openTokenInspector(draggingToken.id);
     } else {
       const tok=tokens[draggingToken.id];
-      const dest=resolvePortal(portals,tok.x,tok.y);
-      if(dest){ tok.x=dest.x; tok.y=dest.y; toast("Warped!"); }
       saveTokenRTDB(getMapName(),draggingToken.id,tok);
       savePropsLocal(getMapName(),props);
     }
@@ -2849,7 +3097,6 @@ canvas.addEventListener("contextmenu",e=>{
     document.querySelector('.ctx-item[data-action="hide-hp"]').style.display=(!tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="show-hp"]').style.display=(tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display="flex";
-    document.querySelector('.ctx-item[data-action="unlock"]').style.display=tok.trapped?"flex":"none";
     const movelockItem=document.querySelector('.ctx-item[data-action="movelock"]');
     movelockItem.textContent=tok.moveLocked?"🔓 Unlock Movement":"🔒 Lock Movement";
     const isPc=tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__";
@@ -2939,7 +3186,7 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
   await loadTerrainTextures(getTERRAINS());
   customProps=[...getPROPS()];
   customProps.forEach(p=>tryLoadPropTexture(p.id));
-  ["door","doorclosed","portal"].forEach(id=>tryLoadPropTexture(id)); // structure art, reuses the Props texture set
+  ["door","doorclosed","portal","tripwire","trap","latch","lever","plate"].forEach(id=>tryLoadPropTexture(id)); // structure art, reuses the Props texture set
   buildTerrainDropdown();buildPropDropdown();
   selectTerrain("grass");
   buildWeatherPanel();
@@ -3110,9 +3357,6 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
       hostileBtn.style.color=tok.hostile?"#e0a040":"";
       hostileBtn.style.borderColor=tok.hostile?"rgba(224,160,64,.4)":"";
     }
-    // Unlock — only shown if this token is currently trapped
-    const unlockBtn=document.getElementById("stc-unlock");
-    if(unlockBtn) unlockBtn.style.display=tok.trapped?"":"none";
     panel.classList.add("open");
     document.getElementById("app").classList.add("sheet-open");
     if(tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__"){
@@ -3168,14 +3412,6 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{hostile:tok.hostile});
     openTokenInspector(_inspectedTokId); // refresh button state
     toast(tok.hostile?`⚠ ${tok.name} marked hostile — players get a warning if seen`:`${tok.name} no longer marked hostile`);
-  };
-  document.getElementById("stc-unlock").onclick=async()=>{
-    if(!_inspectedTokId)return;
-    const tok=tokens[_inspectedTokId];if(!tok)return;
-    tok.trapped=false;
-    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{trapped:false});
-    openTokenInspector(_inspectedTokId);
-    toast(`🔓 ${tok.name} released from the trap`);
   };
   document.getElementById("stc-hide-hp").onclick=async()=>{
     if(!_inspectedTokId)return;

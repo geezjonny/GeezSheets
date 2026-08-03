@@ -474,7 +474,7 @@ import { sendChat, renderChat } from "./js/chat.js";
 import { loadLootData, generateContainerLoot, summarizeLoot } from "./js/loot.js";
 import { rollDie } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, nextTurn } from "./js/initiative.js";
-import { resolvePortal } from "./js/map.js";
+import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, resolveLinkedDoor, syncActivateEffects, rollDamage, BUTTON_PULSE_MS } from "./js/triggers.js";
 import { subscribeRestRequest, runApprovedRest } from "./js/sheet.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMetaText, loadSheetApi } from "./js/sheet.js";
 import { subscribeTheaterMode, startTheaterFog, stopTheaterFog } from "./js/theater.js";
@@ -482,7 +482,7 @@ import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/p
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},portals={},impassable={},traps={},chains={};
+let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},chains={},triggerNodes={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
 let _geoLC=null,_geoLX=null;
@@ -811,10 +811,9 @@ function subscribeLive(){
     for(const k in tiles)delete tiles[k];for(const k in fog)delete fog[k];
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
-    for(const k in portals)delete portals[k];
     for(const k in impassable)delete impassable[k];
-    for(const k in traps)delete traps[k];
     for(const k in chains)delete chains[k];
+    for(const k in triggerNodes)delete triggerNodes[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fog,data.fog);
@@ -822,10 +821,9 @@ function subscribeLive(){
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
-      if(data.portals)Object.assign(portals,data.portals);
       if(data.impassable)Object.assign(impassable,data.impassable);
-      if(data.traps)Object.assign(traps,data.traps);
       if(data.chains)Object.assign(chains,data.chains);
+      if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
       geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
       if(data.geometry){
         if(data.geometry.walls)geometry.walls.push(...Object.values(data.geometry.walls));
@@ -840,6 +838,7 @@ function subscribeLive(){
     }
     setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
     if(firstLoad){firstLoad=false;doFit();overlayEl.classList.add("hidden");}
+    evaluateAllNodes();
   },()=>{setStatus("error","RTDB error");overlayEl.classList.add("hidden");});
 }
 function doFit(){
@@ -865,6 +864,8 @@ onValue(ref(db,"initiative"),snap=>{const d=snap.val()||{};initiativeState={orde
 //    Selecting something announces it in chat; it doesn't roll or resolve
 //    anything itself, except marking a spell slot used when you cast. ────────
 let _turnMenuCollapsed=false;
+function key(x,y){return`${x},${y}`;}
+const NODE_ICONS={portal:"🌀",tripwire:"🔳",trap:"🪤",latch:"🔐",lever:"🎚️",plate:"🔲"};
 function myOwnTokenEntry(){
   return Object.entries(tokens).find(([id,t])=>t.type==="pc"&&(t.name?.toLowerCase()===playerName.toLowerCase()||t.characterId===myCharacterId));
 }
@@ -1127,20 +1128,25 @@ function draw(){
   ctx.restore();
 
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
-  const portalImg=propTextures["portal"];
-  for(const[k,p]of Object.entries(portals)){
-    if(p.hidden) continue; // invisible to players — like a trap door, but still works if stepped on
+  const _occupiedForNodes=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
+  for(const[k,n]of Object.entries(triggerNodes)){
     const[x,y]=k.split(",").map(Number);
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
-    // Players see the portal itself, never the link # — no hint of the destination
-    if(portalImg){
-      ctx.drawImage(portalImg,x*TILE,y*TILE,TILE,TILE);
+    const active=isNodeActive(n,k,_occupiedForNodes,triggerNodes);
+    const color=active?"143,208,143":"200,168,75";
+    ctx.strokeStyle=`rgba(${color},0.85)`;ctx.lineWidth=Math.max(1,TILE*0.045);
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    const img=propTextures[n.type];
+    const rot=(n.rotation||0)*Math.PI/180;
+    ctx.save();
+    ctx.translate(cx,cy);ctx.rotate(rot);
+    if(img){
+      ctx.drawImage(img,-TILE/2,-TILE/2,TILE,TILE);
     } else {
-      ctx.strokeStyle="#c8a84b";ctx.lineWidth=Math.max(1,TILE*0.045);
-      ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-      ctx.font=`${Math.round(TILE*0.32)}px serif`;ctx.fillStyle="#c8a84b";
-      ctx.fillText("🌀",cx,cy);
+      ctx.font=`${Math.round(TILE*0.32)}px serif`;ctx.fillStyle=`rgba(${color},0.95)`;
+      ctx.fillText(NODE_ICONS[n.type]||"❓",0,0);
     }
+    ctx.restore();
   }
   ctx.restore();
 
@@ -1283,7 +1289,64 @@ function propAtTile(tx,ty){
 //    moment you open it (shift+click added as a trackpad-friendly alternate
 //    to right-click, same as every other right-click action in this file) ──
 loadLootData();
+
+/** Fires a node's one-shot effect (move/damage/effect) against the token
+ *  that satisfied it. effect="activate" is NOT handled here -- that's
+ *  continuously synced via evaluateAllNodes()/syncActivateEffects() instead,
+ *  since it needs to reverse automatically when a momentary trigger drops. */
+async function fireNodeOneShotEffect(node,tokId,tok){
+  if(node.effect==="move"){
+    const target=resolveLinkedNode(node,triggerNodes);
+    if(!target){ return; }
+    let targetKey=null;
+    for(const[k,n]of Object.entries(triggerNodes)) if(n.id===target.id){ targetKey=k; break; }
+    if(!targetKey) return;
+    const[tx,ty]=targetKey.split(",").map(Number);
+    tok.x=tx; tok.y=ty;
+    await update(ref(db,`maps/${currentMap}/tokens/${tokId}`),{x:tx,y:ty});
+    toast("🌀 You are pulled through...");
+  } else if(node.effect==="damage"){
+    const{total,text}=rollDamage(node.damageAmount);
+    const newHp=Math.max(0,(tok.hp||0)-total);
+    await update(ref(db,`maps/${currentMap}/tokens/${tokId}`),{hp:newHp});
+    if(tok.characterId&&tok.characterId!=="__npc__"){
+      const snap=await get(ref(db,`characters/pcs/${tok.characterId}/combat/hp_current`));
+      const cur=snap.exists()?snap.val():tok.hp;
+      await update(ref(db,`characters/pcs/${tok.characterId}/combat`),{hp_current:Math.max(0,cur-total)});
+    }
+    sendChat(`💥 ${tok.name} takes ${total} damage from a ${node.type} (${text})`,"GM","system");
+    toast(`💥 You take ${total} damage!`);
+  } else if(node.effect==="effect"){
+    sendChat(`✨ ${node.effectText||"Something happens..."}`,"GM","system");
+    toast(node.effectText||"Something happens...");
+  }
+}
+
+/** Flip-trigger interaction (lever/button/etc via right-click or shift+click). */
+async function toggleFlipNode(nodeKey,node){
+  const wasActive=isNodeActive(node,nodeKey,new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`)),triggerNodes);
+  if(node.persistence==="latch"){
+    node.active=!node.active;
+    await set(ref(db,`maps/${currentMap}/triggerNodes/${nodeKey}/active`),node.active);
+    toast(node.active?`${NODE_ICONS[node.type]||""} You flip it.`:`${NODE_ICONS[node.type]||""} You flip it back.`);
+  } else {
+    node.active=true; node.activatedAt=Date.now();
+    await update(ref(db,`maps/${currentMap}/triggerNodes/${nodeKey}`),{active:true,activatedAt:node.activatedAt});
+    toast(`${NODE_ICONS[node.type]||""} You activate it.`);
+    setTimeout(evaluateAllNodes,BUTTON_PULSE_MS+150); // re-check once the pulse expires, in case nothing else triggers a recheck
+  }
+  const nowActive=isNodeActive(node,nodeKey,new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`)),triggerNodes);
+  if(!wasActive&&nowActive&&node.effect!=="activate"){
+    const myEntry=myOwnTokenEntry();
+    if(myEntry) await fireNodeOneShotEffect(node,myEntry[0],myEntry[1]);
+  }
+  evaluateAllNodes();
+}
+
 function openContainerAt(tx,ty){
+  const nodeKey=key(tx,ty);
+  const node=triggerNodes[nodeKey];
+  if(node&&node.trigger==="flip"){ toggleFlipNode(nodeKey,node); return; }
   const pk=propAtTile(tx,ty);
   if(!pk||!props[pk]?.container) return;
   const container=props[pk].container;
@@ -1310,6 +1373,7 @@ viewport.addEventListener("contextmenu",e=>{
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
   openContainerAt(tx,ty);
 });
+
 
 let _lastInvestigateText=null;
 function updateInvestigateBanner(){
@@ -1390,8 +1454,6 @@ viewport.addEventListener("pointerup",e=>{
   if(rulerActive)return;
   if(draggingToken){
     const tok=tokens[draggingToken.id];
-    const dest=resolvePortal(portals,tok.x,tok.y);
-    if(dest){ tok.x=dest.x; tok.y=dest.y; }
     update(ref(db,`maps/${currentMap}/tokens/${draggingToken.id}`),{x:tok.x,y:tok.y});
     draggingToken=null;return;
   }
@@ -1457,7 +1519,6 @@ window.addEventListener("keydown",e=>{
   if(!entry) return;
   const[tokId,tok]=entry;
   if(playersLocked){toast("🔒 Movement is locked");return;}
-  if(tok.trapped){toast("🪤 You're trapped! The GM needs to release you.");return;}
   if(tok.moveLocked){toast("🔒 The GM has locked your movement.");return;}
   if(inCombat&&initiativeState.order.length){
     if(initiativeState.active!==(tok.id||tokId)){toast("⚔ It's not your turn yet");return;}
@@ -1472,20 +1533,43 @@ window.addEventListener("keydown",e=>{
   if(impassable[`${toX},${toY}`]) return; // blocked by an impassable cell
   _lastMoveTime=now;
   tok.x=toX;tok.y=toY;
-  const dest=resolvePortal(portals,tok.x,tok.y);
-  if(dest){tok.x=dest.x;tok.y=dest.y;}
   const updates={x:tok.x,y:tok.y};
   if(inCombat&&initiativeState.order.length&&initiativeState.active===(tok.id||tokId)){
     tok.turnMovedTiles=(tok.turnMovedTiles||0)+1;
     updates.turnMovedTiles=tok.turnMovedTiles;
   }
-  if(traps[`${tok.x},${tok.y}`]){
-    tok.trapped=true;updates.trapped=true;
-    toast("🪤 You've triggered a trap and can't move until the GM releases you!");
-  }
   update(ref(db,`maps/${currentMap}/tokens/${tokId}`),updates);
   checkNpcSight(tok);
+  // Step-trigger node check -- latch nodes fire their one-shot effect only
+  // the first time they're ever triggered; momentary nodes fire every time
+  // (arriving IS the edge, there's no persisted state to compare against).
+  // effect="activate" nodes aren't fired here at all -- evaluateAllNodes()
+  // below handles those continuously, since they need to reverse
+  // automatically if a momentary condition later drops.
+  const landedKey=`${tok.x},${tok.y}`;
+  const landedNode=triggerNodes[landedKey];
+  if(landedNode&&landedNode.trigger==="step"){
+    let shouldFire=false;
+    if(landedNode.persistence==="latch"){
+      if(!landedNode.triggered){
+        landedNode.triggered=true;
+        set(ref(db,`maps/${currentMap}/triggerNodes/${landedKey}/triggered`),true);
+        shouldFire=true;
+      }
+    } else {
+      shouldFire=true;
+    }
+    if(shouldFire&&landedNode.effect!=="activate"){
+      fireNodeOneShotEffect(landedNode,tokId,tok);
+    }
+  }
+  evaluateAllNodes();
 });
+
+function evaluateAllNodes(){
+  const occupiedKeys=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
+  syncActivateEffects(currentMap,triggerNodes,geometry.doors,occupiedKeys).catch(()=>{});
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
@@ -1512,7 +1596,7 @@ window.addEventListener("keydown",e=>{
 
   await loadTerrainTextures(getTERRAINS());
   getPROPS().forEach(p=>{ propDefs[p.id]=p; tryLoadPropTexture(p.id); });
-  ["door","doorclosed","portal"].forEach(id=>tryLoadPropTexture(id));
+  ["door","doorclosed","portal","tripwire","trap","latch","lever","plate"].forEach(id=>tryLoadPropTexture(id));
 
   // Wire sheet toast function
   setSheetToastFn(msg=>{const el=document.getElementById("ping-toast");if(!el)return;el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2500);});
