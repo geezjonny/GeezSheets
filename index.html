@@ -858,6 +858,13 @@ function doFit(){
 }
 let playersLocked=false;
 onValue(ref(db,"session/locked"),snap=>{playersLocked=!!snap.val();});
+let pingsLocked=false;
+onValue(ref(db,"session/pingsLocked"),snap=>{
+  pingsLocked=!!snap.val();
+  const btn=document.getElementById("pingBtn");
+  if(btn) btn.style.display=pingsLocked?"none":"";
+  if(pingsLocked){ pingMode=false; document.getElementById("pingBtn")?.classList.remove("active"); viewport.classList.remove("pinging"); }
+});
 
 let inCombat=false,initiativeState={order:[],active:null};
 onValue(ref(db,"session/inCombat"),snap=>{inCombat=!!snap.val();updateTurnMenu();});
@@ -1067,6 +1074,7 @@ window.addEventListener("keydown",e=>{if((e.key==="g"||e.key==="G")&&!e.target.m
 
 document.getElementById("pingBtn").onclick=()=>{
   if(!playerName)return;
+  if(pingsLocked){toast("📍 Pings are disabled this session");return;}
   pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);
   viewport.classList.toggle("pinging",pingMode);
 };
@@ -1409,7 +1417,7 @@ function updateInvestigateBanner(){
 viewport.addEventListener("pointerdown",e=>{
   if(e.target.closest("#turn-menu,#turn-menu-tab")) return; // let UI overlay clicks through untouched
   const[sx,sy]=screenPos(e);
-  if(pingMode){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}
+  if(pingMode&&!pingsLocked){sendPing(Math.floor(toWorld(sx,sy)[0]/TILE),Math.floor(toWorld(sx,sy)[1]/TILE),playerName);pingMode=false;document.getElementById("pingBtn").classList.remove("active");viewport.classList.remove("pinging");return;}
   if(rulerMode){
     const[wx,wy]=toWorld(sx,sy);const snap=findSnapPoint(tokens,wx,wy);const point=snap||[wx,wy];
     if(!rulerActive){rulerStart=point;rulerEnd=point;rulerActive=true;}else{rulerEnd=point;rulerActive=false;}
@@ -1436,7 +1444,8 @@ viewport.addEventListener("pointerdown",e=>{
     }
     return;
   }
-  isHolding=false;pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);
+  isHolding=false;
+  if(!pingsLocked) pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);
   panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camera.x;camStartY=camera.y;
   viewport.setPointerCapture(e.pointerId);
 });

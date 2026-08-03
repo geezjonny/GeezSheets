@@ -388,6 +388,7 @@ canvas{display:block;cursor:crosshair}
   <input type="file" id="vttFileInput" accept=".dd2vtt,.json" hidden>
 
   <button class="tb-btn" id="lockPlayersBtn" title="Lock player view while setting up">🔒</button>
+  <button class="tb-btn" id="lockPingsBtn" title="Disable pings and laser pointer for players this session">📍</button>
   <button class="tb-btn" id="glossaryBtn" title="Glossary Search (G)">📖</button>
   <button class="tb-btn" id="notesBtn" title="Session Notes (N)">📝</button>
   <button class="tb-btn" id="lootBtn" title="Loot Generator">🎲 Loot</button>
@@ -661,9 +662,7 @@ canvas{display:block;cursor:crosshair}
     <div class="modal-row">
       <div class="modal-section"><label>Ring color</label>
         <select id="tok-color-preset">
-          <option value="auto">Auto (blue for PC, red for NPC)</option>
-          <option value="pc">PC style (blue)</option>
-          <option value="npc">NPC style (red)</option>
+          <option value="auto">Default</option>
           <option value="custom">Custom…</option>
         </select>
       </div>
@@ -1464,9 +1463,7 @@ function openEditTokenModal(tokId){
   // Pre-fill fields with existing token data
   tokNameInput.value=tok.name||"";
   document.getElementById("tok-lookup-name").value=tok.lookupName||"";
-  if(tok.ringColor==="#7ab0e0"&&tok.fillColor==="#3a6aaa") document.getElementById("tok-color-preset").value="pc";
-  else if(tok.ringColor==="#e07070"&&tok.fillColor==="#8a2a2a") document.getElementById("tok-color-preset").value="npc";
-  else if(tok.ringColor){ document.getElementById("tok-color-preset").value="custom"; document.getElementById("tok-color-custom").value=tok.ringColor; }
+  if(tok.ringColor){ document.getElementById("tok-color-preset").value="custom"; document.getElementById("tok-color-custom").value=tok.ringColor; }
   else document.getElementById("tok-color-preset").value="auto";
   document.getElementById("tok-color-custom-row").style.display=document.getElementById("tok-color-preset").value==="custom"?"flex":"none";
   tokTypeInput.value=tok.type||"npc";
@@ -1631,16 +1628,6 @@ function openMirrorModal(tokId){
       const mirrorId="mirror_"+Date.now();
       await saveMirror(mapName,mirrorId,tokId,id);
       mirrors[mirrorId]={leader:tokId,follower:id};
-      // Mirroring a PC usually means "this is a decoy pretending to be that
-      // character" -- default the follower's ring color to match so it
-      // doesn't stand out as an NPC. The DM can still override via the
-      // token edit modal.
-      const leaderTok=tokens[tokId];
-      const followerTok=tok;
-      if(followerTok&&leaderTok?.type==="pc"){
-        followerTok.fillColor="#3a6aaa";followerTok.ringColor="#7ab0e0";
-        await update(ref(db,`maps/${mapName}/tokens/${id}`),{fillColor:"#3a6aaa",ringColor:"#7ab0e0"});
-      }
       document.getElementById("mirror-modal").classList.add("hidden");
       toast(`${tok.name} now mirrors ${tokens[tokId]?.name}'s movement`);
     };
@@ -1754,6 +1741,17 @@ onValue(ref(db,"session/locked"),snap=>{
   btn.textContent=_playersLocked?"🔓 Unlock Players":"🔒 Lock Players";
   btn.classList.toggle("active",_playersLocked);
 });
+let _pingsLocked=false;
+onValue(ref(db,"session/pingsLocked"),snap=>{
+  _pingsLocked=!!snap.val();
+  const btn=document.getElementById("lockPingsBtn");
+  btn.title=_pingsLocked?"Pings disabled — click to re-enable":"Disable pings and laser pointer for players this session";
+  btn.classList.toggle("active",_pingsLocked);
+});
+document.getElementById("lockPingsBtn").onclick=async()=>{
+  await set(ref(db,"session/pingsLocked"),!_pingsLocked);
+  toast(_pingsLocked?"📍 Pings re-enabled for players":"📍 Pings disabled for players");
+};
 document.getElementById("paste-mode-cancel").onclick=()=>{pasteArmed=false;toast("Paste cancelled");};
 document.getElementById("lockPlayersBtn").onclick=async()=>{
   await set(ref(db,"session/locked"),!_playersLocked);
@@ -1920,9 +1918,7 @@ document.getElementById("tok-place").onclick=async()=>{
   const size=parseFloat(document.getElementById("tok-size").value)||1;
   const colorPreset=document.getElementById("tok-color-preset").value;
   let fillColor=null,ringColor=null;
-  if(colorPreset==="pc"){fillColor="#3a6aaa";ringColor="#7ab0e0";}
-  else if(colorPreset==="npc"){fillColor="#8a2a2a";ringColor="#e07070";}
-  else if(colorPreset==="custom"){ringColor=document.getElementById("tok-color-custom").value;fillColor=ringColor;}
+  if(colorPreset==="custom"){ringColor=document.getElementById("tok-color-custom").value;fillColor=ringColor;}
 
   // Resolve board linkage: either an existing board NPC, or spin up a new one.
   let charId=selVal;let nodeId=null;
@@ -1948,7 +1944,13 @@ document.getElementById("tok-place").onclick=async()=>{
       const updates={name,lookupName,type,hp,maxHp,size,fillColor,ringColor,characterId:charId,nodeId:nodeId||tok.nodeId||null};
       Object.assign(tok,updates);
       tryLoadTokenTexture(charId,lookupName);
-      await update(ref(db,`maps/${getMapName()}/tokens/${editingTokenId}`),updates);
+      try{
+        await update(ref(db,`maps/${getMapName()}/tokens/${editingTokenId}`),updates);
+        console.log("[token save] wrote",updates,"to",editingTokenId);
+      }catch(err){
+        console.error("[token save] FAILED:",err,updates);
+        toast("⚠ Token save failed — see console");
+      }
     }
     editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";
     document.getElementById("token-modal").classList.add("hidden");toast("Token updated");

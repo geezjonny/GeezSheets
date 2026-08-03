@@ -37,7 +37,7 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
   if (img) {
     ctx.drawImage(img, px, py, sw, sh);
   } else {
-    ctx.fillStyle = tok.type === "pc" ? "#3a6aaa" : "#8a2a2a"; ctx.fillRect(px, py, sw, sh);
+    ctx.fillStyle = tok.fillColor || "#5a5248"; ctx.fillRect(px, py, sw, sh);
     ctx.fillStyle = "#fff"; ctx.font = `bold ${Math.round(14 * s / zoom)}px Cinzel,serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText((tok.name || "?")[0].toUpperCase(), cx, cy);
@@ -76,7 +76,7 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
 
   // Ring border
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.strokeStyle = tok.type === "pc" ? "#7ab0e0" : "#e07070"; ctx.lineWidth = 2 / zoom; ctx.stroke();
+  ctx.strokeStyle = tok.ringColor || "#c8a84b"; ctx.lineWidth = 2 / zoom; ctx.stroke();
 
   // Undo prone rotation before drawing name/HP bar so they stay upright and in place
   if (isProne) { ctx.translate(cx, cy); ctx.rotate(-Math.PI / 2); ctx.translate(-cx, -cy); }
