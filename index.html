@@ -1353,10 +1353,10 @@ viewport.addEventListener("pointerdown",e=>{
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
     const tok=tokens[tokId];
-    if(tok.type==="pc"&&(tok.name?.toLowerCase()===playerName.toLowerCase()||tok.characterId===myCharacterId)){
-      openCharSheet(tok.characterId,tok.name,false);return;
+    if(tok.type==="pc"){
+      openCharSheet(tok.characterId,tok.name,false);
     }
-    openCharSheet(tok.characterId,tok.name,false);return;
+    return;
   }
 
   // Door click — geometry doors are the only door system now
