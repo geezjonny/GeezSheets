@@ -162,22 +162,87 @@ window.adjustHp = async function(charId, isHeal) {
   const delta   = parseInt(deltaEl?.value, 10) || 1;
   if (!deltaEl || delta <= 0) return;
   try {
-    let path = `characters/pcs/${charId}/combat`;
-    let snap = await get(ref(db, path));
-    if (!snap.exists()) {
-      path = `characters/npcs/${charId}/combat`;
-      snap = await get(ref(db, path));
-    }
-    if (!snap.exists()) return;
-    const c = snap.val(), max = c.hp_max ?? 1;
-    let cur = c.hp_current ?? 0;
+    const found = await _fetchCharPath(charId);
+    if (!found) return;
+    const { path, data: c } = found;
+    const combat = c.combat || {}, max = combat.hp_max ?? 1;
+    let cur = combat.hp_current ?? 0;
     cur = isHeal ? Math.min(max, cur+delta) : Math.max(0, cur-delta);
-    await update(ref(db, path), { hp_current: cur });
+    const updates = { hp_current: cur };
+    // Regaining any HP clears death saves and revives from unconscious
+    if (isHeal && cur > 0) updates.deathSaves = null;
+    await update(ref(db, `${path}/combat`), updates);
     deltaEl.value = "";
+    // Taking damage while concentrating prompts a check -- DC 10 or half
+    // the damage taken, whichever is higher, per the standard 5e rule
+    if (!isHeal && combat.concentration) {
+      const dc = Math.max(10, Math.floor(delta / 2));
+      await sendChat(`⚠ ${c.name||"Someone"} took ${delta} damage while concentrating on **${combat.concentration.spell}** — CON save DC ${dc} or lose it.`, "GM", "system");
+      toast(`⚠ Concentration check: DC ${dc}`);
+    }
   } catch(e) { console.error("HP save failed:", e); }
 };
 
+window.rollDeathSave = async function(charId, charName) {
+  try {
+    const found = await _fetchCharPath(charId);
+    if (!found) return;
+    const { path, data: c } = found;
+    if ((c.combat?.hp_current ?? 0) > 0) return; // only relevant at 0 HP
+    const ds = c.combat?.deathSaves || { successes: 0, failures: 0 };
+    const roll = 1 + Math.floor(Math.random() * 20);
+    let text;
+    if (roll === 20) {
+      await update(ref(db, `${path}/combat`), { hp_current: 1, deathSaves: null });
+      text = `rolled a death save: **20** — natural 20! ${charName||c.name} claws back to 1 HP.`;
+    } else if (roll === 1) {
+      const failures = Math.min(3, ds.failures + 2);
+      await update(ref(db, `${path}/combat`), { deathSaves: { successes: ds.successes, failures } });
+      text = `rolled a death save: **1** — natural 1, counts as two failures (${failures}/3 failures).`;
+    } else if (roll >= 10) {
+      const successes = Math.min(3, ds.successes + 1);
+      await update(ref(db, `${path}/combat`), { deathSaves: { successes, failures: ds.failures } });
+      text = `rolled a death save: **${roll}** — success (${successes}/3 successes).`;
+    } else {
+      const failures = Math.min(3, ds.failures + 1);
+      await update(ref(db, `${path}/combat`), { deathSaves: { successes: ds.successes, failures } });
+      text = `rolled a death save: **${roll}** — failure (${failures}/3 failures).`;
+    }
+    await sendChat(text, charName||c.name||"Unknown", "dice");
+  } catch(e) { console.error("Death save failed:", e); }
+};
+
+window.setDeathSave = async function(charId, type, count) {
+  try {
+    const found = await _fetchCharPath(charId);
+    if (!found) return;
+    const { path, data: c } = found;
+    const ds = c.combat?.deathSaves || { successes: 0, failures: 0 };
+    ds[type] = count;
+    await update(ref(db, `${path}/combat`), { deathSaves: ds });
+  } catch(e) { console.error("Death save update failed:", e); }
+};
+
+window.setConcentration = async function(charId) {
+  const spell = prompt("Concentrating on which spell?");
+  if (!spell || !spell.trim()) return;
+  try {
+    const found = await _fetchCharPath(charId);
+    if (!found) return;
+    await update(ref(db, `${found.path}/combat`), { concentration: { spell: spell.trim(), startedAt: Date.now() } });
+  } catch(e) { console.error("Concentration save failed:", e); }
+};
+
+window.clearConcentration = async function(charId) {
+  try {
+    const found = await _fetchCharPath(charId);
+    if (!found) return;
+    await update(ref(db, `${found.path}/combat`), { concentration: null });
+  } catch(e) { console.error("Concentration clear failed:", e); }
+};
+
 window.useItem = (charId, idx) => useItem(charId, idx, toast);
+
 
 async function _fetchCharPath(charId) {
   let path = `characters/pcs/${charId}`;
@@ -535,6 +600,8 @@ export function buildSheetCard(char, editable = false) {
   const hpCur   = c.hp_current ?? 0, hpMax = c.hp_max ?? 1;
   const hpPct   = Math.max(0, Math.min(1, hpCur/hpMax));
   const tempHp  = c.temp_hp ?? 0;
+  const deathSaves = c.deathSaves || { successes: 0, failures: 0 };
+  const concentration = c.concentration || null;
   const initBonus  = c.initiative_bonus ?? Math.floor(((st.dex??10)-10)/2);
   const profBonus  = c.proficiency_bonus ?? 2;
   const passPerc   = char.senses?.passive_perception ?? (10+Math.floor(((st.wis??10)-10)/2));
@@ -546,6 +613,33 @@ export function buildSheetCard(char, editable = false) {
   }).join('');
 
   const condPills = conds.map(cd => `<div class="cond-pill">${cd}</div>`).join('');
+
+  // ── Concentration ──
+  const concentrationHtml = concentration
+    ? `<div class="hp-controls" style="margin-top:4px;justify-content:space-between">
+         <span style="font-family:'Cinzel',serif;font-size:.6rem;color:var(--gold,#c8a84b)">🎯 Concentrating: ${sEsc(concentration.spell)}</span>
+         <button class="hp-btn" style="padding:1px 8px;color:#fca5a5;border-color:rgba(224,64,64,.3)" onclick="window.clearConcentration('${char.id}')">✕ Lost it</button>
+       </div>`
+    : `<div class="hp-controls" style="margin-top:4px">
+         <button class="hp-btn" style="flex:1" onclick="window.setConcentration('${char.id}')">🎯 Start concentrating…</button>
+       </div>`;
+
+  // ── Death saves — only relevant at 0 HP ──
+  const deathSavesHtml = hpCur <= 0 ? `
+    <div class="hp-controls" style="margin-top:4px;flex-direction:column;align-items:stretch;gap:4px">
+      <div style="display:flex;align-items:center;justify-content:space-between;font-family:'Cinzel',serif;font-size:.6rem;color:var(--text-dim,#8a7a5a)">
+        <span>${deathSaves.failures>=3?'💀 DEAD':deathSaves.successes>=3?'✅ STABLE':'⚠ DYING'}</span>
+        <button class="hp-btn" style="padding:1px 8px" onclick="window.rollDeathSave('${char.id}','${sEsc(char.name||'')}')">🎲 Roll</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:'Cinzel',serif;font-size:.58rem;color:#4a9a4a;width:52px">Success</span>
+        ${[0,1,2].map(i=>`<span onclick="window.setDeathSave('${char.id}','successes',${i<deathSaves.successes?i:i+1})" style="cursor:pointer;width:12px;height:12px;border-radius:50%;border:1px solid #4a9a4a;background:${i<deathSaves.successes?'#4a9a4a':'transparent'};display:inline-block"></span>`).join('')}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-family:'Cinzel',serif;font-size:.58rem;color:#e04040;width:52px">Failure</span>
+        ${[0,1,2].map(i=>`<span onclick="window.setDeathSave('${char.id}','failures',${i<deathSaves.failures?i:i+1})" style="cursor:pointer;width:12px;height:12px;border-radius:50%;border:1px solid #e04040;background:${i<deathSaves.failures?'#e04040':'transparent'};display:inline-block"></span>`).join('')}
+      </div>
+    </div>` : '';
 
   // ── Light banner ──
   const lightActive = char.light?.active;
@@ -740,6 +834,8 @@ export function buildSheetCard(char, editable = false) {
         <div class="hp-val" id="hpval-${char.id}">${hpCur} / ${hpMax}</div>
         ${tempHp?`<div class="temp-badge">+${tempHp} tmp</div>`:''}
       </div>
+      ${concentrationHtml}
+      ${deathSavesHtml}
       <div class="hp-controls">
         <input class="hp-delta" id="hpdelta-${char.id}" type="number" min="1" placeholder="amt"/>
         <button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button>

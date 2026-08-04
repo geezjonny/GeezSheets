@@ -399,6 +399,18 @@ canvas{display:block;width:100%;height:100%}
     <div id="tom-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:5001;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;color:var(--gold-dim,#a8935a);text-transform:uppercase;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.8)">🎭 Theater of the Mind</div>
     <div id="investigate-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:400;max-width:70%;background:rgba(20,16,10,.88);border:1px solid var(--gold-dim,#a8935a);border-radius:6px;padding:8px 16px;font-family:'IM Fell English',serif;font-size:14px;line-height:1.5;color:var(--text,#d4c49a);text-align:center;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.6)"></div>
 
+    <audio id="ambience-audio" style="display:none" loop></audio>
+    <button id="ambience-enable-btn" style="position:absolute;bottom:16px;left:16px;display:none;z-index:410;background:rgba(20,16,10,.9);border:1px solid var(--gold-dim,#a8935a);color:var(--gold-dim,#a8935a);border-radius:6px;padding:8px 14px;font-family:'Cinzel',serif;font-size:11px;cursor:pointer">🔇 Click to enable ambience</button>
+
+    <div id="handout-overlay" style="position:fixed;inset:0;display:none;z-index:6000;background:rgba(0,0,0,.88);align-items:center;justify-content:center;flex-direction:column;padding:40px">
+      <button id="handout-close" style="position:absolute;top:20px;right:24px;background:transparent;border:1px solid var(--gold-dim,#a8935a);color:var(--gold-dim,#a8935a);border-radius:4px;padding:6px 14px;font-family:'Cinzel',serif;font-size:11px;cursor:pointer">✕ Close</button>
+      <div id="handout-title-display" style="font-family:'Cinzel',serif;font-size:16px;letter-spacing:.05em;color:var(--gold,#c8a84b);margin-bottom:16px;text-align:center;display:none"></div>
+      <img id="handout-image-display" style="max-width:88vw;max-height:78vh;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,.7);display:none" />
+      <div id="handout-text-display" style="max-width:640px;max-height:78vh;overflow-y:auto;background:rgba(20,16,10,.9);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;padding:28px 32px;font-family:'IM Fell English',serif;font-size:17px;line-height:1.7;color:var(--text,#d4c49a);white-space:pre-wrap;display:none"></div>
+    </div>
+
+    <button id="reaction-toggle" style="position:absolute;top:56px;right:16px;display:none;z-index:410;background:rgba(20,16,10,.94);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;padding:8px 14px;font-family:'Cinzel',serif;font-size:11px;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.6)">🛡 Reaction Available</button>
+
     <div id="turn-menu" style="position:absolute;bottom:16px;right:16px;display:none;z-index:410;background:rgba(20,16,10,.94);border:1px solid var(--gold-dim,#a8935a);border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.6);font-family:'Cinzel',serif;width:230px;overflow:hidden">
       <div style="padding:8px 12px;border-bottom:1px solid var(--border,#3d2e1a);font-size:11px;color:var(--gold,#c8a84b);letter-spacing:.05em;display:flex;justify-content:space-between;align-items:center">
         <span>⚔ Your Turn</span>
@@ -820,7 +832,7 @@ function subscribeLive(){
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fog,data.fog);
-      if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>{tryLoadTokenTexture(t.characterId,t.lookupName||t.name);if(t.disguise)tryLoadTokenTexture("__npc__",t.disguise.lookupName);});}
+      if(data.tokens){Object.assign(tokens,data.tokens);Object.values(data.tokens).forEach(t=>{tryLoadTokenTexture(t.characterId,t.lookupName||t.name);if(t.disguise)tryLoadTokenTexture("__npc__",t.disguise.lookupName);});updateReactionButton();}
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
@@ -867,9 +879,47 @@ onValue(ref(db,"session/pingsLocked"),snap=>{
   if(pingsLocked){ pingMode=false; document.getElementById("pingBtn")?.classList.remove("active"); viewport.classList.remove("pinging"); }
 });
 
+// ── Handouts ─────────────────────────────────────────────────────────────────
+let _handoutClosedAt=0;
+onValue(ref(db,"session/handout"),snap=>{
+  const data=snap.val();
+  const overlay=document.getElementById("handout-overlay");
+  if(!data||data.t===_handoutClosedAt){ overlay.style.display="none"; return; }
+  document.getElementById("handout-title-display").style.display=data.title?"block":"none";
+  document.getElementById("handout-title-display").textContent=data.title||"";
+  const imgEl=document.getElementById("handout-image-display");
+  const textEl=document.getElementById("handout-text-display");
+  if(data.type==="image"){ imgEl.src=data.content; imgEl.style.display="block"; textEl.style.display="none"; }
+  else{ textEl.textContent=data.content; textEl.style.display="block"; imgEl.style.display="none"; }
+  overlay.style.display="flex";
+});
+document.getElementById("handout-close").onclick=async()=>{
+  const snap=await get(ref(db,"session/handout"));
+  const data=snap.val();
+  if(data) _handoutClosedAt=data.t;
+  document.getElementById("handout-overlay").style.display="none";
+};
+
+// ── Ambience ─────────────────────────────────────────────────────────────────
+let _ambienceData=null;
+onValue(ref(db,"session/ambience"),snap=>{
+  _ambienceData=snap.val();
+  const el=document.getElementById("ambience-audio");
+  const enableBtn=document.getElementById("ambience-enable-btn");
+  if(!_ambienceData){ el.pause(); el.src=""; enableBtn.style.display="none"; return; }
+  if(el.src!==_ambienceData.url) el.src=_ambienceData.url;
+  el.volume=_ambienceData.volume??0.6;
+  el.play().then(()=>{ enableBtn.style.display="none"; }).catch(()=>{ enableBtn.style.display="block"; });
+});
+document.getElementById("ambience-enable-btn").onclick=()=>{
+  const el=document.getElementById("ambience-audio");
+  if(_ambienceData){ el.volume=_ambienceData.volume??0.6; el.play().catch(()=>{}); }
+  document.getElementById("ambience-enable-btn").style.display="none";
+};
+
 let inCombat=false,initiativeState={order:[],active:null};
-onValue(ref(db,"session/inCombat"),snap=>{inCombat=!!snap.val();updateTurnMenu();});
-onValue(ref(db,"initiative"),snap=>{const d=snap.val()||{};initiativeState={order:d.order||[],active:d.active||null};updateTurnMenu();});
+onValue(ref(db,"session/inCombat"),snap=>{inCombat=!!snap.val();updateTurnMenu();updateReactionButton();});
+onValue(ref(db,"initiative"),snap=>{const d=snap.val()||{};initiativeState={order:d.order||[],active:d.active||null};updateTurnMenu();updateReactionButton();});
 
 // ── Turn menu — shows on your turn, surfaces what your sheet says you can do.
 //    Selecting something announces it in chat; it doesn't roll or resolve
@@ -888,6 +938,20 @@ function updateTurnMenu(){
   if(!isMyTurn){ menu.style.display="none"; tab.style.display="none"; return; }
   if(_turnMenuCollapsed){ menu.style.display="none"; tab.style.display="block"; }
   else{ menu.style.display="block"; tab.style.display="none"; showTurnMenuMain(); }
+}
+function updateReactionButton(){
+  const btn=document.getElementById("reaction-toggle");
+  if(!btn) return;
+  if(!inCombat||!initiativeState.order.length){ btn.style.display="none"; return; }
+  const entry=myOwnTokenEntry();
+  if(!entry){ btn.style.display="none"; return; }
+  const[tokId,tok]=entry;
+  btn.style.display="block";
+  btn.textContent=tok.reactionUsed?"🛡 Reaction Used":"🛡 Reaction Available";
+  btn.style.opacity=tok.reactionUsed?"0.55":"1";
+  btn.onclick=()=>{
+    update(ref(db,`maps/${currentMap}/tokens/${tokId}`),{reactionUsed:!tok.reactionUsed});
+  };
 }
 function showTurnMenuMain(){
   document.getElementById("turn-menu-main").style.display="flex";

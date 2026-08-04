@@ -65,7 +65,7 @@ export async function lockInitiativeOrder(rolls, callerName, mapName) {
   const first = order[0];
   await update(ref(db, "initiative"), { order, active: first?.tokenId || null });
   if (mapName && first) {
-    await update(ref(db, `maps/${mapName}/tokens/${first.tokenId}`), { turnMovedTiles: 0 }).catch(()=>{});
+    await update(ref(db, `maps/${mapName}/tokens/${first.tokenId}`), { turnMovedTiles: 0, reactionUsed: false }).catch(()=>{});
   }
   if (callerName && first) {
     await push(ref(db, "chat"), {
@@ -83,7 +83,7 @@ export async function nextTurn(initiative, callerName, mapName) {
   const next = order[(idx + 1) % order.length];
   await update(ref(db, "initiative"), { active: next.tokenId });
   if (mapName) {
-    await update(ref(db, `maps/${mapName}/tokens/${next.tokenId}`), { turnMovedTiles: 0 }).catch(()=>{});
+    await update(ref(db, `maps/${mapName}/tokens/${next.tokenId}`), { turnMovedTiles: 0, reactionUsed: false }).catch(()=>{});
   }
   if (callerName) {
     await push(ref(db, "chat"), {

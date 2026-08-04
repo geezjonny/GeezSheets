@@ -5,24 +5,36 @@ import { db } from "./firebase.js";
 import { ref, set, remove, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { TILE } from "./config.js";
 import { tokenTextures, tokenCacheKey } from "./assets.js";
+import { resolveTokenDisplay } from "./disguise.js";
 
-// Draw a single token onto ctx
-export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake = { dx: 0, dy: 0 }, forceShowInfo = false) {
+// Draw a single token onto ctx. `allTokens` is the full token collection,
+// needed only to resolve a disguise's mirrorHpFrom target -- pass {} if
+// unavailable and mirrored-HP disguises just won't resolve.
+export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake = { dx: 0, dy: 0 }, forceShowInfo = false, allTokens = {}) {
   ctx.save(); ctx.globalAlpha = alpha;
   const s   = tok.size || 1;
   const px  = tok.x * TILE + (shake.dx || 0), py = tok.y * TILE + (shake.dy || 0);
   const sw  = s * TILE,     sh = s * TILE;
   const r   = sw * 0.42,    cx = px + sw / 2, cy = py + sh / 2;
-  const img = tokenTextures[tokenCacheKey(tok.characterId, tok.lookupName || tok.name)];
+  const disp = resolveTokenDisplay(tok, allTokens);
+  // Cache key: a disguised token's art is keyed by lookupName regardless of
+  // the token's own characterId, routed through the "__npc__" branch since
+  // that's the only one tokenCacheKey actually factors lookupName into --
+  // otherwise a disguised PC's own characterId would keep pulling their real
+  // portrait instead of the disguise's art.
+  const img = tok.disguise
+    ? tokenTextures[tokenCacheKey("__npc__", disp.lookupName)]
+    : tokenTextures[tokenCacheKey(tok.characterId, disp.lookupName)];
 
   const allConds = tok.conditions || [];
   const isProne  = allConds.includes("prone");
   // Tint cycle excludes "prone" since that's a pose, not a color effect
   const tintConds = allConds.filter(c => c !== "prone");
 
-  // Live HP (PCs read from characters/pcs, NPCs use token data)
-  let liveHp = tok.hp, liveMaxHp = tok.maxHp;
-  if (tok.type === "pc" && pcsData[tok.characterId]) {
+  // Live HP (PCs read from characters/pcs, NPCs use token data) -- resolved
+  // display HP (disp.hp/maxHp) already accounts for a mirrorHpFrom disguise
+  let liveHp = disp.hp, liveMaxHp = disp.maxHp;
+  if (!tok.disguise?.mirrorHpFrom && tok.type === "pc" && pcsData[tok.characterId]) {
     const c = pcsData[tok.characterId];
     liveHp    = c.hp ?? c.combat?.hp_current ?? tok.hp;
     liveMaxHp = c.maxHp ?? c.combat?.hp_max  ?? tok.maxHp;
@@ -40,7 +52,7 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
     ctx.fillStyle = tok.fillColor || "#5a5248"; ctx.fillRect(px, py, sw, sh);
     ctx.fillStyle = "#fff"; ctx.font = `bold ${Math.round(14 * s / zoom)}px Cinzel,serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText((tok.name || "?")[0].toUpperCase(), cx, cy);
+    ctx.fillText((disp.name || "?")[0].toUpperCase(), cx, cy);
   }
 
   // HP vignette — black closes in from the edges as HP drops
@@ -85,7 +97,7 @@ export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake 
   if (!tok.hideName || forceShowInfo) {
     ctx.font = `${Math.round(9 / zoom)}px Cinzel,serif`;
     ctx.textAlign = "center"; ctx.textBaseline = "top";
-    const nameLabel = tok.name || "";
+    const nameLabel = disp.name || "";
     const nameW = ctx.measureText(nameLabel).width;
     ctx.fillStyle = "rgba(0,0,0,0.65)";
     ctx.fillRect(cx - nameW / 2 - 3 / zoom, py + sh + 2 / zoom, nameW + 6 / zoom, 10 / zoom);
