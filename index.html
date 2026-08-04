@@ -880,9 +880,11 @@ onValue(ref(db,"session/pingsLocked"),snap=>{
 });
 
 // ── Handouts ─────────────────────────────────────────────────────────────────
-let _handoutClosedAt=0;
+let _handoutClosedAt=parseInt(localStorage.getItem("handoutClosedAt"),10)||0;
+let _currentHandout=null;
 onValue(ref(db,"session/handout"),snap=>{
   const data=snap.val();
+  _currentHandout=data;
   const overlay=document.getElementById("handout-overlay");
   if(!data||data.t===_handoutClosedAt){ overlay.style.display="none"; return; }
   document.getElementById("handout-title-display").style.display=data.title?"block":"none";
@@ -893,11 +895,9 @@ onValue(ref(db,"session/handout"),snap=>{
   else{ textEl.textContent=data.content; textEl.style.display="block"; imgEl.style.display="none"; }
   overlay.style.display="flex";
 });
-document.getElementById("handout-close").onclick=async()=>{
-  const snap=await get(ref(db,"session/handout"));
-  const data=snap.val();
-  if(data) _handoutClosedAt=data.t;
+document.getElementById("handout-close").onclick=()=>{
   document.getElementById("handout-overlay").style.display="none";
+  if(_currentHandout){ _handoutClosedAt=_currentHandout.t; localStorage.setItem("handoutClosedAt",String(_handoutClosedAt)); }
 };
 
 // ── Ambience ─────────────────────────────────────────────────────────────────
