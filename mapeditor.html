@@ -389,6 +389,8 @@ canvas{display:block;cursor:crosshair}
 
   <button class="tb-btn" id="lockPlayersBtn" title="Lock player view while setting up">🔒</button>
   <button class="tb-btn" id="lockPingsBtn" title="Disable pings and laser pointer for players this session">📍</button>
+  <button class="tb-btn" id="handoutBtn" title="Show a handout (image or text) to all players">🖼️</button>
+  <button class="tb-btn" id="ambienceBtn" title="Play a looping background soundscape for all players">🔊</button>
   <button class="tb-btn" id="glossaryBtn" title="Glossary Search (G)">📖</button>
   <button class="tb-btn" id="notesBtn" title="Session Notes (N)">📝</button>
   <button class="tb-btn" id="lootBtn" title="Loot Generator">🎲 Loot</button>
@@ -512,6 +514,7 @@ canvas{display:block;cursor:crosshair}
     </div>
     <div style="display:flex;gap:4px;flex-wrap:wrap">
       <button class="gm-tool-btn" id="stc-hostile" style="flex:1;min-width:60px" title="Toggles line-of-sight detection — players get a chat warning if seen">⚠ Hostile</button>
+      <button class="gm-tool-btn" id="stc-reaction" style="flex:1;min-width:60px" title="Toggle this token's reaction availability">🛡 Reaction</button>
     </div>
     <!-- Conditions -->
     <div style="display:flex;gap:3px;flex-wrap:wrap;align-items:center">
@@ -770,6 +773,48 @@ canvas{display:block;cursor:crosshair}
   <div class="modal-box" style="min-width:320px"><h2>Mirror to Token</h2><p>Pick the token that should follow this one — whenever this token moves, the picked one moves the same amount. No visible link, movement only.</p>
     <div id="mirror-token-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:200px;overflow-y:auto"></div>
     <div class="modal-btns" style="margin-top:14px"><button id="mirror-cancel">Cancel</button></div>
+  </div>
+</div>
+
+<div id="handout-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="min-width:380px;max-width:480px"><h2>Handout</h2>
+    <div class="modal-row" style="margin-top:8px">
+      <div class="modal-section"><label>Type</label>
+        <select id="handout-type">
+          <option value="image">Image</option>
+          <option value="text">Text</option>
+        </select>
+      </div>
+      <div class="modal-section"><label>Title <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><input id="handout-title" type="text" placeholder="e.g. The old map"></div>
+    </div>
+    <div id="handout-image-row" class="modal-section" style="margin-top:10px">
+      <label>Image</label>
+      <input id="handout-image-file" type="file" accept="image/*">
+      <div id="handout-image-preview" style="margin-top:8px;max-height:160px;display:none"><img style="max-width:100%;max-height:160px;border-radius:4px" /></div>
+    </div>
+    <div id="handout-text-row" class="modal-section" style="margin-top:10px;display:none">
+      <label>Text</label>
+      <textarea id="handout-text" rows="6" style="width:100%;background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:13px;padding:8px;border-radius:4px;resize:vertical" placeholder="Read this aloud, or let them read it..."></textarea>
+    </div>
+    <div class="modal-btns" style="margin-top:14px;justify-content:space-between;display:flex">
+      <button id="handout-hide" style="color:var(--red-bright)">Hide from players</button>
+      <div style="display:flex;gap:8px"><button id="handout-cancel">Cancel</button><button id="handout-show" class="primary">Show to players</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="ambience-modal" class="modal-overlay hidden">
+  <div class="modal-box" style="min-width:380px;max-width:480px"><h2>Ambience</h2><p>A single looping background soundscape — link to a hosted audio file (not uploaded through here, since audio tends to be too large for the map data).</p>
+    <div class="modal-section" style="margin-top:8px"><label>Audio URL</label><input id="ambience-url" type="text" placeholder="https://..."></div>
+    <div class="modal-row" style="margin-top:10px">
+      <div class="modal-section"><label>Name <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><input id="ambience-name" type="text" placeholder="e.g. Rainstorm"></div>
+      <div class="modal-section"><label>Volume</label><input id="ambience-volume" type="range" min="0" max="100" value="60" style="width:100%"></div>
+    </div>
+    <audio id="ambience-audio-de" style="display:none" loop></audio>
+    <div class="modal-btns" style="margin-top:14px;justify-content:space-between;display:flex">
+      <button id="ambience-stop" style="color:var(--red-bright)">Stop for players</button>
+      <div style="display:flex;gap:8px"><button id="ambience-cancel">Cancel</button><button id="ambience-play" class="primary">Play for players</button></div>
+    </div>
   </div>
 </div>
 
@@ -1834,6 +1879,93 @@ document.getElementById("lockPingsBtn").onclick=async()=>{
   await set(ref(db,"session/pingsLocked"),!_pingsLocked);
   toast(_pingsLocked?"📍 Pings re-enabled for players":"📍 Pings disabled for players");
 };
+
+// ── Handouts ─────────────────────────────────────────────────────────────────
+let _handoutImageData=null;
+document.getElementById("handoutBtn").onclick=async()=>{
+  const snap=await get(ref(db,"session/handout"));
+  const cur=snap.exists()?snap.val():null;
+  document.getElementById("handout-title").value=cur?.title||"";
+  document.getElementById("handout-type").value=cur?.type||"image";
+  document.getElementById("handout-text").value=cur?.type==="text"?cur.content:"";
+  _handoutImageData=cur?.type==="image"?cur.content:null;
+  const preview=document.getElementById("handout-image-preview");
+  if(_handoutImageData){preview.querySelector("img").src=_handoutImageData;preview.style.display="block";}
+  else preview.style.display="none";
+  document.getElementById("handout-image-row").style.display=document.getElementById("handout-type").value==="image"?"block":"none";
+  document.getElementById("handout-text-row").style.display=document.getElementById("handout-type").value==="text"?"block":"none";
+  document.getElementById("handout-modal").classList.remove("hidden");
+};
+document.getElementById("handout-type").addEventListener("change",e=>{
+  document.getElementById("handout-image-row").style.display=e.target.value==="image"?"block":"none";
+  document.getElementById("handout-text-row").style.display=e.target.value==="text"?"block":"none";
+});
+document.getElementById("handout-image-file").addEventListener("change",e=>{
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    _handoutImageData=ev.target.result;
+    const preview=document.getElementById("handout-image-preview");
+    preview.querySelector("img").src=_handoutImageData;
+    preview.style.display="block";
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById("handout-cancel").onclick=()=>document.getElementById("handout-modal").classList.add("hidden");
+document.getElementById("handout-hide").onclick=async()=>{
+  await set(ref(db,"session/handout"),null);
+  document.getElementById("handout-modal").classList.add("hidden");
+  toast("🖼️ Handout hidden");
+};
+document.getElementById("handout-show").onclick=async()=>{
+  const type=document.getElementById("handout-type").value;
+  const title=document.getElementById("handout-title").value.trim();
+  let content;
+  if(type==="image"){
+    if(!_handoutImageData){toast("Choose an image first");return;}
+    content=_handoutImageData;
+  }else{
+    content=document.getElementById("handout-text").value.trim();
+    if(!content){toast("Enter some text first");return;}
+  }
+  await set(ref(db,"session/handout"),{type,title,content,t:Date.now()});
+  document.getElementById("handout-modal").classList.add("hidden");
+  toast("🖼️ Handout shown to players");
+};
+
+// ── Ambience ─────────────────────────────────────────────────────────────────
+document.getElementById("ambienceBtn").onclick=async()=>{
+  const snap=await get(ref(db,"session/ambience"));
+  const cur=snap.exists()?snap.val():null;
+  document.getElementById("ambience-url").value=cur?.url||"";
+  document.getElementById("ambience-name").value=cur?.name||"";
+  document.getElementById("ambience-volume").value=cur?.volume!=null?Math.round(cur.volume*100):60;
+  document.getElementById("ambience-modal").classList.remove("hidden");
+};
+document.getElementById("ambience-cancel").onclick=()=>document.getElementById("ambience-modal").classList.add("hidden");
+document.getElementById("ambience-stop").onclick=async()=>{
+  await set(ref(db,"session/ambience"),null);
+  document.getElementById("ambience-modal").classList.add("hidden");
+  toast("🔊 Ambience stopped");
+};
+document.getElementById("ambience-play").onclick=async()=>{
+  const url=document.getElementById("ambience-url").value.trim();
+  if(!url){toast("Enter an audio URL first");return;}
+  const name=document.getElementById("ambience-name").value.trim();
+  const volume=parseInt(document.getElementById("ambience-volume").value,10)/100;
+  await set(ref(db,"session/ambience"),{url,name,volume,t:Date.now()});
+  document.getElementById("ambience-modal").classList.add("hidden");
+  toast(`🔊 Playing ambience for players${name?": "+name:""}`);
+};
+onValue(ref(db,"session/ambience"),snap=>{
+  const data=snap.val();
+  const el=document.getElementById("ambience-audio-de");
+  if(!data){ el.pause(); el.src=""; return; }
+  if(el.src!==data.url){ el.src=data.url; }
+  el.volume=data.volume??0.6;
+  el.play().catch(()=>{}); // browser autoplay restrictions -- silently ignore, DM can hit the modal's Play button again after any interaction
+});
+
 document.getElementById("paste-mode-cancel").onclick=()=>{pasteArmed=false;toast("Paste cancelled");};
 document.getElementById("lockPlayersBtn").onclick=async()=>{
   await set(ref(db,"session/locked"),!_playersLocked);
@@ -3514,6 +3646,13 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
       hostileBtn.style.color=tok.hostile?"#e0a040":"";
       hostileBtn.style.borderColor=tok.hostile?"rgba(224,160,64,.4)":"";
     }
+    // Reaction toggle — relevant for any token type
+    const reactionBtn=document.getElementById("stc-reaction");
+    if(reactionBtn){
+      reactionBtn.textContent=tok.reactionUsed?"🛡 Used":"🛡 Reaction";
+      reactionBtn.style.color=tok.reactionUsed?"var(--text-dim)":"#5aaa5a";
+      reactionBtn.style.borderColor=tok.reactionUsed?"":"rgba(90,170,90,.3)";
+    }
     panel.classList.add("open");
     document.getElementById("app").classList.add("sheet-open");
     if(tok.type==="pc"&&tok.characterId&&tok.characterId!=="__npc__"){
@@ -3569,6 +3708,14 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{hostile:tok.hostile});
     openTokenInspector(_inspectedTokId); // refresh button state
     toast(tok.hostile?`⚠ ${tok.name} marked hostile — players get a warning if seen`:`${tok.name} no longer marked hostile`);
+  };
+  document.getElementById("stc-reaction").onclick=async()=>{
+    if(!_inspectedTokId)return;
+    const tok=tokens[_inspectedTokId];if(!tok)return;
+    tok.reactionUsed=!tok.reactionUsed;
+    await update(ref(db,`maps/${getMapName()}/tokens/${_inspectedTokId}`),{reactionUsed:tok.reactionUsed});
+    openTokenInspector(_inspectedTokId);
+    toast(tok.reactionUsed?`🛡 ${tok.name}'s reaction marked used`:`🛡 ${tok.name}'s reaction restored`);
   };
   document.getElementById("stc-hide-hp").onclick=async()=>{
     if(!_inspectedTokId)return;
