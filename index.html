@@ -1244,9 +1244,11 @@ function draw(){
   }
 
   drawChains(ctx,chains,tokens,camera.zoom);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens);
+  const _myViewerEntry=myOwnTokenEntry();
+  const _myViewerTokId=_myViewerEntry?_myViewerEntry[0]:undefined;
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens,_myViewerTokId);
   drawFog(ctx,fog,camera.zoom,false);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens,_myViewerTokId);
 
   ctx.save();ctx.globalAlpha=1;
   for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}

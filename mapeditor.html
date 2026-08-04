@@ -698,6 +698,16 @@ canvas{display:block;cursor:crosshair}
       <div class="modal-row">
         <div class="modal-section"><label>Mirror HP from <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><select id="tok-disguise-mirror-hp"><option value="">(none — keep this token's own HP)</option></select></div>
       </div>
+      <div class="modal-row" style="margin-top:6px">
+        <div class="modal-section"><label>Disguise to</label>
+          <select id="tok-disguise-visible-to">
+            <option value="all">All players</option>
+            <option value="all-active">All active tokens</option>
+            <option value="specific">Choose specific…</option>
+          </select>
+        </div>
+      </div>
+      <div id="tok-disguise-visible-to-list" style="display:none;margin-top:6px;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:6px"></div>
     </div>
     <div class="modal-btns"><button id="tok-cancel">Cancel</button><button id="tok-place" class="primary">Place on Map</button></div>
   </div>
@@ -1552,6 +1562,11 @@ function openEditTokenModal(tokId){
   document.getElementById("tok-disguise-fields").style.display=tok.disguise?"block":"none";
   document.getElementById("tok-disguise-name").value=tok.disguise?.displayName||"";
   document.getElementById("tok-disguise-lookup").value=tok.disguise?.lookupName||"";
+  const visibleTo=tok.disguise?.visibleTo;
+  const visibleToMode=Array.isArray(visibleTo)?"specific":(visibleTo||"all");
+  document.getElementById("tok-disguise-visible-to").value=visibleToMode;
+  populateDisguiseVisibleToList(tokId,Array.isArray(visibleTo)?visibleTo:[]);
+  document.getElementById("tok-disguise-visible-to-list").style.display=visibleToMode==="specific"?"flex":"none";
   // Update place button label
   document.getElementById("tok-place").textContent="Save Changes";
   document.getElementById("token-modal").classList.remove("hidden");
@@ -1568,6 +1583,28 @@ function populateDisguiseMirrorHpOptions(excludeTokId,selectedId){
     sel.appendChild(opt);
   }
 }
+function populateDisguiseVisibleToList(excludeTokId,selectedIds){
+  const list=document.getElementById("tok-disguise-visible-to-list");
+  list.innerHTML="";
+  const pcTokens=Object.entries(tokens).filter(([id,t])=>t.type==="pc"&&id!==excludeTokId);
+  if(!pcTokens.length){
+    list.innerHTML=`<span style="font-size:11px;color:var(--text-dim)">No other PC tokens on this map</span>`;
+    return;
+  }
+  for(const[id,t]of pcTokens){
+    const label=document.createElement("label");
+    label.style.cssText="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'IM Fell English',serif;font-size:12px";
+    const cb=document.createElement("input");
+    cb.type="checkbox";cb.value=id;
+    cb.checked=(selectedIds||[]).includes(id);
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(`👤 ${t.name}`));
+    list.appendChild(label);
+  }
+}
+document.getElementById("tok-disguise-visible-to").addEventListener("change",e=>{
+  document.getElementById("tok-disguise-visible-to-list").style.display=e.target.value==="specific"?"flex":"none";
+});
 document.getElementById("tok-disguise-enable").addEventListener("change",e=>{
   document.getElementById("tok-disguise-fields").style.display=e.target.checked?"block":"none";
 });
@@ -2109,7 +2146,10 @@ async function openTokenSpawnModal(){
   document.getElementById("tok-disguise-fields").style.display="none";
   document.getElementById("tok-disguise-name").value="";
   document.getElementById("tok-disguise-lookup").value="";
+  document.getElementById("tok-disguise-visible-to").value="all";
+  document.getElementById("tok-disguise-visible-to-list").style.display="none";
   populateDisguiseMirrorHpOptions(null,null);
+  populateDisguiseVisibleToList(null,[]);
   tokCharSel.value="__npc__";
   document.getElementById("token-modal").classList.remove("hidden");
 }
@@ -2143,10 +2183,17 @@ document.getElementById("tok-place").onclick=async()=>{
   if(disguiseEnabled){
     const displayName=document.getElementById("tok-disguise-name").value.trim();
     if(displayName){
+      const visibleToMode=document.getElementById("tok-disguise-visible-to").value;
+      let visibleTo="all";
+      if(visibleToMode==="all-active") visibleTo="all-active";
+      else if(visibleToMode==="specific"){
+        visibleTo=Array.from(document.querySelectorAll("#tok-disguise-visible-to-list input:checked")).map(cb=>cb.value);
+      }
       disguise={
         displayName,
         lookupName:document.getElementById("tok-disguise-lookup").value.trim()||displayName,
         mirrorHpFrom:document.getElementById("tok-disguise-mirror-hp").value||null,
+        visibleTo,
       };
     }
   }

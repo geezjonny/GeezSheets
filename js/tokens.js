@@ -10,13 +10,13 @@ import { resolveTokenDisplay } from "./disguise.js";
 // Draw a single token onto ctx. `allTokens` is the full token collection,
 // needed only to resolve a disguise's mirrorHpFrom target -- pass {} if
 // unavailable and mirrored-HP disguises just won't resolve.
-export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake = { dx: 0, dy: 0 }, forceShowInfo = false, allTokens = {}) {
+export function drawToken(ctx, tok, zoom, pcsData, CONDITIONS, alpha = 1, shake = { dx: 0, dy: 0 }, forceShowInfo = false, allTokens = {}, viewerTokId = undefined) {
   ctx.save(); ctx.globalAlpha = alpha;
   const s   = tok.size || 1;
   const px  = tok.x * TILE + (shake.dx || 0), py = tok.y * TILE + (shake.dy || 0);
   const sw  = s * TILE,     sh = s * TILE;
   const r   = sw * 0.42,    cx = px + sw / 2, cy = py + sh / 2;
-  const disp = resolveTokenDisplay(tok, allTokens);
+  const disp = resolveTokenDisplay(tok, allTokens, viewerTokId);
   // Cache key: a disguised token's art is keyed by lookupName regardless of
   // the token's own characterId, routed through the "__npc__" branch since
   // that's the only one tokenCacheKey actually factors lookupName into --
