@@ -492,7 +492,7 @@ import { rollDie } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, nextTurn } from "./js/initiative.js";
 import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, resolveLinkedDoor, syncActivateEffects, rollDamage, BUTTON_PULSE_MS } from "./js/triggers.js";
 import { subscribeRestRequest, runApprovedRest } from "./js/sheet.js";
-import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMetaText, loadSheetApi, getCharacterSkillModifiers } from "./js/sheet.js";
+import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMetaText, loadSheetApi, getCharacterSkillModifiers, getSpellRange } from "./js/sheet.js";
 import { subscribeTheaterMode, startTheaterFog, stopTheaterFog } from "./js/theater.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
@@ -980,19 +980,20 @@ function showTurnMenuSub(items,emptyMsg){
   for(const item of items){
     const el=document.createElement("div");
     el.className="turn-menu-item"+(item.highlight?" tmi-highlight":"");
+    const buttons=item.buttons||(item.btnLabel?[{label:item.btnLabel,onClick:item.onBtnClick}]:[]);
     el.innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
         <div class="tmi-name">${item.name}</div>
-        ${item.btnLabel?`<button class="tmi-action-btn">${item.btnLabel}</button>`:""}
+        <div style="display:flex;gap:4px;flex-shrink:0">${buttons.map((b,i)=>`<button class="tmi-action-btn" data-bi="${i}">${b.label}</button>`).join("")}</div>
       </div>
       ${item.meta?`<div class="tmi-meta">${item.meta}</div>`:""}
       ${item.howTo?`<div class="tmi-howto">${item.howTo}</div>`:""}
       ${item.desc?`<div class="tmi-desc">${item.desc}</div>`:""}
     `;
-    if(item.onBtnClick){
-      const btn=el.querySelector(".tmi-action-btn");
-      if(btn) btn.onclick=(e)=>{e.stopPropagation();item.onBtnClick();};
-    }
+    el.querySelectorAll(".tmi-action-btn").forEach(btn=>{
+      const b=buttons[parseInt(btn.dataset.bi,10)];
+      if(b?.onClick) btn.onclick=(e)=>{e.stopPropagation();b.onClick();};
+    });
     list.appendChild(el);
   }
 }
@@ -1021,12 +1022,15 @@ function buildActionList(){
     const isCantrip=s.level===0||s.prepared_type==="cantrip";
     const metaText=sheetSpellMetaText(s.name);
     const desc=sheetSpellDesc(s.name);
+    const spellRange=getSpellRange(s.name);
     if(isCantrip){
       items.push({
         name:`✨ ${s.name} (Cantrip)`,
         meta:metaText,
         howTo:(dc||atkBonus!=null)?`To use: ${atkBonus!=null?`spell attack ${atkBonus>=0?"+":""}${atkBonus}`:`target saves DC ${dc}`}.`:"",
         desc,
+        btnLabel:"🎯 Target",
+        onBtnClick:()=>enterWeaponTargeting(s.name,spellRange),
       });
     }else{
       const lvl=s.level||1;
@@ -1039,12 +1043,14 @@ function buildActionList(){
         meta:`${metaText}${metaText?" · ":""}${remaining} slot${remaining===1?"":"s"} remaining`,
         howTo:(dc||atkBonus!=null)?`To use: ${atkBonus!=null?`spell attack ${atkBonus>=0?"+":""}${atkBonus}`:`target saves DC ${dc}`}.`:"",
         desc,
-        btnLabel:remaining>0?"− Use Slot":"No slots left",
-        onBtnClick:remaining>0?async()=>{
-          await set(ref(db,`characters/pcs/${myCharacterId}/spellcasting/slots_used/${lvl}`),used+1);
-          toast(`Used a Level ${lvl} slot for ${s.name}`);
-          showTurnMenuSub(buildActionList(),"No attacks or castable spells found on your sheet.");
-        }:null,
+        buttons:[
+          {label:"🎯 Target",onClick:()=>enterWeaponTargeting(s.name,spellRange)},
+          {label:remaining>0?"− Use Slot":"No slots left",onClick:remaining>0?async()=>{
+            await set(ref(db,`characters/pcs/${myCharacterId}/spellcasting/slots_used/${lvl}`),used+1);
+            toast(`Used a Level ${lvl} slot for ${s.name}`);
+            showTurnMenuSub(buildActionList(),"No attacks or castable spells found on your sheet.");
+          }:null},
+        ],
       });
     }
   }

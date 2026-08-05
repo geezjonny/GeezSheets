@@ -142,6 +142,12 @@ export function sheetSpellMetaText(name) {
   if (s.duration)     parts.push(`Duration: ${s.duration}`);
   return parts.join(" · ");
 }
+/** Just the raw range string for a spell (e.g. "60 feet"), separate from
+ *  the formatted display text -- for callers that need to parse it (like
+ *  the turn menu's range-highlighting) rather than just show it. */
+export function getSpellRange(name) {
+  return spellsDb[name?.toLowerCase()]?.range || "";
+}
 
 // ── Global window handlers (set once, safe to call from HTML) ─────────────────
 let _toastFn = null;
