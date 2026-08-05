@@ -84,6 +84,23 @@ export async function loadSheetApi() {
 }
 
 function getSkillsDb() { return skillsDb || SKILLS; }
+export { getSkillsDb };
+
+/** Every skill's total modifier for this character, using the exact same
+ *  formula the sheet itself renders with -- kept in one place so a caller
+ *  (like the turn menu's Roll list) never has to duplicate the proficiency/
+ *  expertise math and risk it drifting out of sync with the sheet. */
+export function getCharacterSkillModifiers(char) {
+  const st = char.stats || {};
+  const sk = char.skills || {};
+  const profBonus = char.combat?.proficiency_bonus ?? 2;
+  return getSkillsDb().map(s => {
+    const d = sk[s.key] || {};
+    const base = Math.floor(((st[s.stat] ?? 10) - 10) / 2);
+    const bonus = d.bonus != null ? d.bonus : (base + (d.proficient ? profBonus : 0) + (d.expertise ? profBonus : 0));
+    return { key: s.key, label: s.label, stat: s.stat, bonus, proficient: !!d.proficient, expertise: !!d.expertise };
+  });
+}
 
 function sheetGetItem(name) {
   if (!name) return null;
