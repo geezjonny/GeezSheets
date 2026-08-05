@@ -691,23 +691,8 @@ canvas{display:block;cursor:crosshair}
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input id="tok-disguise-enable" type="checkbox"><span>🎭 Disguise as something else</span></label>
     </div>
     <div id="tok-disguise-fields" style="display:none">
-      <div class="modal-row">
-        <div class="modal-section"><label>Displayed as</label><input id="tok-disguise-name" type="text" placeholder="e.g. Zombie"></div>
-        <div class="modal-section"><label>Portrait lookup <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><input id="tok-disguise-lookup" type="text" placeholder="defaults to Displayed As"></div>
-      </div>
-      <div class="modal-row">
-        <div class="modal-section"><label>Mirror HP from <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><select id="tok-disguise-mirror-hp"><option value="">(none — keep this token's own HP)</option></select></div>
-      </div>
-      <div class="modal-row" style="margin-top:6px">
-        <div class="modal-section"><label>Disguise to</label>
-          <select id="tok-disguise-visible-to">
-            <option value="all">All players</option>
-            <option value="all-active">All active tokens</option>
-            <option value="specific">Choose specific…</option>
-          </select>
-        </div>
-      </div>
-      <div id="tok-disguise-visible-to-list" style="display:none;margin-top:6px;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:6px"></div>
+      <div id="tok-disguise-rules"></div>
+      <button type="button" id="tok-disguise-add-rule" style="width:100%;margin-top:2px">➕ Add another disguise</button>
     </div>
     <div class="modal-btns"><button id="tok-cancel">Cancel</button><button id="tok-place" class="primary">Place on Map</button></div>
   </div>
@@ -907,7 +892,7 @@ import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB 
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
 import { saveChain, deleteChain, chainsForToken, drawChains } from "./js/chains.js";
 import { saveMirror, deleteMirror, mirrorsForLeader, mirrorsForFollower, applyMirrorMovement } from "./js/mirrors.js";
-import { resolvePropId } from "./js/disguise.js";
+import { resolvePropId, tokenDisguiseRules } from "./js/disguise.js";
 import { subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { sendChat, renderChat } from "./js/chat.js";
@@ -1221,7 +1206,7 @@ function subscribeLive(){
       if(data.mirrors)Object.assign(mirrors,data.mirrors);
       if(data.tokens){
         Object.assign(tokens,data.tokens);
-        Object.values(data.tokens).forEach(t=>{tryLoadTokenTexture(t.characterId,t.lookupName||t.name);if(t.disguise)tryLoadTokenTexture("__npc__",t.disguise.lookupName);});
+        Object.values(data.tokens).forEach(t=>{tryLoadTokenTexture(t.characterId,t.lookupName||t.name);for(const rule of tokenDisguiseRules(t))tryLoadTokenTexture("__npc__",rule.lookupName);});
       }
       if(data.stamps)for(const[k,v]of Object.entries(data.stamps))stamps[k.replace("_",",")]=v;
       if(data.roofs)Object.assign(roofs,data.roofs);
@@ -1557,54 +1542,91 @@ function openEditTokenModal(tokId){
   else if(tok.nodeId) tokCharSel.value="board:"+tok.nodeId;
   else tokCharSel.value="__npc__";
   // Disguise fields
-  populateDisguiseMirrorHpOptions(tokId,tok.disguise?.mirrorHpFrom);
-  document.getElementById("tok-disguise-enable").checked=!!tok.disguise;
-  document.getElementById("tok-disguise-fields").style.display=tok.disguise?"block":"none";
-  document.getElementById("tok-disguise-name").value=tok.disguise?.displayName||"";
-  document.getElementById("tok-disguise-lookup").value=tok.disguise?.lookupName||"";
-  const visibleTo=tok.disguise?.visibleTo;
-  const visibleToMode=Array.isArray(visibleTo)?"specific":(visibleTo||"all");
-  document.getElementById("tok-disguise-visible-to").value=visibleToMode;
-  populateDisguiseVisibleToList(tokId,Array.isArray(visibleTo)?visibleTo:[]);
-  document.getElementById("tok-disguise-visible-to-list").style.display=visibleToMode==="specific"?"flex":"none";
+  const existingRules=tokenDisguiseRules(tok);
+  document.getElementById("tok-disguise-enable").checked=existingRules.length>0;
+  document.getElementById("tok-disguise-fields").style.display=existingRules.length?"block":"none";
+  document.getElementById("tok-disguise-rules").innerHTML="";
+  for(const rule of existingRules) createDisguiseRuleCard(tokId,rule);
   // Update place button label
   document.getElementById("tok-place").textContent="Save Changes";
   document.getElementById("token-modal").classList.remove("hidden");
 }
 
-function populateDisguiseMirrorHpOptions(excludeTokId,selectedId){
-  const sel=document.getElementById("tok-disguise-mirror-hp");
-  sel.innerHTML=`<option value="">(none — keep this token's own HP)</option>`;
+/** Builds one self-contained disguise-rule card, appends it to the rules
+ *  container, and returns it. Each card scopes its own fields via class
+ *  selectors (not ids) so any number of cards can coexist without
+ *  collisions. Pre-fills from `existingRule` if provided. */
+function createDisguiseRuleCard(excludeTokId,existingRule){
+  const card=document.createElement("div");
+  card.className="disguise-rule-card";
+  card.style.cssText="border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px";
+  card.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <span style="font-family:'Cinzel',serif;font-size:10px;color:var(--gold-dim,#a8935a)">Disguise rule</span>
+      <button type="button" class="rule-remove" style="font-size:10px;color:var(--red-bright);background:transparent;border:none;cursor:pointer">✕ Remove</button>
+    </div>
+    <div class="modal-row">
+      <div class="modal-section"><label>Displayed as</label><input class="rule-name" type="text" placeholder="e.g. Zombie"></div>
+      <div class="modal-section"><label>Portrait lookup <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><input class="rule-lookup" type="text" placeholder="defaults to Displayed As"></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-section"><label>Mirror HP from <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><select class="rule-mirror-hp"><option value="">(none — keep this token's own HP)</option></select></div>
+    </div>
+    <div class="modal-row" style="margin-top:6px">
+      <div class="modal-section"><label>Disguise to</label>
+        <select class="rule-visible-to">
+          <option value="all">All players</option>
+          <option value="all-active">All active tokens</option>
+          <option value="specific">Choose specific…</option>
+        </select>
+      </div>
+    </div>
+    <div class="rule-visible-to-list" style="display:none;margin-top:6px;flex-direction:column;gap:4px;max-height:120px;overflow-y:auto;border:1px solid var(--border);border-radius:4px;padding:6px"></div>
+  `;
+  // Mirror-HP options: every other token on the map
+  const mirrorSel=card.querySelector(".rule-mirror-hp");
   for(const[id,t]of Object.entries(tokens)){
     if(id===excludeTokId)continue;
     const opt=document.createElement("option");
     opt.value=id;opt.textContent=`${t.type==="pc"?"👤":"👹"} ${t.name}`;
-    if(id===selectedId)opt.selected=true;
-    sel.appendChild(opt);
+    if(id===existingRule?.mirrorHpFrom)opt.selected=true;
+    mirrorSel.appendChild(opt);
   }
-}
-function populateDisguiseVisibleToList(excludeTokId,selectedIds){
-  const list=document.getElementById("tok-disguise-visible-to-list");
-  list.innerHTML="";
+  // Visible-to checkbox list: every other PC token
+  const visList=card.querySelector(".rule-visible-to-list");
   const pcTokens=Object.entries(tokens).filter(([id,t])=>t.type==="pc"&&id!==excludeTokId);
+  const selectedIds=Array.isArray(existingRule?.visibleTo)?existingRule.visibleTo:[];
   if(!pcTokens.length){
-    list.innerHTML=`<span style="font-size:11px;color:var(--text-dim)">No other PC tokens on this map</span>`;
-    return;
+    visList.innerHTML=`<span style="font-size:11px;color:var(--text-dim)">No other PC tokens on this map</span>`;
+  }else{
+    for(const[id,t]of pcTokens){
+      const label=document.createElement("label");
+      label.style.cssText="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'IM Fell English',serif;font-size:12px";
+      const cb=document.createElement("input");
+      cb.type="checkbox";cb.value=id;
+      cb.checked=selectedIds.includes(id);
+      label.appendChild(cb);
+      label.appendChild(document.createTextNode(`👤 ${t.name}`));
+      visList.appendChild(label);
+    }
   }
-  for(const[id,t]of pcTokens){
-    const label=document.createElement("label");
-    label.style.cssText="display:flex;align-items:center;gap:6px;cursor:pointer;font-family:'IM Fell English',serif;font-size:12px";
-    const cb=document.createElement("input");
-    cb.type="checkbox";cb.value=id;
-    cb.checked=(selectedIds||[]).includes(id);
-    label.appendChild(cb);
-    label.appendChild(document.createTextNode(`👤 ${t.name}`));
-    list.appendChild(label);
+  // Pre-fill from an existing rule, if editing
+  if(existingRule){
+    card.querySelector(".rule-name").value=existingRule.displayName||"";
+    card.querySelector(".rule-lookup").value=existingRule.lookupName||"";
+    const mode=Array.isArray(existingRule.visibleTo)?"specific":(existingRule.visibleTo||"all");
+    card.querySelector(".rule-visible-to").value=mode;
+    visList.style.display=mode==="specific"?"flex":"none";
   }
+  // Card-scoped handlers
+  card.querySelector(".rule-visible-to").addEventListener("change",e=>{
+    visList.style.display=e.target.value==="specific"?"flex":"none";
+  });
+  card.querySelector(".rule-remove").onclick=()=>card.remove();
+  document.getElementById("tok-disguise-rules").appendChild(card);
+  return card;
 }
-document.getElementById("tok-disguise-visible-to").addEventListener("change",e=>{
-  document.getElementById("tok-disguise-visible-to-list").style.display=e.target.value==="specific"?"flex":"none";
-});
+document.getElementById("tok-disguise-add-rule").onclick=()=>createDisguiseRuleCard(editingTokenId,null);
 document.getElementById("tok-disguise-enable").addEventListener("change",e=>{
   document.getElementById("tok-disguise-fields").style.display=e.target.checked?"block":"none";
 });
@@ -2144,12 +2166,7 @@ async function openTokenSpawnModal(){
   document.getElementById("tok-color-custom-row").style.display="none";
   document.getElementById("tok-disguise-enable").checked=false;
   document.getElementById("tok-disguise-fields").style.display="none";
-  document.getElementById("tok-disguise-name").value="";
-  document.getElementById("tok-disguise-lookup").value="";
-  document.getElementById("tok-disguise-visible-to").value="all";
-  document.getElementById("tok-disguise-visible-to-list").style.display="none";
-  populateDisguiseMirrorHpOptions(null,null);
-  populateDisguiseVisibleToList(null,[]);
+  document.getElementById("tok-disguise-rules").innerHTML="";
   tokCharSel.value="__npc__";
   document.getElementById("token-modal").classList.remove("hidden");
 }
@@ -2179,23 +2196,26 @@ document.getElementById("tok-place").onclick=async()=>{
   let fillColor=null,ringColor=null;
   if(colorPreset==="custom"){ringColor=document.getElementById("tok-color-custom").value;fillColor=ringColor;}
   const disguiseEnabled=document.getElementById("tok-disguise-enable").checked;
-  let disguise=null;
+  let disguises=null;
   if(disguiseEnabled){
-    const displayName=document.getElementById("tok-disguise-name").value.trim();
-    if(displayName){
-      const visibleToMode=document.getElementById("tok-disguise-visible-to").value;
+    disguises=[];
+    for(const card of document.querySelectorAll("#tok-disguise-rules .disguise-rule-card")){
+      const displayName=card.querySelector(".rule-name").value.trim();
+      if(!displayName)continue; // skip incomplete rules rather than saving a blank one
+      const visibleToMode=card.querySelector(".rule-visible-to").value;
       let visibleTo="all";
       if(visibleToMode==="all-active") visibleTo="all-active";
       else if(visibleToMode==="specific"){
-        visibleTo=Array.from(document.querySelectorAll("#tok-disguise-visible-to-list input:checked")).map(cb=>cb.value);
+        visibleTo=Array.from(card.querySelectorAll(".rule-visible-to-list input:checked")).map(cb=>cb.value);
       }
-      disguise={
+      disguises.push({
         displayName,
-        lookupName:document.getElementById("tok-disguise-lookup").value.trim()||displayName,
-        mirrorHpFrom:document.getElementById("tok-disguise-mirror-hp").value||null,
+        lookupName:card.querySelector(".rule-lookup").value.trim()||displayName,
+        mirrorHpFrom:card.querySelector(".rule-mirror-hp").value||null,
         visibleTo,
-      };
+      });
     }
+    if(!disguises.length) disguises=null; // enabled but every rule was left blank -- treat as no disguise
   }
 
   // Resolve board linkage: either an existing board NPC, or spin up a new one.
@@ -2219,10 +2239,10 @@ document.getElementById("tok-place").onclick=async()=>{
     // the whole write and drop the fields we're actually trying to change.
     const tok=tokens[editingTokenId];
     if(tok){
-      const updates={name,lookupName,type,hp,maxHp,size,fillColor,ringColor,characterId:charId,nodeId:nodeId||tok.nodeId||null,disguise};
+      const updates={name,lookupName,type,hp,maxHp,size,fillColor,ringColor,characterId:charId,nodeId:nodeId||tok.nodeId||null,disguises,disguise:null};
       Object.assign(tok,updates);
       tryLoadTokenTexture(charId,lookupName);
-      if(disguise) tryLoadTokenTexture("__npc__",disguise.lookupName);
+      if(disguises) for(const rule of disguises) tryLoadTokenTexture("__npc__",rule.lookupName);
       try{
         await update(ref(db,`maps/${getMapName()}/tokens/${editingTokenId}`),updates);
         console.log("[token save] wrote",updates,"to",editingTokenId);
@@ -2234,9 +2254,9 @@ document.getElementById("tok-place").onclick=async()=>{
     editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";
     document.getElementById("token-modal").classList.add("hidden");toast("Token updated");
   }else{
-    placingToken={id:"tok_"+Date.now(),characterId:charId,nodeId,name,lookupName,type,hp,maxHp,size,fillColor,ringColor,disguise,x:0,y:0};
+    placingToken={id:"tok_"+Date.now(),characterId:charId,nodeId,name,lookupName,type,hp,maxHp,size,fillColor,ringColor,disguises,x:0,y:0};
     tryLoadTokenTexture(charId,lookupName);
-    if(disguise) tryLoadTokenTexture("__npc__",disguise.lookupName);
+    if(disguises) for(const rule of disguises) tryLoadTokenTexture("__npc__",rule.lookupName);
     document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");
   }
 };
