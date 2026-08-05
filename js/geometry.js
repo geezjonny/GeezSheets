@@ -304,6 +304,30 @@ export function computeReachableTiles(startX, startY, maxSteps, occluders, block
   return visited;
 }
 
+/** Every cell within `rangeTiles` of (startX,startY) that also has a clear
+ *  line of sight from the attacker -- for weapon/spell range, as opposed to
+ *  computeReachableTiles which is a wall-aware BFS for movement cost. Range
+ *  is a straight-line radius check (Chebyshev distance, matching how most
+ *  VTT grids measure range), gated by line of sight rather than pathing --
+ *  you can't hit what you can't see, but you don't need a walkable path to
+ *  it either. Returns a Set of "x,y" keys, NOT a Map with step-counts, since
+ *  range has no notion of "how many steps away" the way movement does. */
+export function computeRangeTiles(startX, startY, rangeTiles, occluders) {
+  const inRange = new Set();
+  if (rangeTiles <= 0) return inRange;
+  for (let dx = -rangeTiles; dx <= rangeTiles; dx++) {
+    for (let dy = -rangeTiles; dy <= rangeTiles; dy++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) > rangeTiles) continue; // outside the radius
+      if (dx === 0 && dy === 0) continue; // the attacker's own cell isn't a valid target
+      const tx = startX + dx, ty = startY + dy;
+      if (pathBlocked(startX + 0.5, startY + 0.5, tx + 0.5, ty + 0.5, occluders)) continue;
+      inRange.add(`${tx},${ty}`);
+    }
+  }
+  return inRange;
+}
+
+
 /**
  * Converts hand-painted tile walls (wallGroups) into the same {x1,y1,x2,y2}
  * segment shape as dd2vtt-imported/hand-drawn walls, so a tile-painted map

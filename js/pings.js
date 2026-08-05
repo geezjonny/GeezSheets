@@ -32,6 +32,39 @@ export function drawPings(ctx, activePings, toScreen, isVisible) {
   }
 }
 
+// ── Attack targeting ──────────────────────────────────────────────────────────
+// A separate, dedicated mechanism from pings above -- same proven shape
+// (push a short-lived RTDB entry, auto-remove it, fade it out on render) but
+// kept on its own path (attackTargets, not pings) and its own render
+// function, so extending this never risks the existing ping behavior.
+export async function sendAttackTarget(tx, ty, attackerName, weaponName, targetName) {
+  const targetRef = push(ref(db, "attackTargets"));
+  await set(targetRef, { x: tx, y: ty, attackerName, weaponName, targetName: targetName || null, t: Date.now() });
+  setTimeout(() => remove(targetRef), 6000);
+}
+
+export function drawAttackTargets(ctx, activeTargets, toScreen, isVisible) {
+  const now = Date.now();
+  for (const [id, tgt] of Object.entries(activeTargets)) {
+    const age = (now - tgt.startTime) / 1000;
+    if (age > 5) { delete activeTargets[id]; continue; }
+    if (isVisible && !isVisible(tgt)) continue;
+    const alpha = age > 4 ? 1 - (age - 4) : 1; // hold steady for 4s, then fade over the last second
+    const [sx, sy] = toScreen(tgt.wx, tgt.wy);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = "#e04040"; ctx.lineWidth = 2.5;
+    const r = 18;
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx - r - 8, sy); ctx.lineTo(sx - r + 4, sy); ctx.moveTo(sx + r - 4, sy); ctx.lineTo(sx + r + 8, sy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx, sy - r - 8); ctx.lineTo(sx, sy - r + 4); ctx.moveTo(sx, sy + r - 4); ctx.lineTo(sx, sy + r + 8); ctx.stroke();
+    ctx.font = "bold 11px Cinzel,serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    ctx.fillStyle = "#e04040";
+    ctx.fillText(`${tgt.attackerName} → ${tgt.weaponName}${tgt.targetName ? " → " + tgt.targetName : ""}`, sx, sy - r - 12);
+    ctx.restore();
+  }
+}
+
 export function drawLasers(ctx, activeLasers, toScreen) {
   for (const [name, laser] of Object.entries(activeLasers)) {
     const [sx, sy] = toScreen(laser.wx, laser.wy);

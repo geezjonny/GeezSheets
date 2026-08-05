@@ -889,7 +889,7 @@ import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
-import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
+import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser, sendAttackTarget, drawAttackTargets } from "./js/pings.js";
 import { saveChain, deleteChain, chainsForToken, drawChains } from "./js/chains.js";
 import { saveMirror, deleteMirror, mirrorsForLeader, mirrorsForFollower, applyMirrorMovement } from "./js/mirrors.js";
 import { resolvePropId, tokenDisguiseRules } from "./js/disguise.js";
@@ -927,7 +927,7 @@ const tiles={},tokens={},stamps={},roofs={},props={},impassable={},chains={},tri
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let pcsData={},propDefs={};
 let customProps=[];
-const activePings={},activeLasers={};
+const activePings={},activeLasers={},activeAttackTargets={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
 let currentShape="rect",currentTerrain="grass",wallsEnabled=false;
 // ── Geometry state ────────────────────────────────────────────────────────────
@@ -1255,6 +1255,7 @@ onValue(ref(db,"propDefs"),snap=>{
 
 // Pings/lasers
 onValue(ref(db,"pings"),snap=>{const data=snap.val()||{};const now=Date.now();for(const[id,ping]of Object.entries(data)){if(!activePings[id]&&now-ping.t<4000){activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};if(ping.name!==playerName)showPingToast(`📍 ${ping.name} pinged!`);}}});
+onValue(ref(db,"attackTargets"),snap=>{const data=snap.val()||{};const now=Date.now();for(const[id,tgt]of Object.entries(data)){if(!activeAttackTargets[id]&&now-tgt.t<6000){activeAttackTargets[id]={wx:tgt.x*TILE+TILE/2,wy:tgt.y*TILE+TILE/2,attackerName:tgt.attackerName,weaponName:tgt.weaponName,targetName:tgt.targetName,startTime:now,id};showPingToast(`🎯 ${tgt.attackerName} targets with ${tgt.weaponName}!`);}}});
 onValue(ref(db,"lasers"),snap=>{const data=snap.val()||{};for(const k in activeLasers)delete activeLasers[k];for(const[name,pos]of Object.entries(data)){if(name!==playerName.replace(/\./g,"_"))activeLasers[name]={wx:pos.wx,wy:pos.wy,color:pos.color};}});
 
 // Presence
@@ -2770,6 +2771,7 @@ function render(){
 
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
+  drawAttackTargets(ctx,activeAttackTargets,(wx,wy)=>toScreen(wx,wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
   drawRuler(ctx,rulerStart,rulerEnd,(wx,wy)=>toScreen(wx,wy));
   requestAnimationFrame(render);

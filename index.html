@@ -476,8 +476,8 @@ import { textures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLo
 import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
-import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, pathBlocked, computeReachableTiles, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
-import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser } from "./js/pings.js";
+import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, pathBlocked, computeReachableTiles, computeRangeTiles, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser, sendAttackTarget, drawAttackTargets } from "./js/pings.js";
 import { drawChains } from "./js/chains.js";
 import { mirrorsForLeader, applyMirrorMovement } from "./js/mirrors.js";
 import { resolvePropId, tokenDisguiseRules } from "./js/disguise.js";
@@ -528,7 +528,7 @@ let currentMap="dungeon-1";
 let firstLoad=true;
 let pingMode=false,isHolding=false;
 let pingHoldTimer=null,myLaserRef=null;
-const activePings={},activeLasers={};
+const activePings={},activeLasers={},activeAttackTargets={};
 let draggingToken=null,panning=false;
 let panStartX=0,panStartY=0,camStartX=0,camStartY=0;
 let rulerStart=null,rulerEnd=null,rulerActive=false;
@@ -698,6 +698,15 @@ onValue(ref(db,"pings"),snap=>{
     if(!activePings[id]&&now-ping.t<4000){
       activePings[id]={wx:ping.x*TILE+TILE/2,wy:ping.y*TILE+TILE/2,name:ping.name,startTime:now,id};
       if(ping.name!==playerName)toast(`📍 ${ping.name} pinged!`);
+    }
+  }
+});
+onValue(ref(db,"attackTargets"),snap=>{
+  const data=snap.val()||{};const now=Date.now();
+  for(const[id,tgt]of Object.entries(data)){
+    if(!activeAttackTargets[id]&&now-tgt.t<6000){
+      activeAttackTargets[id]={wx:tgt.x*TILE+TILE/2,wy:tgt.y*TILE+TILE/2,attackerName:tgt.attackerName,weaponName:tgt.weaponName,targetName:tgt.targetName,startTime:now,id};
+      if(tgt.attackerName!==playerName)toast(`🎯 ${tgt.attackerName} targets with ${tgt.weaponName}!`);
     }
   }
 });
@@ -998,6 +1007,8 @@ function buildActionList(){
       meta:`Attack ${atkStr} · Damage ${a.damage||"—"}${a.damage_type?" "+a.damage_type:""}${a.range?" · Range "+a.range:""}`,
       howTo:`To use: roll a d20 ${atkStr} vs their AC. If it hits, roll ${a.damage||"—"} damage.`,
       desc:notes,
+      btnLabel:"🎯 Target",
+      onBtnClick:()=>enterWeaponTargeting(a.name||"Unnamed attack",a.range),
     });
   }
   const sp=c.spellcasting||{};
@@ -1176,6 +1187,44 @@ function drawMovementRange(){
   ctx.restore();
 }
 
+// ── Weapon range / attack targeting ───────────────────────────────────────────
+// Parses a free-text weapon range field (e.g. "5 ft.", "150/600 ft.", "Melee")
+// into a tile count, at 5ft per tile. Uses the first number found (normal
+// range for ranged weapons), defaulting to 1 tile (adjacent) for melee or
+// anything unparseable.
+function parseWeaponRangeTiles(rangeText){
+  const m=/(\d+)/.exec(rangeText||"");
+  if(!m) return 1;
+  return Math.max(1,Math.round(parseInt(m[1],10)/5));
+}
+let _weaponTargeting=null; // {rangeSet, weaponName} while active, else null
+function enterWeaponTargeting(weaponName,rangeText){
+  const entry=myOwnTokenEntry();
+  if(!entry){toast("Pick a character first");return;}
+  const[,myTok]=entry;
+  const rangeTiles=parseWeaponRangeTiles(rangeText);
+  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+  const rangeSet=computeRangeTiles(myTok.x,myTok.y,rangeTiles,occ);
+  _weaponTargeting={rangeSet,weaponName};
+  _turnMenuCollapsed=true;updateTurnMenu(); // collapse so the map is clickable
+  toast(`🎯 Click a target within range for ${weaponName} (Esc to cancel)`);
+}
+function drawWeaponRange(){
+  if(!_weaponTargeting) return;
+  ctx.save();
+  for(const key of _weaponTargeting.rangeSet){
+    const[x,y]=key.split(",").map(Number);
+    ctx.fillStyle="rgba(224,64,64,0.18)";
+    ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+    ctx.strokeStyle="rgba(224,64,64,0.45)";ctx.lineWidth=Math.max(1,TILE*0.02);
+    ctx.strokeRect(x*TILE+0.5,y*TILE+0.5,TILE-1,TILE-1);
+  }
+  ctx.restore();
+}
+window.addEventListener("keydown",e=>{
+  if(e.key==="Escape"&&_weaponTargeting){ _weaponTargeting=null; toast("Targeting cancelled"); }
+});
+
 function draw(){
   updateInvestigateBanner();
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -1198,6 +1247,7 @@ function draw(){
 
   drawDoorsWithArt(ctx,geometry.doors,TILE,propTextures,{zoom:camera.zoom});
   drawMovementRange();
+  drawWeaponRange();
 
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
   for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
@@ -1344,6 +1394,7 @@ function draw(){
   }}
   drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy),ping=>isPositionVisible(ping.wx,ping.wy));
+  drawAttackTargets(ctx,activeAttackTargets,(wx,wy)=>toScreen(wx,wy),tgt=>isPositionVisible(tgt.wx,tgt.wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
   drawRuler(ctx,rulerStart,rulerEnd,(wx,wy)=>toScreen(wx,wy));
   requestAnimationFrame(draw);
@@ -1492,6 +1543,15 @@ viewport.addEventListener("pointerdown",e=>{
     return;
   }
   const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
+  if(_weaponTargeting){
+    const key=`${tx},${ty}`;
+    if(!_weaponTargeting.rangeSet.has(key)){ toast("Out of range — pick a highlighted cell, or Esc to cancel"); return; }
+    const targetTokId=tokenAtTile(tokens,tx,ty);
+    const targetTok=targetTokId?tokens[targetTokId]:null;
+    sendAttackTarget(tx,ty,myCharacterName||playerName,_weaponTargeting.weaponName,targetTok?.name);
+    _weaponTargeting=null;
+    return;
+  }
   if(e.shiftKey){ openContainerAt(tx,ty); return; }
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
