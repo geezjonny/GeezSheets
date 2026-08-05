@@ -492,7 +492,7 @@ import { rollDie } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, nextTurn } from "./js/initiative.js";
 import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, resolveLinkedDoor, syncActivateEffects, rollDamage, BUTTON_PULSE_MS } from "./js/triggers.js";
 import { subscribeRestRequest, runApprovedRest } from "./js/sheet.js";
-import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMetaText, loadSheetApi, getCharacterSkillModifiers, getSpellRange } from "./js/sheet.js";
+import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMetaText, loadSheetApi, getCharacterSkillModifiers, getSpellRange, getWeaponRangeFeet } from "./js/sheet.js";
 import { subscribeTheaterMode, startTheaterFog, stopTheaterFog } from "./js/theater.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
@@ -707,7 +707,7 @@ onValue(ref(db,"attackTargets"),snap=>{
   const data=snap.val()||{};const now=Date.now();
   for(const[id,tgt]of Object.entries(data)){
     if(!activeAttackTargets[id]&&now-tgt.t<6000){
-      activeAttackTargets[id]={wx:tgt.x*TILE+TILE/2,wy:tgt.y*TILE+TILE/2,attackerName:tgt.attackerName,weaponName:tgt.weaponName,targetName:tgt.targetName,startTime:now,id};
+      activeAttackTargets[id]={wx:tgt.x*TILE+TILE/2,wy:tgt.y*TILE+TILE/2,attackerName:tgt.attackerName,weaponName:tgt.weaponName,startTime:now,id};
       if(tgt.attackerName!==playerName)toast(`🎯 ${tgt.attackerName} targets with ${tgt.weaponName}!`);
     }
   }
@@ -1011,7 +1011,7 @@ function buildActionList(){
       howTo:`To use: roll a d20 ${atkStr} vs their AC. If it hits, roll ${a.damage||"—"} damage.`,
       desc:notes,
       btnLabel:"🎯 Target",
-      onBtnClick:()=>enterWeaponTargeting(a.name||"Unnamed attack",a.range),
+      onBtnClick:()=>enterWeaponTargeting(a.name||"Unnamed attack",getWeaponRangeFeet(a.name)??a.range),
     });
   }
   const sp=c.spellcasting||{};
@@ -1213,21 +1213,22 @@ function drawMovementRange(){
 }
 
 // ── Weapon range / attack targeting ───────────────────────────────────────────
-// Parses a free-text weapon range field (e.g. "5 ft.", "150/600 ft.", "Melee")
-// into a tile count, at 5ft per tile. Uses the first number found (normal
-// range for ranged weapons), defaulting to 1 tile (adjacent) for melee or
-// anything unparseable.
-function parseWeaponRangeTiles(rangeText){
-  const m=/(\d+)/.exec(rangeText||"");
+// Accepts either a number (already-resolved range in feet, e.g. from SRD
+// equipment data) or free text (e.g. "5 ft.", "150/600 ft.", "Melee") to
+// parse -- uses the first number found for text, defaulting to 1 tile
+// (adjacent) for melee or anything unparseable.
+function parseWeaponRangeTiles(rangeFeetOrText){
+  if(typeof rangeFeetOrText==="number") return Math.max(1,Math.round(rangeFeetOrText/5));
+  const m=/(\d+)/.exec(rangeFeetOrText||"");
   if(!m) return 1;
   return Math.max(1,Math.round(parseInt(m[1],10)/5));
 }
 let _weaponTargeting=null; // {rangeSet, weaponName} while active, else null
-function enterWeaponTargeting(weaponName,rangeText){
+function enterWeaponTargeting(weaponName,rangeFeetOrText){
   const entry=myOwnTokenEntry();
   if(!entry){toast("Pick a character first");return;}
   const[,myTok]=entry;
-  const rangeTiles=parseWeaponRangeTiles(rangeText);
+  const rangeTiles=parseWeaponRangeTiles(rangeFeetOrText);
   const occ=activeOccluders(geometry.walls,geometry.doors||[]);
   const rangeSet=computeRangeTiles(myTok.x,myTok.y,rangeTiles,occ);
   _weaponTargeting={rangeSet,weaponName};
@@ -1571,9 +1572,7 @@ viewport.addEventListener("pointerdown",e=>{
   if(_weaponTargeting){
     const key=`${tx},${ty}`;
     if(!_weaponTargeting.rangeSet.has(key)){ toast("Out of range — pick a highlighted cell, or Esc to cancel"); return; }
-    const targetTokId=tokenAtTile(tokens,tx,ty);
-    const targetTok=targetTokId?tokens[targetTokId]:null;
-    sendAttackTarget(tx,ty,myCharacterName||playerName,_weaponTargeting.weaponName,targetTok?.name);
+    sendAttackTarget(tx,ty,myCharacterName||playerName,_weaponTargeting.weaponName);
     _weaponTargeting=null;
     return;
   }

@@ -37,9 +37,9 @@ export function drawPings(ctx, activePings, toScreen, isVisible) {
 // (push a short-lived RTDB entry, auto-remove it, fade it out on render) but
 // kept on its own path (attackTargets, not pings) and its own render
 // function, so extending this never risks the existing ping behavior.
-export async function sendAttackTarget(tx, ty, attackerName, weaponName, targetName) {
+export async function sendAttackTarget(tx, ty, attackerName, weaponName) {
   const targetRef = push(ref(db, "attackTargets"));
-  await set(targetRef, { x: tx, y: ty, attackerName, weaponName, targetName: targetName || null, t: Date.now() });
+  await set(targetRef, { x: tx, y: ty, attackerName, weaponName, t: Date.now() });
   setTimeout(() => remove(targetRef), 6000);
 }
 
@@ -60,7 +60,13 @@ export function drawAttackTargets(ctx, activeTargets, toScreen, isVisible) {
     ctx.beginPath(); ctx.moveTo(sx, sy - r - 8); ctx.lineTo(sx, sy - r + 4); ctx.moveTo(sx, sy + r - 4); ctx.lineTo(sx, sy + r + 8); ctx.stroke();
     ctx.font = "bold 11px Cinzel,serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
     ctx.fillStyle = "#e04040";
-    ctx.fillText(`${tgt.attackerName} → ${tgt.weaponName}${tgt.targetName ? " → " + tgt.targetName : ""}`, sx, sy - r - 12);
+    // Deliberately doesn't name the target -- naming it would bypass the
+    // disguise system entirely (it'd show the token's real name regardless
+    // of what it's disguised as to any given viewer), instantly revealing
+    // any disguise to everyone watching the crosshair. Attacker + weapon is
+    // safe to show, since that's the attacking player's own identity, not
+    // the target's.
+    ctx.fillText(`${tgt.attackerName} → ${tgt.weaponName}`, sx, sy - r - 12);
     ctx.restore();
   }
 }

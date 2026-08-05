@@ -148,6 +148,25 @@ export function sheetSpellMetaText(name) {
 export function getSpellRange(name) {
   return spellsDb[name?.toLowerCase()]?.range || "";
 }
+/** A weapon's actual range in feet, from the SRD equipment data -- checks
+ *  the shapes the dnd5eapi.co schema uses (range.normal for ranged weapons,
+ *  throw_range.normal for thrown ones), plus a couple of defensive
+ *  fallbacks in case this app's own data.js normalizes the raw API
+ *  response differently. Returns null (not a guessed default) if nothing
+ *  usable is found, so a melee weapon or an unmatched name correctly falls
+ *  through to the caller's own fallback instead of silently returning a
+ *  wrong number. */
+export function getWeaponRangeFeet(weaponName) {
+  const w = equipDb[weaponName?.toLowerCase()];
+  if (!w) return null;
+  const candidates = [
+    w.range?.normal, w.throw_range?.normal, // dnd5eapi.co shape
+    typeof w.range === "number" ? w.range : null,
+    typeof w.range === "string" ? parseInt(w.range, 10) : null,
+  ];
+  for (const c of candidates) if (typeof c === "number" && !isNaN(c) && c > 0) return c;
+  return null;
+}
 
 // ── Global window handlers (set once, safe to call from HTML) ─────────────────
 let _toastFn = null;
