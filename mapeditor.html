@@ -154,7 +154,7 @@ canvas{display:block;cursor:crosshair}
 .init-card .init-hp{font-size:9px;font-family:'Cinzel',serif}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:300}
 .modal-overlay.hidden{display:none}
-.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px;min-width:300px;max-width:420px;width:90%;display:flex;flex-direction:column;gap:14px}
+.modal-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:24px;min-width:300px;max-width:420px;width:90%;max-height:88vh;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
 .modal-box h2{font-family:'Cinzel',serif;font-size:15px;color:var(--gold);letter-spacing:.1em}
 .modal-box p{font-size:12px;color:var(--text-dim)}
 .modal-row{display:flex;gap:8px}
@@ -162,7 +162,7 @@ canvas{display:block;cursor:crosshair}
 .modal-section label{font-family:'Cinzel',serif;font-size:10px;color:var(--text-dim);letter-spacing:.08em}
 .modal-section input,.modal-section select{background:#111;border:1px solid var(--border);color:var(--text);font-family:'IM Fell English',serif;font-size:13px;padding:6px 8px;border-radius:4px;outline:none;width:100%}
 .modal-section input:focus,.modal-section select:focus{border-color:var(--gold-dim)}
-.modal-btns{display:flex;gap:8px}
+.modal-btns{display:flex;gap:8px;position:sticky;bottom:0;padding-top:10px;background:var(--panel)}
 .modal-btns button{flex:1;height:36px}
 .modal-btns button.primary{border-color:var(--gold);color:var(--gold)}
 #weather-panel{position:fixed;top:84px;z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
