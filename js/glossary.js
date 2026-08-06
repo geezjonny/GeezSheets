@@ -14,6 +14,17 @@ import {
 // ── Tooltip element (singleton) ───────────────────────────────────────────────
 let _tooltipEl = null;
 let _hideTimer  = null;
+let _addTokenHandler = null;
+const _monsterDataCache = {}; // name.toLowerCase() -> raw monster object, since
+                               // the tooltip's own HTML can't carry a JS object
+                               // reference through innerHTML the way a plain
+                               // string can
+
+/** Registers a callback for the Almanac's "➕ Add to Map" button on a
+ *  monster lookup result. Only meaningful in the DM tool (mapeditor.html),
+ *  which is the only caller -- index.html/sheet.html never register one,
+ *  so the button simply does nothing there if it's ever shown. */
+export function setAddTokenHandler(fn) { _addTokenHandler = fn; }
 
 function getTooltip() {
   if (_tooltipEl) return _tooltipEl;
@@ -30,6 +41,16 @@ function getTooltip() {
     "font-family:'IM Fell English',serif",
   ].join(";");
   document.body.appendChild(_tooltipEl);
+  // Delegated click handler for the Add to Map button -- delegated because
+  // the button is inserted dynamically via innerHTML on every new lookup,
+  // so a direct listener would need re-attaching every time; this singleton
+  // element only needs the one listener, attached once, ever.
+  _tooltipEl.addEventListener("click", e => {
+    const btn = e.target.closest(".gls-add-token-btn");
+    if (!btn || !_addTokenHandler) return;
+    const monster = _monsterDataCache[btn.dataset.monsterKey];
+    if (monster) _addTokenHandler(monster);
+  });
   return _tooltipEl;
 }
 
@@ -125,11 +146,14 @@ function buildMonsterContent(m) {
   const size = m.size || "";
   const hp   = m.hit_points ?? "?";
   const ac   = m.armor_class ?? "?";
+  const key  = m.name?.toLowerCase();
+  if (key) _monsterDataCache[key] = m;
   return `
     <div style="${CSS.type}">👹 Monster</div>
     <div style="${CSS.name}">${m.name}</div>
     <div style="${CSS.meta}">${size} ${type} · CR ${cr}</div>
-    <div style="${CSS.meta}">HP ${hp} · AC ${ac}</div>`;
+    <div style="${CSS.meta}">HP ${hp} · AC ${ac}</div>
+    ${_addTokenHandler ? `<button class="gls-add-token-btn" data-monster-key="${key}" style="margin-top:8px;width:100%;font-family:'Cinzel',serif;font-size:.65rem;padding:5px;border-radius:4px;border:1px solid var(--gold,#c8a84b);background:rgba(200,168,75,.1);color:var(--gold,#c8a84b);cursor:pointer">➕ Add to Map</button>` : ""}`;
 }
 
 function buildEquipmentContent(e) {
@@ -304,12 +328,6 @@ export async function registerTerms(containerEl) {
 // ── Search widget ─────────────────────────────────────────────────────────────
 // Creates a floating search box (🔍 button in HUD)
 let _searchEl = null;
-let _addTokenFn = null; // set only by mapeditor.html — players never get this button
-
-/** Lets the DM tool arm a "➕ Add to Map" action on monster search results.
- *  fn receives the raw monster object (from data/monsters.json). Never set
- *  in index.html/sheet.html, so players never see the button. */
-export function setAddTokenHandler(fn) { _addTokenFn = fn; }
 
 export function toggleGlossarySearch() {
   if (_searchEl) { _searchEl.remove(); _searchEl = null; return; }
@@ -351,28 +369,17 @@ export function toggleGlossarySearch() {
       results.innerHTML = "";
       for (const { type, item } of hits) {
         const el = document.createElement("div");
-        el.style.cssText = "padding:8px 10px;border-radius:4px;border:1px solid var(--border,#3d2e1a);background:rgba(255,255,255,.02);cursor:pointer;transition:background .1s;display:flex;align-items:center;gap:8px";
-        const info = document.createElement("div");
-        info.style.cssText = "flex:1;min-width:0";
-        info.innerHTML = `
+        el.style.cssText = "padding:8px 10px;border-radius:4px;border:1px solid var(--border,#3d2e1a);background:rgba(255,255,255,.02);cursor:pointer;transition:background .1s";
+        el.innerHTML = `
           <div style="font-family:'Cinzel',serif;font-size:.55rem;color:var(--gold,#c8a84b);letter-spacing:.08em;text-transform:uppercase">${type}</div>
           <div style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--text,#d4c49a)">${item.name}</div>
           ${item.desc ? `<div style="font-size:.68rem;color:var(--dim,#6b5a38);margin-top:2px;font-style:italic">${descSnippet(Array.isArray(item.desc)?item.desc[0]:item.desc, 80)}</div>` : ""}`;
-        info.onclick = async () => {
-          const content = await lookupTerm(item.name);
-          if (content) { showTooltip(info, content, _searchEl); }
-        };
         el.onmouseenter = () => el.style.background = "rgba(200,168,75,.07)";
         el.onmouseleave = () => el.style.background = "rgba(255,255,255,.02)";
-        el.appendChild(info);
-        if (type === "Monster" && _addTokenFn) {
-          const addBtn = document.createElement("button");
-          addBtn.textContent = "➕";
-          addBtn.title = "Add to map";
-          addBtn.style.cssText = "flex-shrink:0;border:1px solid var(--gold-dim,#a8935a);background:rgba(200,168,75,.1);color:var(--gold,#c8a84b);border-radius:4px;width:26px;height:26px;font-size:13px;cursor:pointer";
-          addBtn.onclick = (e) => { e.stopPropagation(); _addTokenFn(item); };
-          el.appendChild(addBtn);
-        }
+        el.onclick = async () => {
+          const content = await lookupTerm(item.name);
+          if (content) { showTooltip(el, content, _searchEl); }
+        };
         results.appendChild(el);
       }
     }, 280);
