@@ -31,6 +31,7 @@ export async function loadTerrainTextures(terrains) {
 }
 
 export function tryLoadTokenTexture(characterId, name) {
+  if (!name && !characterId) return; // nothing meaningful to look up -- avoid throwing inside a live subscription callback
   const cacheKey = tokenCacheKey(characterId, name);
   if (tokenTextures[cacheKey] !== undefined) return;
   tokenTextures[cacheKey] = null;
