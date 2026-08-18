@@ -662,12 +662,25 @@ canvas{display:block;cursor:crosshair}
 </div>
 
 <div id="token-modal" class="modal-overlay hidden">
-  <div class="modal-box"><h2>Place Token</h2>
-    <div class="modal-section"><label>Character</label><select id="tok-char"></select></div>
+  <div class="modal-box"><h2 id="token-modal-title">Place Token</h2>
+
+    <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;color:var(--gold,#c8a84b);text-transform:uppercase;margin-top:2px">🔑 Core Identity</div>
+    <div style="font-family:'IM Fell English',serif;font-size:10px;color:var(--text-dim);margin-bottom:4px">Who this token actually is. Never touched by Art or Disguise changes below.</div>
+    <div class="modal-section"><label>Character</label><div style="display:flex;gap:6px"><select id="tok-char" style="flex:1"></select><button type="button" id="tok-char-retry" style="display:none;flex-shrink:0">🔄 Retry</button></div></div>
     <div class="modal-row">
       <div class="modal-section"><label>Display Name</label><input id="tok-name" type="text" placeholder="auto"></div>
       <div class="modal-section"><label>Type</label><select id="tok-type"><option value="pc">PC</option><option value="npc">NPC</option></select></div>
     </div>
+    <div class="modal-row" id="tok-hp-row" style="display:none">
+      <div class="modal-section"><label>HP</label><input id="tok-hp" type="number" placeholder="10" min="0"></div>
+      <div class="modal-section"><label>Max HP</label><input id="tok-maxhp" type="number" placeholder="10" min="1"></div>
+    </div>
+    <div id="tok-core-save-row" style="display:none;margin-top:2px"><button id="tok-save-core" style="width:100%">💾 Save Core Identity</button></div>
+
+    <div style="height:1px;background:var(--border);margin:12px 0"></div>
+
+    <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;color:var(--gold,#c8a84b);text-transform:uppercase">🎨 Art Identity</div>
+    <div style="font-family:'IM Fell English',serif;font-size:10px;color:var(--text-dim);margin-bottom:4px">What everyone sees on the map. Purely cosmetic — doesn't touch who this token is.</div>
     <div class="modal-row">
       <div class="modal-section"><label>Portrait lookup name <span style="color:var(--text-dim);font-weight:normal">(optional)</span></label><input id="tok-lookup-name" type="text" placeholder="defaults to Display Name"></div>
     </div>
@@ -683,10 +696,10 @@ canvas{display:block;cursor:crosshair}
     <div class="modal-row">
       <div class="modal-section"><label>Size</label><select id="tok-size"></select></div>
     </div>
-    <div class="modal-row" id="tok-hp-row" style="display:none">
-      <div class="modal-section"><label>HP</label><input id="tok-hp" type="number" placeholder="10" min="0"></div>
-      <div class="modal-section"><label>Max HP</label><input id="tok-maxhp" type="number" placeholder="10" min="1"></div>
-    </div>
+    <div id="tok-art-save-row" style="display:none;margin-top:2px"><button id="tok-save-art" style="width:100%">💾 Save Art</button></div>
+
+    <div style="height:1px;background:var(--border);margin:12px 0"></div>
+
     <div class="modal-row" style="align-items:center;margin-top:4px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input id="tok-disguise-enable" type="checkbox"><span>🎭 Disguise as something else</span></label>
     </div>
@@ -694,6 +707,7 @@ canvas{display:block;cursor:crosshair}
       <div id="tok-disguise-rules"></div>
       <button type="button" id="tok-disguise-add-rule" style="width:100%;margin-top:2px">➕ Add another disguise</button>
     </div>
+    <div id="tok-disguise-save-row" style="display:none;margin-top:6px"><button id="tok-save-disguise" style="width:100%">💾 Save Disguise</button></div>
     <div class="modal-btns"><button id="tok-cancel">Cancel</button><button id="tok-place" class="primary">Place on Map</button></div>
   </div>
 </div>
@@ -1519,10 +1533,12 @@ hpAdjustSlider.addEventListener("change",async()=>{
 document.addEventListener("click",e=>{if(!hpAdjustPopover.contains(e.target))hpAdjustPopover.style.display="none";});
 
 let editingTokenId=null;
+let _coreBaseline=null; // {charSelValue, hp, maxHp} snapshot from when the edit modal opened
 
-function openEditTokenModal(tokId){
+async function openEditTokenModal(tokId){
   const tok=tokens[tokId];if(!tok)return;
   editingTokenId=tokId;
+  await populateCharacterDropdown(); // must be fresh before we try to select this token's characterId below
   // Pre-fill fields with existing token data
   tokNameInput.value=tok.name||"";
   document.getElementById("tok-lookup-name").value=tok.lookupName||"";
@@ -1539,17 +1555,19 @@ function openEditTokenModal(tokId){
   // last left on -- without this, saving would silently reassign this
   // token's characterId (and therefore its artwork) to match a stale
   // selection from editing/placing a completely different token earlier.
-  if(tok.characterId&&tok.characterId!=="__npc__") tokCharSel.value=tok.characterId;
-  else if(tok.nodeId) tokCharSel.value="board:"+tok.nodeId;
-  else tokCharSel.value="__npc__";
+  selectTokenCharacterAndSnapshot(tok);
   // Disguise fields
   const existingRules=tokenDisguiseRules(tok);
   document.getElementById("tok-disguise-enable").checked=existingRules.length>0;
   document.getElementById("tok-disguise-fields").style.display=existingRules.length?"block":"none";
   document.getElementById("tok-disguise-rules").innerHTML="";
   for(const rule of existingRules) createDisguiseRuleCard(tokId,rule);
-  // Update place button label
-  document.getElementById("tok-place").textContent="Save Changes";
+  // Editing mode: show each section's own save button, bottom button just closes
+  document.getElementById("token-modal-title").textContent="Edit Token";
+  document.getElementById("tok-core-save-row").style.display="block";
+  document.getElementById("tok-art-save-row").style.display="block";
+  document.getElementById("tok-disguise-save-row").style.display="block";
+  document.getElementById("tok-place").textContent="Close";
   document.getElementById("token-modal").classList.remove("hidden");
 }
 
@@ -2121,8 +2139,17 @@ const tokHpInput=document.getElementById("tok-hp");
 const tokMaxHpInput=document.getElementById("tok-maxhp");
 let placingTokenLocal=null;
 
-async function openTokenSpawnModal(){
+/** Populates the Character dropdown's options fresh from Firebase. This is
+ *  the actual fix for the identity-desync bug: previously only the "place
+ *  new token" flow ever populated these options, so editing an EXISTING
+ *  token could silently try to select a characterId that wasn't in the
+ *  list yet (or anymore) -- the browser just fails that silently, and
+ *  whatever the dropdown happened to already be showing gets saved as the
+ *  token's characterId instead. Every caller that needs to set the
+ *  dropdown's value must now await this first. */
+async function populateCharacterDropdown(){
   tokCharSel.innerHTML='<option value="">Loading…</option>';
+  document.getElementById("tok-char-retry").style.display="none";
   try{
     const [pcsSnap, nodesSnap] = await Promise.all([
       get(child(ref(db),"characters/pcs")),
@@ -2159,7 +2186,42 @@ async function openTokenSpawnModal(){
       tokCharSel.appendChild(grp);
     }
   }
-  catch(e){tokCharSel.innerHTML='<option value="__npc__">— Blank NPC —</option><option value="__new_board__">＋ New Board NPC (creates a bubble)</option>';}
+  catch(e){
+    // Deliberately NOT falling back to a silent, incomplete two-option list
+    // here -- that's exactly what let the identity-desync bug happen
+    // undetected (the DM would see what looked like a normal dropdown,
+    // just missing every real character, with no indication anything was
+    // wrong). Surface the failure and offer an immediate retry instead of
+    // requiring a full page reload to recover.
+    console.error("[populateCharacterDropdown] FAILED:",e);
+    tokCharSel.innerHTML='<option value="">⚠ Character list failed to load — click Retry</option>';
+    document.getElementById("tok-char-retry").style.display="inline-block";
+    toast("⚠ Character list failed to load. Don't save Core Identity until this is fixed — click Retry.");
+  }
+}
+/** Selects this token's own character in the (now-populated) dropdown and
+ *  snapshots the baseline the core-save handler diffs against. Shared by
+ *  the initial modal-open and a retry after a failed populate, so both
+ *  paths leave the dropdown and the baseline in the same correct state. */
+function selectTokenCharacterAndSnapshot(tok){
+  if(tok.characterId&&tok.characterId!=="__npc__") tokCharSel.value=tok.characterId;
+  else if(tok.nodeId) tokCharSel.value="board:"+tok.nodeId;
+  else tokCharSel.value="__npc__";
+  _coreBaseline={charSelValue:tokCharSel.value,hp:tok.hp,maxHp:tok.maxHp};
+}
+document.getElementById("tok-char-retry").onclick=async()=>{
+  await populateCharacterDropdown();
+  if(editingTokenId&&tokens[editingTokenId]) selectTokenCharacterAndSnapshot(tokens[editingTokenId]);
+};
+
+async function openTokenSpawnModal(){
+  editingTokenId=null;
+  document.getElementById("token-modal-title").textContent="Place Token";
+  document.getElementById("tok-place").textContent="Place on Map";
+  document.getElementById("tok-core-save-row").style.display="none";
+  document.getElementById("tok-art-save-row").style.display="none";
+  document.getElementById("tok-disguise-save-row").style.display="none";
+  await populateCharacterDropdown();
   tokNameInput.value="";tokHpInput.value="10";tokMaxHpInput.value="10";tokTypeInput.value="npc";
   document.getElementById("tok-hp-row").style.display="flex";
   document.getElementById("tok-lookup-name").value="";
@@ -2185,8 +2247,133 @@ tokCharSel.addEventListener("change",()=>{
   }
 });
 document.getElementById("tok-color-preset").onchange=(e)=>{document.getElementById("tok-color-custom-row").style.display=e.target.value==="custom"?"flex":"none";};
-document.getElementById("tok-cancel").onclick=()=>{editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";document.getElementById("token-modal").classList.add("hidden");placingToken=null;};
+document.getElementById("tok-cancel").onclick=()=>{editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";document.getElementById("tok-core-save-row").style.display="none";document.getElementById("tok-art-save-row").style.display="none";document.getElementById("tok-disguise-save-row").style.display="none";document.getElementById("token-modal").classList.add("hidden");placingToken=null;};
+// ── Layer 1: Core Identity (characterId, nodeId, name, type, hp/maxHp) ────────
+// Resolves board linkage (existing board NPC, or spins up a new one) and
+// writes ONLY core-identity fields. Never includes lookupName, fillColor,
+// ringColor, size, or disguises in its update payload -- structurally, not
+// just by convention, so an art or disguise edit elsewhere can never bleed
+// into this token's actual identity.
+document.getElementById("tok-save-core").onclick=async()=>{
+  if(!editingTokenId)return;
+  const tok=tokens[editingTokenId];if(!tok)return;
+  const selVal=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];
+  let name=tokNameInput.value.trim()||opt?.textContent||"Token";
+  const type=tokTypeInput.value;
+  const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;
+  const updates={name,type};
+  // Only touch characterId/nodeId if the Character field was actually,
+  // deliberately changed from what it was when the modal opened -- not
+  // just "whatever the dropdown currently shows", since that could be
+  // wrong through no fault of the DM's (a failed refresh, a stale
+  // selection) and this field is exactly what caused the identity-desync
+  // bug in the first place.
+  if(selVal!==_coreBaseline?.charSelValue){
+    let charId=selVal;let nodeId=null;
+    if(selVal.startsWith("board:")){
+      nodeId=selVal.slice(6);
+      charId="__npc__";
+      if(!tokNameInput.value.trim()) name=opt.dataset.boardName||name;
+    }else if(selVal==="__new_board__"){
+      const newNodeRef=push(ref(db,`${CAMPAIGN_BASE}/nodes`));
+      nodeId=newNodeRef.key;
+      await set(newNodeRef,{name,tag:"person",notes:"",x:200,y:200});
+      charId="__npc__";
+      toast(`Created board NPC "${name}" — find it on the Thread Board`);
+    }
+    updates.characterId=charId;
+    updates.nodeId=nodeId||tok.nodeId||null;
+  }
+  // Same principle for HP -- only write it if it actually changed from the
+  // baseline, so a stale modal (opened before combat changed this token's
+  // HP) can't clobber a newer value with what it happened to show at open time.
+  if(hp!==_coreBaseline?.hp) updates.hp=hp;
+  if(maxHp!==_coreBaseline?.maxHp) updates.maxHp=maxHp;
+  Object.assign(tok,updates);
+  try{
+    await update(ref(db,`maps/${getMapName()}/tokens/${editingTokenId}`),updates);
+    toast("Core identity saved");
+    _coreBaseline={charSelValue:selVal,hp,maxHp}; // reset baseline so a second save in the same session doesn't re-diff against the original open-time state
+  }catch(err){
+    console.error("[token core save] FAILED:",err,updates);
+    toast("⚠ Save failed — see console");
+  }
+};
+
+// ── Layer 2: Art Identity (lookupName, fillColor, ringColor, size) ───────────
+// Purely cosmetic -- never includes characterId, nodeId, name, type, hp, or
+// disguises in its update payload.
+document.getElementById("tok-save-art").onclick=async()=>{
+  if(!editingTokenId)return;
+  const tok=tokens[editingTokenId];if(!tok)return;
+  const lookupName=document.getElementById("tok-lookup-name").value.trim()||tok.name;
+  const size=parseFloat(document.getElementById("tok-size").value)||1;
+  const colorPreset=document.getElementById("tok-color-preset").value;
+  let fillColor=null,ringColor=null;
+  if(colorPreset==="custom"){ringColor=document.getElementById("tok-color-custom").value;fillColor=ringColor;}
+  const updates={lookupName,fillColor,ringColor,size};
+  Object.assign(tok,updates);
+  tryLoadTokenTexture(tok.characterId,lookupName);
+  try{
+    await update(ref(db,`maps/${getMapName()}/tokens/${editingTokenId}`),updates);
+    toast("Art identity saved");
+  }catch(err){
+    console.error("[token art save] FAILED:",err,updates);
+    toast("⚠ Save failed — see console");
+  }
+};
+
+// ── Layer 3: Disguise (per-player targeted overrides) ────────────────────────
+// Never includes characterId, nodeId, name, type, hp, lookupName, fillColor,
+// or ringColor in its update payload.
+document.getElementById("tok-save-disguise").onclick=async()=>{
+  if(!editingTokenId)return;
+  const tok=tokens[editingTokenId];if(!tok)return;
+  const disguiseEnabled=document.getElementById("tok-disguise-enable").checked;
+  let disguises=null;
+  if(disguiseEnabled){
+    disguises=[];
+    for(const card of document.querySelectorAll("#tok-disguise-rules .disguise-rule-card")){
+      const displayName=card.querySelector(".rule-name").value.trim();
+      if(!displayName)continue;
+      const visibleToMode=card.querySelector(".rule-visible-to").value;
+      let visibleTo="all";
+      if(visibleToMode==="all-active") visibleTo="all-active";
+      else if(visibleToMode==="specific"){
+        visibleTo=Array.from(card.querySelectorAll(".rule-visible-to-list input:checked")).map(cb=>cb.value);
+      }
+      disguises.push({
+        displayName,
+        lookupName:card.querySelector(".rule-lookup").value.trim()||displayName,
+        mirrorHpFrom:card.querySelector(".rule-mirror-hp").value||null,
+        visibleTo,
+      });
+    }
+    if(!disguises.length) disguises=null;
+  }
+  const updates={disguises,disguise:null};
+  Object.assign(tok,updates);
+  if(disguises) for(const rule of disguises) tryLoadTokenTexture("__npc__",rule.lookupName);
+  try{
+    await update(ref(db,`maps/${getMapName()}/tokens/${editingTokenId}`),updates);
+    toast("Disguise saved");
+  }catch(err){
+    console.error("[token disguise save] FAILED:",err,updates);
+    toast("⚠ Save failed — see console");
+  }
+};
+
 document.getElementById("tok-place").onclick=async()=>{
+  if(editingTokenId){
+    // Editing now saves per-section above -- this button just closes.
+    editingTokenId=null;
+    document.getElementById("tok-place").textContent="Place on Map";
+    document.getElementById("tok-core-save-row").style.display="none";
+    document.getElementById("tok-art-save-row").style.display="none";
+    document.getElementById("tok-disguise-save-row").style.display="none";
+    document.getElementById("token-modal").classList.add("hidden");
+    return;
+  }
   const selVal=tokCharSel.value;const opt=tokCharSel.selectedOptions[0];
   let name=tokNameInput.value.trim()||opt?.textContent||"Token";
   const lookupName=document.getElementById("tok-lookup-name").value.trim()||name;
@@ -2233,33 +2420,10 @@ document.getElementById("tok-place").onclick=async()=>{
     toast(`Created board NPC "${name}" — find it on the Thread Board`);
   }
 
-  if(editingTokenId){
-    // Edit existing token in place -- targeted update, not a full-object
-    // overwrite, so an unrelated undefined field elsewhere on this token
-    // (moveLocked, turnMovedTiles, conditions, etc.) can't silently fail
-    // the whole write and drop the fields we're actually trying to change.
-    const tok=tokens[editingTokenId];
-    if(tok){
-      const updates={name,lookupName,type,hp,maxHp,size,fillColor,ringColor,characterId:charId,nodeId:nodeId||tok.nodeId||null,disguises,disguise:null};
-      Object.assign(tok,updates);
-      tryLoadTokenTexture(charId,lookupName);
-      if(disguises) for(const rule of disguises) tryLoadTokenTexture("__npc__",rule.lookupName);
-      try{
-        await update(ref(db,`maps/${getMapName()}/tokens/${editingTokenId}`),updates);
-        console.log("[token save] wrote",updates,"to",editingTokenId);
-      }catch(err){
-        console.error("[token save] FAILED:",err,updates);
-        toast("⚠ Token save failed — see console");
-      }
-    }
-    editingTokenId=null;document.getElementById("tok-place").textContent="Place on Map";
-    document.getElementById("token-modal").classList.add("hidden");toast("Token updated");
-  }else{
-    placingToken={id:"tok_"+Date.now(),characterId:charId,nodeId,name,lookupName,type,hp,maxHp,size,fillColor,ringColor,disguises,x:0,y:0};
-    tryLoadTokenTexture(charId,lookupName);
-    if(disguises) for(const rule of disguises) tryLoadTokenTexture("__npc__",rule.lookupName);
-    document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");
-  }
+  placingToken={id:"tok_"+Date.now(),characterId:charId,nodeId,name,lookupName,type,hp,maxHp,size,fillColor,ringColor,disguises,x:0,y:0};
+  tryLoadTokenTexture(charId,lookupName);
+  if(disguises) for(const rule of disguises) tryLoadTokenTexture("__npc__",rule.lookupName);
+  document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");
 };
 
 // ── Prop modal ────────────────────────────────────────────────────────────────
