@@ -2125,11 +2125,26 @@ canvasWrap.addEventListener("drop",e=>{
   const r=canvas.getBoundingClientRect();const[wx,wy]=toWorld(e.clientX-r.left,e.clientY-r.top);
   dropTileX=Math.floor(wx/TILE);dropTileY=Math.floor(wy/TILE);
   const files=e.dataTransfer.files;
-  if(files&&files.length>0){const file=files[0];if(!file.type.startsWith("image/")){toast("Images only");return;}dropFilename=file.name;const reader=new FileReader();reader.onload=ev=>{dropBase64=ev.target.result;openDropModal();};reader.readAsDataURL(file);return;}
+  if(files&&files.length>0){const file=files[0];if(!file.type.startsWith("image/")){toast("Images only");return;}dropFilename=file.name;const reader=new FileReader();reader.onload=ev=>{dropBase64=ev.target.result;handleImageDrop();};reader.readAsDataURL(file);return;}
   const url=e.dataTransfer.getData("text/uri-list")||e.dataTransfer.getData("text/plain");
-  if(url&&url.startsWith("http")){dropFilename=url.split("/").pop()||"image";fetch(url).then(r=>r.blob()).then(blob=>{const reader=new FileReader();reader.onload=ev=>{dropBase64=ev.target.result;openDropModal();};reader.readAsDataURL(blob);}).catch(()=>toast("Could not load URL"));}
+  if(url&&url.startsWith("http")){dropFilename=url.split("/").pop()||"image";fetch(url).then(r=>r.blob()).then(blob=>{const reader=new FileReader();reader.onload=ev=>{dropBase64=ev.target.result;handleImageDrop();};reader.readAsDataURL(blob);}).catch(()=>toast("Could not load URL"));}
 });
-function openDropModal(){dropType="map";document.querySelectorAll(".drop-type-btn").forEach(b=>b.classList.remove("active"));document.querySelector(".drop-type-btn[data-type='map']").classList.add("active");document.getElementById("drop-map-fields").style.display="block";document.getElementById("drop-token-fields").style.display="none";document.getElementById("drop-prop-fields").style.display="none";document.getElementById("drop-preview").style.backgroundImage=`url(${dropBase64})`;document.getElementById("drop-filename").textContent=dropFilename;document.getElementById("drop-map-name").textContent=mapInput.value.trim()||"dungeon-1";const baseName=dropFilename.replace(/\.[^.]+$/,"").replace(/_/g," ");document.getElementById("drop-tok-name").value=baseName;document.getElementById("drop-prop-name").value=baseName.toLowerCase().replace(/\s+/g,"_");document.getElementById("drop-prop-label").value=baseName;dropModal.classList.remove("hidden");}
+/** Routes a dropped image based on what the DM is actively doing. Tokens
+ *  and Props genuinely need a name/size filled in before they're usable,
+ *  so those keep the confirmation modal. Anything else -- which is the
+ *  common case, dropping a battlemap image -- applies as the background
+ *  immediately, no modal, since dropType already defaulted to "map" there
+ *  anyway; the modal was asking the DM to confirm something already
+ *  correctly guessed, not actually choose anything. */
+function handleImageDrop(){
+  if(activeCategory==="tokens"||activeCategory==="props"){ openDropModal(); return; }
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  set(ref(db,`maps/${mapName}/background`),dropBase64);
+  bgUrl=dropBase64;bgImage=null;
+  const img=new Image();img.onload=()=>bgImage=img;img.src=dropBase64;
+  toast("Map background set");
+}
+function openDropModal(){dropType=activeCategory==="tokens"?"token":activeCategory==="props"?"prop":"map";document.querySelectorAll(".drop-type-btn").forEach(b=>b.classList.remove("active"));document.querySelector(`.drop-type-btn[data-type='${dropType}']`).classList.add("active");document.getElementById("drop-map-fields").style.display=dropType==="map"?"block":"none";document.getElementById("drop-token-fields").style.display=dropType==="token"?"block":"none";document.getElementById("drop-prop-fields").style.display=dropType==="prop"?"block":"none";document.getElementById("drop-preview").style.backgroundImage=`url(${dropBase64})`;document.getElementById("drop-filename").textContent=dropFilename;document.getElementById("drop-map-name").textContent=mapInput.value.trim()||"dungeon-1";const baseName=dropFilename.replace(/\.[^.]+$/,"").replace(/_/g," ");document.getElementById("drop-tok-name").value=baseName;document.getElementById("drop-prop-name").value=baseName.toLowerCase().replace(/\s+/g,"_");document.getElementById("drop-prop-label").value=baseName;dropModal.classList.remove("hidden");}
 
 // ── Token modal ───────────────────────────────────────────────────────────────
 const tokCharSel=document.getElementById("tok-char");
@@ -3031,6 +3046,7 @@ document.querySelectorAll(".struct-type-btn").forEach(btn=>{
     document.querySelectorAll(".struct-type-btn").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
     geoWallStart=null; geoDoorStart=null;
+    setVerb("pencil"); // picking what to draw means you want to draw it now, not just select it
   });
 });
 document.querySelectorAll(".shape-btn").forEach(btn=>{
