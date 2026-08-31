@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voxel VTT — GM</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex;
+      height: 100vh;
+      font-family: sans-serif;
+      background-color: #1a1a1a;
+      color: #fff;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    #left-panel {
+      width: 340px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background-color: #242424;
+      border-right: 2px solid #333;
+      overflow-y: auto;
+    }
+
+    #session-panel {
+      width: 300px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background-color: #242424;
+      border-left: 2px solid #333;
+      overflow-y: auto;
+    }
+
+    .group-section {
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .group-section > summary {
+      padding: 10px 12px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      color: #ddd;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .group-section > summary::-webkit-details-marker { display: none; }
+    .group-section > summary::after { content: '▾'; color: #888; }
+    .group-section:not([open]) > summary::after { content: '▸'; }
+    .group-section > summary:hover { background: #3d3d3d; }
+    .group-section-body {
+      padding: 0 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 6px;
+      background-color: #333;
+      padding: 8px 12px;
+      border-radius: 4px;
+    }
+
+    button {
+      padding: 6px 12px;
+      background: #4a4a4a;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover { background: #606060; }
+    button.active { background: #4f9da6; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #grid-canvas {
+      background-color: #000;
+      border: 1px solid #444;
+      cursor: crosshair;
+      image-rendering: pixelated;
+    }
+
+    .palette-section, .sync-section {
+      background: #333;
+      padding: 10px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .add-block-form { display: flex; gap: 6px; }
+
+    .add-block-form input, .sync-section input, .sync-section select {
+      flex: 1;
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #1a1a1a;
+      color: #fff;
+    }
+
+    input[type="file"] {
+      font-size: 0.8rem;
+      color: #ccc;
+    }
+
+    .block-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+
+    .block-chip {
+      padding: 4px 8px;
+      background: #444;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .block-chip.selected { border-color: #4f9da6; background: #555; font-weight: bold; }
+
+    .instructions { font-size: 0.8rem; color: #aaa; line-height: 1.3; }
+
+    .section-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
+
+    .dice-row { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dice-row button { flex: 1; min-width: 44px; }
+
+    #dice-result {
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: bold;
+      padding: 10px;
+      background: #1a1a1a;
+      border-radius: 4px;
+      min-height: 1.6em;
+    }
+    #dice-result.rolling { color: #4f9da6; }
+    #dice-result-meta { text-align: center; font-size: 0.75rem; color: #999; }
+
+    #identity-badge {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #bbb;
+    }
+    #identity-badge .role-chip {
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      letter-spacing: 0.03em;
+    }
+    #identity-badge .role-chip.gm { background: #6a4fa6; color: #fff; }
+    #identity-badge .role-chip.player { background: #4f9da6; color: #fff; }
+
+    #right-panel { flex: 1; position: relative; }
+    #three-canvas { width: 100%; height: 100%; display: block; }
+
+    #ping-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.6);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #ddd;
+      pointer-events: none;
+    }
+
+    /* Login modal */
+    #login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #login-overlay.hidden { display: none; }
+
+    /* Token-name modal -- replaces window.prompt() (which is documented to
+       cause WebGL context loss in some browsers while a canvas is visible).
+       Same overlay pattern as login. */
+    #token-name-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    #token-name-overlay.hidden { display: none; }
+    #token-name-modal {
+      width: 300px;
+      background: #242424;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #token-name-modal h2 { font-size: 1rem; }
+    #token-name-modal label { font-size: 0.8rem; color: #bbb; }
+    #token-name-modal input, #token-name-modal select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    #token-name-modal .row { display: flex; gap: 8px; }
+    #token-name-modal .row button { flex: 1; }
+
+    #login-modal {
+      width: 360px;
+      background: #242424;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #login-modal h2 { font-size: 1.1rem; }
+    #login-modal label { font-size: 0.8rem; color: #bbb; }
+    #login-modal input, #login-modal select {
+      width: 100%;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .login-role-toggle { display: flex; gap: 8px; }
+    .login-role-toggle button { flex: 1; }
+    #login-error { color: #e07070; font-size: 0.8rem; min-height: 1em; }
+    #login-char-row.hidden { display: none; }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+
+  <!-- Login: name + passphrase only. This page is GM-only. -->
+  <div id="login-overlay">
+    <div id="login-modal">
+      <h2>GM Login</h2>
+      <div>
+        <label for="login-name">Your name</label>
+        <input type="text" id="login-name" placeholder="e.g. Sam">
+      </div>
+      <div>
+        <label for="login-pass">Session passphrase (if you set one)</label>
+        <input type="password" id="login-pass" placeholder="Leave blank if none">
+      </div>
+      <div id="login-error"></div>
+      <button id="login-submit">Enter as GM</button>
+    </div>
+  </div>
+
+  <!-- Token-name modal: replaces window.prompt() -- see CSS comment above.
+       Naming is all this needs to be: art loads automatically by name, via
+       js/assets.js's tryLoadTokenTexture()/tokenCacheKey(), same lookup
+       js/tokens.js's real drawToken() uses. No roster to pick from. -->
+  <div id="token-name-overlay" class="hidden">
+    <div id="token-name-modal">
+      <h2>Token name</h2>
+      <input type="text" id="token-name-input" placeholder="NPC">
+      <div class="row">
+        <button id="token-name-cancel">Cancel</button>
+        <button id="token-name-ok">Place</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="left-panel">
+    <h2>Voxel Map Editor</h2>
+
+    <!-- Save/Load: export/import the current map's voxels+geometry+tokens as
+         a JSON file. Scoped to exactly those three RTDB sub-paths (never the
+         whole maps/<name> node), so this can never touch mapeditor.html's
+         own data even if a map name happens to collide with one of its 2D
+         maps. Import writes straight to those same sub-paths, so it flows
+         through the existing subscribeVoxels/subscribeGeometry/subscribeTokens
+         listeners with no extra glue code -- everyone viewing that map
+         (including player.html) just sees it update live. -->
+    <details class="group-section" open>
+      <summary>Save / Load</summary>
+      <div class="group-section-body">
+        <button id="export-map-btn">⬇ Export Map (.json)</button>
+        <label class="section-title" for="import-map-input" style="margin-top:4px;">Import Map (.json)</label>
+        <input type="file" id="import-map-input" accept="application/json">
+        <div class="instructions">Exports/imports voxels, walls/doors/lights, and tokens for whatever map name is set in the Tokens panel. Importing overwrites that map for everyone currently viewing it.</div>
+      </div>
+    </details>
+
+    <!-- Grid: the voxel terrain itself -- layers, the 2D paint panel, clear.
+         World is 32×32×16, small enough to sync/render as one blob. -->
+    <details class="group-section" open>
+      <summary>Grid</summary>
+      <div class="group-section-body">
+        <div class="controls">
+          <button id="layer-down">&larr; Down</button>
+          <span id="layer-display">Layer: 1 / 16</span>
+          <button id="layer-up">Up &rarr;</button>
+        </div>
+        <canvas id="grid-canvas" width="320" height="320"></canvas>
+        <div class="instructions">
+          <p><strong>Left Click Drag:</strong> Paint selected block</p>
+          <p><strong>Right Click Drag:</strong> Erase block</p>
+          <p><strong>Shift+Click (3D view):</strong> Send a ping at that spot</p>
+        </div>
+        <button id="clear-btn" style="background: #a33;">Clear Map</button>
+      </div>
+    </details>
+
+    <!-- dd2vtt geometry: walls/doors on grid lines, lights anywhere. Data
+         model + RTDB path (maps/<map>/geometry) from js/geometry.js -->
+    <details class="group-section" open>
+      <summary>Geometry (dd2vtt)</summary>
+      <div class="group-section-body">
+        <div class="dice-row">
+          <button id="geo-mode-wall" data-mode="wall">Wall</button>
+          <button id="geo-mode-door" data-mode="door">Door</button>
+          <button id="geo-mode-light" data-mode="light">Light</button>
+          <button id="geo-mode-delete" data-mode="delete">Erase</button>
+          <button id="geo-mode-none" data-mode="none" class="active">None</button>
+        </div>
+        <div class="instructions" id="geo-hint">
+          Drawn on the 2D panel above (not the 3D view). Wall/Door take the texture of the selected block, click one grid corner then an adjacent one.
+          Light: click a cell. Erase: click a wall/door/light. Doors also toggle open/closed with a plain click in the 3D view while mode is "None".
+        </div>
+      </div>
+    </details>
+
+    <!-- Blocks: the palette walls/doors/voxels all draw their texture from -->
+    <details class="group-section" open>
+      <summary>Blocks</summary>
+      <div class="group-section-body">
+        <div class="add-block-form">
+          <input type="text" id="block-title-input" placeholder="Title (e.g. stone)">
+          <button id="add-block-btn">+ Add Block</button>
+        </div>
+        <div id="block-list" class="block-list"></div>
+        <div class="instructions">Textures load automatically from <code>/assets/{title}.png</code></div>
+      </div>
+    </details>
+  </div>
+
+  <div id="right-panel">
+    <canvas id="three-canvas"></canvas>
+    <div id="ping-hint">Shift+Click to ping</div>
+  </div>
+
+  <div id="session-panel">
+    <h2>Session</h2>
+
+    <div id="identity-badge">
+      <span id="identity-name">Not signed in</span>
+      <span id="identity-role" class="role-chip player" style="display:none;"></span>
+    </div>
+
+    <!-- Dice, ported from js/dice.js -->
+    <div class="sync-section">
+      <div class="section-title">Dice</div>
+      <div class="dice-row">
+        <button data-sides="4">d4</button>
+        <button data-sides="6">d6</button>
+        <button data-sides="8">d8</button>
+        <button data-sides="10">d10</button>
+        <button data-sides="12">d12</button>
+        <button data-sides="20">d20</button>
+        <button data-sides="100">d100</button>
+      </div>
+      <div id="dice-result">—</div>
+      <div id="dice-result-meta">&nbsp;</div>
+    </div>
+
+    <!-- Tokens, data layer from js/tokens.js -->
+    <details class="group-section" open>
+      <summary>Tokens</summary>
+      <div class="group-section-body">
+        <div class="add-block-form">
+          <input type="text" id="map-name-input" value="voxel_test" placeholder="Map name">
+        </div>
+        <button id="geo-mode-token" data-mode="token" style="width:100%;">Token Mode</button>
+        <button id="add-token-btn">+ Place Token (click map)</button>
+        <button id="delete-token-btn" disabled>Delete Selected Token</button>
+        <div class="instructions" id="token-hint">
+          Token Mode locks out all painting/editing -- click a token (2D panel or 3D view) to select it, then click empty ground to move it. Only the GM or the token's owner can move it.
+          Click "None" in the Geometry panel to leave Token Mode.
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ── Reused as-is from the mapeditor stack ─────────────────────────────────
+    import { db } from './js/firebase.js';
+    import { ref, onValue, get, set } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
+    import { rollDie, animateDiceResult } from './js/dice.js';
+    import { sendPing } from './js/pings.js';
+    import {
+      subscribePassphrase, checkPassphrase, hasPassphraseSet,
+      saveAuthSession, loadAuthSession, clearAuthSession
+    } from './js/auth.js';
+
+    // ── The four modules: block palette, voxel grid, dd2vtt geometry, tokens ──
+    import * as Block from './modules/block.js';
+    import * as Grid from './modules/grid.js';
+    import * as Geometry from './modules/geometry.js';
+    import * as Token from './modules/token.js';
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOGIN — GM-only on this page (see player.html for the player login).
+    // auth.js was already in the codebase but nothing wired it up until this;
+    // it's the first real consumer of subscribePassphrase/checkPassphrase/
+    // saveAuthSession/loadAuthSession.
+    // ═══════════════════════════════════════════════════════════════════════
+    subscribePassphrase(); // starts listening immediately so checkPassphrase() has data by submit time
+
+    let playerName = '';
+    const isGM = true; // this page is GM-only
+    const characterId = '__gm__';
+    const characterName = 'GM';
+
+    const loginOverlay   = document.getElementById('login-overlay');
+    const loginNameEl    = document.getElementById('login-name');
+    const loginPassEl    = document.getElementById('login-pass');
+    const loginErrorEl   = document.getElementById('login-error');
+    const identityName   = document.getElementById('identity-name');
+    const identityRole   = document.getElementById('identity-role');
+    const mapNameInput   = document.getElementById('map-name-input');
+
+    function applyIdentity() {
+      identityName.textContent = `${playerName} (GM)`;
+      identityRole.style.display = 'inline-block';
+      identityRole.textContent = 'GM';
+      identityRole.className = 'role-chip gm';
+      loginOverlay.classList.add('hidden');
+    }
+
+    document.getElementById('login-submit').addEventListener('click', async () => {
+      const name = loginNameEl.value.trim();
+      const pass = loginPassEl.value;
+      loginErrorEl.textContent = '';
+
+      if (!name) { loginErrorEl.textContent = 'Enter a name.'; return; }
+      if (!checkPassphrase(pass)) { loginErrorEl.textContent = 'Wrong passphrase.'; return; }
+
+      playerName = name;
+      localStorage.setItem('vtt_player_name', playerName); // same key mapeditor.html uses
+      saveAuthSession(playerName, characterId, characterName, mapNameInput.value.trim() || 'voxel_test');
+      applyIdentity();
+    });
+
+    // Restore a previous session if we have one, otherwise show the modal
+    const savedSession = loadAuthSession();
+    if (savedSession && savedSession.playerName) {
+      playerName = savedSession.playerName;
+      applyIdentity();
+    }
+    // else: login-overlay stays visible (not .hidden) until they submit
+
+    // ── Dice UI, wired to js/dice.js + shared dice/last RTDB node ─────────────
+    const diceResultEl = document.getElementById('dice-result');
+    const diceMetaEl = document.getElementById('dice-result-meta');
+
+    document.querySelectorAll('.dice-row button').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const sides = parseInt(btn.dataset.sides, 10);
+        await rollDie(sides, playerName || 'Anonymous');
+      });
+    });
+
+    onValue(ref(db, 'dice/last'), snap => {
+      const data = snap.val();
+      if (!data) return;
+      animateDiceResult(data, diceResultEl, (finalData) => {
+        diceMetaEl.textContent = `d${finalData.sides} — ${finalData.roller}`;
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // THREE.JS CORE — scene/camera/renderer/controls + the raycasting bridge
+    // shared by ping, geometry's door-toggle, and tokens' 3D click-to-move.
+    // ═══════════════════════════════════════════════════════════════════════
+    const threeCanvas = document.getElementById('three-canvas');
+    const rightPanel = document.getElementById('right-panel');
+    const renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, antialias: true });
+    renderer.setSize(rightPanel.clientWidth, rightPanel.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a1a);
+
+    const camera = new THREE.PerspectiveCamera(45, rightPanel.clientWidth / rightPanel.clientHeight, 0.1, 1000);
+    camera.position.set(20, 20, 20);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
+    controls.update();
+
+    // Dimmed relative to the original prototype so dd2vtt point lights
+    // actually read as light sources rather than being washed out.
+    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    dirLight.position.set(15, 25, 10);
+    scene.add(dirLight);
+
+    const raycaster = new THREE.Raycaster();
+    const pointerNDC = new THREE.Vector2();
+    let pointerDownPos = null;
+
+    function raycastAgainst(objects) {
+      raycaster.setFromCamera(pointerNDC, camera);
+      const hits = raycaster.intersectObjects(objects, false);
+      return hits.length ? hits[0] : null;
+    }
+    function setPointerFromEvent(e) {
+      const rect = threeCanvas.getBoundingClientRect();
+      pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    }
+
+    // Everything a click could land ON: voxels, ground, walls/doors, tokens.
+    // Used so ping (and, on player.html, the ruler) hits whatever surface
+    // was actually clicked instead of passing through solid geometry to
+    // land on the floor behind it.
+    function allSolidTargets() {
+      return [
+        ...Grid.getVoxelGroup().children,
+        Grid.getGroundPlane(),
+        ...Geometry.getSolidMeshes(),
+        ...Token.getTokenMeshesArray(),
+      ];
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MODULE INIT — order matters: Grid must exist before Geometry/Token
+    // (both register overlays into it and read its canvas/groups).
+    // ═══════════════════════════════════════════════════════════════════════
+    Block.initBlockPalette();
+    Grid.init(scene, {
+      isModeAllowed: () => true, // this page is GM-only, so every tool is available
+      onDenied: () => alert('Only the GM can edit walls, doors, and lights.'),
+    });
+    Geometry.initGeometry(scene);
+
+    // Non-blocking replacement for window.prompt() when naming a placed
+    // token. That's all this needs to do -- js/tokens.js's real drawToken()
+    // shows art is looked up purely by name (tokenCacheKey(characterId,
+    // lookupName) against tokenTextures, populated by assets.js's
+    // tryLoadTokenTexture()), not from any roster to pick from. Our own
+    // token.js's ensureTokenArt() already does the same lookup, so typing
+    // e.g. "goblin" here picks up /tokens/goblin.png automatically.
+    function promptTokenNameModal() {
+      const overlay = document.getElementById('token-name-overlay');
+      const input = document.getElementById('token-name-input');
+      const okBtn = document.getElementById('token-name-ok');
+      const cancelBtn = document.getElementById('token-name-cancel');
+
+      return new Promise(resolve => {
+        input.value = '';
+        overlay.classList.remove('hidden');
+        input.focus();
+
+        function cleanup(result) {
+          overlay.classList.add('hidden');
+          okBtn.removeEventListener('click', onOk);
+          cancelBtn.removeEventListener('click', onCancel);
+          input.removeEventListener('keydown', onKeydown);
+          resolve(result);
+        }
+        function onOk() { cleanup({ name: input.value.trim() || 'NPC' }); }
+        function onCancel() { cleanup(null); }
+        function onKeydown(e) {
+          if (e.key === 'Enter') onOk();
+          if (e.key === 'Escape') onCancel();
+        }
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        input.addEventListener('keydown', onKeydown);
+      });
+    }
+
+    Token.initTokens(scene, {
+      getIdentity: () => ({ playerName, isGM, characterId, characterName }),
+      requireLogin: () => loginOverlay.classList.remove('hidden'),
+      promptTokenName: promptTokenNameModal,
+    });
+
+    // ── Save/Load: export/import voxels+geometry+tokens for the current map
+    // name, scoped to exactly those three RTDB sub-paths. Import writes
+    // straight back to them, so subscribeVoxels/subscribeGeometry/
+    // subscribeTokens (already listening) pick it up with no extra code,
+    // and player.html sees the same update live. ──────────────────────────
+    document.getElementById('export-map-btn').addEventListener('click', async () => {
+      const mapName = Grid.getMapName();
+      const [voxelsSnap, geometrySnap, tokensSnap] = await Promise.all([
+        get(ref(db, `maps/${mapName}/voxels`)),
+        get(ref(db, `maps/${mapName}/geometry`)),
+        get(ref(db, `maps/${mapName}/tokens`)),
+      ]);
+      const data = {
+        mapName,
+        exportedAt: new Date().toISOString(),
+        voxels: voxelsSnap.val() ?? null,
+        geometry: geometrySnap.val() ?? null,
+        tokens: tokensSnap.val() ?? null,
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${mapName}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('import-map-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = ''; // reset so re-selecting the same file still fires 'change'
+      if (!file) return;
+
+      let data;
+      try {
+        data = JSON.parse(await file.text());
+      } catch (err) {
+        alert('That file is not valid JSON: ' + err.message);
+        return;
+      }
+
+      const mapName = Grid.getMapName();
+      const ok = confirm(`Overwrite "${mapName}"'s voxels, walls/doors/lights, and tokens with this file?\n\nThis affects everyone currently viewing this map, including player.html.`);
+      if (!ok) return;
+
+      await Promise.all([
+        set(ref(db, `maps/${mapName}/voxels`), data.voxels ?? null),
+        set(ref(db, `maps/${mapName}/geometry`), data.geometry ?? null),
+        set(ref(db, `maps/${mapName}/tokens`), data.tokens ?? null),
+      ]);
+    });
+
+    // ── Ping rendering (new Three.js visual; sendPing itself is reused as-is) ─
+    const pingMeshes = {};
+    const pingGeometry = new THREE.RingGeometry(0.4, 0.55, 32);
+
+    onValue(ref(db, 'pings'), snap => {
+      const data = snap.val() || {};
+      const seenIds = new Set(Object.keys(data));
+
+      for (const id of Object.keys(pingMeshes)) {
+        if (!seenIds.has(id)) {
+          scene.remove(pingMeshes[id].mesh);
+          delete pingMeshes[id];
+        }
+      }
+
+      for (const [id, ping] of Object.entries(data)) {
+        if (pingMeshes[id]) continue;
+        const material = new THREE.MeshBasicMaterial({
+          color: 0xffc832, transparent: true, opacity: 0.9, side: THREE.DoubleSide,
+        });
+        const mesh = new THREE.Mesh(pingGeometry, material);
+        mesh.rotation.x = -Math.PI / 2;
+        // sendPing() (reused as-is from js/pings.js) only stores grid tile
+        // coords, no elevation -- so height is recomputed here from
+        // whatever's actually on that column right now, rather than always
+        // drawing at floor level regardless of terrain height.
+        const gx = Math.min(Grid.GRID_SIZE - 1, Math.max(0, ping.x));
+        const gz = Math.min(Grid.GRID_SIZE - 1, Math.max(0, ping.y));
+        const topY = Grid.columnTopY(gx, gz);
+        mesh.position.set(ping.x - Grid.GRID_OFFSET, topY + 0.05, ping.y - Grid.GRID_OFFSET);
+        scene.add(mesh);
+        pingMeshes[id] = { mesh, startTime: ping.t || Date.now() };
+      }
+    });
+
+    function animatePings() {
+      const now = Date.now();
+      for (const { mesh, startTime } of Object.values(pingMeshes)) {
+        const age = (now - startTime) / 1000;
+        const scale = 1 + age * 4;
+        mesh.scale.set(scale, scale, scale);
+        mesh.material.opacity = Math.max(0, 0.9 * (1 - age / 3));
+      }
+    }
+
+    // ── Pointer handling: shift+click = ping, plain click = door-toggle or
+    // token select/place/move (routed to the relevant module), drag = orbit
+    // (OrbitControls handles that natively) ───────────────────────────────
+    threeCanvas.addEventListener('pointerdown', (e) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    });
+
+    threeCanvas.addEventListener('pointerup', (e) => {
+      if (!pointerDownPos) return;
+      const moved = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      pointerDownPos = null;
+      if (moved > 6) return; // was an orbit drag
+
+      setPointerFromEvent(e);
+
+      if (e.shiftKey) {
+        const hit = raycastAgainst(allSolidTargets());
+        if (!hit) return;
+        const tx = Math.round(hit.point.x + Grid.GRID_OFFSET);
+        const ty = Math.round(hit.point.z + Grid.GRID_OFFSET);
+        sendPing(tx, ty, playerName || 'Anonymous');
+        return;
+      }
+
+      if (!playerName) { loginOverlay.classList.remove('hidden'); return; }
+
+      // Wall/door/light placement/erase happens on the 2D grid panel, not
+      // here -- any of those tools being armed blocks 3D interaction too.
+      const mode = Grid.getMode();
+      if (mode !== 'none' && mode !== 'token') return;
+
+      // Door toggling is a "None" mode action only; Token mode is nothing
+      // but token select/move.
+      if (mode === 'none' && Geometry.tryToggleDoorAt3DHit(raycastAgainst)) return;
+
+      Token.handlePointerUp3D(raycastAgainst);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      animatePings();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = rightPanel.clientWidth / rightPanel.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(rightPanel.clientWidth, rightPanel.clientHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>
