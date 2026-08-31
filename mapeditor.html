@@ -384,8 +384,10 @@ canvas{display:block;cursor:crosshair}
 
   <button class="tb-btn" id="loadJsonBtn" title="Import JSON">⬆</button>
   <input type="file" id="jsonFileInput" accept=".json" hidden>
-  <button class="tb-btn" id="loadVttBtn" title="Load dd2vtt (brings its walls/lights/doors with it)">🗺 Load dd2vtt</button>
+  <button class="tb-btn" id="loadVttBtn" title="Load dd2vtt (brings its walls/lights/doors with it) — REPLACES this map's current geometry">🗺 Load dd2vtt</button>
   <input type="file" id="vttFileInput" accept=".dd2vtt,.json" hidden>
+  <button class="tb-btn" id="addVttSectionBtn" title="Add a dd2vtt as a new, draggable piece to position alongside what's already here — nothing merges until you confirm its placement">➕ Add dd2vtt Section</button>
+  <input type="file" id="vttSectionInput" accept=".dd2vtt,.json" multiple hidden>
 
   <button class="tb-btn" id="lockPlayersBtn" title="Lock player view while setting up">🔒</button>
   <button class="tb-btn" id="lockPingsBtn" title="Disable pings and laser pointer for players this session">📍</button>
@@ -1121,6 +1123,28 @@ async function commitPaste(anchorX,anchorY){
 }
 
 let draggingToken=null,draggingProp=null,placingToken=null;
+// ── Map stitching (dd2vtt import) ──────────────────────────────────────────────
+// Pending layers: freshly-imported dd2vtt pieces, not yet committed. Each is
+// draggable on the canvas and shows a live preview of its walls/portals, but
+// none of that geometry is real yet -- nothing here touches geometry.walls,
+// geometry.doors, or Firebase until the DM explicitly confirms it. This is
+// the design established earlier: once confirmed, a piece's walls/doors get
+// shifted by its final position and merged into the map's ordinary geometry,
+// indistinguishable from anything hand-drawn -- no system downstream (line of
+// sight, movement, the trigger system) ever needs to know "imported pieces"
+// exist at all. Keeping it a temporary, separate list until that confirm step
+// is what makes that true.
+let pendingImportLayers=[]; // [{id,name,img,x,y,gridWidth,gridHeight,scale,walls,portals}]
+let selectedImportLayerId=null;
+let draggingImportLayer=null; // {id, offsetX, offsetY} in grid units, while a drag is active
+// Confirmed layers: permanent, already-merged pieces' images, loaded back
+// from Firebase (maps/{mapName}/mapLayers). Keyed by layerId so an Image
+// object is only decoded once per layer, not re-created on every Firebase
+// update -- this is the actual "load it back and draw it" half of the
+// import feature; without this, a confirmed piece's geometry is real and
+// visible but its art vanishes the instant its pending-layer entry (the
+// only thing that WAS drawing it) gets discarded on confirm.
+const confirmedMapLayers={};
 let pingMode=false,isHolding=false,pingHoldTimer=null,myLaserRef=null;
 let panning=false,panStartX=0,panStartY=0,camStartX=0,camStartY=0,spaceDown=false;
 let rulerStart=null,rulerEnd=null,rulerActive=false,rulerMode=false;
@@ -1242,6 +1266,21 @@ function subscribeLive(){
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;
+      // Confirmed map-stitching layers -- each piece's permanent, merged-in
+      // art. Add/update anything new or changed; remove anything no longer
+      // present (a layer could be deleted directly in Firebase).
+      const liveLayerIds=new Set(Object.keys(data.mapLayers||{}));
+      for(const id of Object.keys(confirmedMapLayers)) if(!liveLayerIds.has(id)) delete confirmedMapLayers[id];
+      for(const[id,layerData]of Object.entries(data.mapLayers||{})){
+        const existing=confirmedMapLayers[id];
+        if(existing&&existing.url===layerData.url){ existing.x=layerData.x;existing.y=layerData.y;existing.w=layerData.w;existing.h=layerData.h; continue; }
+        const entry={url:layerData.url,x:layerData.x,y:layerData.y,w:layerData.w,h:layerData.h,img:null};
+        confirmedMapLayers[id]=entry;
+        const img=new Image();
+        img.onload=()=>{entry.img=img;};
+        img.src=layerData.url;
+      }
+      updateImportSidebar();
       timeOfDay=data.nightMode||"day";
     }
     // refreshBgStatus removed with bg panel
@@ -2075,16 +2114,241 @@ document.getElementById("vttFileInput").addEventListener("change",async e=>{
     geometry.lights.push(...parsed.lights);
     if(parsed.doors)geometry.doors.push(...parsed.doors);
     geometry.pixelsPerGrid=parsed.pixelsPerGrid||70;
-    // Set background image
+    // Save geometry BEFORE the background image write, not after. Both live
+    // under the same maps/{mapName} node the live subscription watches as
+    // a whole, so writing the background first would trigger a subscription
+    // reload while isSavingGeometry is still false (it only becomes true
+    // inside saveGeometry() itself) -- that reload would see the OLD
+    // geometry still in Firebase and silently overwrite the walls/doors/
+    // lights just pushed locally, before they ever actually got saved. This
+    // ordering closes that window entirely.
+    await saveGeometry();
     const mapName=mapInput.value.trim()||"dungeon-1";
     if(parsed.imageDataUrl){
       await set(ref(db,`maps/${mapName}/background`),parsed.imageDataUrl);
       await set(ref(db,`maps/${mapName}/backgroundPpi`),parsed.pixelsPerGrid||70);
     }
-    await saveGeometry();
     toast(`DD2VTT: ${parsed.walls.length} walls · ${parsed.lights.length} lights · ${parsed.doors?.length||0} doors`);
   }catch(err){toast("DD2VTT failed: "+err.message);console.error(err);}
 });
+
+document.getElementById("addVttSectionBtn").onclick=()=>document.getElementById("vttSectionInput").click();
+document.getElementById("vttSectionInput").addEventListener("change",async e=>{
+  const files=Array.from(e.target.files);e.target.value="";
+  for(const file of files){
+    try{
+      const json=JSON.parse(await file.text());
+      const parsed=parseDD2VTT(json);
+      if(!parsed.imageDataUrl){toast(`${file.name}: no embedded image, skipped`);continue;}
+      const img=new Image();
+      await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=parsed.imageDataUrl;});
+      // Stagger each new piece's starting position so multiple imports in one
+      // batch don't all land exactly on top of each other -- purely a
+      // starting point, the DM drags it wherever it actually belongs.
+      const stagger=pendingImportLayers.length*2;
+      pendingImportLayers.push({
+        id:"import_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+        name:file.name,img,
+        x:stagger,y:stagger,
+        gridWidth:parsed.mapSize.x,gridHeight:parsed.mapSize.y,
+        pps:parsed.pixelsPerGrid,
+        walls:parsed.walls,doors:parsed.doors,lights:parsed.lights,
+      });
+    }catch(err){toast(`${file.name}: `+err.message);console.error(err);}
+  }
+  if(pendingImportLayers.length){
+    selectedImportLayerId=pendingImportLayers[pendingImportLayers.length-1].id;
+    document.getElementById("import-sidebar").style.display="block";
+    updateImportSidebar();
+    toast(`${files.length} section(s) added — drag to position, then Confirm each one`);
+  }
+});
+
+/** Draws every pending (unconfirmed) import layer's image at its current
+ *  position, plus a faint preview of its walls/doors so the DM can see how
+ *  the geometry will line up before committing to it. Called from the main
+ *  render loop, same as any other overlay. */
+function drawPendingImportLayers(){
+  for(const layer of pendingImportLayers){
+    const px=layer.x*TILE,py=layer.y*TILE;
+    const pw=layer.gridWidth*TILE,ph=layer.gridHeight*TILE;
+    ctx.save();
+    ctx.globalAlpha=layer.id===selectedImportLayerId?0.95:0.7;
+    ctx.drawImage(layer.img,px,py,pw,ph);
+    ctx.globalAlpha=1;
+    // Wall/door preview -- dashed and semi-transparent since this geometry
+    // isn't real yet, just a preview of what Confirm would create.
+    ctx.strokeStyle=layer.id===selectedImportLayerId?"rgba(100,200,255,0.9)":"rgba(100,200,255,0.5)";
+    ctx.lineWidth=2/camera.zoom;
+    ctx.setLineDash([6/camera.zoom,4/camera.zoom]);
+    for(const w of layer.walls){
+      ctx.beginPath();
+      ctx.moveTo(px+w.x1*TILE,py+w.y1*TILE);
+      ctx.lineTo(px+w.x2*TILE,py+w.y2*TILE);
+      ctx.stroke();
+    }
+    ctx.strokeStyle=layer.id===selectedImportLayerId?"rgba(120,220,140,0.9)":"rgba(120,220,140,0.5)";
+    for(const d of layer.doors){
+      ctx.beginPath();
+      ctx.moveTo(px+d.x1*TILE,py+d.y1*TILE);
+      ctx.lineTo(px+d.x2*TILE,py+d.y2*TILE);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // Light preview -- a simple glow marker at each light's position. Not a
+    // simulation of the final lighting (that's what geometry.lights'
+    // real rendering does once confirmed), just enough to show where each
+    // one will land.
+    for(const l of layer.lights){
+      const lx=px+l.x*TILE,ly=py+l.y*TILE;
+      const grad=ctx.createRadialGradient(lx,ly,0,lx,ly,18/camera.zoom);
+      const a=layer.id===selectedImportLayerId?0.5:0.3;
+      grad.addColorStop(0,`rgba(255,220,140,${a})`);
+      grad.addColorStop(1,"rgba(255,220,140,0)");
+      ctx.fillStyle=grad;
+      ctx.beginPath();ctx.arc(lx,ly,18/camera.zoom,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=layer.id===selectedImportLayerId?"rgba(255,220,140,0.95)":"rgba(255,220,140,0.6)";
+      ctx.beginPath();ctx.arc(lx,ly,3/camera.zoom,0,Math.PI*2);ctx.fill();
+    }
+    // Selection border around the whole piece
+    if(layer.id===selectedImportLayerId){
+      ctx.strokeStyle="#c8a84b";ctx.lineWidth=3/camera.zoom;ctx.setLineDash([]);
+      ctx.strokeRect(px,py,pw,ph);
+    }
+    ctx.restore();
+  }
+}
+
+function updateImportSidebar(){
+  const list=document.getElementById("import-layers-list");
+  if(!list)return;
+  list.innerHTML="";
+  const hasPending=pendingImportLayers.length>0;
+  const hasConfirmed=Object.keys(confirmedMapLayers).length>0;
+  if(!hasPending&&!hasConfirmed){document.getElementById("import-sidebar").style.display="none";return;}
+  document.getElementById("import-sidebar").style.display="block";
+  for(const layer of pendingImportLayers){
+    const card=document.createElement("div");
+    card.className="import-layer-card"+(layer.id===selectedImportLayerId?" active":"");
+    card.innerHTML=`
+      <div class="import-layer-title">${layer.name}</div>
+      <div class="import-layer-meta">${layer.gridWidth}×${layer.gridHeight} · ${layer.walls.length} walls · ${layer.doors.length} doors · ${layer.lights.length} lights</div>
+      <div class="import-layer-grid">
+        <label>X <input type="number" step="0.5" class="import-x" value="${layer.x.toFixed(1)}"></label>
+        <label>Y <input type="number" step="0.5" class="import-y" value="${layer.y.toFixed(1)}"></label>
+      </div>
+      <div class="import-layer-btns">
+        <button class="import-confirm-btn">✅ Confirm</button>
+        <button class="import-discard-btn">🗑 Discard</button>
+      </div>
+    `;
+    card.onclick=(e)=>{
+      if(e.target.tagName==="INPUT"||e.target.tagName==="BUTTON")return;
+      selectedImportLayerId=layer.id;updateImportSidebar();render();
+    };
+    card.querySelector(".import-x").onchange=(e)=>{layer.x=parseFloat(e.target.value)||0;render();};
+    card.querySelector(".import-y").onchange=(e)=>{layer.y=parseFloat(e.target.value)||0;render();};
+    card.querySelector(".import-confirm-btn").onclick=(e)=>{e.stopPropagation();confirmImportLayer(layer.id);};
+    card.querySelector(".import-discard-btn").onclick=(e)=>{e.stopPropagation();discardImportLayer(layer.id);};
+    list.appendChild(card);
+  }
+  if(hasConfirmed){
+    const header=document.createElement("div");
+    header.style.cssText="font-family:'Cinzel',serif;font-size:11px;color:var(--text-dim);margin:12px 0 6px;border-top:1px solid var(--border);padding-top:10px";
+    header.textContent="Confirmed sections";
+    list.appendChild(header);
+    for(const[layerId,layer]of Object.entries(confirmedMapLayers)){
+      const wallCount=geometry.walls.filter(w=>w.sourceLayerId===layerId).length;
+      const doorCount=geometry.doors.filter(d=>d.sourceLayerId===layerId).length;
+      const lightCount=geometry.lights.filter(l=>l.sourceLayerId===layerId).length;
+      const card=document.createElement("div");
+      card.className="import-layer-card";
+      card.innerHTML=`
+        <div class="import-layer-title">Section at (${layer.x.toFixed(1)}, ${layer.y.toFixed(1)})</div>
+        <div class="import-layer-meta">${layer.w}×${layer.h} · ${wallCount} walls · ${doorCount} doors · ${lightCount} lights</div>
+        <div class="import-layer-btns">
+          <button class="import-remove-confirmed-btn">🗑 Remove Section</button>
+        </div>
+      `;
+      card.querySelector(".import-remove-confirmed-btn").onclick=(e)=>{e.stopPropagation();removeConfirmedSection(layerId);};
+      list.appendChild(card);
+    }
+  }
+}
+
+function discardImportLayer(id){
+  pendingImportLayers=pendingImportLayers.filter(l=>l.id!==id);
+  if(selectedImportLayerId===id)selectedImportLayerId=pendingImportLayers[0]?.id||null;
+  updateImportSidebar();render();
+}
+
+/** The one-time commit: shifts this piece's walls/doors/lights by its final
+ *  (x,y) and merges them into the map's ordinary geometry.walls/doors/
+ *  lights -- from this point on they're completely indistinguishable from
+ *  anything hand-drawn. Its image becomes a new, permanently-positioned
+ *  layer saved under maps/{mapName}/mapLayers, kept as its own separate
+ *  image rather than composited into one shared background -- stitching
+ *  several map images into one ever-growing base64 blob is exactly what
+ *  risks Firebase's per-value size ceiling as a city grows; multiple
+ *  separate images, each staying at its original size, sidesteps that
+ *  entirely. No other system (visibility, movement, the trigger system)
+ *  ever needs to know this piece was imported rather than hand-built.
+ */
+async function confirmImportLayer(id){
+  const layer=pendingImportLayers.find(l=>l.id===id);
+  if(!layer)return;
+  const ox=layer.x,oy=layer.y;
+  // Tagging each merged object with .sourceLayerId is purely additive
+  // metadata -- visibility, movement, and the trigger system all read only
+  // x1/y1/x2/y2 (and closed/freestanding for doors) and never look at this
+  // field, so nothing downstream needs to know or care it exists. It exists
+  // solely so a later "remove this section" can find exactly what to
+  // remove, without needing every wall/door/light to otherwise behave any
+  // differently from something hand-drawn.
+  const addedWalls=layer.walls.map(w=>{const o=addWall(geometry.walls,w.x1+ox,w.y1+oy,w.x2+ox,w.y2+oy);o.sourceLayerId=layer.id;return o;});
+  const addedDoors=layer.doors.map(d=>{const o=addDoor(geometry.doors,d.x1+ox,d.y1+oy,d.x2+ox,d.y2+oy,{closed:d.closed,freestanding:d.freestanding});o.sourceLayerId=layer.id;return o;});
+  const addedLights=layer.lights.map(l=>{const o=addLight(geometry.lights,l.x+ox,l.y+oy,{range:l.range,intensity:l.intensity,color:l.color,shadows:l.shadows});o.sourceLayerId=layer.id;return o;});
+  try{
+    await saveGeometry();
+    const mapName=mapInput.value.trim()||"dungeon-1";
+    // Uses the piece's own id as the Firebase key directly (not push(),
+    // which would generate an unrelated random key) so the image entry and
+    // its geometry's sourceLayerId tags always match.
+    await set(ref(db,`maps/${mapName}/mapLayers/${layer.id}`),{url:layer.img.src,x:ox,y:oy,w:layer.gridWidth,h:layer.gridHeight});
+    toast(`"${layer.name}" merged in — ${layer.walls.length} walls, ${layer.doors.length} doors now part of the map`);
+    discardImportLayer(id);
+  }catch(err){
+    // Roll back the in-memory geometry push on failure so a failed save
+    // doesn't leave the DM's local view showing walls that were never
+    // actually persisted -- a half-committed piece is worse than an
+    // obviously-still-pending one.
+    geometry.walls=geometry.walls.filter(w=>!addedWalls.includes(w));
+    geometry.doors=geometry.doors.filter(d=>!addedDoors.includes(d));
+    geometry.lights=geometry.lights.filter(l=>!addedLights.includes(l));
+    toast("Confirm failed — see console. Nothing was saved.");
+    console.error("[confirmImportLayer] FAILED:",err);
+  }
+}
+
+/** Removes a previously-confirmed section entirely: its image layer and
+ *  every wall/door/light tagged with its id. This is the counterpart to
+ *  Discard for pending pieces -- Discard undoes something never committed,
+ *  this undoes something that was. */
+async function removeConfirmedSection(layerId){
+  if(!confirm("Remove this section? This deletes its walls, doors, lights, and art from the map. This can't be undone."))return;
+  geometry.walls=geometry.walls.filter(w=>w.sourceLayerId!==layerId);
+  geometry.doors=geometry.doors.filter(d=>d.sourceLayerId!==layerId);
+  geometry.lights=geometry.lights.filter(l=>l.sourceLayerId!==layerId);
+  try{
+    await saveGeometry();
+    const mapName=mapInput.value.trim()||"dungeon-1";
+    await remove(ref(db,`maps/${mapName}/mapLayers/${layerId}`));
+    toast("Section removed");
+  }catch(err){
+    toast("Remove failed — see console");
+    console.error("[removeConfirmedSection] FAILED:",err);
+  }
+}
 
 // ── JSON Import ───────────────────────────────────────────────────────────────
 document.getElementById("loadJsonBtn").onclick=()=>document.getElementById("jsonFileInput").click();
@@ -2800,6 +3064,10 @@ function render(){
       ctx.drawImage(bgImage,0,0,bw,bh);
     }
   }
+  for(const layer of Object.values(confirmedMapLayers)){
+    if(!layer.img)continue; // still decoding -- next frame will have it
+    ctx.drawImage(layer.img,layer.x*TILE,layer.y*TILE,layer.w*TILE,layer.h*TILE);
+  }
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
@@ -2817,6 +3085,7 @@ function render(){
   drawGrid();
   if(currentShape==="select")drawSelection();else drawPreview();
   drawClipSelection();
+  drawPendingImportLayers();
   ctx.restore();
 
   // ── Geometry editor indicators (camera space) ─────────────────────────────
@@ -3411,6 +3680,20 @@ canvas.addEventListener("pointerdown",e=>{
   const[sx,sy]=screenPos(e);
   // Middle mouse / space = pan — always wins, checked before any category intercept
   if(e.button===1||spaceDown){canvas.setPointerCapture(e.pointerId);panning=true;panStartX=sx;panStartY=sy;camStartX=camera.x;camStartY=camera.y;canvas.style.cursor="grabbing";return;}
+  // Pending import layer drag — only intercepts if the click actually lands
+  // on the currently-selected pending piece, so every other tool keeps
+  // working normally everywhere else on the map.
+  if(selectedImportLayerId){
+    const layer=pendingImportLayers.find(l=>l.id===selectedImportLayerId);
+    if(layer){
+      const[wx0,wy0]=toWorld(sx,sy);const gx0=wx0/TILE,gy0=wy0/TILE;
+      if(gx0>=layer.x&&gx0<=layer.x+layer.gridWidth&&gy0>=layer.y&&gy0<=layer.y+layer.gridHeight){
+        canvas.setPointerCapture(e.pointerId);
+        draggingImportLayer={id:layer.id,offsetX:gx0-layer.x,offsetY:gy0-layer.y};
+        return;
+      }
+    }
+  }
   // Structure mode captures input — don't paint tiles
   if(activeCategory==="structure"&&activeVerb) return;
   if(e.button!==0) return;
@@ -3500,6 +3783,19 @@ canvas.addEventListener("pointerdown",e=>{
 canvas.addEventListener("pointermove",e=>{
   const[sx,sy]=screenPos(e);
   if(panning){camera.x=camStartX+(sx-panStartX);camera.y=camStartY+(sy-panStartY);return;}
+  if(draggingImportLayer){
+    const layer=pendingImportLayers.find(l=>l.id===draggingImportLayer.id);
+    if(layer){
+      const[wx1,wy1]=toWorld(sx,sy);const gx1=wx1/TILE,gy1=wy1/TILE;
+      let newX=gx1-draggingImportLayer.offsetX,newY=gy1-draggingImportLayer.offsetY;
+      const snapEl=document.getElementById("import-snap-size");
+      const snap=snapEl?parseFloat(snapEl.value):1;
+      if(snap>0){newX=Math.round(newX/snap)*snap;newY=Math.round(newY/snap)*snap;}
+      layer.x=newX;layer.y=newY;
+      updateImportSidebar();
+    }
+    return;
+  }
   const[wx,wy]=toWorld(sx,sy);hoverTileX=Math.floor(wx/TILE);hoverTileY=Math.floor(wy/TILE);hoverWX=wx;hoverWY=wy;
   coordsEl.textContent=`${hoverTileX}, ${hoverTileY}`;
   if(rulerActive){const snap=findSnapPoint(tokens,wx,wy);rulerEnd=snap||[wx,wy];return;}
@@ -3542,6 +3838,7 @@ canvas.addEventListener("pointerup",e=>{
   const[sx,sy]=screenPos(e);
   if(rulerActive) return;
   if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":cursorFor();return;}
+  if(draggingImportLayer){draggingImportLayer=null;return;}
   if(pingMode){clearTimeout(pingHoldTimer);if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}else{const[wx,wy]=toWorld(sx,sy);sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);}isHolding=false;pingMode=false;document.getElementById("pingBtn")?.classList.remove("active");return;}
 
   // Token drag end
@@ -4496,5 +4793,41 @@ document.getElementById('loot-push').onclick=async()=>{
   alert('Pushed ' + checked.length + ' item(s) to inventory!');
 };
 </script>
+<!-- ============================================================
+     Map stitching sidebar — lists pending (unconfirmed) dd2vtt
+     import pieces. Hidden until at least one is pending. Each
+     card's X/Y fields and the map drag are two ways to move the
+     same thing, kept in sync by updateImportSidebar()/render().
+     ============================================================ -->
+<div id="import-sidebar" style="display:none;position:fixed;top:84px;right:0;bottom:calc(var(--initiative) + var(--chat-collapsed));width:280px;background:var(--panel);border-left:1px solid var(--border);z-index:25;overflow-y:auto;padding:12px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <h3 style="margin:0;font-family:'Cinzel',serif;font-size:13px;color:var(--gold)">🗺️ Pending Map Sections</h3>
+  </div>
+  <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);margin-bottom:10px">
+    Snap to grid:
+    <select id="import-snap-size" style="background:var(--bg,#1a1510);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px">
+      <option value="0">Off</option>
+      <option value="0.5">0.5</option>
+      <option value="1" selected>1.0</option>
+    </select>
+  </label>
+  <div id="import-layers-list"></div>
+  <div style="font-size:10px;color:var(--text-dim);margin-top:10px;line-height:1.5">
+    Click a card to select it, then drag it on the map. Confirm merges its walls/doors into this map permanently and saves its art as a new positioned layer — Discard removes it with no trace.
+  </div>
+</div>
+<style>
+.import-layer-card{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:8px;cursor:pointer;font-size:12px}
+.import-layer-card.active{border-color:var(--gold)}
+.import-layer-title{font-family:'Cinzel',serif;font-size:11px;color:var(--text);margin-bottom:2px;word-break:break-all}
+.import-layer-meta{font-size:10px;color:var(--text-dim);margin-bottom:6px}
+.import-layer-grid{display:flex;gap:6px;margin-bottom:6px}
+.import-layer-grid label{flex:1;font-size:10px;color:var(--text-dim);display:flex;flex-direction:column;gap:2px}
+.import-layer-grid input{width:100%;background:var(--bg,#1a1510);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 4px;font-size:11px}
+.import-layer-btns{display:flex;gap:6px}
+.import-layer-btns button{flex:1;font-size:10px;height:26px;padding:0}
+.import-confirm-btn{border-color:var(--gold)!important;color:var(--gold)!important}
+.import-discard-btn{border-color:#a04040!important;color:#e08a8a!important}
+</style>
 </body>
 </html>

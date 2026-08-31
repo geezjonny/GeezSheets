@@ -186,10 +186,19 @@ function repositionAllTokens() {
   for (const [id, tok] of Object.entries(tokens)) upsertTokenMesh(id, tok);
 }
 
+// A token's link to "which player controls it" is its NAME, not
+// ownerPlayerName or characterId -- both of those are always the GM's own
+// values on every token, since only the GM ever places one (players have
+// no "+ Place Token" button). If a token's name matches the character name
+// a player logged in as, that player controls it.
+function sameCharacterName(a, b) {
+  return !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 function canControlToken(tok) {
-  const { playerName, isGM } = getIdentity();
+  const { characterName, isGM } = getIdentity();
   if (isGM) return true;
-  return tok.ownerPlayerName === playerName;
+  return sameCharacterName(tok?.name, characterName);
 }
 
 // Clicking any token (yours, another player's, or an NPC's) shows its
@@ -338,13 +347,13 @@ export function handlePointerUp3D(raycastAgainst) {
 }
 
 // ── Arrow-key movement, scoped to the logged-in player's OWN character ────
-// Finds the token whose characterId matches the current login -- not just
-// any token the player happens to own -- and steps it one cell per press.
-// GM presses do nothing here (isGM tokens have no characterId to match).
+// Finds the token whose NAME matches the character the player logged in as
+// -- see canControlToken()'s comment for why name is the right match, not
+// characterId (always null on GM-placed tokens). GM presses do nothing here.
 function findMyToken() {
-  const { isGM, characterId } = getIdentity();
-  if (isGM || !characterId) return null;
-  return Object.entries(tokens).find(([, tok]) => tok.characterId === characterId) || null;
+  const { isGM, characterName } = getIdentity();
+  if (isGM || !characterName) return null;
+  return Object.entries(tokens).find(([, tok]) => sameCharacterName(tok.name, characterName)) || null;
 }
 
 let lastArrowMoveAt = 0;

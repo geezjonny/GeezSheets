@@ -500,6 +500,10 @@ import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 // ── State ─────────────────────────────────────────────────────────────────────
 let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},chains={},triggerNodes={},mirrors={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
+// Confirmed map-stitching layers -- read-only here, players never place or
+// remove these, only see them. See mapeditor-stitcher.html for how a piece
+// gets here (drag to position, Confirm merges its geometry and saves this).
+const confirmedMapLayers={};
 const geometry={walls:[],lights:[],doors:[],timeOfDay:"day",lightingParams:{blackAlpha:1,lightPunch:1}};
 let _geoLC=null,_geoLX=null;
 
@@ -862,6 +866,23 @@ function subscribeLive(){
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;timeOfDay=data.nightMode||"day"||"day";
+      // Confirmed map-stitching layers -- same read logic as the DM tool.
+      // Without this, players would never see a section's art at all: the
+      // DM's own preview only exists while a piece is still pending, and
+      // once confirmed its geometry becomes real (and IS already visible
+      // to players via the normal wall/door rendering) but its image had no
+      // path to reach the player view whatsoever until this.
+      const liveLayerIds=new Set(Object.keys(data.mapLayers||{}));
+      for(const id of Object.keys(confirmedMapLayers)) if(!liveLayerIds.has(id)) delete confirmedMapLayers[id];
+      for(const[id,layerData]of Object.entries(data.mapLayers||{})){
+        const existing=confirmedMapLayers[id];
+        if(existing&&existing.url===layerData.url){ existing.x=layerData.x;existing.y=layerData.y;existing.w=layerData.w;existing.h=layerData.h; continue; }
+        const entry={url:layerData.url,x:layerData.x,y:layerData.y,w:layerData.w,h:layerData.h,img:null};
+        confirmedMapLayers[id]=entry;
+        const img=new Image();
+        img.onload=()=>{entry.img=img;};
+        img.src=layerData.url;
+      }
     }
     setStatus("live",`Live · ${Object.keys(tiles).length} tiles`);
     if(firstLoad){firstLoad=false;doFit();overlayEl.classList.add("hidden");}
@@ -1263,6 +1284,16 @@ function draw(){
       ctx.save();ctx.filter="saturate(0.4) brightness(0.35)";ctx.drawImage(bgImage,0,0,bw,bh);
       ctx.filter="none";ctx.restore();
     }else{ctx.drawImage(bgImage,0,0,bw,bh);}
+  }
+  for(const layer of Object.values(confirmedMapLayers)){
+    if(!layer.img)continue;
+    if(timeOfDay!=="day"){
+      ctx.save();ctx.filter="saturate(0.4) brightness(0.35)";
+      ctx.drawImage(layer.img,layer.x*TILE,layer.y*TILE,layer.w*TILE,layer.h*TILE);
+      ctx.filter="none";ctx.restore();
+    }else{
+      ctx.drawImage(layer.img,layer.x*TILE,layer.y*TILE,layer.w*TILE,layer.h*TILE);
+    }
   }
   for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
   if(timeOfDay!=="day"){
