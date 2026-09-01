@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Overworld VTT - Interactive Tile Drag & Rotate V6</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #0a0a0a; color: #eee; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
+    
+    #viewport { flex: 1; position: relative; cursor: default; overflow: hidden; background: #050505; }
+    #viewport.space-held { cursor: grab !important; }
+    #viewport.panning { cursor: grabbing !important; }
+
+    canvas { position: absolute; top: 0; left: 0; }
+    
+    #sidebar { width: 360px; background: #161616; border-left: 1px solid #333; padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; z-index: 10; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-row { display: flex; gap: 6px; align-items: center; }
+    label { font-size: 11px; color: #aaa; text-transform: uppercase; font-weight: bold; }
+    input[type="text"], input[type="number"], textarea, select { background: #242424; color: #fff; border: 1px solid #444; padding: 6px; border-radius: 4px; font-family: inherit; width: 100%; }
+    
+    button { background: #0066cc; color: #fff; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
+    button:hover { background: #0088ff; }
+    button.danger { background: #cc3333; }
+    button.danger:hover { background: #ff4444; }
+    button.secondary { background: #333; }
+    button.active { background: #00aa66; }
+    
+    .mode-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-transform: uppercase; display: inline-block; }
+    .mode-overworld { background: #0055aa; color: #fff; }
+    .mode-micro { background: #cc7700; color: #fff; }
+
+    .tile-card { background: #222; border: 1px solid #444; padding: 8px; border-radius: 4px; display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .tile-card.selected { border-color: #00ff88; }
+    .tile-card-header { font-weight: bold; font-size: 12px; color: #00ff88; display: flex; justify-content: space-between; }
+    .tile-info { font-size: 10px; color: #aaa; }
+    
+    #viewOverlay { position: absolute; top: 12px; left: 12px; z-index: 5; display: flex; gap: 10px; align-items: center; }
+  </style>
+</head>
+<body>
+
+<div id="viewport">
+  <div id="viewOverlay">
+    <span id="modeBadge" class="mode-badge mode-overworld">OVERWORLD MODE</span>
+    <button id="exitMicroBtn" class="danger" style="display: none;">← Close Micro-Map</button>
+    <button id="drawRoadBtn" class="secondary" style="display: none;">🖊 Draw Road Tool: OFF</button>
+    <button id="clearRoadsBtn" class="danger" style="display: none;">Clear Roads</button>
+  </div>
+  
+  <canvas id="mapCanvas"></canvas>
+  <canvas id="gridCanvas"></canvas>
+</div>
+
+<div id="sidebar">
+  <h3>Campaign Manager</h3>
+  
+  <div class="form-group">
+    <label>1. Overworld Image</label>
+    <input type="file" id="worldInput" accept="image/*">
+  </div>
+
+  <div class="form-group">
+    <label>2. Import Campaign (JSON)</label>
+    <input type="file" id="importCampaignInput" accept=".json">
+  </div>
+
+  <button id="exportCampaignBtn">Export Campaign Save</button>
+  <button id="addMarkerModeBtn" class="secondary">+ Add Marker Tool: OFF</button>
+
+  <hr style="border-color: #333; width: 100%;">
+
+  <div id="inspectorContent" style="display: none;">
+    <div class="form-group">
+      <label>Marker Name</label>
+      <input type="text" id="markerNameInput">
+    </div>
+
+    <button id="enterMicroBtn" style="margin-top: 6px; background: #228822;">Enter Micro-Map Canvas</button>
+
+    <div class="form-group" style="margin-top: 10px;">
+      <label>Add .dd2vtt Map Tiles</label>
+      <input type="file" id="ddMultiInput" accept=".dd2vtt,.json" multiple>
+    </div>
+
+    <div id="tileListContainer"></div>
+
+    <button id="deleteMarkerBtn" class="danger" style="margin-top: 15px;">Delete Marker</button>
+  </div>
+
+  <div id="inspectorPlaceholder" style="color: #666; font-size: 13px;">
+    Select or double-click a marker to inspect its tiles or enter its auto-scaled spatial micro-map.
+  </div>
+</div>
+
+<script>
+// --- Global VTT Grid Standard ---
+const BASE_CANVAS_PPI = 70;
+
+// --- State ---
+let viewMode = "overworld"; // "overworld" or "micro"
+let camera = { x: 0, y: 0, zoom: 1 };
+let isPanning = false;
+let isSpacePressed = false;
+let startPan = { x: 0, y: 0 };
+
+let worldImage = null;
+let isAddMarkerMode = false;
+let isRoadMode = false;
+let isDrawingRoad = false;
+let currentRoadPath = null;
+
+let draggingTile = null;
+let dragOffsetGrid = { x: 0, y: 0 };
+
+let markers = []; 
+let selectedMarker = null;
+
+const viewport = document.getElementById('viewport');
+const mapCanvas = document.getElementById('mapCanvas');
+const gridCanvas = document.getElementById('gridCanvas');
+
+const ctxMap = mapCanvas.getContext('2d');
+const ctxGrid = gridCanvas.getContext('2d');
+
+const modeBadge = document.getElementById('modeBadge');
+const exitMicroBtn = document.getElementById('exitMicroBtn');
+const drawRoadBtn = document.getElementById('drawRoadBtn');
+const clearRoadsBtn = document.getElementById('clearRoadsBtn');
+
+const worldInput = document.getElementById('worldInput');
+const importCampaignInput = document.getElementById('importCampaignInput');
+const addMarkerModeBtn = document.getElementById('addMarkerModeBtn');
+
+const inspectorContent = document.getElementById('inspectorContent');
+const inspectorPlaceholder = document.getElementById('inspectorPlaceholder');
+const markerNameInput = document.getElementById('markerNameInput');
+const enterMicroBtn = document.getElementById('enterMicroBtn');
+const ddMultiInput = document.getElementById('ddMultiInput');
+const tileListContainer = document.getElementById('tileListContainer');
+
+function resizeCanvas() {
+  mapCanvas.width = gridCanvas.width = viewport.clientWidth;
+  mapCanvas.height = gridCanvas.height = viewport.clientHeight;
+  render();
+}
+window.addEventListener('resize', resizeCanvas);
+
+// --- Controls ---
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+    if (!isSpacePressed) {
+      isSpacePressed = true;
+      viewport.classList.add('space-held');
+    }
+    e.preventDefault();
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space') {
+    isSpacePressed = false;
+    viewport.classList.remove('space-held');
+    if (!isPanning) viewport.classList.remove('panning');
+  }
+});
+
+function screenToWorld(sx, sy) {
+  return {
+    x: (sx - camera.x) / camera.zoom,
+    y: (sy - camera.y) / camera.zoom
+  };
+}
+
+viewport.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+  const mouseWorldBefore = screenToWorld(e.clientX, e.clientY);
+
+  camera.zoom = Math.max(0.05, Math.min(camera.zoom * zoomFactor, 5.0));
+  camera.x = e.clientX - mouseWorldBefore.x * camera.zoom;
+  camera.y = e.clientY - mouseWorldBefore.y * camera.zoom;
+
+  render();
+}, { passive: false });
+
+viewport.addEventListener('mousedown', (e) => {
+  const worldPos = screenToWorld(e.clientX, e.clientY);
+  const isPanTrigger = (e.button === 0 && isSpacePressed) || e.button === 1 || (e.button === 0 && e.shiftKey);
+
+  if (isPanTrigger) {
+    isPanning = true;
+    viewport.classList.add('panning');
+    startPan = { x: e.clientX - camera.x, y: e.clientY - camera.y };
+    e.preventDefault();
+    return;
+  }
+
+  if (viewMode === "overworld" && e.button === 0) {
+    if (isAddMarkerMode) {
+      const newMarker = {
+        id: "marker_" + Date.now(),
+        name: "Sanctus Alarus",
+        x: Math.round(worldPos.x),
+        y: Math.round(worldPos.y),
+        tiles: [],
+        roads: []
+      };
+      markers.push(newMarker);
+      selectMarker(newMarker);
+
+      isAddMarkerMode = false;
+      addMarkerModeBtn.textContent = "+ Add Marker Tool: OFF";
+      addMarkerModeBtn.className = "secondary";
+      render();
+    } else {
+      const clicked = markers.find(m => Math.hypot(m.x - worldPos.x, m.y - worldPos.y) <= 20 / camera.zoom);
+      selectMarker(clicked || null);
+      render();
+    }
+  } else if (viewMode === "micro" && selectedMarker && e.button === 0) {
+    if (isRoadMode) {
+      isDrawingRoad = true;
+      currentRoadPath = [{ x: worldPos.x, y: worldPos.y }];
+      selectedMarker.roads.push(currentRoadPath);
+    } else {
+      // Check tile click for drag
+      const clickGridX = worldPos.x / BASE_CANVAS_PPI;
+      const clickGridY = worldPos.y / BASE_CANVAS_PPI;
+
+      // Find top-most tile under mouse
+      for (let i = selectedMarker.tiles.length - 1; i >= 0; i--) {
+        const tile = selectedMarker.tiles[i];
+        const effW = (tile.rotation % 180 === 0) ? tile.gridWidth : tile.gridHeight;
+        const effH = (tile.rotation % 180 === 0) ? tile.gridHeight : tile.gridWidth;
+
+        if (clickGridX >= tile.gridX && clickGridX <= tile.gridX + effW &&
+            clickGridY >= tile.gridY && clickGridY <= tile.gridY + effH) {
+          draggingTile = tile;
+          dragOffsetGrid = {
+            x: clickGridX - tile.gridX,
+            y: clickGridY - tile.gridY
+          };
+          renderTileInspector();
+          break;
+        }
+      }
+    }
+  }
+});
+
+viewport.addEventListener('mousemove', (e) => {
+  const worldPos = screenToWorld(e.clientX, e.clientY);
+
+  if (isPanning) {
+    camera.x = e.clientX - startPan.x;
+    camera.y = e.clientY - startPan.y;
+    render();
+  } else if (viewMode === "micro") {
+    if (isDrawingRoad && currentRoadPath) {
+      currentRoadPath.push({ x: worldPos.x, y: worldPos.y });
+      render();
+    } else if (draggingTile) {
+      // Snap directly to grid squares during live drag
+      const currentGridX = worldPos.x / BASE_CANVAS_PPI;
+      const currentGridY = worldPos.y / BASE_CANVAS_PPI;
+
+      draggingTile.gridX = Math.round(currentGridX - dragOffsetGrid.x);
+      draggingTile.gridY = Math.round(currentGridY - dragOffsetGrid.y);
+
+      renderTileInspector();
+      render();
+    }
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  if (isPanning) {
+    isPanning = false;
+    viewport.classList.remove('panning');
+    if (!isSpacePressed) viewport.classList.remove('space-held');
+  }
+  if (isDrawingRoad) {
+    isDrawingRoad = false;
+    currentRoadPath = null;
+  }
+  if (draggingTile) {
+    draggingTile = null;
+  }
+});
+
+viewport.addEventListener('dblclick', (e) => {
+  if (viewMode !== "overworld") return;
+  const worldPos = screenToWorld(e.clientX, e.clientY);
+  const clicked = markers.find(m => Math.hypot(m.x - worldPos.x, m.y - worldPos.y) <= 20 / camera.zoom);
+  
+  if (clicked) {
+    selectMarker(clicked);
+    enterMicroMode(clicked);
+  }
+});
+
+// --- Dynamic PPI Tile Factory ---
+function createTileObject(id, name, gridX, gridY, ddData, img, rotation = 0) {
+  const nativePPI = (ddData && ddData.resolution) ? ddData.resolution.pixels_per_grid : BASE_CANVAS_PPI;
+  const gridWidth = (ddData && ddData.resolution) ? ddData.resolution.map_size.x : Math.round(img.width / nativePPI);
+  const gridHeight = (ddData && ddData.resolution) ? ddData.resolution.map_size.y : Math.round(img.height / nativePPI);
+  
+  return {
+    id: id,
+    name: name,
+    gridX: gridX,
+    gridY: gridY,
+    rotation: rotation, // 0, 90, 180, 270
+    nativePPI: nativePPI,
+    scaleFactor: BASE_CANVAS_PPI / nativePPI,
+    gridWidth: gridWidth,
+    gridHeight: gridHeight,
+    displayWidth: gridWidth * BASE_CANVAS_PPI,
+    displayHeight: gridHeight * BASE_CANVAS_PPI,
+    ddData: ddData,
+    img: img
+  };
+}
+
+// --- Import Campaign Save ---
+importCampaignInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const data = JSON.parse(evt.target.result);
+      const rawMarkers = data.markers || (Array.isArray(data) ? data : []);
+
+      markers = rawMarkers.map((m, idx) => {
+        const tiles = [];
+
+        if (m.dd2vttData) {
+          const img = new Image();
+          img.src = "data:image/png;base64," + m.dd2vttData.image;
+          tiles.push(createTileObject("legacy_tile_" + idx, m.dd2vttFilename || "Base Map", 0, 0, m.dd2vttData, img, 0));
+        }
+
+        const rawList = m.tiles || m.maps || [];
+        rawList.forEach((sub, sIdx) => {
+          let img = sub.img;
+          if (!img && sub.ddData) {
+            img = new Image();
+            img.src = "data:image/png;base64," + sub.ddData.image;
+          }
+          const gx = sub.gridX !== undefined ? sub.gridX : Math.round((sub.x || 0) / BASE_CANVAS_PPI);
+          const gy = sub.gridY !== undefined ? sub.gridY : Math.round((sub.y || 0) / BASE_CANVAS_PPI);
+          
+          tiles.push(createTileObject(
+            sub.id || `tile_${idx}_${sIdx}`,
+            sub.name || `Tile ${sIdx + 1}`,
+            gx,
+            gy,
+            sub.ddData,
+            img,
+            sub.rotation || 0
+          ));
+        });
+
+        return {
+          id: m.id || "m_" + Date.now() + "_" + idx,
+          name: m.name || "Imported Location",
+          x: m.x || 100 * (idx + 1),
+          y: m.y || 100 * (idx + 1),
+          tiles: tiles,
+          roads: m.roads || []
+        };
+      });
+
+      selectMarker(null);
+      exitMicroMode();
+      alert(`Loaded campaign with ${markers.length} markers.`);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to parse campaign JSON file.");
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('exportCampaignBtn').addEventListener('click', () => {
+  const payload = {
+    version: "6.0",
+    exportDate: new Date().toISOString(),
+    basePPI: BASE_CANVAS_PPI,
+    markers: markers.map(m => ({
+      id: m.id,
+      name: m.name,
+      x: m.x,
+      y: m.y,
+      roads: m.roads,
+      tiles: m.tiles.map(t => ({
+        id: t.id,
+        name: t.name,
+        gridX: t.gridX,
+        gridY: t.gridY,
+        rotation: t.rotation,
+        ddData: t.ddData
+      }))
+    }))
+  };
+
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+  const dl = document.createElement('a');
+  dl.setAttribute("href", dataStr);
+  dl.setAttribute("download", `campaign_canvas_${Date.now()}.json`);
+  dl.click();
+});
+
+// --- View Modes ---
+function enterMicroMode(marker) {
+  if (!marker) return;
+  viewMode = "micro";
+  selectedMarker = marker;
+
+  modeBadge.textContent = `MICRO-MAP CANVAS: ${marker.name}`;
+  modeBadge.className = "mode-badge mode-micro";
+  exitMicroBtn.style.display = "inline-block";
+  drawRoadBtn.style.display = "inline-block";
+  clearRoadsBtn.style.display = "inline-block";
+
+  camera = { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2, zoom: 0.8 };
+  render();
+}
+
+function exitMicroMode() {
+  viewMode = "overworld";
+  isRoadMode = false;
+  drawRoadBtn.textContent = "🖊 Draw Road Tool: OFF";
+  drawRoadBtn.className = "secondary";
+
+  modeBadge.textContent = "OVERWORLD MODE";
+  modeBadge.className = "mode-badge mode-overworld";
+  exitMicroBtn.style.display = "none";
+  drawRoadBtn.style.display = "none";
+  clearRoadsBtn.style.display = "none";
+
+  camera = { x: 50, y: 50, zoom: 1 };
+  render();
+}
+
+exitMicroBtn.addEventListener('click', exitMicroMode);
+enterMicroBtn.addEventListener('click', () => enterMicroMode(selectedMarker));
+
+drawRoadBtn.addEventListener('click', () => {
+  isRoadMode = !isRoadMode;
+  drawRoadBtn.textContent = isRoadMode ? "🖊 Draw Road Tool: ON" : "🖊 Draw Road Tool: OFF";
+  drawRoadBtn.className = isRoadMode ? "active" : "secondary";
+});
+
+clearRoadsBtn.addEventListener('click', () => {
+  if (selectedMarker) {
+    selectedMarker.roads = [];
+    render();
+  }
+});
+
+// --- Ingest .dd2vtt File Tiles ---
+ddMultiInput.addEventListener('change', (e) => {
+  const files = Array.from(e.target.files);
+  if (!files.length || !selectedMarker) return;
+
+  files.forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const ddData = JSON.parse(evt.target.result);
+        const img = new Image();
+        img.onload = () => {
+          let nextGridX = 0;
+          selectedMarker.tiles.forEach(t => {
+            const effW = (t.rotation % 180 === 0) ? t.gridWidth : t.gridHeight;
+            nextGridX = Math.max(nextGridX, t.gridX + effW + 2);
+          });
+
+          const tileObj = createTileObject(
+            "tile_" + Date.now() + "_" + index,
+            file.name.replace(".dd2vtt", ""),
+            nextGridX,
+            0,
+            ddData,
+            img,
+            0
+          );
+
+          selectedMarker.tiles.push(tileObj);
+          renderTileInspector();
+          render();
+        };
+        img.src = "data:image/png;base64," + ddData.image;
+      } catch (err) {
+        console.error("Error reading dd2vtt file:", file.name);
+      }
+    };
+    reader.readAsText(file);
+  });
+});
+
+// --- Render Engine ---
+function render() {
+  ctxMap.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+  ctxGrid.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+
+  ctxMap.imageSmoothingEnabled = true;
+  ctxMap.imageSmoothingQuality = 'high';
+
+  ctxMap.save();
+  ctxMap.translate(camera.x, camera.y);
+  ctxMap.scale(camera.zoom, camera.zoom);
+
+  ctxGrid.save();
+  ctxGrid.translate(camera.x, camera.y);
+  ctxGrid.scale(camera.zoom, camera.zoom);
+
+  if (viewMode === "overworld") {
+    // --- OVERWORLD MODE ---
+    if (worldImage) {
+      ctxMap.drawImage(worldImage, 0, 0);
+    }
+
+    markers.forEach(m => {
+      const isSelected = (selectedMarker && selectedMarker.id === m.id);
+
+      ctxMap.beginPath();
+      ctxMap.arc(m.x, m.y, 9 / camera.zoom, 0, Math.PI * 2);
+      ctxMap.fillStyle = (m.tiles.length > 0) ? "#00ff88" : "#ffcc00";
+      ctxMap.fill();
+      ctxMap.lineWidth = (isSelected ? 3 : 1.5) / camera.zoom;
+      ctxMap.strokeStyle = isSelected ? "#ffffff" : "#000000";
+      ctxMap.stroke();
+
+      ctxMap.fillStyle = "#ffffff";
+      ctxMap.font = `bold ${Math.max(12, 13 / camera.zoom)}px sans-serif`;
+      ctxMap.textAlign = "center";
+      ctxMap.strokeStyle = "#000000";
+      ctxMap.lineWidth = 3 / camera.zoom;
+      ctxMap.strokeText(m.name, m.x, m.y - 14 / camera.zoom);
+      ctxMap.fillText(m.name, m.x, m.y - 14 / camera.zoom);
+    });
+
+  } else if (viewMode === "micro" && selectedMarker) {
+    // --- MICRO-MAP MULTI-PPI CANVAS MODE ---
+    drawGlobalGrid();
+
+    selectedMarker.tiles.forEach(tile => {
+      const worldX = tile.gridX * BASE_CANVAS_PPI;
+      const worldY = tile.gridY * BASE_CANVAS_PPI;
+
+      const effGridW = (tile.rotation % 180 === 0) ? tile.gridWidth : tile.gridHeight;
+      const effGridH = (tile.rotation % 180 === 0) ? tile.gridHeight : tile.gridWidth;
+      
+      const effDispW = effGridW * BASE_CANVAS_PPI;
+      const effDispH = effGridH * BASE_CANVAS_PPI;
+
+      if (tile.img) {
+        ctxMap.save();
+        // Move to center of effective bounding area for rotation
+        ctxMap.translate(worldX + effDispW / 2, worldY + effDispH / 2);
+        ctxMap.rotate((tile.rotation * Math.PI) / 180);
+        ctxMap.scale(tile.scaleFactor, tile.scaleFactor);
+        
+        // Draw centered
+        ctxMap.drawImage(tile.img, -tile.img.width / 2, -tile.img.height / 2);
+        ctxMap.restore();
+      }
+
+      // Tile Outline
+      const isDraggingThis = (draggingTile && draggingTile.id === tile.id);
+      ctxGrid.strokeStyle = isDraggingThis ? "#00ffff" : "rgba(0, 255, 136, 0.5)";
+      ctxGrid.lineWidth = (isDraggingThis ? 3 : 2) / camera.zoom;
+      ctxGrid.strokeRect(worldX, worldY, effDispW, effDispH);
+    });
+
+    // Connecting Roads
+    if (selectedMarker.roads) {
+      ctxMap.strokeStyle = "#c2a649";
+      ctxMap.lineWidth = 28;
+      ctxMap.lineCap = "round";
+      ctxMap.lineJoin = "round";
+
+      selectedMarker.roads.forEach(path => {
+        if (path.length < 2) return;
+        ctxMap.beginPath();
+        ctxMap.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i++) {
+          ctxMap.lineTo(path[i].x, path[i].y);
+        }
+        ctxMap.stroke();
+      });
+    }
+  }
+
+  ctxMap.restore();
+  ctxGrid.restore();
+}
+
+function drawGlobalGrid() {
+  const startX = Math.floor((-camera.x / camera.zoom) / BASE_CANVAS_PPI) * BASE_CANVAS_PPI - BASE_CANVAS_PPI;
+  const endX = startX + (mapCanvas.width / camera.zoom) + BASE_CANVAS_PPI * 2;
+  const startY = Math.floor((-camera.y / camera.zoom) / BASE_CANVAS_PPI) * BASE_CANVAS_PPI - BASE_CANVAS_PPI;
+  const endY = startY + (mapCanvas.height / camera.zoom) + BASE_CANVAS_PPI * 2;
+
+  ctxGrid.strokeStyle = "rgba(255, 255, 255, 0.12)";
+  ctxGrid.lineWidth = 1 / camera.zoom;
+
+  for (let x = startX; x < endX; x += BASE_CANVAS_PPI) {
+    ctxGrid.beginPath();
+    ctxGrid.moveTo(x, startY);
+    ctxGrid.lineTo(x, endY);
+    ctxGrid.stroke();
+  }
+  for (let y = startY; y < endY; y += BASE_CANVAS_PPI) {
+    ctxGrid.beginPath();
+    ctxGrid.moveTo(startX, y);
+    ctxGrid.lineTo(endX, y);
+    ctxGrid.stroke();
+  }
+}
+
+// --- Inspector Controls ---
+function selectMarker(marker) {
+  selectedMarker = marker;
+  if (!marker) {
+    inspectorContent.style.display = "none";
+    inspectorPlaceholder.style.display = "block";
+    return;
+  }
+  inspectorPlaceholder.style.display = "none";
+  inspectorContent.style.display = "block";
+  markerNameInput.value = marker.name;
+  renderTileInspector();
+}
+
+function renderTileInspector() {
+  if (!selectedMarker) return;
+  tileListContainer.innerHTML = "";
+
+  selectedMarker.tiles.forEach((tile) => {
+    const isSelected = (draggingTile && draggingTile.id === tile.id);
+    const card = document.createElement('div');
+    card.className = "tile-card" + (isSelected ? " selected" : "");
+    card.innerHTML = `
+      <div class="tile-card-header">
+        <span>${tile.name}</span>
+        <span style="color:#aaa; font-weight:normal;">${tile.gridWidth}x${tile.gridHeight} sq</span>
+      </div>
+      <div class="tile-info">Native PPI: ${tile.nativePPI}px | Rotation: ${tile.rotation}°</div>
+      <div class="form-row">
+        <button class="secondary" onclick="rotateTile('${tile.id}', -90)">↺ Rotate Left</button>
+        <button class="secondary" onclick="rotateTile('${tile.id}', 90)">↻ Rotate Right</button>
+      </div>
+      <div class="form-row">
+        <label>Grid X:</label>
+        <input type="number" value="${tile.gridX}" onchange="updateTileGridPos('${tile.id}', 'gridX', this.value)">
+      </div>
+      <div class="form-row">
+        <label>Grid Y:</label>
+        <input type="number" value="${tile.gridY}" onchange="updateTileGridPos('${tile.id}', 'gridY', this.value)">
+      </div>
+      <button class="danger" style="margin-top: 4px;" onclick="removeTile('${tile.id}')">Remove Tile</button>
+    `;
+    tileListContainer.appendChild(card);
+  });
+}
+
+function rotateTile(tileId, angleDeg) {
+  if (!selectedMarker) return;
+  const tile = selectedMarker.tiles.find(t => t.id === tileId);
+  if (tile) {
+    tile.rotation = (tile.rotation + angleDeg + 360) % 360;
+    renderTileInspector();
+    render();
+  }
+}
+
+function updateTileGridPos(tileId, prop, val) {
+  if (!selectedMarker) return;
+  const tile = selectedMarker.tiles.find(t => t.id === tileId);
+  if (tile) {
+    tile[prop] = parseInt(val, 10) || 0;
+    render();
+  }
+}
+
+function removeTile(tileId) {
+  if (!selectedMarker) return;
+  selectedMarker.tiles = selectedMarker.tiles.filter(t => t.id !== tileId);
+  renderTileInspector();
+  render();
+}
+
+worldInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const img = new Image();
+    img.onload = () => {
+      worldImage = img;
+      render();
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+addMarkerModeBtn.addEventListener('click', () => {
+  isAddMarkerMode = !isAddMarkerMode;
+  addMarkerModeBtn.textContent = isAddMarkerMode ? "+ Add Marker Tool: ON" : "+ Add Marker Tool: OFF";
+  addMarkerModeBtn.className = isAddMarkerMode ? "active" : "secondary";
+});
+
+markerNameInput.addEventListener('input', () => {
+  if (selectedMarker) {
+    selectedMarker.name = markerNameInput.value;
+    render();
+  }
+});
+
+document.getElementById('deleteMarkerBtn').addEventListener('click', () => {
+  if (!selectedMarker) return;
+  markers = markers.filter(m => m.id !== selectedMarker.id);
+  selectMarker(null);
+  render();
+});
+
+resizeCanvas();
+</script>
+</body>
+</html>
