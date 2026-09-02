@@ -99,6 +99,34 @@ function subscribeVoxels() {
   );
 }
 
+// ── Undo support ────────────────────────────────────────────────────────
+// gm.html owns the actual undo STACK (it needs to interleave voxel edits
+// with geometry.js's wall/door/light/stair edits in one chronological
+// order), but only this module knows exactly when a mutation is about to
+// happen. onBeforeVoxelEdit() lets gm.html capture a snapshot at that exact
+// moment -- called ONCE per paint stroke/rect/line/bucket/clear, not once
+// per cell, so a whole drag undoes as a single action.
+const beforeVoxelEditHooks = [];
+export function onBeforeVoxelEdit(fn) { beforeVoxelEditHooks.push(fn); }
+function fireBeforeVoxelEdit() { beforeVoxelEditHooks.forEach(fn => fn()); }
+
+// mapData is MAX_LAYERS*GRID_SIZE Uint8Arrays of GRID_SIZE bytes each
+// (16*32*32 = 16KB total at current world size) -- small enough that a full
+// deep-copy snapshot per undo entry is trivial, no need for anything
+// smarter (diffing, sparse deltas) at this scale.
+export function snapshotVoxels() {
+  return mapData.map(layer => layer.map(row => Uint8Array.from(row)));
+}
+
+export function restoreVoxelsSnapshot(snapshot) {
+  for (let y = 0; y < MAX_LAYERS; y++) {
+    for (let z = 0; z < GRID_SIZE; z++) mapData[y][z].set(snapshot[y][z]);
+  }
+  redraw();
+  update3DScene();
+  scheduleSaveVoxels();
+}
+
 export function columnTopY(x, z) {
   // Highest occupied voxel layer at this (x,z), or 0 if the column is empty
   for (let y = MAX_LAYERS - 1; y >= 0; y--) {
@@ -411,6 +439,7 @@ export function init(threeScene, opts = {}) {
     gridCanvas.addEventListener('mousedown', (e) => {
       if (mode === 'none') {
         e.preventDefault();
+        fireBeforeVoxelEdit(); // once per drag/stroke, not per cell -- see updateGridCellFromMouse
         isMouseDown = true;
         activeDrawValue = e.button === 2 ? 0 : 1;
         updateGridCellFromMouse(e);
@@ -418,6 +447,7 @@ export function init(threeScene, opts = {}) {
       }
       if (mode === 'bucket') {
         e.preventDefault();
+        fireBeforeVoxelEdit();
         const { px, py } = canvasLocalPoint(e);
         const x = Math.floor(px / CELL_SIZE), z = Math.floor(py / CELL_SIZE);
         const value = e.button === 2 ? 0 : getSelectedBlockId();
@@ -427,6 +457,7 @@ export function init(threeScene, opts = {}) {
       }
       if (mode === 'rect' || mode === 'line') {
         e.preventDefault();
+        fireBeforeVoxelEdit(); // captured now -- nothing mutates between mousedown and the mouseup that applies it
         const { px, py } = canvasLocalPoint(e);
         const x = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(px / CELL_SIZE)));
         const z = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(py / CELL_SIZE)));
@@ -465,6 +496,7 @@ export function init(threeScene, opts = {}) {
       if (currentLayer < MAX_LAYERS - 1) { currentLayer++; updateLayerDisplay(); redraw(); }
     });
     document.getElementById('clear-btn')?.addEventListener('click', () => {
+      fireBeforeVoxelEdit();
       for (let y = 0; y < MAX_LAYERS; y++) for (let z = 0; z < GRID_SIZE; z++) mapData[y][z].fill(0);
       redraw();
       update3DScene();

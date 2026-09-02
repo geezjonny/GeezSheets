@@ -455,6 +455,22 @@ function handleArrowKeydown(e) {
   moveMyTokenBy(delta[0], delta[1]);
 }
 
+// Spacebar opens/closes the nearest door within 1 space of the player's OWN
+// character -- same scoping as arrow-key movement (findMyToken(), GM
+// presses do nothing), and an alternative to 3D-click raycasting that
+// doesn't depend on hitbox precision (an open door's thin "frame" scale
+// makes it a much smaller click target than a closed one).
+function handleSpacebarKeydown(e) {
+  if (e.code !== 'Space' && e.key !== ' ') return;
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return; // typing somewhere, not toggling a door
+  const entry = findMyToken();
+  if (!entry) return;
+  e.preventDefault();
+  const [, tok] = entry;
+  Geometry.tryToggleNearbyDoor(Math.round(tok.x), Math.round(tok.y), tok.layer ?? 0);
+}
+
 // Token sprites as raycast targets, same reasoning as geometry.js's
 // getSolidMeshes() -- clicking directly on a token is a valid surface hit.
 export function getTokenMeshesArray() {
@@ -489,6 +505,7 @@ export function initTokens(threeScene, opts = {}) {
   Grid.onVoxelSceneChange(repositionAllTokens); // column heights may change under existing tokens
   Grid.onMapNameChange(() => subscribeTokens());
   window.addEventListener('keydown', handleArrowKeydown);
+  window.addEventListener('keydown', handleSpacebarKeydown);
 
   setInterval(checkPendingArt, 500); // real portrait art loads async and outside our control -- see ensureTokenArt()
 

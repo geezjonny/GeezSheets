@@ -10,7 +10,7 @@
 
 import * as THREE from 'three';
 import { db } from '../js/firebase.js';
-import { ref, set, onValue } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
+import { ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
 import { addWall, addDoor, addLight, deleteById, toggleDoor, segmentAtPoint, lightAtPoint } from '../js/geometry.js';
 import { blockRegistry, getSelectedBlockId, getBlockMaterial } from './block.js';
 import * as Grid from './grid.js';
@@ -35,6 +35,7 @@ const wallLayerGroups = new Map();
 const doorLayerGroups = new Map();
 const lightLayerGroups = new Map();
 const stairLayerGroups = new Map();
+const floorImageLayerGroups = new Map(); // multiple images can share a layer now, same as walls/lights
 
 function getLayerSubgroup(container, layerGroupsMap, layerIndex) {
   if (!layerGroupsMap.has(layerIndex)) {
@@ -66,6 +67,35 @@ export async function saveGeometry() {
 // editing walls/lights, so it shouldn't risk clobbering a concurrent edit.
 export async function saveGeometryDoors() {
   await set(ref(db, `${geometryRefPath()}/doors`), geometry.doors.length ? geometry.doors : null);
+}
+
+// ── Undo support ────────────────────────────────────────────────────────
+// gm.html owns the actual undo STACK (it needs to interleave geometry edits
+// with grid.js's voxel edits in one chronological order), but only this
+// module knows exactly when a mutation is about to happen and what its
+// pre-edit state looks like. onBeforeGeometryEdit() lets gm.html capture a
+// snapshot at that exact moment; restoreGeometrySnapshot() puts one back.
+const beforeGeometryEditHooks = [];
+export function onBeforeGeometryEdit(fn) { beforeGeometryEditHooks.push(fn); }
+function fireBeforeGeometryEdit() { beforeGeometryEditHooks.forEach(fn => fn()); }
+
+export function snapshotGeometryState() {
+  return {
+    walls: JSON.parse(JSON.stringify(geometry.walls)),
+    doors: JSON.parse(JSON.stringify(geometry.doors)),
+    lights: JSON.parse(JSON.stringify(geometry.lights)),
+    stairs: JSON.parse(JSON.stringify(geometry.stairs)),
+  };
+}
+
+export async function restoreGeometrySnapshot(snapshot) {
+  geometry.walls.length = 0;  geometry.walls.push(...snapshot.walls);
+  geometry.doors.length = 0;  geometry.doors.push(...snapshot.doors);
+  geometry.lights.length = 0; geometry.lights.push(...snapshot.lights);
+  geometry.stairs.length = 0; geometry.stairs.push(...snapshot.stairs);
+  renderGeometry();
+  Grid.redraw();
+  await saveGeometry();
 }
 
 export function subscribeGeometry() {
@@ -247,6 +277,22 @@ function drawOverlay(ctx) {
   const currentLayer = Grid.getCurrentLayer();
   const CELL_SIZE = Grid.CELL_SIZE;
 
+  // Imported dd2vtt floor images, onion-skin style -- same idea as
+  // grid.js's own voxel onion skin: only layers at-or-below the current one
+  // show at all, with the current layer's own imports more visible than
+  // the dimmed ones underneath. Drawn first so walls/doors/lights/stairs
+  // below still render on top of it, same visual stacking as the 3D scene.
+  for (const [layer, entries] of floorImagePreviewCache.entries()) {
+    if (layer > currentLayer) continue;
+    const alpha = layer === currentLayer ? 0.55 : 0.18;
+    for (const e of entries) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(e.img, e.x * CELL_SIZE, e.y * CELL_SIZE, e.width * CELL_SIZE, e.height * CELL_SIZE);
+      ctx.restore();
+    }
+  }
+
   ctx.lineWidth = 3;
   for (const w of geometry.walls) {
     const onLayer = (w.layer ?? 0) === currentLayer;
@@ -320,6 +366,7 @@ async function handleGridClick(e) {
     geoPendingStart = null;
     if (sx === gx && sy === gy) { Grid.redraw(); return; }
     if (sx !== gx && sy !== gy) { Grid.redraw(); return; } // not axis-aligned, retry
+    fireBeforeGeometryEdit();
     const seg = mode === 'wall'
       ? addWall(geometry.walls, sx, sy, gx, gy)
       : addDoor(geometry.doors, sx, sy, gx, gy, { closed: true });
@@ -335,6 +382,7 @@ async function handleGridClick(e) {
   if (mode === 'light') {
     const tx = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(px / CELL_SIZE)));
     const ty = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(py / CELL_SIZE)));
+    fireBeforeGeometryEdit();
     const light = addLight(geometry.lights, tx + 0.5, ty + 0.5, {});
     light.layer = currentLayer;
     renderGeometry(); Grid.redraw();
@@ -347,6 +395,7 @@ async function handleGridClick(e) {
     // stacking duplicates.
     const tx = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(px / CELL_SIZE)));
     const ty = Math.min(GRID_SIZE - 1, Math.max(0, Math.floor(py / CELL_SIZE)));
+    fireBeforeGeometryEdit();
     const existingIdx = geometry.stairs.findIndex(
       s => Math.round(s.x) === tx && Math.round(s.y) === ty && (s.layer ?? 0) === currentLayer
     );
@@ -374,6 +423,7 @@ async function handleGridClick(e) {
 
     const seg = segmentAtPoint(wallsHere, doorsHere, gx, gy, 0.3);
     if (seg) {
+      fireBeforeGeometryEdit();
       deleteById(seg.kind === 'wall' ? geometry.walls : geometry.doors, seg.id);
       renderGeometry(); Grid.redraw();
       await saveGeometry();
@@ -381,6 +431,7 @@ async function handleGridClick(e) {
     }
     const lightId = lightAtPoint(lightsHere, gx, gy, 0.4);
     if (lightId) {
+      fireBeforeGeometryEdit();
       deleteById(geometry.lights, lightId);
       renderGeometry(); Grid.redraw();
       await saveGeometry();
@@ -391,6 +442,7 @@ async function handleGridClick(e) {
       s => Math.round(s.x) === tx && Math.round(s.y) === ty && (s.layer ?? 0) === currentLayer
     );
     if (stairIdx !== -1) {
+      fireBeforeGeometryEdit();
       geometry.stairs.splice(stairIdx, 1);
       renderGeometry(); Grid.redraw();
       await saveGeometry();
@@ -440,6 +492,29 @@ export function isEdgeBlocked(layer, ex1, ey1, ex2, ey2) {
   return false;
 }
 
+// Toggles the nearest door within reach of (x,y) on this layer, if any --
+// an alternative to 3D-click raycasting for opening/closing doors, keyed
+// to a token's own grid position rather than camera-angle/hitbox precision
+// (an open door's thin "frame" scale makes it a much smaller click target
+// than a closed one, which is exactly the kind of thing this sidesteps).
+// "Within 1 space" means adjacent including diagonals -- sqrt(2)≈1.41 for
+// a diagonal neighbor, so the threshold allows a little past that.
+const DOOR_REACH = 1.5;
+export async function tryToggleNearbyDoor(x, y, layer) {
+  let closest = null, closestDist = Infinity;
+  for (const d of geometry.doors) {
+    if ((d.layer ?? 0) !== layer) continue;
+    const midX = (d.x1 + d.x2) / 2, midY = (d.y1 + d.y2) / 2;
+    const dist = Math.hypot(midX - x, midY - y);
+    if (dist <= DOOR_REACH && dist < closestDist) { closest = d; closestDist = dist; }
+  }
+  if (!closest) return false;
+  toggleDoor(geometry.doors, closest.id);
+  renderGeometry();
+  await saveGeometryDoors();
+  return true;
+}
+
 // Flattened list of actual wall/door meshes across every layer subgroup,
 // for raycasting (ping, ruler, token ground-hit). Keeps the external API
 // (a flat array of real meshes) unchanged even though these are now nested
@@ -487,16 +562,32 @@ export function getStairAt(x, y, currentElevation) {
 // assets/uploads/maps/<name>_floors -- same reasoning as js/assets.js's
 // token-art uploads: a multi-MB base64 blob has no business living inside a
 // node that gets fully rewritten on every wall/door/light edit. Keyed by
-// LAYER (plural "_floors", an object of layer -> floor data) rather than a
-// single record -- a single record meant importing a second dd2vtt for a
-// different floor silently deleted the first one's image, since both
-// writes hit the exact same path. Written once per layer at import time;
-// every client (including player.html) subscribes to the whole node
-// independently and renders every layer's plane itself.
+// LAYER, and then by a unique id WITHIN that layer -- a bare per-layer
+// record meant a second dd2vtt import onto the SAME layer silently deleted
+// the first one's image, since both writes hit the exact same path. Each
+// import gets its own id now, so multiple imports can coexist on one
+// layer, the same way multiple walls/lights already do. Written once per
+// import; every client (including player.html) subscribes to the whole
+// node independently and renders every layer's images itself.
 function floorImagesRefPath() { return `assets/uploads/maps/${Grid.getMapName()}_floors`; }
 
 async function saveFloorImage(dataUri, x, y, width, height, layer) {
-  await set(ref(db, `${floorImagesRefPath()}/${layer}`), { dataUri, x, y, width, height });
+  const imgId = 'floorimg_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
+  await set(ref(db, `${floorImagesRefPath()}/${layer}/${imgId}`), { dataUri, x, y, width, height });
+}
+
+// For undoing a dd2vtt import: a one-time read of whatever's currently
+// there (BEFORE the import overwrites it), and a way to write that exact
+// state back. subscribeFloorImage()'s own onValue listener picks up either
+// change automatically and re-renders -- nothing here needs to call
+// renderFloorImages() itself.
+export async function getFloorImagesSnapshot() {
+  const snap = await get(ref(db, floorImagesRefPath()));
+  return snap.val();
+}
+
+export async function restoreFloorImagesSnapshot(data) {
+  await set(ref(db, floorImagesRefPath()), data ?? null);
 }
 
 // Dungeondraft's exported image is a rectangle; the actual map is usually
@@ -579,36 +670,54 @@ function loadFloorTextureWithTransparency(dataUri) {
   });
 }
 
+// 2D-panel onion-skin preview cache: layer -> [{img, x, y, width, height}].
+// Populated alongside the 3D textures below (same source data), but these
+// are plain <img> elements for ctx.drawImage(), not THREE.Textures --
+// drawOverlay() (below) paints them onto the 2D grid panel.
+const floorImagePreviewCache = new Map();
+
+function loadImageForPreview(layer, entry) {
+  const img = new Image();
+  img.onload = () => {
+    if (!floorImagePreviewCache.has(layer)) floorImagePreviewCache.set(layer, []);
+    floorImagePreviewCache.get(layer).push({ img, x: entry.x, y: entry.y, width: entry.width, height: entry.height });
+    Grid.redraw(); // wasn't ready yet on the redraw that happens right after renderFloorImages runs
+  };
+  img.src = entry.dataUri;
+}
+
 async function renderFloorImages(data) {
-  while (floorImageGroup.children.length) floorImageGroup.remove(floorImageGroup.children[0]);
-  if (!data) return;
+  clearAllLayerSubgroups(floorImageLayerGroups);
+  floorImagePreviewCache.clear();
+  if (!data) { Grid.redraw(); return; }
 
-  for (const [layerStr, entry] of Object.entries(data)) {
-    if (!entry?.dataUri) continue;
+  for (const [layerStr, layerImages] of Object.entries(data)) {
     const layer = parseInt(layerStr, 10);
-    const texture = await loadFloorTextureWithTransparency(entry.dataUri);
-    if (!texture) continue;
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.flipY = true;
-    texture.needsUpdate = true;
+    for (const entry of Object.values(layerImages || {})) {
+      if (!entry?.dataUri) continue;
 
-    const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(entry.width, entry.height),
-      new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9, transparent: true, alphaTest: 0.5 })
-    );
-    mesh.rotation.x = -Math.PI / 2;
-    // PlaneGeometry is centered on its own local origin; our own top-left
-    // dd2vtt corner is (x,y), so shift by half the size to place it
-    // correctly -- same idea as geomToWorld's own -0.5 corner convention.
-    const centerX = entry.x + entry.width / 2, centerY = entry.y + entry.height / 2;
-    const world = geomToWorld(centerX, centerY);
-    mesh.position.set(world.x, 0.02, world.z); // LOCAL y -- the layer group handles height
-    mesh.receiveShadow = true;
+      loadImageForPreview(layer, entry); // 2D panel
 
-    const layerGroup = new THREE.Group();
-    layerGroup.position.y = layer;
-    layerGroup.add(mesh);
-    floorImageGroup.add(layerGroup);
+      const texture = await loadFloorTextureWithTransparency(entry.dataUri); // 3D scene
+      if (!texture) continue;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.flipY = true;
+      texture.needsUpdate = true;
+
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(entry.width, entry.height),
+        new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9, transparent: true, alphaTest: 0.5 })
+      );
+      mesh.rotation.x = -Math.PI / 2;
+      // PlaneGeometry is centered on its own local origin; our own top-left
+      // dd2vtt corner is (x,y), so shift by half the size to place it
+      // correctly -- same idea as geomToWorld's own -0.5 corner convention.
+      const centerX = entry.x + entry.width / 2, centerY = entry.y + entry.height / 2;
+      const world = geomToWorld(centerX, centerY);
+      mesh.position.set(world.x, 0.02, world.z); // LOCAL y -- the layer group handles height
+      mesh.receiveShadow = true;
+      getLayerSubgroup(floorImageGroup, floorImageLayerGroups, layer).add(mesh);
+    }
   }
 }
 

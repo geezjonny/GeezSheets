@@ -24,13 +24,26 @@
 
     #left-panel {
       width: 340px;
+      flex-shrink: 0;
       padding: 16px;
       display: flex;
       flex-direction: column;
       gap: 12px;
       background-color: #241a10;
-      border-right: 2px solid #3a2c18;
       overflow-y: auto;
+      min-width: 280px;
+      max-width: 900px;
+    }
+
+    #left-panel-resizer {
+      width: 6px;
+      flex-shrink: 0;
+      cursor: ew-resize;
+      background-color: #3a2c18;
+      transition: background-color 0.1s;
+    }
+    #left-panel-resizer:hover, #left-panel-resizer.dragging {
+      background-color: #c8a84b;
     }
 
     #session-panel {
@@ -100,6 +113,15 @@
       border: 1px solid #4a3820;
       cursor: crosshair;
       image-rendering: pixelated;
+      /* Internal resolution stays a fixed 320x320 (grid.js's CELL_SIZE math
+         assumes it) -- this only scales how BIG it's drawn on screen, and
+         canvasLocalPoint() already compensates for that scale difference
+         when converting a click to a grid cell, so resizing the panel is
+         purely visual, no coordinate math anywhere needs to change. */
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
     }
 
     .palette-section, .sync-section {
@@ -382,6 +404,8 @@
     </details>
   </div>
 
+  <div id="left-panel-resizer" title="Drag to resize"></div>
+
   <div id="right-panel">
     <canvas id="three-canvas"></canvas>
     <div id="ping-hint">Shift+Click to ping</div>
@@ -614,11 +638,76 @@
     // (both register overlays into it and read its canvas/groups).
     // ═══════════════════════════════════════════════════════════════════════
     Block.initBlockPalette();
+
+    // Left panel resize -- drag to make the grid-canvas bigger/smaller. Only
+    // the panel's WIDTH is touched; grid-canvas's CSS (width:100%,
+    // aspect-ratio:1/1) makes it fill whatever that width is, and
+    // canvasLocalPoint() already compensates for CSS-vs-internal-resolution
+    // scale differences, so no coordinate math anywhere needs to change.
+    (() => {
+      const panel = document.getElementById('left-panel');
+      const resizer = document.getElementById('left-panel-resizer');
+      let dragging = false;
+      resizer.addEventListener('mousedown', (e) => {
+        dragging = true;
+        resizer.classList.add('dragging');
+        e.preventDefault();
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!dragging) return;
+        const min = 280, max = 900; // matches #left-panel's CSS min/max-width
+        panel.style.width = Math.min(max, Math.max(min, e.clientX)) + 'px';
+      });
+      window.addEventListener('mouseup', () => {
+        dragging = false;
+        resizer.classList.remove('dragging');
+      });
+    })();
+
     Grid.init(scene, {
       isModeAllowed: () => true, // this page is GM-only, so every tool is available
       onDenied: () => alert('Only the GM can edit walls, doors, and lights.'),
     });
     Geometry.initGeometry(scene);
+
+    // ── Undo (Ctrl+Z) ────────────────────────────────────────────────────────
+    // Scope: voxel painting/erasing/rect/line/bucket/Clear Map, and wall/door/
+    // light/stair placement+erase -- the GM's primary map-building actions.
+    // Deliberately NOT covered: door open/closed toggling (live game state
+    // other players may be relying on -- undoing it silently mid-session
+    // would be confusing, not helpful), token placement/movement, and
+    // dd2vtt import/Nuke Map (deliberate, already-confirmed actions, not
+    // "oops" moments this is meant to catch).
+    //
+    // One shared stack (not two separate ones per module) so Ctrl+Z always
+    // undoes whatever happened most recently, regardless of which system it
+    // was in -- paint a block, then draw a wall, then Ctrl+Z twice undoes
+    // the wall first, then the block, matching what actually happened.
+    const undoStack = [];
+    const MAX_UNDO = 50;
+    Grid.onBeforeVoxelEdit(() => {
+      undoStack.push({ type: 'voxels', snapshot: Grid.snapshotVoxels() });
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+    });
+    Geometry.onBeforeGeometryEdit(() => {
+      undoStack.push({ type: 'geometry', snapshot: Geometry.snapshotGeometryState() });
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+    });
+
+    async function performUndo() {
+      const entry = undoStack.pop();
+      if (!entry) return;
+      if (entry.type === 'voxels') Grid.restoreVoxelsSnapshot(entry.snapshot);
+      else if (entry.type === 'geometry') await Geometry.restoreGeometrySnapshot(entry.snapshot);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.key.toLowerCase() !== 'z') return;
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return; // don't hijack native undo in text fields
+      e.preventDefault();
+      performUndo();
+    });
 
     // Stair "rotate facing" / "toggle shape" controls -- only meaningful in
     // Stairs mode, so hidden otherwise. setMode() already re-runs on every
