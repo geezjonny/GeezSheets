@@ -84,12 +84,17 @@ export function initBlockPalette() {
 // block TITLE (see grid.js), since blockRegistry itself is per-client local
 // state. A client that never locally registered a given title (e.g. a
 // player who never opened the palette) gets one created on the fly here,
-// so its texture still loads and renders correctly.
-export function getOrCreateBlockId(title) {
+// so its texture still loads and renders correctly. Also used by
+// getBlockMaterial() below (walls/doors/stairs), so a wall and a voxel
+// block sharing the same title share the exact same registry entry and
+// material -- optional fallbackColor lets a caller preserve a SPECIFIC
+// saved color (e.g. a wall synced from Firebase) rather than always
+// getting a random one when the title is new to this client.
+export function getOrCreateBlockId(title, fallbackColor) {
   const existing = Object.entries(blockRegistry).find(([, b]) => b.title === title);
   if (existing) return parseInt(existing[0]);
   const id = nextBlockId++;
-  const fallbackColor = getRandomColor();
+  const color = fallbackColor || getRandomColor();
   const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
   textureLoader.load(
     `/assets/${title}.png`,
@@ -102,40 +107,26 @@ export function getOrCreateBlockId(title) {
     undefined,
     () => {
       material.map = null;
-      material.color.set(fallbackColor);
+      material.color.set(color);
       material.needsUpdate = true;
     }
   );
-  blockRegistry[id] = { title, color: fallbackColor, material };
+  blockRegistry[id] = { title, color, material };
   renderPaletteUI(); // no-op safely if there's no palette UI on this page
   return id;
 }
 
 // Shared texture/material resolver, used by geometry.js to texture
-// walls/doors with a block's look by title. Kept as its OWN cache, separate
-// from blockRegistry's per-id materials above: geometry.js disposes/rebuilds
-// its meshes' materials on every edit, and disposing a material shared with
-// a voxel mesh would break that voxel's rendering too.
-const sharedMaterialCache = {};
+// walls/doors/stairs with a block's look by title. Reuses the SAME
+// blockRegistry entry (and material instance) a voxel block of that title
+// uses -- previously this kept its own separate cache, meaning a wall and
+// a voxel block with the identical title triggered two independent texture
+// loads of the same /assets/{title}.png instead of sharing one result.
+// Safe to share the instance: geometry.js clones a material before
+// mutating it (see the open-door dimming logic), and nothing disposes
+// materials, only geometries (see clearGroup).
 export function getBlockMaterial(title, fallbackColor) {
   const key = title || 'default';
-  if (sharedMaterialCache[key]) return sharedMaterialCache[key];
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
-  textureLoader.load(
-    `/assets/${key}.png`,
-    (texture) => {
-      texture.magFilter = THREE.NearestFilter;
-      texture.colorSpace = THREE.SRGBColorSpace;
-      material.map = texture;
-      material.needsUpdate = true;
-    },
-    undefined,
-    () => {
-      material.map = null;
-      material.color.set(fallbackColor || '#4f9da6');
-      material.needsUpdate = true;
-    }
-  );
-  sharedMaterialCache[key] = material;
-  return material;
+  const id = getOrCreateBlockId(key, fallbackColor);
+  return blockRegistry[id].material;
 }

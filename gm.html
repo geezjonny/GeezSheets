@@ -5,16 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Voxel VTT — GM</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       display: flex;
       height: 100vh;
       font-family: sans-serif;
-      background-color: #1a1a1a;
-      color: #fff;
+      background-color: #161009;
+      color: #ecdfc0;
       overflow: hidden;
       user-select: none;
+    }
+
+    h2, button, summary, .section-title, #identity-badge, label {
+      font-family: 'Cinzel', serif;
     }
 
     #left-panel {
@@ -23,8 +28,8 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      background-color: #242424;
-      border-right: 2px solid #333;
+      background-color: #241a10;
+      border-right: 2px solid #3a2c18;
       overflow-y: auto;
     }
 
@@ -34,13 +39,13 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      background-color: #242424;
-      border-left: 2px solid #333;
+      background-color: #241a10;
+      border-left: 2px solid #3a2c18;
       overflow-y: auto;
     }
 
     .group-section {
-      background: #333;
+      background: #3a2c18;
       border-radius: 4px;
       overflow: hidden;
     }
@@ -48,7 +53,7 @@
       padding: 10px 12px;
       font-size: 0.85rem;
       font-weight: bold;
-      color: #ddd;
+      color: #d8c8a0;
       cursor: pointer;
       list-style: none;
       display: flex;
@@ -56,9 +61,9 @@
       justify-content: space-between;
     }
     .group-section > summary::-webkit-details-marker { display: none; }
-    .group-section > summary::after { content: '▾'; color: #888; }
+    .group-section > summary::after { content: '▾'; color: #887858; }
     .group-section:not([open]) > summary::after { content: '▸'; }
-    .group-section > summary:hover { background: #3d3d3d; }
+    .group-section > summary:hover { background: #3a2c18; }
     .group-section-body {
       padding: 0 12px 12px;
       display: flex;
@@ -72,33 +77,33 @@
       justify-content: space-between;
       flex-wrap: wrap;
       gap: 6px;
-      background-color: #333;
+      background-color: #3a2c18;
       padding: 8px 12px;
       border-radius: 4px;
     }
 
     button {
       padding: 6px 12px;
-      background: #4a4a4a;
-      color: #fff;
+      background: #3d2e1a;
+      color: #ecdfc0;
       border: none;
       border-radius: 4px;
       cursor: pointer;
     }
 
-    button:hover { background: #606060; }
-    button.active { background: #4f9da6; }
+    button:hover { background: #5a4428; }
+    button.active { background: #c8a84b; }
     button:disabled { opacity: 0.4; cursor: not-allowed; }
 
     #grid-canvas {
-      background-color: #000;
-      border: 1px solid #444;
+      background-color: #0d0a05;
+      border: 1px solid #4a3820;
       cursor: crosshair;
       image-rendering: pixelated;
     }
 
     .palette-section, .sync-section {
-      background: #333;
+      background: #3a2c18;
       padding: 10px;
       border-radius: 4px;
       display: flex;
@@ -112,14 +117,14 @@
       flex: 1;
       padding: 6px;
       border-radius: 4px;
-      border: 1px solid #555;
-      background: #1a1a1a;
-      color: #fff;
+      border: 1px solid #5a4428;
+      background: #161009;
+      color: #ecdfc0;
     }
 
     input[type="file"] {
       font-size: 0.8rem;
-      color: #ccc;
+      color: #c8b888;
     }
 
     .block-list {
@@ -132,18 +137,18 @@
 
     .block-chip {
       padding: 4px 8px;
-      background: #444;
+      background: #4a3820;
       border: 2px solid transparent;
       border-radius: 4px;
       cursor: pointer;
       font-size: 0.85rem;
     }
 
-    .block-chip.selected { border-color: #4f9da6; background: #555; font-weight: bold; }
+    .block-chip.selected { border-color: #c8a84b; background: #5a4428; font-weight: bold; }
 
-    .instructions { font-size: 0.8rem; color: #aaa; line-height: 1.3; }
+    .instructions { font-size: 0.8rem; color: #a89868; line-height: 1.3; }
 
-    .section-title { font-size: 0.85rem; font-weight: bold; color: #ddd; }
+    .section-title { font-size: 0.85rem; font-weight: bold; color: #d8c8a0; }
 
     .dice-row { display: flex; flex-wrap: wrap; gap: 6px; }
     .dice-row button { flex: 1; min-width: 44px; }
@@ -153,19 +158,19 @@
       font-size: 1.6rem;
       font-weight: bold;
       padding: 10px;
-      background: #1a1a1a;
+      background: #161009;
       border-radius: 4px;
       min-height: 1.6em;
     }
-    #dice-result.rolling { color: #4f9da6; }
-    #dice-result-meta { text-align: center; font-size: 0.75rem; color: #999; }
+    #dice-result.rolling { color: #c8a84b; }
+    #dice-result-meta { text-align: center; font-size: 0.75rem; color: #9a8860; }
 
     #identity-badge {
       display: flex;
       align-items: center;
       justify-content: space-between;
       font-size: 0.8rem;
-      color: #bbb;
+      color: #b8a878;
     }
     #identity-badge .role-chip {
       padding: 2px 8px;
@@ -174,8 +179,8 @@
       font-weight: bold;
       letter-spacing: 0.03em;
     }
-    #identity-badge .role-chip.gm { background: #6a4fa6; color: #fff; }
-    #identity-badge .role-chip.player { background: #4f9da6; color: #fff; }
+    #identity-badge .role-chip.gm { background: #6a4fa6; color: #ecdfc0; }
+    #identity-badge .role-chip.player { background: #c8a84b; color: #ecdfc0; }
 
     #right-panel { flex: 1; position: relative; }
     #three-canvas { width: 100%; height: 100%; display: block; }
@@ -188,7 +193,7 @@
       padding: 6px 10px;
       border-radius: 4px;
       font-size: 0.8rem;
-      color: #ddd;
+      color: #d8c8a0;
       pointer-events: none;
     }
 
@@ -219,8 +224,8 @@
     #token-name-overlay.hidden { display: none; }
     #token-name-modal {
       width: 300px;
-      background: #242424;
-      border: 1px solid #444;
+      background: #241a10;
+      border: 1px solid #4a3820;
       border-radius: 8px;
       padding: 20px;
       display: flex;
@@ -228,22 +233,22 @@
       gap: 12px;
     }
     #token-name-modal h2 { font-size: 1rem; }
-    #token-name-modal label { font-size: 0.8rem; color: #bbb; }
+    #token-name-modal label { font-size: 0.8rem; color: #b8a878; }
     #token-name-modal input, #token-name-modal select {
       width: 100%;
       padding: 8px;
       border-radius: 4px;
-      border: 1px solid #555;
-      background: #1a1a1a;
-      color: #fff;
+      border: 1px solid #5a4428;
+      background: #161009;
+      color: #ecdfc0;
     }
     #token-name-modal .row { display: flex; gap: 8px; }
     #token-name-modal .row button { flex: 1; }
 
     #login-modal {
       width: 360px;
-      background: #242424;
-      border: 1px solid #444;
+      background: #241a10;
+      border: 1px solid #4a3820;
       border-radius: 8px;
       padding: 20px;
       display: flex;
@@ -251,18 +256,18 @@
       gap: 12px;
     }
     #login-modal h2 { font-size: 1.1rem; }
-    #login-modal label { font-size: 0.8rem; color: #bbb; }
+    #login-modal label { font-size: 0.8rem; color: #b8a878; }
     #login-modal input, #login-modal select {
       width: 100%;
       padding: 8px;
       border-radius: 4px;
-      border: 1px solid #555;
-      background: #1a1a1a;
-      color: #fff;
+      border: 1px solid #5a4428;
+      background: #161009;
+      color: #ecdfc0;
     }
     .login-role-toggle { display: flex; gap: 8px; }
     .login-role-toggle button { flex: 1; }
-    #login-error { color: #e07070; font-size: 0.8rem; min-height: 1em; }
+    #login-error { color: #e0704a; font-size: 0.8rem; min-height: 1em; }
     #login-char-row.hidden { display: none; }
   </style>
 
@@ -312,24 +317,6 @@
   <div id="left-panel">
     <h2>Voxel Map Editor</h2>
 
-    <!-- Save/Load: export/import the current map's voxels+geometry+tokens as
-         a JSON file. Scoped to exactly those three RTDB sub-paths (never the
-         whole maps/<name> node), so this can never touch mapeditor.html's
-         own data even if a map name happens to collide with one of its 2D
-         maps. Import writes straight to those same sub-paths, so it flows
-         through the existing subscribeVoxels/subscribeGeometry/subscribeTokens
-         listeners with no extra glue code -- everyone viewing that map
-         (including player.html) just sees it update live. -->
-    <details class="group-section" open>
-      <summary>Save / Load</summary>
-      <div class="group-section-body">
-        <button id="export-map-btn">⬇ Export Map (.json)</button>
-        <label class="section-title" for="import-map-input" style="margin-top:4px;">Import Map (.json)</label>
-        <input type="file" id="import-map-input" accept="application/json">
-        <div class="instructions">Exports/imports voxels, walls/doors/lights, and tokens for whatever map name is set in the Tokens panel. Importing overwrites that map for everyone currently viewing it.</div>
-      </div>
-    </details>
-
     <!-- Grid: the voxel terrain itself -- layers, the 2D paint panel, clear.
          World is 32×32×16, small enough to sync/render as one blob. -->
     <details class="group-section" open>
@@ -340,18 +327,24 @@
           <span id="layer-display">Layer: 1 / 16</span>
           <button id="layer-up">Up &rarr;</button>
         </div>
+        <div class="dice-row">
+          <button data-mode="none" class="active">Paint</button>
+          <button data-mode="rect">Rect</button>
+          <button data-mode="line">Line</button>
+          <button data-mode="bucket">Bucket</button>
+        </div>
         <canvas id="grid-canvas" width="320" height="320"></canvas>
         <div class="instructions">
-          <p><strong>Left Click Drag:</strong> Paint selected block</p>
-          <p><strong>Right Click Drag:</strong> Erase block</p>
-          <p><strong>Shift+Click (3D view):</strong> Send a ping at that spot</p>
+          <strong>Paint:</strong> click-drag paints/erases one cell at a time (right-click erases). <strong>Rect/Line:</strong> click-drag from one corner/end to the other. <strong>Bucket:</strong> click to flood-fill the contiguous same-block area. All four use the selected block below; right-click always erases.
+          <strong>Shift+Click (3D view):</strong> send a ping.
         </div>
         <button id="clear-btn" style="background: #a33;">Clear Map</button>
       </div>
     </details>
 
-    <!-- dd2vtt geometry: walls/doors on grid lines, lights anywhere. Data
-         model + RTDB path (maps/<map>/geometry) from js/geometry.js -->
+    <!-- dd2vtt geometry: walls/doors on grid lines, lights anywhere, stairs
+         for changing floors. Data model + RTDB path (maps/<map>/geometry)
+         from js/geometry.js (stairs are new, module-only, see geometry.js). -->
     <details class="group-section" open>
       <summary>Geometry (dd2vtt)</summary>
       <div class="group-section-body">
@@ -359,12 +352,18 @@
           <button id="geo-mode-wall" data-mode="wall">Wall</button>
           <button id="geo-mode-door" data-mode="door">Door</button>
           <button id="geo-mode-light" data-mode="light">Light</button>
+          <button id="geo-mode-stairs" data-mode="stairs">Stairs</button>
           <button id="geo-mode-delete" data-mode="delete">Erase</button>
           <button id="geo-mode-none" data-mode="none" class="active">None</button>
         </div>
+        <div class="dice-row">
+          <button id="stair-rotate-btn" style="display:none;">↻ Facing: N</button>
+          <button id="stair-shape-btn" style="display:none;">▦ Shape: Steps</button>
+        </div>
         <div class="instructions" id="geo-hint">
           Drawn on the 2D panel above (not the 3D view). Wall/Door take the texture of the selected block, click one grid corner then an adjacent one.
-          Light: click a cell. Erase: click a wall/door/light. Doors also toggle open/closed with a plain click in the 3D view while mode is "None".
+          Light: click a cell. Stairs: click a cell to place one (uses the selected block's texture) -- ↻ Facing and ▦ Shape (stepped or a smooth ramp) set how it looks before you place it. A token walking onto a stair from the correct side changes floor automatically.
+          Erase: click a wall/door/light/stair. Doors also toggle open/closed with a plain click in the 3D view while mode is "None".
         </div>
       </div>
     </details>
@@ -425,6 +424,39 @@
         <div class="instructions" id="token-hint">
           Token Mode locks out all painting/editing -- click a token (2D panel or 3D view) to select it, then click empty ground to move it. Only the GM or the token's owner can move it.
           Click "None" in the Geometry panel to leave Token Mode.
+        </div>
+      </div>
+    </details>
+
+    <!-- Save/Load: export/import the current map's voxels+geometry+tokens as
+         a JSON file. Scoped to exactly those three RTDB sub-paths (never the
+         whole maps/<name> node), so this can never touch mapeditor.html's
+         own data even if a map name happens to collide with one of its 2D
+         maps. Import writes straight to those same sub-paths, so it flows
+         through the existing subscribeVoxels/subscribeGeometry/subscribeTokens
+         listeners with no extra glue code -- everyone viewing that map
+         (including player.html) just sees it update live. Collapsed by
+         default (used far less often than the tools above it) -- moved down
+         here from the top of the left panel, which was getting crowded. -->
+    <details class="group-section">
+      <summary>Save / Load</summary>
+      <div class="group-section-body">
+        <button id="export-map-btn">⬇ Export Map (.json)</button>
+        <label class="section-title" for="import-map-input" style="margin-top:4px;">Import Map (.json)</label>
+        <input type="file" id="import-map-input" accept="application/json">
+        <div class="instructions">Exports/imports voxels, walls/doors/lights, and tokens for whatever map name is set in the Tokens panel. Importing overwrites that map for everyone currently viewing it.</div>
+
+        <label class="section-title" for="import-dd2vtt-input" style="margin-top:8px;">Import dd2vtt Map</label>
+        <input type="file" id="import-dd2vtt-input" accept=".dd2vtt,application/json">
+        <div class="instructions" id="dd2vtt-hint">
+          After picking a file, a transparent outline follows your mouse on the grid panel above -- move it where you want, then click to place. Esc cancels.
+          Walls/doors/lights import as real geometry (using the currently selected block's texture) at the current layer. The floor is the map's own rendered image, not voxelized. Adds to what's already on this map name -- doesn't clear it first.
+        </div>
+
+        <button id="nuke-map-btn" style="margin-top:8px; background:#8b2020;">☢ Nuke Map (clear everything)</button>
+        <div class="instructions">
+          Clears voxels, walls/doors/lights/stairs, AND any imported dd2vtt floor image for this map name -- "Clear Map" up in Grid only ever touched voxels.
+          Tokens are left alone. Affects everyone currently viewing this map. Cannot be undone.
         </div>
       </div>
     </details>
@@ -544,8 +576,8 @@
 
     // Dimmed relative to the original prototype so dd2vtt point lights
     // actually read as light sources rather than being washed out.
-    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    scene.add(new THREE.AmbientLight(0xffdfb0, 0.35));
+    const dirLight = new THREE.DirectionalLight(0xffe0b0, 0.5);
     dirLight.position.set(15, 25, 10);
     scene.add(dirLight);
 
@@ -570,7 +602,7 @@
     // land on the floor behind it.
     function allSolidTargets() {
       return [
-        ...Grid.getVoxelGroup().children,
+        ...Grid.getVoxelMeshes(),
         Grid.getGroundPlane(),
         ...Geometry.getSolidMeshes(),
         ...Token.getTokenMeshesArray(),
@@ -587,6 +619,36 @@
       onDenied: () => alert('Only the GM can edit walls, doors, and lights.'),
     });
     Geometry.initGeometry(scene);
+
+    // Stair "rotate facing" / "toggle shape" controls -- only meaningful in
+    // Stairs mode, so hidden otherwise. setMode() already re-runs on every
+    // mode-button click; this listens for the same clicks to show/hide them.
+    const stairRotateBtn = document.getElementById('stair-rotate-btn');
+    const stairShapeBtn = document.getElementById('stair-shape-btn');
+    const FACING_LABELS = ['N', 'E', 'S', 'W'];
+    function updateStairRotateLabel() {
+      stairRotateBtn.textContent = `↻ Facing: ${FACING_LABELS[Geometry.getStairFacing()]}`;
+    }
+    function updateStairShapeLabel() {
+      stairShapeBtn.textContent = `▦ Shape: ${Geometry.getStairShape() === 'ramp' ? 'Ramp' : 'Steps'}`;
+    }
+    document.querySelectorAll('[data-mode]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const show = btn.dataset.mode === 'stairs' ? 'block' : 'none';
+        stairRotateBtn.style.display = show;
+        stairShapeBtn.style.display = show;
+      });
+    });
+    stairRotateBtn.addEventListener('click', () => {
+      Geometry.cycleStairFacing();
+      updateStairRotateLabel();
+    });
+    stairShapeBtn.addEventListener('click', () => {
+      Geometry.cycleStairShape();
+      updateStairShapeLabel();
+    });
+    updateStairRotateLabel();
+    updateStairShapeLabel();
 
     // Non-blocking replacement for window.prompt() when naming a placed
     // token. That's all this needs to do -- js/tokens.js's real drawToken()
@@ -681,6 +743,130 @@
         set(ref(db, `maps/${mapName}/geometry`), data.geometry ?? null),
         set(ref(db, `maps/${mapName}/tokens`), data.tokens ?? null),
       ]);
+    });
+
+    // dd2vtt import -- see Geometry.importDD2VTT()'s own header comment for
+    // the coordinate-centering and floor-image details (validated against a
+    // prior working prototype, not just assumed).
+    //
+    // Rather than always landing wherever the centering math puts it, this
+    // parses the file first and enters a "ghost placement" mode: a
+    // semi-transparent outline (sized to the real map dimensions) follows
+    // the mouse on the 2D panel above; clicking commits the import at that
+    // position, Escape cancels. Grid.setMode('dd2vtt-ghost') is a value
+    // that matches none of grid.js's/geometry.js's/token.js's own mode
+    // branches, so it acts as a lockout -- painting, wall/door/stair
+    // placement, and token selection all correctly no-op while positioning.
+    let ddVttPendingData = null;
+    let ddVttGhostPos = { x: 0, y: 0 };
+
+    function ddVttMapSize() {
+      const size = ddVttPendingData?.resolution?.map_size;
+      return { w: Math.floor(size?.x ?? 0), h: Math.floor(size?.y ?? 0) };
+    }
+
+    function drawDD2VTTGhost(ctx) {
+      if (!ddVttPendingData) return;
+      const { w, h } = ddVttMapSize();
+      const CELL_SIZE = Grid.CELL_SIZE;
+      const left = (ddVttGhostPos.x - w / 2) * CELL_SIZE;
+      const top = (ddVttGhostPos.y - h / 2) * CELL_SIZE;
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = '#c8a84b';
+      ctx.fillRect(left, top, w * CELL_SIZE, h * CELL_SIZE);
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = '#ecdfc0';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(left, top, w * CELL_SIZE, h * CELL_SIZE);
+      ctx.restore();
+    }
+    Grid.registerOverlay(drawDD2VTTGhost);
+
+    function cancelDD2VTTGhost() {
+      ddVttPendingData = null;
+      Grid.setMode('none');
+      Grid.redraw();
+    }
+
+    Grid.getCanvas()?.addEventListener('mousemove', (e) => {
+      if (!ddVttPendingData) return;
+      const { px, py } = Grid.canvasLocalPoint(e);
+      ddVttGhostPos = {
+        x: Math.round(px / Grid.CELL_SIZE),
+        y: Math.round(py / Grid.CELL_SIZE),
+      };
+      Grid.redraw();
+    });
+
+    Grid.getCanvas()?.addEventListener('click', async (e) => {
+      if (!ddVttPendingData) return;
+      const data = ddVttPendingData;
+      const placedAt = ddVttGhostPos;
+      cancelDD2VTTGhost(); // clears pending state and restores normal tool mode before the (async) import runs
+
+      const selBlock = Block.blockRegistry[Block.getSelectedBlockId()];
+      try {
+        await Geometry.importDD2VTT(data, {
+          offsetX: placedAt.x,
+          offsetY: placedAt.y,
+          layer: Grid.getCurrentLayer(),
+          blockTitle: selBlock.title,
+          blockColor: selBlock.color,
+        });
+      } catch (err) {
+        console.error('[gm.html] dd2vtt import failed', err);
+        alert('Import failed: ' + err.message);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && ddVttPendingData) cancelDD2VTTGhost();
+    });
+
+    document.getElementById('import-dd2vtt-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+
+      let data;
+      try {
+        data = JSON.parse(await file.text());
+      } catch (err) {
+        alert('That file is not valid dd2vtt/JSON: ' + err.message);
+        return;
+      }
+      if (!data.resolution?.map_size) {
+        alert('That doesn\'t look like a dd2vtt file (no resolution.map_size found).');
+        return;
+      }
+
+      ddVttPendingData = data;
+      ddVttGhostPos = { x: Math.round(Grid.GRID_SIZE / 2), y: Math.round(Grid.GRID_SIZE / 2) };
+      Grid.setMode('dd2vtt-ghost'); // locks out painting/walls/tokens while positioning
+      Grid.redraw();
+    });
+
+    // "Clear Map" (in the Grid section) only ever wiped voxels -- geometry
+    // (walls/doors/lights/stairs) and any imported dd2vtt floor image live
+    // in separate RTDB nodes and were never touched by it. This clears all
+    // three. Tokens are deliberately left alone -- this is a terrain reset,
+    // not a "wipe the whole session" button.
+    document.getElementById('nuke-map-btn').addEventListener('click', async () => {
+      const mapName = Grid.getMapName();
+      const ok = confirm(`Nuke EVERYTHING on "${mapName}" -- voxels, walls/doors/lights/stairs, and any imported floor image?\n\nTokens are kept. This affects everyone currently viewing this map and cannot be undone.`);
+      if (!ok) return;
+      try {
+        await Promise.all([
+          set(ref(db, `maps/${mapName}/voxels`), null),
+          set(ref(db, `maps/${mapName}/geometry`), null),
+          set(ref(db, `assets/uploads/maps/${mapName}_floors`), null),
+        ]);
+      } catch (err) {
+        console.error('[gm.html] nuke map failed', err);
+        alert('Nuke failed: ' + err.message);
+      }
     });
 
     // ── Ping rendering (new Three.js visual; sendPing itself is reused as-is) ─

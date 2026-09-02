@@ -12,9 +12,9 @@ import * as THREE from 'three';
 import { db } from '../js/firebase.js';
 import { ref, onValue } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
 import { saveToken, deleteToken } from '../js/tokens.js';
-import { openCharSheet } from '../js/sheet.js';
 import { tokenTextures, tokenCacheKey, tryLoadTokenTexture } from '../js/assets.js';
 import * as Grid from './grid.js';
+import * as Geometry from './geometry.js';
 
 const tokens = {};       // id -> token data from RTDB
 const tokenMeshes = {};  // id -> THREE.Sprite
@@ -41,6 +41,12 @@ let promptTokenName = async () => ({ name: 'NPC' });
 
 function tokensRefPath() { return `maps/${Grid.getMapName()}/tokens`; }
 
+// For js/initiative.js's renderTokenStrip(), which reads a live tokens
+// object directly and filters non-GM views to `t.type === "pc"`.
+export function getTokens() { return tokens; }
+const tokensChangeHooks = [];
+export function onTokensChange(fn) { tokensChangeHooks.push(fn); }
+
 export function subscribeTokens() {
   if (tokensUnsub) tokensUnsub();
   tokensUnsub = onValue(ref(db, tokensRefPath()), snap => {
@@ -53,6 +59,7 @@ export function subscribeTokens() {
       upsertTokenMesh(id, tok);
     }
     Grid.redraw();
+    tokensChangeHooks.forEach(fn => fn());
   });
 }
 
@@ -142,41 +149,55 @@ function makeTokenTexture(tok, isSelected) {
   return tex;
 }
 
-function tokenWorldPos(tok) {
+// ── Per-floor Group for token sprites (see grid.js's matching comment for
+// the full rationale). A token's Y position is now purely LOCAL (+0.6,
+// always) -- its floor is which GROUP it's parented to, not a number baked
+// into its own position. Unlike voxels/walls/lights (built fresh from data
+// on every change), tokens actually change layers at runtime (stairs), so
+// upsertTokenMesh has to REPARENT an existing sprite when that happens,
+// not just reposition it.
+const tokenLayerGroups = new Map();
+function getTokenLayerGroup(layerIndex) {
+  if (!tokenLayerGroups.has(layerIndex)) {
+    const group = new THREE.Group();
+    group.position.y = layerIndex;
+    scene.add(group);
+    tokenLayerGroups.set(layerIndex, group);
+  }
+  return tokenLayerGroups.get(layerIndex);
+}
+
+function tokenLocalPos(tok) {
   const gx = Math.round(tok.x), gz = Math.round(tok.y);
-  const clampedX = Math.min(Grid.GRID_SIZE - 1, Math.max(0, gx));
-  const clampedZ = Math.min(Grid.GRID_SIZE - 1, Math.max(0, gz));
-  // Tokens remember which floor they were placed/moved on (captured from
-  // the 2D panel's current layer at the time), rather than always snapping
-  // to the tallest stack in that column -- otherwise a token placed inside
-  // a room under a roof would render on TOP of the roof instead of on the
-  // room's own floor. Falls back to the old column-top behavior for tokens
-  // saved before this field existed.
-  const topY = tok.layer != null ? tok.layer + 1 : Grid.columnTopY(clampedX, clampedZ);
-  return new THREE.Vector3(gx - Grid.GRID_OFFSET, topY + 0.6, gz - Grid.GRID_OFFSET);
+  return new THREE.Vector3(gx - Grid.GRID_OFFSET, 0.6, gz - Grid.GRID_OFFSET); // LOCAL y -- the layer group handles height
 }
 
 function upsertTokenMesh(id, tok) {
   let sprite = tokenMeshes[id];
+  const layerGroup = getTokenLayerGroup(tok.layer ?? 0);
   if (!sprite) {
     const material = new THREE.SpriteMaterial({ map: makeTokenTexture(tok, id === selectedTokenId) });
     sprite = new THREE.Sprite(material);
     sprite.scale.set(1, TOKEN_TEX_HEIGHT / TOKEN_TEX_WIDTH, 1); // matches the canvas's own (non-square) aspect ratio
     sprite.userData.tokenId = id;
-    scene.add(sprite);
+    layerGroup.add(sprite);
     tokenMeshes[id] = sprite;
   } else {
     sprite.material.map.dispose();
     sprite.material.map = makeTokenTexture(tok, id === selectedTokenId);
     sprite.material.needsUpdate = true;
+    if (sprite.parent !== layerGroup) {
+      sprite.parent?.remove(sprite); // moved floors (e.g. via a stair) -- reparent to the new layer's group
+      layerGroup.add(sprite);
+    }
   }
-  sprite.position.copy(tokenWorldPos(tok));
+  sprite.position.copy(tokenLocalPos(tok));
 }
 
 function removeTokenMesh(id) {
   const sprite = tokenMeshes[id];
   if (!sprite) return;
-  scene.remove(sprite);
+  sprite.parent?.remove(sprite); // was scene.remove(sprite) -- sprites live in per-layer groups now, not directly on scene
   sprite.material.map.dispose();
   sprite.material.dispose();
   delete tokenMeshes[id];
@@ -201,16 +222,6 @@ function canControlToken(tok) {
   return sameCharacterName(tok?.name, characterName);
 }
 
-// Clicking any token (yours, another player's, or an NPC's) shows its
-// character sheet -- openCharSheet() gracefully no-ops if #sheet-panel
-// doesn't exist on the page (e.g. gm.html has no sheet UI), so this is safe
-// to call unconditionally from both pages.
-function maybeOpenSheet(tok) {
-  if (tok && tok.characterId && tok.characterId !== '__gm__' && tok.characterId !== '__npc__') {
-    openCharSheet(tok.characterId, tok.name, false); // read-only, per sheet.js's own doc comment
-  }
-}
-
 function selectToken(id) {
   selectedTokenId = id;
   if (deleteTokenBtn) deleteTokenBtn.disabled = !(id && getIdentity().isGM);
@@ -231,18 +242,44 @@ async function placeTokenAt(tx, ty, layer) {
     id,
     name,
     x: tx, y: ty,
-    layer, // which floor this token stands on -- see tokenWorldPos()
+    layer, // which floor this token stands on -- see tokenLocalPos()/getTokenLayerGroup()
     hp: 10, maxHp: 10,
     ownerPlayerName: playerName,
     characterId: isGM ? null : characterId,
     isGmToken: isGM,
+    // js/initiative.js's renderTokenStrip() filters non-GM views to
+    // type==="pc" -- our system has no real PC/NPC distinction beyond the
+    // name someone types, so every token is marked visible uniformly
+    // rather than hiding things from the player strip that shouldn't be.
+    type: 'pc',
   };
   await saveToken(Grid.getMapName(), id, data);
+}
+
+// A voxel block blocks movement if it occupies the BODY-height space at the
+// token's own layer -- under the current convention, tok.layer IS the
+// open-air voxel slot a token's body occupies (see the per-floor-group
+// rendering above), not the floor's own index one layer below. Checking
+// layer+1 here (the old formula, correct under the OLD convention) now
+// looks one level too high -- above the character's head instead of at it.
+function isCellBlocked(layer, x, y) {
+  const bodyLayer = Math.max(0, Math.min(Grid.MAX_LAYERS - 1, layer));
+  return Grid.mapData[bodyLayer]?.[y]?.[x] !== 0;
+}
+
+// Is there an actual floor block directly beneath this layer? Without this,
+// nothing ever validated that a destination had real ground under it --
+// only whether something was blocking above -- so a token could walk
+// straight across a gap/hole in the floor with nothing supporting it.
+function hasFloorAt(layer, x, y) {
+  const floorLayer = Math.max(0, Math.min(Grid.MAX_LAYERS - 1, layer - 1));
+  return Grid.mapData[floorLayer]?.[y]?.[x] !== 0;
 }
 
 async function moveTokenTo(id, tx, ty, layer) {
   const tok = tokens[id];
   if (!tok || !canControlToken(tok)) return;
+  if (isCellBlocked(layer, tx, ty)) return; // can't move onto a solid block
   await saveToken(Grid.getMapName(), id, { ...tok, x: tx, y: ty, layer });
 }
 
@@ -287,11 +324,7 @@ function handleGridClick(e) {
   const hitEntry = Object.entries(tokens).find(
     ([, tok]) => Math.round(tok.x) === tx && Math.round(tok.y) === ty
   );
-  if (hitEntry) {
-    maybeOpenSheet(hitEntry[1]);
-    if (clickToMove && canControlToken(hitEntry[1])) { selectToken(hitEntry[0]); return; }
-    return; // sheet already shown above; click-to-move disabled, so stop here
-  }
+  if (hitEntry && clickToMove && canControlToken(hitEntry[1])) { selectToken(hitEntry[0]); return; }
 
   if (!clickToMove) return;
 
@@ -317,14 +350,12 @@ export function handlePointerUp3D(raycastAgainst) {
   if (tokenHit) {
     const id = tokenHit.object.userData.tokenId;
     const tok = tokens[id];
-    maybeOpenSheet(tok);
     if (clickToMove && canControlToken(tok)) { selectToken(id); return; }
-    return; // sheet already shown above; click-to-move disabled, so stop here
   }
 
   if (!clickToMove) return;
 
-  const groundHit = raycastAgainst([...Grid.getVoxelGroup().children, Grid.getGroundPlane()]);
+  const groundHit = raycastAgainst([...Grid.getVoxelMeshes(), Grid.getGroundPlane()]);
   if (!groundHit) return;
   const tx = Math.round(groundHit.point.x + Grid.GRID_OFFSET);
   const ty = Math.round(groundHit.point.z + Grid.GRID_OFFSET);
@@ -356,17 +387,61 @@ function findMyToken() {
   return Object.entries(tokens).find(([, tok]) => sameCharacterName(tok.name, characterName)) || null;
 }
 
+// Maps a one-cell movement direction to the actual grid-corner edge it
+// crosses -- geometry.js's walls/doors are stored as corner-to-corner
+// segments (0..GRID_SIZE), not cell coordinates, so "moving from (3,4)
+// east" needs translating into "crossing the edge from (4,4) to (4,5)".
+function crossedEdge(cx, cy, dx, dy) {
+  if (dx === 1)  return [cx + 1, cy,     cx + 1, cy + 1]; // east
+  if (dx === -1) return [cx,     cy,     cx,     cy + 1]; // west
+  if (dy === 1)  return [cx,     cy + 1, cx + 1, cy + 1]; // south
+  if (dy === -1) return [cx,     cy,     cx + 1, cy];     // north
+  return null;
+}
+
+// Stairs act as a portal: stepping onto one jumps elevation by exactly
+// ±1 full layer, depending on which side you're currently on -- standing
+// on the base floor sends you up to base+1; standing on base+1 sends you
+// back down to base. No half-steps, no general "step over small ledges"
+// tolerance -- flat movement never changes elevation on its own; only a
+// stair does. getStairAt() already scopes the match to a stair reachable
+// from your current elevation (base or base+1), so this only ever sees a
+// stair that's actually usable from where you're standing.
+//
+// Reports usedStair so the caller can skip the floor-support check below --
+// stairs are geometry.js decorations, not real voxel data, so there's
+// never an actual floor block under one.
+function resolveMove(currentElevation, nx, ny) {
+  const stair = Geometry.getStairAt(nx, ny, currentElevation);
+  if (!stair) return { elevation: currentElevation, usedStair: false }; // flat movement -- elevation unchanged
+  const base = stair.layer ?? 0;
+  const elevation = currentElevation <= base ? base + 1 : base;
+  return { elevation, usedStair: true };
+}
+
 let lastArrowMoveAt = 0;
 async function moveMyTokenBy(dx, dy) {
   const now = Date.now();
   if (now - lastArrowMoveAt < 150) return; // holding a key shouldn't flood Firebase with writes
   const entry = findMyToken();
   if (!entry) return;
-  lastArrowMoveAt = now;
   const [id, tok] = entry;
-  const nx = Math.min(Grid.GRID_SIZE - 1, Math.max(0, Math.round(tok.x) + dx));
-  const ny = Math.min(Grid.GRID_SIZE - 1, Math.max(0, Math.round(tok.y) + dy));
-  await moveTokenTo(id, nx, ny, tok.layer ?? 0); // preserves current floor -- arrow keys move horizontally only
+  const cx = Math.round(tok.x), cy = Math.round(tok.y);
+  const nx = Math.min(Grid.GRID_SIZE - 1, Math.max(0, cx + dx));
+  const ny = Math.min(Grid.GRID_SIZE - 1, Math.max(0, cy + dy));
+  if (nx === cx && ny === cy) return; // pinned against the world edge
+
+  const currentElevation = tok.layer ?? 0;
+  const edge = crossedEdge(cx, cy, dx, dy);
+  if (edge && Geometry.isEdgeBlocked(currentElevation, ...edge)) return; // a wall or closed door is in the way
+
+  const { elevation: newElevation, usedStair } = resolveMove(currentElevation, nx, ny);
+  // No stair involved -- ordinary flat step needs an actual floor block
+  // under it, or you'd be walking across a gap with nothing there.
+  if (!usedStair && !hasFloorAt(newElevation, nx, ny)) return;
+
+  lastArrowMoveAt = now;
+  await moveTokenTo(id, nx, ny, newElevation);
 }
 
 const ARROW_DELTAS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };

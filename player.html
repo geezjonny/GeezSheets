@@ -5,54 +5,93 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Voxel VTT — Player</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=IM+Fell+English&family=JetBrains+Mono:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Sheet CSS below expects these dd2vtt-editor CSS variables (copied
-       verbatim from mapeditor.html so buildSheetCard()'s markup renders
-       correctly). --dim is aliased to --text-dim: the original never
-       actually defined --dim, an existing quirk this fixes rather than
-       reproduces. */
-    :root {
-      --bg:#0d0b08; --panel:#1a1510; --panel2:#151208; --border:#3d2e1a;
-      --gold:#c8a84b; --gold-dim:#7a6228; --red:#8b2020; --red-bright:#e04040;
-      --text:#d4c49a; --text-dim:#6b5a38; --green:#5a9a5a; --dim: var(--text-dim);
-    }
 
     body {
       display: flex;
       height: 100vh;
       font-family: sans-serif;
-      background-color: #1a1a1a;
-      color: #fff;
+      background-color: #161009;
+      color: #ecdfc0;
       overflow: hidden;
       user-select: none;
     }
 
-    #toolbar {
+    h2, button, #identity-badge, #initiative-header {
+      font-family: 'Cinzel', serif;
+    }
+
+    #hud-stack {
       position: absolute;
       top: 10px;
       left: 10px;
       z-index: 50;
       display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      max-width: 90vw;
+    }
+
+    #toolbar {
+      display: flex;
       align-items: center;
       gap: 10px;
-      background: rgba(20,20,20,0.85);
+      background: rgba(35,24,14,0.88);
       padding: 8px 10px;
       border-radius: 8px;
       backdrop-filter: blur(2px);
     }
 
+    /* Initiative panel -- collapsible like Owlbear Rodeo's toolbar: the
+       header (label + chevron) always shows, the strip itself hides when
+       collapsed rather than the whole panel disappearing. */
+    #initiative-panel {
+      background: rgba(35,24,14,0.88);
+      border-radius: 8px;
+      backdrop-filter: blur(2px);
+      overflow: hidden;
+      width: 104px;
+    }
+    #initiative-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.8rem;
+      color: #d8c8a0;
+      font-weight: bold;
+    }
+    #initiative-header:hover { background: rgba(255,255,255,0.05); }
+    #initiative-header .chevron { transition: transform 0.15s; color: #9a8860; }
+    #initiative-panel.collapsed #initiative-header .chevron { transform: rotate(-90deg); }
+    #initiative-strip {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px;
+      padding: 6px 8px 10px;
+      overflow-y: auto;
+      max-height: min(70vh, 600px);
+      width: 100%;
+    }
+    #initiative-panel.collapsed #initiative-strip { display: none; }
+
     button {
       padding: 6px 12px;
-      background: #4a4a4a;
-      color: #fff;
+      background: #3d2e1a;
+      color: #ecdfc0;
       border: none;
       border-radius: 4px;
       cursor: pointer;
     }
-    button:hover { background: #606060; }
-    button.active { background: #4f9da6; }
+    button:hover { background: #5a4428; }
+    button.active { background: #c8a84b; }
 
     .toolbar-tools { display: flex; gap: 6px; }
 
@@ -62,8 +101,8 @@
       top: calc(100% + 6px);
       left: 0;
       width: 200px;
-      background: #242424;
-      border: 1px solid #444;
+      background: #241a10;
+      border: 1px solid #4a3820;
       border-radius: 6px;
       padding: 10px;
       display: flex;
@@ -81,18 +120,18 @@
       font-size: 1.4rem;
       font-weight: bold;
       padding: 8px;
-      background: #1a1a1a;
+      background: #161009;
       border-radius: 4px;
       min-height: 1.4em;
     }
-    #dice-result-meta { text-align: center; font-size: 0.72rem; color: #999; }
+    #dice-result-meta { text-align: center; font-size: 0.72rem; color: #9a8860; }
 
     #identity-badge {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 0.8rem;
-      color: #bbb;
+      color: #b8a878;
       white-space: nowrap;
     }
     #identity-badge .role-chip {
@@ -101,8 +140,8 @@
       font-size: 0.7rem;
       font-weight: bold;
       letter-spacing: 0.03em;
-      background: #4f9da6;
-      color: #fff;
+      background: #c8a84b;
+      color: #ecdfc0;
     }
 
     #right-panel { flex: 1; position: relative; }
@@ -116,7 +155,7 @@
       padding: 6px 10px;
       border-radius: 4px;
       font-size: 0.8rem;
-      color: #ddd;
+      color: #d8c8a0;
       pointer-events: none;
     }
 
@@ -133,8 +172,8 @@
     #login-overlay.hidden { display: none; }
     #login-modal {
       width: 360px;
-      background: #242424;
-      border: 1px solid #444;
+      background: #241a10;
+      border: 1px solid #4a3820;
       border-radius: 8px;
       padding: 20px;
       display: flex;
@@ -142,149 +181,17 @@
       gap: 12px;
     }
     #login-modal h2 { font-size: 1.1rem; }
-    #login-modal label { font-size: 0.8rem; color: #bbb; }
+    #login-modal label { font-size: 0.8rem; color: #b8a878; }
     #login-modal input, #login-modal select {
       width: 100%;
       padding: 8px;
       border-radius: 4px;
-      border: 1px solid #555;
-      background: #1a1a1a;
-      color: #fff;
+      border: 1px solid #5a4428;
+      background: #161009;
+      color: #ecdfc0;
     }
-    #login-error { color: #e07070; font-size: 0.8rem; min-height: 1em; }
+    #login-error { color: #e0704a; font-size: 0.8rem; min-height: 1em; }
 
-    /* ── Character sheet (sheet.js / buildSheetCard) ──────────────────────
-       CSS copied verbatim from mapeditor.html so the generated card markup
-       renders correctly, PLUS an override block at the very end that embeds
-       it inline in this tools panel instead of mapeditor.html's fixed
-       slide-out overlay -- everything above the override is unmodified. */
-#sheet-panel{position:fixed;z-index:700;top:0;right:0;width:340px;height:100vh;background:var(--panel);border-left:1px solid var(--border);box-shadow:-8px 0 32px rgba(0,0,0,.6);transform:translateX(100%);transition:transform .22s ease;display:flex;flex-direction:column;overflow:hidden}
-#sheet-panel.open{transform:translateX(0)}
-#sheet-panel-header{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--panel2)}
-#sheet-panel-title{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;flex:1}
-#sheet-panel-close{border:none;background:transparent;color:var(--dim);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:3px;line-height:1;transition:color .12s}
-#sheet-panel-close:hover{color:var(--text)}
-#sheet-view{flex:1;overflow-y:auto;padding:0}
-#sheet-empty{display:flex;align-items:center;justify-content:center;height:100%;font-family:'Cinzel',serif;font-size:.75rem;color:var(--dim);text-align:center;padding:20px;line-height:1.8}
-#sheet-panel .card{background:transparent;border:none;border-radius:0;width:100%;flex-shrink:0;overflow:visible}
-#sheet-panel .card-header{padding:12px 12px 8px;border-bottom:1px solid var(--border)}
-#sheet-panel .char-name{font-family:'Cinzel',serif;font-size:1rem;font-weight:700;color:var(--gold);margin-bottom:2px}
-#sheet-panel .char-sub{font-size:.68rem;color:var(--dim);font-family:'JetBrains Mono',monospace}
-#sheet-panel .char-role-badge{display:inline-block;font-family:'Cinzel',serif;font-size:.56rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:rgba(200,168,75,.1);border:1px solid rgba(200,168,75,.3);color:var(--gold);margin-top:4px}
-#sheet-panel .hp-row{display:flex;align-items:center;gap:6px;margin-top:8px}
-#sheet-panel .hp-label{font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;width:16px}
-#sheet-panel .hp-bar-wrap{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
-#sheet-panel .hp-bar{height:100%;border-radius:999px;transition:width .4s,background-color .4s}
-#sheet-panel .hp-val{font-size:.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);white-space:nowrap;min-width:48px;text-align:right}
-#sheet-panel .temp-badge{font-size:.58rem;font-family:'JetBrains Mono',monospace;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);color:#c084fc;border-radius:999px;padding:1px 6px;white-space:nowrap}
-#sheet-panel .hp-controls{display:flex;align-items:center;gap:5px;margin-top:6px}
-#sheet-panel .hp-delta{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 6px;font-size:.76rem;font-family:'JetBrains Mono',monospace;outline:none;text-align:center;min-width:0}
-#sheet-panel .hp-delta:focus{border-color:var(--gold-dim)}
-#sheet-panel .hp-btn{border-radius:4px;padding:4px 8px;font-size:.68rem;font-weight:700;font-family:'Cinzel',serif;cursor:pointer;transition:all .12s;white-space:nowrap;letter-spacing:.04em}
-#sheet-panel .hp-btn.heal{background:rgba(74,154,74,.12);border:1px solid rgba(74,154,74,.3);color:#5a9a5a}
-#sheet-panel .hp-btn.heal:hover{background:rgba(74,154,74,.22)}
-#sheet-panel .hp-btn.dmg{background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.3);color:#fca5a5}
-#sheet-panel .hp-btn.dmg:hover{background:rgba(224,64,64,.22)}
-#sheet-panel .stats-row{display:flex;border-bottom:1px solid var(--border)}
-#sheet-panel .stat-cell{flex:1;padding:6px 2px;text-align:center;border-right:1px solid var(--border)}
-#sheet-panel .stat-cell:last-child{border-right:none}
-#sheet-panel .stat-label{font-family:'Cinzel',serif;font-size:.52rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
-#sheet-panel .stat-val{font-size:.84rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
-#sheet-panel .ability-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:8px;border-bottom:1px solid var(--border)}
-#sheet-panel .ab-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:5px;padding:5px 2px;text-align:center}
-#sheet-panel .ab-name{font-family:'Cinzel',serif;font-size:.5rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);margin-bottom:1px}
-#sheet-panel .ab-score{font-size:.84rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);line-height:1}
-#sheet-panel .ab-mod{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--gold);margin-top:1px}
-#sheet-panel .conditions-row{display:flex;flex-wrap:wrap;gap:3px;padding:5px 8px;border-bottom:1px solid var(--border)}
-#sheet-panel .conditions-row:empty{display:none}
-#sheet-panel .cond-pill{font-family:'Cinzel',serif;font-size:.55rem;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.3);color:#fca5a5}
-#sheet-panel .card-footer{padding:6px;display:flex;flex-direction:column;gap:4px}
-#sheet-panel .panel-btn{width:100%;border-radius:5px;color:var(--dim);font-family:'Cinzel',serif;font-size:.68rem;font-weight:700;letter-spacing:.04em;padding:6px 8px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;border:1px solid var(--border);background:rgba(255,255,255,.02)}
-#sheet-panel .panel-btn .chevron{margin-left:auto;transition:transform .2s}
-#sheet-panel .panel-btn.open .chevron{transform:rotate(180deg)}
-#sheet-panel .panel-btn:hover,#sheet-panel .panel-btn.open{border-color:var(--gold-dim);color:var(--text);background:rgba(200,168,75,.05)}
-#sheet-panel .panel-btn.spell-btn:hover,#sheet-panel .panel-btn.spell-btn.open{border-color:#8b5cf6;color:#c084fc;background:rgba(139,92,246,.08)}
-#sheet-panel .panel-btn.skill-btn:hover,#sheet-panel .panel-btn.skill-btn.open{border-color:#0ea5e9;color:#38bdf8;background:rgba(14,165,233,.08)}
-#sheet-panel .panel-btn.weapon-btn:hover,#sheet-panel .panel-btn.weapon-btn.open{border-color:#e8834a;color:#f5a87b;background:rgba(232,131,74,.08)}
-#sheet-panel .panel-btn.tip-btn:hover,#sheet-panel .panel-btn.tip-btn.open{border-color:#22c55e;color:#4ade80;background:rgba(34,197,94,.05)}
-#sheet-panel .panel-btn.inv-btn:hover,#sheet-panel .panel-btn.inv-btn.open{border-color:var(--gold-dim);color:var(--gold);background:rgba(200,168,75,.06)}
-#sheet-panel .expand-panel{display:none;border-top:1px solid var(--border);padding:10px;background:rgba(12,9,8,.5)}
-#sheet-panel .expand-panel.open{display:block}
-#sheet-panel .sp-section-title{font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:5px;margin-top:8px}
-#sheet-panel .sp-section-title:first-child{margin-top:0}
-#sheet-panel .slot-levels{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
-#sheet-panel .slot-level-row{display:flex;align-items:center;gap:6px}
-#sheet-panel .slot-level-label{font-family:'Cinzel',serif;font-size:.58rem;color:var(--dim);width:38px;flex-shrink:0}
-#sheet-panel .slot-pips{display:flex;gap:4px;flex-wrap:wrap}
-#sheet-panel .slot-pip{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.15);cursor:pointer;transition:all .12s;flex-shrink:0}
-#sheet-panel .slot-pip:hover{transform:scale(1.15)}
-#sheet-panel .slot-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
-#sheet-panel .spell-list{display:flex;flex-direction:column;gap:3px}
-#sheet-panel .spell-item{padding:5px 7px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
-#sheet-panel .spell-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:5px}
-#sheet-panel .spell-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text)}
-#sheet-panel .spell-level-tag{font-size:.58rem;font-family:'JetBrains Mono',monospace;color:var(--dim);white-space:nowrap}
-#sheet-panel .spell-desc{font-size:.64rem;color:var(--dim);line-height:1.5;margin-top:2px;font-family:'JetBrains Mono',monospace}
-#sheet-panel .skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-bottom:6px}
-#sheet-panel .skill-row-item{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:3px 7px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.66rem}
-#sheet-panel .skill-name{color:var(--dim)}
-#sheet-panel .skill-val{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text)}
-#sheet-panel .skill-row-item.prof .skill-name{color:#38bdf8}
-#sheet-panel .skill-row-item.expert .skill-name{color:#4ade80}
-#sheet-panel .save-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-bottom:6px}
-#sheet-panel .save-row-item{display:flex;align-items:center;justify-content:space-between;flex-direction:column;gap:2px;padding:4px 3px;border-radius:4px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.62rem;text-align:center}
-#sheet-panel .save-row-item.prof .skill-name{color:var(--gold)}
-#sheet-panel .senses-block{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
-#sheet-panel .sense-pill{font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:2px 7px;border-radius:4px;border:1px solid rgba(14,165,233,.25);background:rgba(14,165,233,.05);color:#38bdf8}
-#sheet-panel .feat-item{padding:5px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
-#sheet-panel .feat-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:1px}
-#sheet-panel .feat-desc{font-size:.64rem;color:var(--dim);line-height:1.5;font-family:'JetBrains Mono',monospace}
-#sheet-panel .weapon-list{display:flex;flex-direction:column;gap:4px}
-#sheet-panel .weapon-item{border:1px solid var(--border);border-radius:5px;background:rgba(255,255,255,.02);overflow:hidden}
-#sheet-panel .weapon-top{display:flex;align-items:center;gap:6px;padding:6px 8px}
-#sheet-panel .weapon-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text);flex:1}
-#sheet-panel .weapon-type{font-size:.56rem;font-family:'JetBrains Mono',monospace;color:var(--dim);padding:1px 5px;border:1px solid var(--border);border-radius:999px;white-space:nowrap}
-#sheet-panel .weapon-stats{display:flex;gap:4px;padding:0 8px 6px;flex-wrap:wrap}
-#sheet-panel .wstat{display:flex;flex-direction:column;align-items:center;background:rgba(232,131,74,.06);border:1px solid rgba(232,131,74,.2);border-radius:4px;padding:3px 8px;min-width:48px}
-#sheet-panel .wstat-label{font-family:'Cinzel',serif;font-size:.5rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#e8834a;margin-bottom:1px}
-#sheet-panel .wstat-val{font-size:.8rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:#f5a87b}
-#sheet-panel .weapon-notes{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--dim);padding:0 8px 6px;line-height:1.5}
-#sheet-panel .inv-item{padding:6px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
-#sheet-panel .inv-item-top{display:flex;align-items:center;justify-content:space-between;gap:5px}
-#sheet-panel .inv-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text);flex:1}
-#sheet-panel .inv-qty{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--gold);white-space:nowrap}
-#sheet-panel .inv-cat{font-size:.56rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:1px;padding:1px 5px;border:1px solid var(--border);border-radius:999px;display:inline-block}
-#sheet-panel .inv-desc{font-size:.64rem;color:var(--dim);line-height:1.5;margin-top:3px;font-family:'JetBrains Mono',monospace}
-#sheet-panel .inv-notes{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--gold-dim);margin-top:2px;font-style:italic}
-#sheet-panel .equipped-row{display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-#sheet-panel .equipped-badge{font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:2px 7px;border-radius:4px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.05);color:var(--gold-dim)}
-#sheet-panel .equipped-badge span{color:var(--text)}
-#sheet-panel .coin-row{display:flex;align-items:center;gap:5px;padding:4px 8px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-#sheet-panel .coin-label{font-family:'Cinzel',serif;font-size:.54rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin-right:1px}
-#sheet-panel .coin{display:flex;align-items:center;gap:2px;font-family:'JetBrains Mono',monospace;font-size:.66rem;font-weight:700;padding:1px 6px;border-radius:999px;border:1px solid}
-#sheet-panel .coin.pp{color:#c4b5fd;border-color:rgba(196,181,253,.3);background:rgba(196,181,253,.07)}
-#sheet-panel .coin.gp{color:var(--gold);border-color:rgba(200,168,75,.3);background:rgba(200,168,75,.07)}
-#sheet-panel .coin.ep{color:#67e8f9;border-color:rgba(103,232,249,.3);background:rgba(103,232,249,.07)}
-#sheet-panel .coin.sp{color:#94a3b8;border-color:rgba(148,163,184,.3);background:rgba(148,163,184,.07)}
-#sheet-panel .coin.cp{color:#b45309;border-color:rgba(180,83,9,.3);background:rgba(180,83,9,.07)}
-#sheet-panel .ability-charge{padding:6px 7px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:3px}
-#sheet-panel .ability-charge-top{display:flex;align-items:center;justify-content:space-between;gap:5px;margin-bottom:4px}
-#sheet-panel .ability-charge-name{font-family:'Cinzel',serif;font-size:.7rem;font-weight:700;color:var(--text)}
-#sheet-panel .ability-charge-meta{font-family:'JetBrains Mono',monospace;font-size:.58rem;color:var(--dim)}
-#sheet-panel .charge-pips{display:flex;gap:4px;flex-wrap:wrap}
-#sheet-panel .charge-pip{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.2);cursor:pointer;transition:all .12s;flex-shrink:0}
-#sheet-panel .charge-pip:hover{transform:scale(1.15)}
-#sheet-panel .charge-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
-#sheet-panel .empty-panel{font-family:'Cinzel',serif;font-size:.68rem;color:var(--dim);text-align:center;padding:8px 0}
-#sheet-panel .combat-guide-wrap{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:6px;padding:8px 10px}
-#sheet-panel .combat-guide{font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#4ade80;line-height:1.7;white-space:pre-wrap}
-#sheet-panel .spell-meta{font-size:.6rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:2px;display:flex;gap:6px;flex-wrap:wrap}
-#sheet-panel .spell-meta span{color:var(--text)}
-#sheet-panel .spell-tip{display:flex;align-items:flex-start;gap:4px;margin-top:3px;padding:3px 6px;border-radius:3px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2)}
-#sheet-panel .spell-tip-text{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:#4ade80;line-height:1.5}
-#sheet-panel .sp-meta{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-#sheet-panel .sp-meta-item{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--dim)}
-#sheet-panel .sp-meta-item span{color:var(--gold);font-weight:700}
   </style>
 
   <script type="importmap">
@@ -319,55 +226,57 @@
     </div>
   </div>
 
-  <!-- Toolbar: Ruler / Ping / Dice tools + identity + sheet fold toggle.
+  <!-- Toolbar: Ruler / Ping / Dice tools + identity + external sheet link.
        Floats over the 3D view, which is now the only main content -- no more
-       left panel; Block/Grid/Geometry editing UI is GM-only (see gm.html). -->
-  <div id="toolbar">
-    <div id="identity-badge">
-      <span id="identity-name">Not signed in</span>
-      <span id="identity-role" class="role-chip" style="display:none;">PLAYER</span>
-    </div>
-    <div class="toolbar-tools">
-      <button id="tool-ruler" data-tool="ruler" title="Measure distance: click a start point, then an end point">📏 Ruler</button>
-      <button id="tool-ping" data-tool="ping" title="Click once, then click the map to ping (Shift+Click always works too)">📍 Ping</button>
-      <div id="dice-popover-wrap">
-        <button id="tool-dice">🎲 Dice</button>
-        <div id="dice-popover" class="hidden">
-          <div class="dice-row">
-            <button data-sides="4">d4</button>
-            <button data-sides="6">d6</button>
-            <button data-sides="8">d8</button>
-            <button data-sides="10">d10</button>
-            <button data-sides="12">d12</button>
-            <button data-sides="20">d20</button>
-            <button data-sides="100">d100</button>
-          </div>
-          <div id="dice-result">—</div>
-          <div id="dice-result-meta">&nbsp;</div>
-        </div>
+       left panel; Block/Grid/Geometry editing UI is GM-only (see gm.html).
+       Stacked with the initiative panel below via #hud-stack so it doesn't
+       need a hardcoded pixel offset. -->
+  <div id="hud-stack">
+    <div id="toolbar">
+      <div id="identity-badge">
+        <span id="identity-name">Not signed in</span>
+        <span id="identity-role" class="role-chip" style="display:none;">PLAYER</span>
       </div>
-      <button id="tool-sheet" title="Show/hide character sheet">📋 Sheet</button>
+      <div class="toolbar-tools">
+        <button id="tool-ruler" data-tool="ruler" title="Measure distance: click a start point, then an end point">📏 Ruler</button>
+        <button id="tool-ping" data-tool="ping" title="Click once, then click the map to ping (Shift+Click always works too)">📍 Ping</button>
+        <div id="dice-popover-wrap">
+          <button id="tool-dice">🎲 Dice</button>
+          <div id="dice-popover" class="hidden">
+            <div class="dice-row">
+              <button data-sides="4">d4</button>
+              <button data-sides="6">d6</button>
+              <button data-sides="8">d8</button>
+              <button data-sides="10">d10</button>
+              <button data-sides="12">d12</button>
+              <button data-sides="20">d20</button>
+              <button data-sides="100">d100</button>
+            </div>
+            <div id="dice-result">—</div>
+            <div id="dice-result-meta">&nbsp;</div>
+          </div>
+        </div>
+        <button id="tool-sheet" title="Open your character sheet in a new tab">📋 Sheet</button>
+      </div>
+    </div>
+
+    <!-- Initiative/token strip, via js/initiative.js's renderTokenStrip() --
+         same combined "out of combat: token strip, in combat: turn order"
+         widget the rest of the app uses. Vertical layout on the left,
+         collapsible like Owlbear Rodeo's toolbar: the header always shows,
+         only the strip itself folds away. -->
+    <div id="initiative-panel">
+      <div id="initiative-header">
+        <span>Initiative</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div id="initiative-strip"></div>
     </div>
   </div>
 
   <div id="right-panel">
     <canvas id="three-canvas"></canvas>
     <div id="ping-hint">Arrow keys move your character · Shift+Click, or the Ping tool, to ping</div>
-  </div>
-
-  <!-- Character sheet, via js/sheet.js -- read-only for players. Fixed
-       slide-out panel (mapeditor.html's original behavior): hidden off the
-       right edge by default, .open class slides it in. Markup mirrors
-       mapeditor.html's #sheet-panel/#sheet-panel-header/#sheet-view exactly,
-       since openCharSheet()/buildSheetCard() expect that structure. -->
-  <div id="sheet-panel">
-    <div id="sheet-panel-header">
-      <div id="sheet-panel-title">📋 CHARACTER</div>
-      <button id="sheet-panel-close" title="Fold away">✕</button>
-    </div>
-    <div id="sheet-view">
-      <div id="sheet-empty">Sign in to load your sheet</div>
-    </div>
   </div>
 
   <script type="module">
@@ -383,7 +292,7 @@
       subscribePassphrase, checkPassphrase, fetchCharacterRoster,
       saveAuthSession, loadAuthSession
     } from './js/auth.js';
-    import { openCharSheet, closeSheetPanel } from './js/sheet.js';
+    import { renderTokenStrip, rollInitiative } from './js/initiative.js';
     import { FEET_PER_TILE } from './js/config.js';
 
     // ── Grid/Geometry/Token modules -- Block/palette-editing UI and the 2D
@@ -431,7 +340,6 @@
       identityName.textContent = `${playerName} — ${characterName}`;
       identityRole.style.display = 'inline-block';
       loginOverlay.classList.add('hidden');
-      openCharSheet(characterId, characterName, false); // false = read-only, per sheet.js's own doc comment
     }
 
     document.getElementById('login-submit').addEventListener('click', async () => {
@@ -485,11 +393,11 @@
       dicePopover.classList.toggle('hidden');
     });
 
+    // Character sheets now live in a separate app (GeezSheets), not inline
+    // here -- js/sheet.js's buildSheetCard() rendering wasn't showing other
+    // players' sheets correctly, so this just opens the real thing directly.
     document.getElementById('tool-sheet').addEventListener('click', () => {
-      document.getElementById('sheet-panel').classList.toggle('open');
-    });
-    document.getElementById('sheet-panel-close').addEventListener('click', () => {
-      closeSheetPanel();
+      window.open('https://geezjonny.github.io/GeezSheets/sheet.html', '_blank');
     });
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -513,8 +421,8 @@
     controls.target.set(0, 0, 0);
     controls.update();
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    scene.add(new THREE.AmbientLight(0xffdfb0, 0.35));
+    const dirLight = new THREE.DirectionalLight(0xffe0b0, 0.5);
     dirLight.position.set(15, 25, 10);
     scene.add(dirLight);
 
@@ -538,7 +446,7 @@
     // instead of passing through solid geometry to land on the floor behind it.
     function allSolidTargets() {
       return [
-        ...Grid.getVoxelGroup().children,
+        ...Grid.getVoxelMeshes(),
         Grid.getGroundPlane(),
         ...Geometry.getSolidMeshes(),
         ...Token.getTokenMeshesArray(),
@@ -557,6 +465,62 @@
       getIdentity: () => ({ playerName, isGM, characterId, characterName }),
       requireLogin: () => loginOverlay.classList.remove('hidden'),
       clickToMove: false, // players move only via arrow keys, scoped to their own character
+    });
+
+    // ── Initiative panel, via js/initiative.js's renderTokenStrip() ─────────
+    // That function expects a live-updating state object it re-renders from
+    // whenever called; it doesn't subscribe to tokens/pcsData itself (only
+    // combat/initiative/presence), so those two are wired here -- tokens via
+    // Token.onTokensChange() (reusing token.js's own subscription rather
+    // than opening a second one on the same Firebase path), pcsData via its
+    // own onValue on characters/pcs.
+    const initiativeStripState = {
+      tokens: {}, pcsData: {}, presence: {},
+      initiative: { order: [], active: null }, inCombat: false, rolls: {},
+    };
+    function renderInitiativeStrip() {
+      renderTokenStrip(document.getElementById('initiative-strip'), initiativeStripState, {
+        isGM: false, // player.html is always player-only -- no GM combat controls render
+        playerName,
+        myCharacterId: characterId,
+        onRollInitiative: (tokenId, name, dexMod, callerName) => rollInitiative(tokenId, name, dexMod, callerName),
+        mapName: Grid.getMapName(),
+      });
+    }
+    Token.onTokensChange(() => {
+      // renderTokenStrip() (js/initiative.js) filters non-GM views to
+      // type==="pc", but tokens placed before this session added that
+      // field don't have it at all -- default it here rather than leaving
+      // every pre-existing token invisible to the player-side strip.
+      const raw = Token.getTokens();
+      const patched = {};
+      for (const [id, tok] of Object.entries(raw)) patched[id] = { ...tok, type: tok.type || 'pc' };
+      initiativeStripState.tokens = patched;
+      renderInitiativeStrip();
+    });
+    onValue(ref(db, 'characters/pcs'), snap => {
+      initiativeStripState.pcsData = snap.val() || {};
+      renderInitiativeStrip();
+    });
+    onValue(ref(db, 'session/inCombat'), snap => {
+      initiativeStripState.inCombat = !!snap.val();
+      renderInitiativeStrip();
+    });
+    onValue(ref(db, 'initiative'), snap => {
+      const data = snap.val() || {};
+      initiativeStripState.initiative = { order: data.order || [], active: data.active || null };
+      initiativeStripState.rolls = data.rolls || {};
+      renderInitiativeStrip();
+    });
+    onValue(ref(db, 'presence'), snap => {
+      initiativeStripState.presence = snap.val() || {};
+      renderInitiativeStrip();
+    });
+
+    // Collapsible like Owlbear Rodeo's toolbar -- the header stays visible,
+    // only the strip itself folds away.
+    document.getElementById('initiative-header').addEventListener('click', () => {
+      document.getElementById('initiative-panel').classList.toggle('collapsed');
     });
 
     // ── Ping rendering ──────────────────────────────────────────────────────
