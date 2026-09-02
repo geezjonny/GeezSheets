@@ -12,18 +12,22 @@ import * as THREE from 'three';
 import { db } from '../js/firebase.js';
 import { ref, set, get, onValue } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
 import { addWall, addDoor, addLight, deleteById, toggleDoor, segmentAtPoint, lightAtPoint } from '../js/geometry.js';
-import { blockRegistry, getSelectedBlockId, getBlockMaterial } from './block.js';
+import { blockRegistry, getSelectedBlockId, getBlockMaterial, getOrCreateBlockId } from './block.js';
 import * as Grid from './grid.js';
 
 const geometry = { walls: [], doors: [], lights: [], stairs: [] };
 let geoPendingStart = null; // {gx,gy,layer} while placing a wall/door's first point
 let geometryUnsub = null;
-let wallGroup, doorGroup, lightGroup, stairGroup, floorImageGroup;
+let wallGroup, doorGroup, lightGroup, stairGroup, floorImageGroup, roofGroup;
 let stairFacing = 0; // 0=N, 1=E, 2=S, 3=W -- which way a newly-placed stair ascends
 let floorImageUnsub = null;
 
 // Walls/doors default to 2 voxel layers tall.
 const WALL_HEIGHT = 2;
+// How thick a painted roof tile renders -- thin like the dd2vtt floor
+// image, but a real solid box (not a Plane), so it doesn't get backface-
+// culled from below the way a bare Plane can.
+const ROOF_THICKNESS = 0.15;
 
 // ── Per-floor Group architecture (see grid.js's matching comment for the
 // full rationale) -- each of walls/doors/lights/stairs gets its own
@@ -36,6 +40,7 @@ const doorLayerGroups = new Map();
 const lightLayerGroups = new Map();
 const stairLayerGroups = new Map();
 const floorImageLayerGroups = new Map(); // multiple images can share a layer now, same as walls/lights
+const roofLayerGroups = new Map();
 
 function getLayerSubgroup(container, layerGroupsMap, layerIndex) {
   if (!layerGroupsMap.has(layerIndex)) {
@@ -52,6 +57,67 @@ function clearAllLayerSubgroups(layerGroupsMap) {
 }
 
 function geometryRefPath() { return `maps/${Grid.getMapName()}/geometry`; }
+
+// ── Roof tiles: painted (click-drag, like voxels), not placed one at a
+// time like a light or stair -- so they're stored as a per-layer 2D grid
+// of block ids, the same shape as grid.js's own mapData, not a growing
+// list. Synced by TITLE (not numeric id) for the same reason voxels are:
+// blockRegistry ids are per-client local state. Lives in its own
+// sub-path under the geometry node (like doors' targeted save) since
+// painting fires far more updates than a single wall/light placement --
+// bundling it into saveGeometry()'s full write would mean every painted
+// cell rewrites walls/doors/lights/stairs too.
+const roofData = new Map(); // layer -> Uint8Array(GRID_SIZE*GRID_SIZE), 0 = no roof there
+function getRoofGrid(layer) {
+  if (!roofData.has(layer)) roofData.set(layer, new Uint8Array(Grid.GRID_SIZE * Grid.GRID_SIZE));
+  return roofData.get(layer);
+}
+function roofIndex(x, z) { return z * Grid.GRID_SIZE + x; }
+
+function serializeRoofs() {
+  const out = {};
+  for (const [layer, grid] of roofData.entries()) {
+    if (!grid.some(v => v !== 0)) continue; // skip empty layers entirely
+    const rows = [];
+    for (let z = 0; z < Grid.GRID_SIZE; z++) {
+      const row = [];
+      for (let x = 0; x < Grid.GRID_SIZE; x++) {
+        const id = grid[roofIndex(x, z)];
+        row.push(id === 0 ? null : (blockRegistry[id]?.title || 'default'));
+      }
+      rows.push(row);
+    }
+    out[layer] = rows;
+  }
+  return out;
+}
+
+function loadRoofsFromTitles(data) {
+  roofData.clear();
+  if (data) {
+    for (const [layerStr, rows] of Object.entries(data)) {
+      const layer = parseInt(layerStr, 10);
+      const grid = getRoofGrid(layer);
+      for (let z = 0; z < Grid.GRID_SIZE; z++) {
+        for (let x = 0; x < Grid.GRID_SIZE; x++) {
+          const title = rows?.[z]?.[x];
+          grid[roofIndex(x, z)] = title ? getOrCreateBlockId(title) : 0;
+        }
+      }
+    }
+  }
+  renderRoofs();
+}
+
+let saveRoofsTimer = null;
+function scheduleSaveRoofs() {
+  clearTimeout(saveRoofsTimer);
+  saveRoofsTimer = setTimeout(() => {
+    const serialized = serializeRoofs();
+    set(ref(db, `${geometryRefPath()}/roofs`), Object.keys(serialized).length ? serialized : null)
+      .catch(err => console.error('[geometry.js] failed to save roofs', err));
+  }, 300);
+}
 
 export async function saveGeometry() {
   await set(ref(db, geometryRefPath()), {
@@ -85,6 +151,7 @@ export function snapshotGeometryState() {
     doors: JSON.parse(JSON.stringify(geometry.doors)),
     lights: JSON.parse(JSON.stringify(geometry.lights)),
     stairs: JSON.parse(JSON.stringify(geometry.stairs)),
+    roofs: serializeRoofs(), // same title-based shape roofs already sync in
   };
 }
 
@@ -93,9 +160,11 @@ export async function restoreGeometrySnapshot(snapshot) {
   geometry.doors.length = 0;  geometry.doors.push(...snapshot.doors);
   geometry.lights.length = 0; geometry.lights.push(...snapshot.lights);
   geometry.stairs.length = 0; geometry.stairs.push(...snapshot.stairs);
+  loadRoofsFromTitles(snapshot.roofs); // calls renderRoofs() itself
   renderGeometry();
   Grid.redraw();
   await saveGeometry();
+  await set(ref(db, `${geometryRefPath()}/roofs`), Object.keys(snapshot.roofs).length ? snapshot.roofs : null);
 }
 
 export function subscribeGeometry() {
@@ -110,6 +179,7 @@ export function subscribeGeometry() {
     if (data.doors)  geometry.doors.push(...Object.values(data.doors));
     if (data.lights) geometry.lights.push(...Object.values(data.lights));
     if (data.stairs) geometry.stairs.push(...Object.values(data.stairs));
+    loadRoofsFromTitles(data.roofs); // calls renderRoofs() itself
     renderGeometry();
   });
 }
@@ -205,6 +275,33 @@ function segmentMesh(seg, kind, thickness) {
   return mesh;
 }
 
+// Roof tiles: thin, solid boxes (not a bare Plane, which can backface-cull
+// from below) capping off the top of this layer's walls -- same /assets
+// texture system as everything else (getBlockMaterial), same per-layer
+// Group pattern as walls/doors/lights/stairs.
+function renderRoofs() {
+  clearAllLayerSubgroups(roofLayerGroups);
+  for (const [layer, grid] of roofData.entries()) {
+    for (let z = 0; z < Grid.GRID_SIZE; z++) {
+      for (let x = 0; x < Grid.GRID_SIZE; x++) {
+        const id = grid[roofIndex(x, z)];
+        if (id === 0) continue;
+        const block = blockRegistry[id];
+        if (!block) continue;
+        const material = getBlockMaterial(block.title, block.color);
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, ROOF_THICKNESS, 1), material);
+        const worldX = x - Grid.GRID_OFFSET, worldZ = z - Grid.GRID_OFFSET;
+        // Caps off the walls on this layer, not resting at floor height --
+        // WALL_HEIGHT is how tall a wall on this same layer stands.
+        mesh.position.set(worldX, WALL_HEIGHT - ROOF_THICKNESS / 2, worldZ); // LOCAL y
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        getLayerSubgroup(roofGroup, roofLayerGroups, layer).add(mesh);
+      }
+    }
+  }
+}
+
 function renderGeometry() {
   clearAllLayerSubgroups(wallLayerGroups);
   clearAllLayerSubgroups(doorLayerGroups);
@@ -288,8 +385,29 @@ function drawOverlay(ctx) {
     for (const e of entries) {
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.drawImage(e.img, e.x * CELL_SIZE, e.y * CELL_SIZE, e.width * CELL_SIZE, e.height * CELL_SIZE);
+      // e.x/y are the image's CENTER (not top-left) -- translate there,
+      // rotate around that fixed point, draw offset by half the size so
+      // it's still centered on the same spot after rotating.
+      ctx.translate(e.x * CELL_SIZE, e.y * CELL_SIZE);
+      ctx.rotate(-(e.rotation || 0) * Math.PI / 180); // negated -- see renderFloorImages' comment on why
+      ctx.drawImage(e.img, -e.width * CELL_SIZE / 2, -e.height * CELL_SIZE / 2, e.width * CELL_SIZE, e.height * CELL_SIZE);
       ctx.restore();
+    }
+  }
+
+  // Painted roof tiles -- current layer at full color, layers below dimmed
+  // (same onion-skin convention as everything else here).
+  for (const [layer, grid] of roofData.entries()) {
+    if (layer > currentLayer) continue;
+    const onLayer = layer === currentLayer;
+    for (let z = 0; z < Grid.GRID_SIZE; z++) {
+      for (let x = 0; x < Grid.GRID_SIZE; x++) {
+        const id = grid[roofIndex(x, z)];
+        if (id === 0) continue;
+        const block = blockRegistry[id];
+        ctx.fillStyle = onLayer ? (block?.color || '#aaaaaa') : hexToRgba(block?.color || '#aaaaaa', 0.2);
+        ctx.fillRect(x * CELL_SIZE, z * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      }
     }
   }
 
@@ -571,9 +689,15 @@ export function getStairAt(x, y, currentElevation) {
 // node independently and renders every layer's images itself.
 function floorImagesRefPath() { return `assets/uploads/maps/${Grid.getMapName()}_floors`; }
 
-async function saveFloorImage(dataUri, x, y, width, height, layer) {
+// x,y here are the rectangle's CENTER, not its top-left corner -- a
+// rotatable rectangle's center is the one point that stays fixed under
+// rotation, so storing that (plus a rotation angle) avoids ever needing to
+// recompute "which corner is top-left now" after turning it 90°.
+async function saveFloorImage(dataUri, centerX, centerY, width, height, layer, rotation) {
   const imgId = 'floorimg_' + Date.now() + '_' + Math.floor(Math.random() * 1e6);
-  await set(ref(db, `${floorImagesRefPath()}/${layer}/${imgId}`), { dataUri, x, y, width, height });
+  await set(ref(db, `${floorImagesRefPath()}/${layer}/${imgId}`), {
+    dataUri, x: centerX, y: centerY, width, height, rotation: rotation || 0,
+  });
 }
 
 // For undoing a dd2vtt import: a one-time read of whatever's currently
@@ -670,7 +794,8 @@ function loadFloorTextureWithTransparency(dataUri) {
   });
 }
 
-// 2D-panel onion-skin preview cache: layer -> [{img, x, y, width, height}].
+// 2D-panel onion-skin preview cache: layer -> [{img, x, y, width, height,
+// rotation}]. x,y are the image's CENTER (see saveFloorImage's comment).
 // Populated alongside the 3D textures below (same source data), but these
 // are plain <img> elements for ctx.drawImage(), not THREE.Textures --
 // drawOverlay() (below) paints them onto the 2D grid panel.
@@ -680,7 +805,9 @@ function loadImageForPreview(layer, entry) {
   const img = new Image();
   img.onload = () => {
     if (!floorImagePreviewCache.has(layer)) floorImagePreviewCache.set(layer, []);
-    floorImagePreviewCache.get(layer).push({ img, x: entry.x, y: entry.y, width: entry.width, height: entry.height });
+    floorImagePreviewCache.get(layer).push({
+      img, x: entry.x, y: entry.y, width: entry.width, height: entry.height, rotation: entry.rotation || 0,
+    });
     Grid.redraw(); // wasn't ready yet on the redraw that happens right after renderFloorImages runs
   };
   img.src = entry.dataUri;
@@ -709,14 +836,23 @@ async function renderFloorImages(data) {
         new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9, transparent: true, alphaTest: 0.5 })
       );
       mesh.rotation.x = -Math.PI / 2;
-      // PlaneGeometry is centered on its own local origin; our own top-left
-      // dd2vtt corner is (x,y), so shift by half the size to place it
-      // correctly -- same idea as geomToWorld's own -0.5 corner convention.
-      const centerX = entry.x + entry.width / 2, centerY = entry.y + entry.height / 2;
-      const world = geomToWorld(centerX, centerY);
-      mesh.position.set(world.x, 0.02, world.z); // LOCAL y -- the layer group handles height
       mesh.receiveShadow = true;
-      getLayerSubgroup(floorImageGroup, floorImageLayerGroups, layer).add(mesh);
+      // Rotation is applied to a WRAPPING group, not mesh.rotation.y
+      // directly -- after laying the plane flat via rotation.x, its own
+      // local Y axis no longer points along world-up (Euler angles compose
+      // in the object's own rotating frame), so spinning it further around
+      // "vertical" needs a separate group whose Y axis IS still world-up.
+      // Same pattern buildStairGroup/buildRampGroup already use for facing.
+      // Negated: confirmed live that this rotated opposite to the walls'
+      // own rotateRaw() transform in importDD2VTT -- this makes them agree.
+      const wrapper = new THREE.Group();
+      wrapper.add(mesh);
+      wrapper.rotation.y = -(entry.rotation || 0) * Math.PI / 180;
+
+      // entry.x/y are the image's CENTER directly now (see saveFloorImage).
+      const world = geomToWorld(entry.x, entry.y);
+      wrapper.position.set(world.x, 0.02, world.z); // LOCAL y -- the layer group handles height
+      getLayerSubgroup(floorImageGroup, floorImageLayerGroups, layer).add(wrapper);
     }
   }
 }
@@ -734,21 +870,47 @@ function subscribeFloorImage() {
 // 0 = centered), layer (which voxel layer walls/doors/lights/floor attach
 // to, default current layer), blockTitle/blockColor (dd2vtt doesn't specify
 // a wall material, so imported walls/doors use whatever block is selected
-// in the palette at import time -- same as hand-drawn ones).
+// in the palette at import time -- same as hand-drawn ones), rotation
+// (0/90/180/270 degrees, applied around the map's own center before
+// placement -- see cancel/rotate handling in gm.html's ghost-placement UI).
 export async function importDD2VTT(data, opts = {}) {
   const {
     offsetX = 0, offsetY = 0,
     layer = Grid.getCurrentLayer(),
     blockTitle = 'default', blockColor = '#aaaaaa',
+    rotation = 0,
   } = opts;
 
   const mapW = Math.floor(data.resolution?.map_size?.x ?? 0);
   const mapH = Math.floor(data.resolution?.map_size?.y ?? 0);
+  const rawCenterX = mapW / 2, rawCenterY = mapH / 2;
+
+  // Rotates a raw dd2vtt coordinate around the MAP's own center, BEFORE the
+  // usual center-and-offset translation below -- composes cleanly since
+  // rotation happens first, around a fixed pivot, then the whole rotated
+  // result gets shifted the same way an unrotated import would be.
+  // Direction hasn't been visually confirmed against the mesh/canvas
+  // rotation applied to the floor image (see renderFloorImages/
+  // drawOverlay) -- if the image ends up turned the opposite way from the
+  // walls after testing, the sign to flip is here.
+  function rotateRaw(x, y) {
+    const dx = x - rawCenterX, dy = y - rawCenterY;
+    switch (rotation) {
+      case 90:  return { x: rawCenterX - dy, y: rawCenterY + dx };
+      case 180: return { x: rawCenterX - dx, y: rawCenterY - dy };
+      case 270: return { x: rawCenterX + dy, y: rawCenterY - dx };
+      default:  return { x, y };
+    }
+  }
+
   // Centers the raw 0..map_size coordinates, then applies the caller's
   // additional nudge -- see the file-header comment on this section.
   const centerX = Math.floor(mapW / 2) - offsetX;
   const centerY = Math.floor(mapH / 2) - offsetY;
-  const conv = (x, y) => ({ x: x - centerX, y: y - centerY });
+  const conv = (x, y) => {
+    const r = rotateRaw(x, y);
+    return { x: r.x - centerX, y: r.y - centerY };
+  };
 
   for (const poly of data.line_of_sight || []) {
     for (let i = 0; i < poly.length - 1; i++) {
@@ -784,9 +946,41 @@ export async function importDD2VTT(data, opts = {}) {
 
   if (data.image && mapW && mapH) {
     const dataUri = data.image.startsWith('data:') ? data.image : `data:image/png;base64,${data.image}`;
-    const topLeft = conv(0, 0);
-    await saveFloorImage(dataUri, topLeft.x, topLeft.y, mapW, mapH, layer);
+    // The map's own center is the ONE point that doesn't move under
+    // rotation-around-itself, so conv() of it gives the final placement
+    // regardless of angle. Width/height stay the ORIGINAL, UNSWAPPED
+    // dimensions -- rotation is applied entirely via the mesh/canvas
+    // rotation in renderFloorImages()/drawOverlay(), not by swapping
+    // dimensions here too; doing both would rotate the visual footprint
+    // back while leaving the image content off by the swapped amount.
+    const center = conv(rawCenterX, rawCenterY);
+    await saveFloorImage(dataUri, center.x, center.y, mapW, mapH, layer, rotation);
   }
+}
+
+// ── Roof painting: click-drag across cells, like voxel painting, not a
+// single click like a light or stair. Separate mousedown/mousemove
+// listeners (not handleGridClick, which is single-click-only) mirroring
+// grid.js's own paint-drag pattern.
+let isPaintingRoof = false;
+let roofDrawValue = 0;
+
+function paintRoofCell(x, z, value) {
+  if (x < 0 || x >= Grid.GRID_SIZE || z < 0 || z >= Grid.GRID_SIZE) return;
+  const layer = Grid.getCurrentLayer();
+  const grid = getRoofGrid(layer);
+  const idx = roofIndex(x, z);
+  if (grid[idx] !== value) {
+    grid[idx] = value;
+    renderRoofs();
+    Grid.redraw();
+    scheduleSaveRoofs();
+  }
+}
+
+function roofCellFromEvent(e) {
+  const { px, py } = Grid.canvasLocalPoint(e);
+  return { x: Math.floor(px / Grid.CELL_SIZE), z: Math.floor(py / Grid.CELL_SIZE) };
 }
 
 export function initGeometry(scene) {
@@ -795,10 +989,28 @@ export function initGeometry(scene) {
   lightGroup = new THREE.Group();
   stairGroup = new THREE.Group();
   floorImageGroup = new THREE.Group();
-  scene.add(wallGroup, doorGroup, lightGroup, stairGroup, floorImageGroup);
+  roofGroup = new THREE.Group();
+  scene.add(wallGroup, doorGroup, lightGroup, stairGroup, floorImageGroup, roofGroup);
 
   Grid.registerOverlay(drawOverlay);
   Grid.getCanvas()?.addEventListener('click', handleGridClick);
+
+  Grid.getCanvas()?.addEventListener('mousedown', (e) => {
+    if (Grid.getMode() !== 'roof') return;
+    e.preventDefault();
+    fireBeforeGeometryEdit(); // once per drag/stroke, not per cell -- matches grid.js's own voxel painting
+    isPaintingRoof = true;
+    roofDrawValue = e.button === 2 ? 0 : getSelectedBlockId();
+    const { x, z } = roofCellFromEvent(e);
+    paintRoofCell(x, z, roofDrawValue);
+  });
+  Grid.getCanvas()?.addEventListener('mousemove', (e) => {
+    if (!isPaintingRoof || Grid.getMode() !== 'roof') return;
+    const { x, z } = roofCellFromEvent(e);
+    paintRoofCell(x, z, roofDrawValue);
+  });
+  window.addEventListener('mouseup', () => { isPaintingRoof = false; });
+
   Grid.onMapNameChange(() => { subscribeGeometry(); subscribeFloorImage(); });
 
   subscribeGeometry();

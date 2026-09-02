@@ -375,6 +375,7 @@
           <button id="geo-mode-door" data-mode="door">Door</button>
           <button id="geo-mode-light" data-mode="light">Light</button>
           <button id="geo-mode-stairs" data-mode="stairs">Stairs</button>
+          <button id="geo-mode-roof" data-mode="roof">Roof</button>
           <button id="geo-mode-delete" data-mode="delete">Erase</button>
           <button id="geo-mode-none" data-mode="none" class="active">None</button>
         </div>
@@ -385,6 +386,7 @@
         <div class="instructions" id="geo-hint">
           Drawn on the 2D panel above (not the 3D view). Wall/Door take the texture of the selected block, click one grid corner then an adjacent one.
           Light: click a cell. Stairs: click a cell to place one (uses the selected block's texture) -- ↻ Facing and ▦ Shape (stepped or a smooth ramp) set how it looks before you place it. A token walking onto a stair from the correct side changes floor automatically.
+          Roof: click-drag to paint tiles (uses the selected block's texture), same as painting voxels -- caps off this layer's walls from above. Right-click erases.
           Erase: click a wall/door/light/stair. Doors also toggle open/closed with a plain click in the 3D view while mode is "None".
         </div>
       </div>
@@ -473,7 +475,7 @@
         <label class="section-title" for="import-dd2vtt-input" style="margin-top:8px;">Import dd2vtt Map</label>
         <input type="file" id="import-dd2vtt-input" accept=".dd2vtt,application/json">
         <div class="instructions" id="dd2vtt-hint">
-          After picking a file, a transparent outline follows your mouse on the grid panel above -- move it where you want, then click to place. Esc cancels.
+          After picking a file, a transparent outline follows your mouse on the grid panel above -- move it where you want, press R to rotate 90° at a time, then click to place. Esc cancels.
           Walls/doors/lights import as real geometry (using the currently selected block's texture) at the current layer. The floor is the map's own rendered image, not voxelized. Adds to what's already on this map name -- doesn't clear it first.
         </div>
 
@@ -671,13 +673,13 @@
     Geometry.initGeometry(scene);
 
     // ── Undo (Ctrl+Z) ────────────────────────────────────────────────────────
-    // Scope: voxel painting/erasing/rect/line/bucket/Clear Map, and wall/door/
-    // light/stair placement+erase -- the GM's primary map-building actions.
+    // Scope: voxel painting/erasing/rect/line/bucket/Clear Map, wall/door/
+    // light/stair placement+erase, and dd2vtt import -- the GM's primary
+    // map-building actions.
     // Deliberately NOT covered: door open/closed toggling (live game state
     // other players may be relying on -- undoing it silently mid-session
     // would be confusing, not helpful), token placement/movement, and
-    // dd2vtt import/Nuke Map (deliberate, already-confirmed actions, not
-    // "oops" moments this is meant to catch).
+    // Nuke Map (has its own explicit confirm dialog already).
     //
     // One shared stack (not two separate ones per module) so Ctrl+Z always
     // undoes whatever happened most recently, regardless of which system it
@@ -699,6 +701,13 @@
       if (!entry) return;
       if (entry.type === 'voxels') Grid.restoreVoxelsSnapshot(entry.snapshot);
       else if (entry.type === 'geometry') await Geometry.restoreGeometrySnapshot(entry.snapshot);
+      else if (entry.type === 'dd2vtt') {
+        // Reverts BOTH pieces a dd2vtt import touched -- the geometry it
+        // added (walls/doors/lights) and the floor image it wrote to its
+        // own separate, per-layer Firebase node.
+        await Geometry.restoreGeometrySnapshot(entry.geometrySnapshot);
+        await Geometry.restoreFloorImagesSnapshot(entry.floorImagesSnapshot);
+      }
     }
 
     document.addEventListener('keydown', (e) => {
@@ -848,6 +857,7 @@
     // placement, and token selection all correctly no-op while positioning.
     let ddVttPendingData = null;
     let ddVttGhostPos = { x: 0, y: 0 };
+    let ddVttRotation = 0; // 0 | 90 | 180 | 270 -- degrees, cycled by pressing R while positioning
 
     function ddVttMapSize() {
       const size = ddVttPendingData?.resolution?.map_size;
@@ -857,18 +867,29 @@
     function drawDD2VTTGhost(ctx) {
       if (!ddVttPendingData) return;
       const { w, h } = ddVttMapSize();
+      // The ghost's drawn footprint swaps at 90°/270° -- this is just a
+      // preview rectangle, separate from how the actual floor image's
+      // dimensions get stored (those stay unswapped; see importDD2VTT's
+      // comment on why rotating the mesh AND swapping dimensions would
+      // double up).
+      const [dw, dh] = (ddVttRotation === 90 || ddVttRotation === 270) ? [h, w] : [w, h];
       const CELL_SIZE = Grid.CELL_SIZE;
-      const left = (ddVttGhostPos.x - w / 2) * CELL_SIZE;
-      const top = (ddVttGhostPos.y - h / 2) * CELL_SIZE;
+      const left = (ddVttGhostPos.x - dw / 2) * CELL_SIZE;
+      const top = (ddVttGhostPos.y - dh / 2) * CELL_SIZE;
       ctx.save();
       ctx.globalAlpha = 0.35;
       ctx.fillStyle = '#c8a84b';
-      ctx.fillRect(left, top, w * CELL_SIZE, h * CELL_SIZE);
+      ctx.fillRect(left, top, dw * CELL_SIZE, dh * CELL_SIZE);
       ctx.globalAlpha = 0.9;
       ctx.strokeStyle = '#ecdfc0';
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 4]);
-      ctx.strokeRect(left, top, w * CELL_SIZE, h * CELL_SIZE);
+      ctx.strokeRect(left, top, dw * CELL_SIZE, dh * CELL_SIZE);
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ecdfc0';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${ddVttRotation}° (R to rotate)`, ddVttGhostPos.x * CELL_SIZE, top - 6);
       ctx.restore();
     }
     Grid.registerOverlay(drawDD2VTTGhost);
@@ -893,16 +914,27 @@
       if (!ddVttPendingData) return;
       const data = ddVttPendingData;
       const placedAt = ddVttGhostPos;
+      const placedRotation = ddVttRotation;
       cancelDD2VTTGhost(); // clears pending state and restores normal tool mode before the (async) import runs
 
       const selBlock = Block.blockRegistry[Block.getSelectedBlockId()];
       try {
+        // Snapshot BOTH pieces the import touches -- geometry (walls/doors/
+        // lights) AND the floor image (a separate Firebase node, keyed by
+        // layer) -- before making either write, so one undo entry reverts
+        // the whole import cleanly.
+        const geometrySnapshot = Geometry.snapshotGeometryState();
+        const floorImagesSnapshot = await Geometry.getFloorImagesSnapshot();
+        undoStack.push({ type: 'dd2vtt', geometrySnapshot, floorImagesSnapshot });
+        if (undoStack.length > MAX_UNDO) undoStack.shift();
+
         await Geometry.importDD2VTT(data, {
           offsetX: placedAt.x,
           offsetY: placedAt.y,
           layer: Grid.getCurrentLayer(),
           blockTitle: selBlock.title,
           blockColor: selBlock.color,
+          rotation: placedRotation,
         });
       } catch (err) {
         console.error('[gm.html] dd2vtt import failed', err);
@@ -911,7 +943,12 @@
     });
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && ddVttPendingData) cancelDD2VTTGhost();
+      if (!ddVttPendingData) return;
+      if (e.key === 'Escape') { cancelDD2VTTGhost(); return; }
+      if (e.key === 'r' || e.key === 'R') {
+        ddVttRotation = (ddVttRotation + 90) % 360;
+        Grid.redraw();
+      }
     });
 
     document.getElementById('import-dd2vtt-input').addEventListener('change', async (e) => {
@@ -933,6 +970,7 @@
 
       ddVttPendingData = data;
       ddVttGhostPos = { x: Math.round(Grid.GRID_SIZE / 2), y: Math.round(Grid.GRID_SIZE / 2) };
+      ddVttRotation = 0; // fresh start for each new import
       Grid.setMode('dd2vtt-ghost'); // locks out painting/walls/tokens while positioning
       Grid.redraw();
     });
