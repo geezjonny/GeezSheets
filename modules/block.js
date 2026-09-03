@@ -5,6 +5,7 @@
 // block was selected at placement time.
 
 import * as THREE from 'three';
+import { TEXTURE_PATH } from '../js/config.js';
 
 export const textureLoader = new THREE.TextureLoader();
 
@@ -32,7 +33,7 @@ export function registerNewBlock(title) {
   const cleanTitle = title.trim().toLowerCase();
   const id = nextBlockId++;
   const fallbackColor = getRandomColor();
-  const texturePath = `/assets/${cleanTitle}.png`;
+  const texturePath = `${TEXTURE_PATH}${cleanTitle}.png`;
 
   const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
 
@@ -97,7 +98,7 @@ export function getOrCreateBlockId(title, fallbackColor) {
   const color = fallbackColor || getRandomColor();
   const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
   textureLoader.load(
-    `/assets/${title}.png`,
+    `${TEXTURE_PATH}${title}.png`,
     (texture) => {
       texture.magFilter = THREE.NearestFilter;
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -121,7 +122,7 @@ export function getOrCreateBlockId(title, fallbackColor) {
 // blockRegistry entry (and material instance) a voxel block of that title
 // uses -- previously this kept its own separate cache, meaning a wall and
 // a voxel block with the identical title triggered two independent texture
-// loads of the same /assets/{title}.png instead of sharing one result.
+// loads of the same ./textures/{title}.png (see js/config.js's TEXTURE_PATH) instead of sharing one result.
 // Safe to share the instance: geometry.js clones a material before
 // mutating it (see the open-door dimming logic), and nothing disposes
 // materials, only geometries (see clearGroup).
