@@ -912,6 +912,23 @@ export async function importDD2VTT(data, opts = {}) {
     return { x: r.x - centerX, y: r.y - centerY };
   };
 
+  // World defaults to 32x32; a bigger import just needs a bigger world.
+  // Growth only ever EXTENDS the grid outward from index 0 (see
+  // Grid.ensureGridSize's own comment on why it can't recenter), so a
+  // placement that would need NEGATIVE coordinates can't be accommodated
+  // by growing -- arrays are 0-indexed, there's no "index -5". Reject
+  // those with a clear, actionable message instead of silently clipping
+  // part of the map or corrupting positions.
+  const [footprintW, footprintH] = (rotation === 90 || rotation === 270) ? [mapH, mapW] : [mapW, mapH];
+  const center = conv(rawCenterX, rawCenterY); // invariant under rotation -- see saveFloorImage's call below
+  const minX = center.x - footprintW / 2, maxX = center.x + footprintW / 2;
+  const minY = center.y - footprintH / 2, maxY = center.y + footprintH / 2;
+  if (minX < 0 || minY < 0) {
+    throw new Error('That placement would extend past the world\'s edge (negative coordinates). Move the ghost further from the corner before placing.');
+  }
+  const neededSize = Math.ceil(Math.max(maxX, maxY, Grid.GRID_SIZE));
+  Grid.ensureGridSize(neededSize); // no-op if the world's already big enough
+
   for (const poly of data.line_of_sight || []) {
     for (let i = 0; i < poly.length - 1; i++) {
       const a = conv(poly[i].x, poly[i].y), b = conv(poly[i + 1].x, poly[i + 1].y);
@@ -948,12 +965,12 @@ export async function importDD2VTT(data, opts = {}) {
     const dataUri = data.image.startsWith('data:') ? data.image : `data:image/png;base64,${data.image}`;
     // The map's own center is the ONE point that doesn't move under
     // rotation-around-itself, so conv() of it gives the final placement
-    // regardless of angle. Width/height stay the ORIGINAL, UNSWAPPED
-    // dimensions -- rotation is applied entirely via the mesh/canvas
-    // rotation in renderFloorImages()/drawOverlay(), not by swapping
-    // dimensions here too; doing both would rotate the visual footprint
-    // back while leaving the image content off by the swapped amount.
-    const center = conv(rawCenterX, rawCenterY);
+    // regardless of angle -- already computed above for the bounds check.
+    // Width/height stay the ORIGINAL, UNSWAPPED dimensions -- rotation is
+    // applied entirely via the mesh/canvas rotation in
+    // renderFloorImages()/drawOverlay(), not by swapping dimensions here
+    // too; doing both would rotate the visual footprint back while leaving
+    // the image content off by the swapped amount.
     await saveFloorImage(dataUri, center.x, center.y, mapW, mapH, layer, rotation);
   }
 }

@@ -500,6 +500,7 @@ import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 // ── State ─────────────────────────────────────────────────────────────────────
 let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},chains={},triggerNodes={},mirrors={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
+let mapFullVisibility=false; // per-map, mirrors maps/{mapName}/fullVisibility
 // Confirmed map-stitching layers -- read-only here, players never place or
 // remove these, only see them. See mapeditor-stitcher.html for how a piece
 // gets here (drag to position, Confirm merges its geometry and saves this).
@@ -866,6 +867,7 @@ function subscribeLive(){
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;timeOfDay=data.nightMode||"day"||"day";
+      mapFullVisibility=!!data.fullVisibility;
       // Confirmed map-stitching layers -- same read logic as the DM tool.
       // Without this, players would never see a section's art at all: the
       // DM's own preview only exists while a piece is still pending, and
@@ -899,7 +901,20 @@ function doFit(){
     }
   }
   if(Object.keys(tiles).length){fitCamera(tiles,TILE,canvas.width,canvas.height);return;}
-  if(bgImage){const s=TILE/(bgPpi||70);const mapW=bgImage.width*s,mapH=bgImage.height*s;camera.zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);camera.x=canvas.width/2-mapW/2*camera.zoom;camera.y=canvas.height/2-mapH/2*camera.zoom;}
+  if(bgImage||Object.keys(confirmedMapLayers).length){
+    const s=TILE/(bgPpi||70);
+    let minX=0,minY=0,maxX=bgImage?bgImage.width*s:0,maxY=bgImage?bgImage.height*s:0;
+    for(const layer of Object.values(confirmedMapLayers)){
+      minX=Math.min(minX,layer.x*TILE);minY=Math.min(minY,layer.y*TILE);
+      maxX=Math.max(maxX,(layer.x+layer.w)*TILE);maxY=Math.max(maxY,(layer.y+layer.h)*TILE);
+    }
+    const mapW=maxX-minX,mapH=maxY-minY;
+    if(mapW>0&&mapH>0){
+      camera.zoom=Math.min((canvas.width-80)/mapW,(canvas.height-80)/mapH,2);
+      camera.x=canvas.width/2-(minX+mapW/2)*camera.zoom;
+      camera.y=canvas.height/2-(minY+mapH/2)*camera.zoom;
+    }
+  }
 }
 let playersLocked=false;
 onValue(ref(db,"session/locked"),snap=>{playersLocked=!!snap.val();});
@@ -959,6 +974,11 @@ onValue(ref(db,"initiative"),snap=>{const d=snap.val()||{};initiativeState={orde
 let _turnMenuCollapsed=false;
 function key(x,y){return`${x},${y}`;}
 const NODE_ICONS={portal:"🌀",tripwire:"🔳",trap:"🪤",latch:"🔐",lever:"🎚️",plate:"🔲"};
+/** True if this map should show fully to every player regardless of fog/
+ *  darkness/tokens -- either the per-map "Reveal Whole Map" toggle is on,
+ *  or any token on this map has visibilityBeacon set. See the "Geometry
+ *  lighting pass" in the render loop for what this actually gates. */
+function hasVisibilityBeacon(){ return mapFullVisibility||Object.values(tokens).some(t=>t.visibilityBeacon); }
 function myOwnTokenEntry(){
   return Object.entries(tokens).find(([id,t])=>t.type==="pc"&&(t.name?.toLowerCase()===playerName.toLowerCase()||t.characterId===myCharacterId));
 }
@@ -1369,7 +1389,15 @@ function draw(){
 
 
   // ── Geometry lighting pass ────────────────────────────────────────────────
-  {const _p=TIME_OF_DAY_PRESETS[geometry.timeOfDay]||TIME_OF_DAY_PRESETS.day,lp=geometry.lightingParams,da=lp.blackAlpha;
+  // Visibility beacon: while any token with this flag exists on the map,
+  // skip fog/darkness/line-of-sight entirely and show the whole thing --
+  // for overview/navigation maps (a world map, say) where per-player sight
+  // lines don't make sense and a player with no token here shouldn't just
+  // see a black screen. This check wraps the ENTIRE lighting/fog block
+  // below, unchanged otherwise, rather than threading a beacon check
+  // through its many branches individually.
+  if(!hasVisibilityBeacon())
+{const _p=TIME_OF_DAY_PRESETS[geometry.timeOfDay]||TIME_OF_DAY_PRESETS.day,lp=geometry.lightingParams,da=lp.blackAlpha;
   if(_p.darkness>0){
     if(!_geoLC||_geoLC.width!==canvas.width||_geoLC.height!==canvas.height){_geoLC=document.createElement("canvas");_geoLC.width=canvas.width;_geoLC.height=canvas.height;_geoLX=_geoLC.getContext("2d");}
     _geoLX.clearRect(0,0,_geoLC.width,_geoLC.height);

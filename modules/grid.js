@@ -16,14 +16,74 @@ import { db } from '../js/firebase.js';
 import { ref, set, onValue } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js';
 import { blockRegistry, getSelectedBlockId, getOrCreateBlockId } from './block.js';
 
-export const GRID_SIZE = 32;
+export let GRID_SIZE = 32;
 export const MAX_LAYERS = 16;
-export const CELL_SIZE = 320 / GRID_SIZE;
+export let CELL_SIZE = 320 / GRID_SIZE;
+// FIXED at the ORIGINAL 32-size center -- growing GRID_SIZE later must
+// NEVER recompute this. Every world-space conversion (geomToWorld,
+// tokenLocalPos, voxel positions) subtracts it; changing it would shift
+// everything already placed in the world the moment the grid grows, since
+// it'd suddenly be measured from a different center.
 export const GRID_OFFSET = GRID_SIZE / 2 - 0.5;
+// Sanity cap on dynamic growth (see ensureGridSize) -- without one, a
+// malformed or absurdly large dd2vtt import could try to grow the world to
+// a size that exhausts memory/cripples performance rather than just
+// failing an import.
+const MAX_GRID_SIZE = 256;
 
 export const mapData = Array.from({ length: MAX_LAYERS }, () =>
   Array.from({ length: GRID_SIZE }, () => new Uint8Array(GRID_SIZE))
 );
+
+// Grows the world to fit content that needs more room than the CURRENT
+// GRID_SIZE allows -- e.g. a dd2vtt import larger than 32x32. Growth only
+// ever EXTENDS the grid outward (larger indices); it never shifts where
+// index 0 sits, so anything already placed keeps its exact world position
+// -- see the GRID_OFFSET comment above for why that matters. Existing
+// voxel data is preserved at its same [layer][z][x] indices; the new space
+// starts empty. Also grows the 2D panel canvas's actual pixel resolution
+// (not just its CSS size) proportionally, so cells don't shrink to
+// unusably few real pixels as the world gets bigger.
+// Returns the new (or unchanged) GRID_SIZE; throws if minSize > MAX_GRID_SIZE.
+export function ensureGridSize(minSize) {
+  if (minSize <= GRID_SIZE) return GRID_SIZE;
+  if (minSize > MAX_GRID_SIZE) {
+    throw new Error(`That would need a ${minSize}x${minSize} world, past the ${MAX_GRID_SIZE}x${MAX_GRID_SIZE} cap.`);
+  }
+
+  const oldSize = GRID_SIZE;
+  const newSize = minSize;
+  for (let y = 0; y < MAX_LAYERS; y++) {
+    const oldLayer = mapData[y];
+    const newLayer = [];
+    for (let z = 0; z < newSize; z++) {
+      const newRow = new Uint8Array(newSize);
+      if (z < oldSize) newRow.set(oldLayer[z]); // copies the old row's data into the start of the new, wider row
+      newLayer.push(newRow);
+    }
+    mapData[y] = newLayer; // mapData itself stays the same const array; only its per-layer contents are replaced
+  }
+
+  GRID_SIZE = newSize;
+
+  // Keep roughly the same on-screen pixel density per cell (10px/cell,
+  // matching the original 320/32) instead of cramming a bigger grid into
+  // the same fixed 320x320 buffer, which would make CELL_SIZE tiny and
+  // painting imprecise. gridCanvas's CSS (width:100%, aspect-ratio:1/1;
+  // see gm.html) already scales whatever resolution we set here to fit
+  // the panel, so this only affects real pixel density, not layout.
+  const PIXELS_PER_CELL = 10;
+  const newCanvasPx = newSize * PIXELS_PER_CELL;
+  if (gridCanvas) {
+    gridCanvas.width = newCanvasPx;
+    gridCanvas.height = newCanvasPx;
+  }
+  CELL_SIZE = newCanvasPx / newSize; // == PIXELS_PER_CELL, but derived rather than assumed
+
+  update3DScene();
+  redraw();
+  return GRID_SIZE;
+}
 
 let currentLayer = 0;
 export function getCurrentLayer() { return currentLayer; }

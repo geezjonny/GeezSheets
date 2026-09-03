@@ -477,6 +477,7 @@
         <div class="instructions" id="dd2vtt-hint">
           After picking a file, a transparent outline follows your mouse on the grid panel above -- move it where you want, press R to rotate 90° at a time, then click to place. Esc cancels.
           Walls/doors/lights import as real geometry (using the currently selected block's texture) at the current layer. The floor is the map's own rendered image, not voxelized. Adds to what's already on this map name -- doesn't clear it first.
+          World defaults to 32×32 but grows automatically if a placement needs more room (capped at 256×256) -- nothing already built ever shifts when it grows. One limit: it can only grow outward from the corner, so a placement that would need negative coordinates is rejected -- move the ghost away from that edge and try again.
         </div>
 
         <button id="nuke-map-btn" style="margin-top:8px; background:#8b2020;">☢ Nuke Map (clear everything)</button>

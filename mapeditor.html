@@ -390,6 +390,7 @@ canvas{display:block;cursor:crosshair}
   <input type="file" id="vttSectionInput" accept=".dd2vtt,.json" multiple hidden>
 
   <button class="tb-btn" id="lockPlayersBtn" title="Lock player view while setting up">🔒</button>
+  <button class="tb-btn" id="revealMapBtn" title="Show this map fully to every player, regardless of tokens or darkness — for overview/navigation maps like a world map">☀️ Reveal Whole Map</button>
   <button class="tb-btn" id="lockPingsBtn" title="Disable pings and laser pointer for players this session">📍</button>
   <button class="tb-btn" id="handoutBtn" title="Show a handout (image or text) to all players">🖼️</button>
   <button class="tb-btn" id="ambienceBtn" title="Play a looping background soundscape for all players">🔊</button>
@@ -677,6 +678,11 @@ canvas{display:block;cursor:crosshair}
       <div class="modal-section"><label>HP</label><input id="tok-hp" type="number" placeholder="10" min="0"></div>
       <div class="modal-section"><label>Max HP</label><input id="tok-maxhp" type="number" placeholder="10" min="1"></div>
     </div>
+    <div class="modal-row" style="align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer" title="While this token exists anywhere on the map, every player sees the whole map fully — no fog, no darkness, regardless of whether they have their own token here. For overview/navigation maps (like a world map) where line-of-sight visibility doesn't make sense.">
+        <input id="tok-visibility-beacon" type="checkbox"><span>🔆 Visibility Beacon — everyone sees the whole map while this exists</span>
+      </label>
+    </div>
     <div id="tok-core-save-row" style="display:none;margin-top:2px"><button id="tok-save-core" style="width:100%">💾 Save Core Identity</button></div>
 
     <div style="height:1px;background:var(--border);margin:12px 0"></div>
@@ -941,6 +947,7 @@ import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},tokens={},stamps={},roofs={},props={},impassable={},chains={},triggerNodes={},mirrors={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
+let mapFullVisibility=false; // per-map, mirrors maps/{mapName}/fullVisibility
 let pcsData={},propDefs={};
 let customProps=[];
 const activePings={},activeLasers={},activeAttackTargets={};
@@ -1266,6 +1273,10 @@ function subscribeLive(){
       if(data.background&&data.background!==bgUrl){bgUrl=data.background;bgImage=null;const img=new Image();img.crossOrigin="anonymous";img.onload=()=>bgImage=img;img.src=bgUrl;}
       else if(!data.background){bgUrl="";bgImage=null;}
       bgPpi=data.backgroundPpi||70;
+      mapFullVisibility=!!data.fullVisibility;
+      const revealBtn=document.getElementById("revealMapBtn");
+      revealBtn.textContent=mapFullVisibility?"☀️ Revealed — click to restore fog":"☀️ Reveal Whole Map";
+      revealBtn.classList.toggle("active",mapFullVisibility);
       // Confirmed map-stitching layers -- each piece's permanent, merged-in
       // art. Add/update anything new or changed; remove anything no longer
       // present (a layer could be deleted directly in Firebase).
@@ -1595,6 +1606,7 @@ async function openEditTokenModal(tokId){
   // token's characterId (and therefore its artwork) to match a stale
   // selection from editing/placing a completely different token earlier.
   selectTokenCharacterAndSnapshot(tok);
+  document.getElementById("tok-visibility-beacon").checked=!!tok.visibilityBeacon;
   // Disguise fields
   const existingRules=tokenDisguiseRules(tok);
   document.getElementById("tok-disguise-enable").checked=existingRules.length>0;
@@ -2088,6 +2100,11 @@ document.getElementById("lockPlayersBtn").onclick=async()=>{
   await set(ref(db,"session/locked"),!_playersLocked);
   toast(_playersLocked?"Players unlocked — map visible":"Players locked — showing waiting screen");
 };
+document.getElementById("revealMapBtn").onclick=async()=>{
+  const mapName=mapInput.value.trim()||"dungeon-1";
+  await set(ref(db,`maps/${mapName}/fullVisibility`),!mapFullVisibility);
+  toast(mapFullVisibility?"Fog/darkness restored for this map":"This map is now fully visible to every player, regardless of tokens or darkness");
+};
 
 // ── Party rest votes — DM confirmation ────────────────────────────────────────
 window._dmApproveRest=async()=>{await dmResolveRest(true);setTimeout(clearRestRequest,3000);};
@@ -2125,13 +2142,46 @@ document.getElementById("vttFileInput").addEventListener("change",async e=>{
     await saveGeometry();
     const mapName=mapInput.value.trim()||"dungeon-1";
     if(parsed.imageDataUrl){
-      await set(ref(db,`maps/${mapName}/background`),parsed.imageDataUrl);
+      const img=new Image();
+      await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=parsed.imageDataUrl;});
+      const safeUrl=await shrinkImageToFitFirebase(img,parsed.imageDataUrl);
+      if(safeUrl!==parsed.imageDataUrl) toast("Background image was too large for Firebase, shrunk to fit");
+      await set(ref(db,`maps/${mapName}/background`),safeUrl);
       await set(ref(db,`maps/${mapName}/backgroundPpi`),parsed.pixelsPerGrid||70);
     }
     toast(`DD2VTT: ${parsed.walls.length} walls · ${parsed.lights.length} lights · ${parsed.doors?.length||0} doors`);
   }catch(err){toast("DD2VTT failed: "+err.message);console.error(err);}
 });
 
+/** Firebase RTDB rejects any single value over 10MB. A large dd2vtt export
+ *  (a 100x100 grid map at typical pixels-per-grid settings can easily be
+ *  7000x7000+ pixels) routinely exceeds that as a base64 PNG. This
+ *  progressively downscales and re-encodes as JPEG (which compresses
+ *  battlemap art far better than lossless PNG) until the result comfortably
+ *  fits, leaving real margin below the hard limit rather than cutting it
+ *  close. Returns the original data URL unchanged if it's already small
+ *  enough -- this never touches an image that doesn't need it. */
+async function shrinkImageToFitFirebase(img,dataUrl,maxBytes=9*1024*1024){
+  if(dataUrl.length<=maxBytes) return dataUrl;
+  const off=document.createElement("canvas");
+  const octx=off.getContext("2d");
+  let scale=1;
+  for(let attempt=0;attempt<8;attempt++){
+    scale*=0.75;
+    off.width=Math.max(1,Math.round(img.width*scale));
+    off.height=Math.max(1,Math.round(img.height*scale));
+    octx.clearRect(0,0,off.width,off.height);
+    octx.drawImage(img,0,0,off.width,off.height);
+    const jpegUrl=off.toDataURL("image/jpeg",0.85);
+    if(jpegUrl.length<=maxBytes) return jpegUrl;
+  }
+  // Still too big after 8 halving-ish passes (roughly a 10x linear
+  // reduction) -- something unusual is going on. Return the smallest
+  // attempt rather than the original; the caller's own save will still
+  // fail loudly if this genuinely isn't small enough, rather than silently
+  // pretending success.
+  return off.toDataURL("image/jpeg",0.7);
+}
 document.getElementById("addVttSectionBtn").onclick=()=>document.getElementById("vttSectionInput").click();
 document.getElementById("vttSectionInput").addEventListener("change",async e=>{
   const files=Array.from(e.target.files);e.target.value="";
@@ -2142,13 +2192,20 @@ document.getElementById("vttSectionInput").addEventListener("change",async e=>{
       if(!parsed.imageDataUrl){toast(`${file.name}: no embedded image, skipped`);continue;}
       const img=new Image();
       await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=parsed.imageDataUrl;});
+      const safeUrl=await shrinkImageToFitFirebase(img,parsed.imageDataUrl);
+      let finalImg=img;
+      if(safeUrl!==parsed.imageDataUrl){
+        finalImg=new Image();
+        await new Promise((res,rej)=>{finalImg.onload=res;finalImg.onerror=rej;finalImg.src=safeUrl;});
+        toast(`${file.name}: image was too large for Firebase, shrunk to fit`);
+      }
       // Stagger each new piece's starting position so multiple imports in one
       // batch don't all land exactly on top of each other -- purely a
       // starting point, the DM drags it wherever it actually belongs.
       const stagger=pendingImportLayers.length*2;
       pendingImportLayers.push({
         id:"import_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
-        name:file.name,img,
+        name:file.name,img:finalImg,
         x:stagger,y:stagger,
         gridWidth:parsed.mapSize.x,gridHeight:parsed.mapSize.y,
         pps:parsed.pixelsPerGrid,
@@ -2311,21 +2368,28 @@ async function confirmImportLayer(id){
   try{
     await saveGeometry();
     const mapName=mapInput.value.trim()||"dungeon-1";
+    // Shrink defensively here too, even though pieces are already shrunk at
+    // import time -- cheap safety net in case a piece was somehow created
+    // before that existed, or the image was edited/replaced in between.
+    const safeUrl=await shrinkImageToFitFirebase(layer.img,layer.img.src);
     // Uses the piece's own id as the Firebase key directly (not push(),
     // which would generate an unrelated random key) so the image entry and
     // its geometry's sourceLayerId tags always match.
-    await set(ref(db,`maps/${mapName}/mapLayers/${layer.id}`),{url:layer.img.src,x:ox,y:oy,w:layer.gridWidth,h:layer.gridHeight});
+    await set(ref(db,`maps/${mapName}/mapLayers/${layer.id}`),{url:safeUrl,x:ox,y:oy,w:layer.gridWidth,h:layer.gridHeight});
     toast(`"${layer.name}" merged in — ${layer.walls.length} walls, ${layer.doors.length} doors now part of the map`);
     discardImportLayer(id);
   }catch(err){
-    // Roll back the in-memory geometry push on failure so a failed save
-    // doesn't leave the DM's local view showing walls that were never
-    // actually persisted -- a half-committed piece is worse than an
-    // obviously-still-pending one.
+    // Roll back BOTH the local geometry push and, since saveGeometry()
+    // above may have already succeeded before the image write failed, the
+    // Firebase copy too -- otherwise a failed confirm leaves its walls/
+    // doors/lights permanently persisted despite looking like nothing was
+    // saved, and every retry adds another full duplicate set on top.
     geometry.walls=geometry.walls.filter(w=>!addedWalls.includes(w));
     geometry.doors=geometry.doors.filter(d=>!addedDoors.includes(d));
     geometry.lights=geometry.lights.filter(l=>!addedLights.includes(l));
-    toast("Confirm failed — see console. Nothing was saved.");
+    try{ await saveGeometry(); }
+    catch(rollbackErr){ console.error("[confirmImportLayer] rollback save ALSO failed -- geometry may be out of sync with Firebase:",rollbackErr); }
+    toast("Confirm failed — see console. Rolled back, nothing should be duplicated.");
     console.error("[confirmImportLayer] FAILED:",err);
   }
 }
@@ -2506,6 +2570,7 @@ async function openTokenSpawnModal(){
   document.getElementById("tok-lookup-name").value="";
   document.getElementById("tok-color-preset").value="auto";
   document.getElementById("tok-color-custom-row").style.display="none";
+  document.getElementById("tok-visibility-beacon").checked=false;
   document.getElementById("tok-disguise-enable").checked=false;
   document.getElementById("tok-disguise-fields").style.display="none";
   document.getElementById("tok-disguise-rules").innerHTML="";
@@ -2540,7 +2605,8 @@ document.getElementById("tok-save-core").onclick=async()=>{
   let name=tokNameInput.value.trim()||opt?.textContent||"Token";
   const type=tokTypeInput.value;
   const hp=parseInt(tokHpInput.value)||10;const maxHp=parseInt(tokMaxHpInput.value)||hp;
-  const updates={name,type};
+  const visibilityBeacon=document.getElementById("tok-visibility-beacon").checked;
+  const updates={name,type,visibilityBeacon};
   // Only touch characterId/nodeId if the Character field was actually,
   // deliberately changed from what it was when the modal opened -- not
   // just "whatever the dropdown currently shows", since that could be
@@ -2699,7 +2765,7 @@ document.getElementById("tok-place").onclick=async()=>{
     toast(`Created board NPC "${name}" — find it on the Thread Board`);
   }
 
-  placingToken={id:"tok_"+Date.now(),characterId:charId,nodeId,name,lookupName,type,hp,maxHp,size,fillColor,ringColor,disguises,x:0,y:0};
+  placingToken={id:"tok_"+Date.now(),characterId:charId,nodeId,name,lookupName,type,hp,maxHp,size,fillColor,ringColor,disguises,visibilityBeacon:document.getElementById("tok-visibility-beacon").checked,x:0,y:0};
   tryLoadTokenTexture(charId,lookupName);
   if(disguises) for(const rule of disguises) tryLoadTokenTexture("__npc__",rule.lookupName);
   document.getElementById("token-modal").classList.add("hidden");toast("Click the map to place token");
@@ -3376,7 +3442,7 @@ canvas.addEventListener("contextmenu",e=>{
     }
     return;
   }
-  const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),geometry.doors||[],gx,gy,0.4);
+  const seg=segmentAtPoint(geometry.walls,geometry.doors||[],gx,gy,0.4);
   if(seg){
     if(!confirm("Delete this wall?")) return;
     deleteById(geometry.walls,seg.id);deleteById(geometry.doors,seg.id);geoSelected=null;saveGeometry();toast("Wall removed");return;
@@ -3451,8 +3517,8 @@ canvas.addEventListener("pointerdown",e=>{
 
   if(activeVerb==="eraser"){
     if(structureType==="wall"){
-      const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),[],gx,gy,0.35);
-      if(seg){ deleteById(geometry.walls,seg.id); saveGeometry(); toast("Wall removed"); }
+      const seg=segmentAtPoint(geometry.walls,[],gx,gy,0.35);
+      if(seg){ const wasPerimeter=seg.perimeter; deleteById(geometry.walls,seg.id); saveGeometry(); toast(wasPerimeter?"Perimeter wall segment removed — this opens a gap in that section's safety boundary":"Wall removed"); }
     } else if(structureType==="light"){
       const li=lightAtPoint(geometry.lights,gx,gy,0.6);
       if(li!==null){ deleteById(geometry.lights,li); saveGeometry(); toast("Light removed"); }
@@ -3511,7 +3577,7 @@ canvas.addEventListener("pointerdown",e=>{
       e.stopPropagation(); return;
     }
     // Try to select a wall
-    const seg=segmentAtPoint(geometry.walls.filter(w=>!w.perimeter),[],gx,gy,0.35);
+    const seg=segmentAtPoint(geometry.walls,[],gx,gy,0.35);
     if(seg){ geoSelected=seg.id; e.stopPropagation(); return; }
     geoSelected=null;
   }
