@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Classic VTT — GM</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="roomGate">
+  <div class="card">
+    <h2>Classic VTT — GM</h2>
+    <div class="sub">Enter a room code to host. Share it with your players.</div>
+    <input type="text" id="gateRoom" placeholder="Room code (e.g. dragons-lair)">
+    <input type="text" id="gateName" placeholder="Your name (e.g. GM)">
+    <button id="gateEnter" style="background:var(--accent); color:#1a1a1a; font-weight:700; border:none;">Enter as GM</button>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <div id="canvasWrap">
+    <div id="initiativeBar"></div>
+    <canvas id="canvas"></canvas>
+
+    <div id="cornerHud">
+      <span class="room-code" id="roomLabel"></span>
+      <button id="copyLink" title="Copy player link">&#128279;</button>
+      <button id="lockToggle" title="Lock player movement">&#128275;</button>
+    </div>
+
+    <div id="floatingToolbar">
+      <button class="toolbar-handle" id="toolbarCollapse" title="Collapse toolbar">&#8943;</button>
+      <div id="toolbarIcons">
+        <button class="toolbar-icon-btn tool-btn active" data-tool="select" title="Select">&#8598;</button>
+        <button class="toolbar-icon-btn tool-btn" data-tool="ping" title="Ping">&#128205;</button>
+        <button class="toolbar-icon-btn tool-btn" data-tool="ruler" title="Ruler">&#128207;</button>
+        <button class="toolbar-icon-btn tool-btn" data-tool="fog" title="Fog">&#127787;&#65039;</button>
+        <button class="toolbar-icon-btn" id="diceToggleBtn" title="Dice">&#127922;</button>
+      </div>
+    </div>
+
+    <div id="dicePopover">
+      <div class="row" id="diceButtons"></div>
+      <div class="row" id="dicePool" style="margin-top:8px; min-height:24px;"></div>
+      <button id="rollBtn" style="margin-top:8px; width:100%;">Roll for everyone</button>
+      <div id="diceLog" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div class="section">
+      <h3>Map</h3>
+      <input type="file" id="mapFile" accept=".dd2vtt,.json">
+      <div id="mapStatus" class="hint" style="margin-top:6px;"></div>
+      <div class="row" style="margin-top:8px;">
+        <label class="hint">ft / square</label>
+        <input type="text" id="feetPerSquare" value="5" style="width:50px;">
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <button class="tool-btn" id="showStructure" data-toggle="off">Show walls/lights/vision</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Fog brush</h3>
+      <div class="row" id="fogControls" style="display:none;">
+        <button class="fog-mode-btn active" data-mode="hide">Hide</button>
+        <button class="fog-mode-btn" data-mode="reveal">Reveal</button>
+      </div>
+      <div class="row brush-row" id="brushControls" style="margin-top:6px; display:none;">
+        <span class="hint">Brush:</span>
+        <button class="brush-btn active" data-size="1">1&times;1</button>
+        <button class="brush-btn" data-size="3">3&times;3</button>
+        <button class="brush-btn" data-size="5">5&times;5</button>
+      </div>
+      <div class="row" id="fogBulkControls" style="margin-top:6px; display:none;">
+        <button id="fogRevealAll">Reveal all</button>
+        <button id="fogHideAll">Hide all</button>
+      </div>
+      <div class="hint">Select the Fog tool in the floating toolbar to paint.</div>
+    </div>
+
+    <div class="section">
+      <h3>Tokens</h3>
+      <div class="row">
+        <button id="addToken">+ Add token</button>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <select id="pcRosterSelect" style="flex:1;">
+          <option value="">Add PC token…</option>
+        </select>
+      </div>
+      <div class="token-list" id="tokenList" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="section">
+      <h3>Scenes</h3>
+      <div class="row">
+        <input type="text" id="sceneName" placeholder="Scene name" style="flex:1;">
+        <button id="sceneSave">Save</button>
+      </div>
+      <div class="token-list" id="sceneList" style="margin-top:8px;"></div>
+      <div class="hint">Saves the current map, fog, and token layout so you can switch back to it later.</div>
+    </div>
+
+    <div class="section">
+      <h3>Initiative</h3>
+      <div class="row">
+        <input type="text" id="initName" placeholder="Name" style="flex:1;">
+        <input type="text" id="initValue" placeholder="#" style="width:44px;">
+        <button id="initAdd">Add</button>
+      </div>
+      <div class="token-list" id="initList" style="margin-top:8px;"></div>
+      <div class="row" style="margin-top:8px;">
+        <button id="initPrev">&#9664; Prev</button>
+        <button id="initNext">Next &#9654;</button>
+        <button id="initClear" class="danger">Clear</button>
+      </div>
+    </div>
+
+    <div class="hint">Drag empty space (or middle-click drag anywhere) to pan &middot; scroll to zoom &middot; drag a token to move it &middot; drop images in /tokens/&lt;name&gt;.png to auto-art tokens</div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  parseDD2VTT, dist, formatDistance, DIE_TYPES, DIE_SHAPES, rollPool,
+  watchMap, setMap, watchTokens, addToken, moveToken, removeToken, updateToken, setTokensAll,
+  sendPing, watchPings, setRuler, clearRuler, watchRulers,
+  rollAndBroadcast, watchDiceLog, watchDiceBroadcast, triggerDiceOverlay,
+  presence, uid, randomColor,
+  snapToGrid, blankFog, cellOf, isCellHidden, watchFog, setFog,
+  watchInitiative, setInitiative,
+  resolveTokenImage, watchScenes, saveScene, deleteScene,
+  DEFAULT_VISION_SQUARES, tokenVisionPx,
+  watchLocked, setLocked,
+  doorAt, toggleDoor, drawDoorIcon, drawLightIcon,
+  watchPcRoster, findPcByName, resolveHp, setTokenHp,
+  PC_ROSTERS
+} from "./js/core.js?v=8";
+import { update, ref } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+import { db } from "./js/firebase.js";
+
+const MYID = uid();
+let roomCode = "";
+let myName = "GM";
+
+/* ---------- room gate ---------- */
+const params = new URLSearchParams(location.search);
+if (params.get("room")) document.getElementById("gateRoom").value = params.get("room");
+if (localStorage.getItem("vtt_name")) document.getElementById("gateName").value = localStorage.getItem("vtt_name");
+
+document.getElementById("gateEnter").onclick = enterRoom;
+function enterRoom() {
+  roomCode = document.getElementById("gateRoom").value.trim();
+  myName = document.getElementById("gateName").value.trim() || "GM";
+  if (!roomCode) return alert("Enter a room code");
+  localStorage.setItem("vtt_name", myName);
+  document.getElementById("roomGate").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  document.getElementById("roomLabel").textContent = roomCode;
+  presence(roomCode, MYID, myName, "gm");
+  init();
+}
+
+document.getElementById("copyLink").onclick = () => {
+  const url = `${location.origin}${location.pathname.replace("simple-gm.html", "simple-player.html")}?room=${encodeURIComponent(roomCode)}`;
+  navigator.clipboard.writeText(url);
+  const btn = document.getElementById("copyLink");
+  const old = btn.innerHTML;
+  btn.innerHTML = "&#10003;";
+  setTimeout(() => (btn.innerHTML = old), 1200);
+};
+
+let locked = false;
+document.getElementById("lockToggle").onclick = () => setLocked(roomCode, !locked);
+
+/* ---------- canvas / view state ---------- */
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+let map = null;      // {image (HTMLImageElement), pxPerGrid, cols, rows, widthPx, heightPx, feetPerSquare}
+let rawMap = null;   // last raw map data from Firebase (base64 image string) — used for scene snapshots
+let tokens = {};
+let tokenImages = {}; // id -> { label, img (HTMLImageElement|null) }
+let pcList = [];  // real PC records from characters/pcs, matched to tokens by name
+let scenes = [];
+let pings = {};
+let rulers = {};
+let tool = "select";
+let view = { x: 0, y: 0, scale: 1 };
+let dragToken = null;
+let panning = false;
+let panStart = null;
+let rulerDrag = null;
+let fog = null;          // row-major string, '1' hidden / '0' revealed
+let fogMode = "hide";    // "hide" | "reveal"
+let brushSize = 1;       // cells, odd number
+let painting = false;
+let initiativeData = { list: [], current: null };
+let showStructure = false;
+let lastMapImageSrc = null;
+
+function resize() {
+  canvas.width = document.getElementById("canvasWrap").clientWidth;
+  canvas.height = document.getElementById("canvasWrap").clientHeight;
+  draw();
+}
+window.addEventListener("resize", resize);
+
+function screenToWorld(sx, sy) {
+  return { x: (sx - view.x) / view.scale, y: (sy - view.y) / view.scale };
+}
+function worldToScreen(wx, wy) {
+  return { x: wx * view.scale + view.x, y: wy * view.scale + view.y };
+}
+
+function init() {
+  resize();
+  watchMap(roomCode, (m) => {
+    rawMap = m || null;
+    if (!m || !m.image) { map = null; lastMapImageSrc = null; draw(); return; }
+    if (m.image === lastMapImageSrc && map) {
+      // same map already loaded — merge fields (doors/walls/lights/etc.)
+      // without reloading the image or recentering the view
+      map = { ...m, image: map.image };
+      draw();
+      return;
+    }
+    lastMapImageSrc = m.image;
+    const img = new Image();
+    img.onload = () => {
+      map = { ...m, image: img };
+      // center view — only happens on a genuine new-map load
+      const wrap = document.getElementById("canvasWrap");
+      view.scale = Math.min(wrap.clientWidth / m.widthPx, wrap.clientHeight / m.heightPx, 1);
+      view.x = (wrap.clientWidth - m.widthPx * view.scale) / 2;
+      view.y = (wrap.clientHeight - m.heightPx * view.scale) / 2;
+      document.getElementById("feetPerSquare").value = m.feetPerSquare || 5;
+      draw();
+    };
+    img.src = m.image;
+  });
+  watchTokens(roomCode, (t) => { tokens = t; resolveTokenImages(); renderTokenList(); draw(); });
+  watchPcRoster((list) => { pcList = list; renderTokenList(); draw(); });
+  watchPings(roomCode, (p) => { pings = p; draw(); });
+  watchRulers(roomCode, (r) => { rulers = r; draw(); });
+  watchDiceLog(roomCode, renderDiceLog);
+  watchFog(roomCode, (f) => { if (!painting) fog = f; draw(); });
+  watchInitiative(roomCode, (i) => { initiativeData = i; renderInitiativeBar(); renderInitiativeList(); });
+  watchScenes(roomCode, (s) => { scenes = s; renderSceneList(); });
+  watchLocked(roomCode, (l) => {
+    locked = l;
+    const btn = document.getElementById("lockToggle");
+    btn.classList.toggle("active", locked);
+    btn.innerHTML = locked ? "&#128274;" : "&#128275;";
+    btn.title = locked ? "Player movement locked — click to unlock" : "Lock player movement";
+  });
+  let sawFirstBroadcast = false, lastDiceId = null;
+  watchDiceBroadcast(roomCode, (data) => {
+    if (!sawFirstBroadcast) { sawFirstBroadcast = true; lastDiceId = data && data.id; return; }
+    if (!data || data.id === lastDiceId) return;
+    lastDiceId = data.id;
+    triggerDiceOverlay(data);
+  });
+  requestAnimationFrame(tick);
+}
+
+document.getElementById("showStructure").onclick = (e) => {
+  showStructure = !showStructure;
+  e.currentTarget.classList.toggle("active", showStructure);
+  draw();
+};
+
+function resolveTokenImages() {
+  Object.entries(tokens).forEach(([id, t]) => {
+    const existing = tokenImages[id];
+    if (existing && existing.label === t.label) return;
+    tokenImages[id] = { label: t.label, img: existing ? existing.img : null };
+    resolveTokenImage(t.label, (img) => {
+      tokenImages[id] = { label: t.label, img };
+      draw();
+    });
+  });
+  Object.keys(tokenImages).forEach((id) => { if (!tokens[id]) delete tokenImages[id]; });
+}
+
+function tick() {
+  draw();
+  requestAnimationFrame(tick);
+}
+
+/* ---------- map upload ---------- */
+document.getElementById("mapFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById("mapStatus");
+  statusEl.textContent = "Reading map file\u2026";
+  try {
+    const parsed = await parseDD2VTT(file, (phase) => {
+      if (phase === "compressing") statusEl.textContent = "Map image is large \u2014 compressing to fit\u2026";
+    });
+    statusEl.textContent = "Uploading\u2026";
+    const feetPerSquare = parseFloat(document.getElementById("feetPerSquare").value) || 5;
+    await setMap(roomCode, { ...parsed, feetPerSquare });
+    await setFog(roomCode, blankFog(parsed.cols, parsed.rows, true));
+    statusEl.textContent = parsed.downscaled
+      ? "Map loaded (image was resized to fit Firebase's size limit)."
+      : "Map loaded.";
+    setTimeout(() => { if (statusEl.textContent.startsWith("Map loaded")) statusEl.textContent = ""; }, 4000);
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = "Couldn't load that map: " + (err.message || err);
+  }
+});
+
+document.getElementById("feetPerSquare").addEventListener("change", (e) => {
+  if (!map) return;
+  update(ref(db, `rooms/${roomCode}/map`), { feetPerSquare: parseFloat(e.target.value) || 5 });
+});
+
+/* ---------- tools ---------- */
+document.querySelectorAll(".tool-btn[data-tool]").forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tool-btn[data-tool]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    tool = btn.dataset.tool;
+    canvas.className = tool !== "select" ? "tool-" + tool : "";
+    document.getElementById("fogControls").style.display = tool === "fog" ? "flex" : "none";
+    document.getElementById("brushControls").style.display = tool === "fog" ? "flex" : "none";
+    document.getElementById("fogBulkControls").style.display = tool === "fog" ? "flex" : "none";
+  };
+});
+
+document.getElementById("fogRevealAll").onclick = () => {
+  if (!map) return;
+  fog = blankFog(map.cols, map.rows, false);
+  setFog(roomCode, fog);
+  draw();
+};
+document.getElementById("fogHideAll").onclick = () => {
+  if (!map) return;
+  fog = blankFog(map.cols, map.rows, true);
+  setFog(roomCode, fog);
+  draw();
+};
+
+/* ---------- floating toolbar / dice popover ---------- */
+document.getElementById("toolbarCollapse").onclick = () => {
+  document.getElementById("floatingToolbar").classList.toggle("collapsed");
+};
+
+const dicePopover = document.getElementById("dicePopover");
+document.getElementById("diceToggleBtn").onclick = (e) => {
+  e.stopPropagation();
+  dicePopover.classList.toggle("open");
+};
+document.addEventListener("click", (e) => {
+  if (!dicePopover.classList.contains("open")) return;
+  if (dicePopover.contains(e.target) || e.target.id === "diceToggleBtn") return;
+  dicePopover.classList.remove("open");
+});
+
+document.querySelectorAll(".fog-mode-btn").forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll(".fog-mode-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    fogMode = btn.dataset.mode;
+  };
+});
+
+document.querySelectorAll(".brush-btn").forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll(".brush-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    brushSize = parseInt(btn.dataset.size, 10);
+  };
+});
+
+function paintFogAt(wx, wy) {
+  if (!map) return;
+  if (!fog || fog.length !== map.cols * map.rows) fog = blankFog(map.cols, map.rows, true);
+  const { col, row } = cellOf(wx, wy, map.pxPerGrid);
+  const half = (brushSize - 1) / 2;
+  const arr = fog.split("");
+  for (let dr = -half; dr <= half; dr++) {
+    for (let dc = -half; dc <= half; dc++) {
+      const c = col + dc, r = row + dr;
+      if (c < 0 || r < 0 || c >= map.cols || r >= map.rows) continue;
+      arr[r * map.cols + c] = fogMode === "hide" ? "1" : "0";
+    }
+  }
+  fog = arr.join("");
+  draw();
+}
+
+function createTokenAtCenter(label) {
+  if (!map) return alert("Load a map first");
+  const wrap = document.getElementById("canvasWrap");
+  const center = screenToWorld(wrap.clientWidth / 2, wrap.clientHeight / 2);
+  const snapped = snapToGrid(center.x, center.y, map.pxPerGrid);
+  addToken(roomCode, {
+    x: snapped.x, y: snapped.y,
+    size: 1,
+    color: randomColor(),
+    label,
+    hp: { current: 10, max: 10 },
+    visible: true,
+    vision: DEFAULT_VISION_SQUARES,
+  });
+}
+
+document.getElementById("addToken").onclick = () => createTokenAtCenter("Token");
+
+const rosterSelect = document.getElementById("pcRosterSelect");
+Object.entries(PC_ROSTERS).forEach(([campaign, names]) => {
+  const group = document.createElement("optgroup");
+  group.label = campaign;
+  names.forEach((name) => {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    group.appendChild(opt);
+  });
+  rosterSelect.appendChild(group);
+});
+rosterSelect.onchange = () => {
+  if (!rosterSelect.value) return;
+  createTokenAtCenter(rosterSelect.value);
+  rosterSelect.value = "";
+};
+
+function tokenRadius(t) {
+  return ((map && map.pxPerGrid) || 70) * (t.size || 1) / 2;
+}
+
+/* ---------- token list ---------- */
+function renderTokenList() {
+  const list = document.getElementById("tokenList");
+  list.innerHTML = "";
+  Object.entries(tokens).forEach(([id, t]) => {
+    const hp = resolveHp(t, pcList);
+    const linked = !!findPcByName(pcList, t.label);
+    const size = t.size || 1;
+    const visible = t.visible !== false;
+    const vision = t.vision != null ? t.vision : DEFAULT_VISION_SQUARES;
+    const block = document.createElement("div");
+    block.className = "token-block";
+    block.innerHTML = `
+      <div class="token-row">
+        <span class="token-swatch" style="background:${t.color}"></span>
+        <input type="text" value="${t.label || ""}" data-id="${id}" style="flex:1;">
+        <button class="eye-btn${visible ? "" : " hidden-tok"}" data-vis="${id}" title="Toggle player visibility">${visible ? "\u{1F441}" : "\u{1F576}"}</button>
+        <button data-del="${id}">✕</button>
+      </div>
+      <div class="token-row">
+        <span class="hint" title="${linked ? "Linked to a real PC record — HP syncs with sheet.html" : "No matching PC found — this HP is local to this token only"}">HP${linked ? " \u{1F517}" : ""}</span>
+        <input type="text" class="hp-input" data-hpcur="${id}" value="${hp.current}">
+        <span class="hp-sep">/</span>
+        <input type="text" class="hp-input" data-hpmax="${id}" value="${hp.max}">
+        <span class="hint" style="margin-left:auto;">Size</span>
+        ${[1, 2, 3, 4].map((n) => `<button class="size-btn${size === n ? " active" : ""}" data-size="${id}:${n}">${n}</button>`).join("")}
+      </div>
+      <div class="token-row">
+        <span class="hint">Vision (sq)</span>
+        <input type="text" class="hp-input" data-vision="${id}" value="${vision}" title="How many grid squares this token can see through fog — 0 disables">
+      </div>
+    `;
+    list.appendChild(block);
+  });
+  list.querySelectorAll("input[data-id]").forEach((inp) => {
+    inp.onchange = () => updateToken(roomCode, inp.dataset.id, { label: inp.value });
+  });
+  list.querySelectorAll("button[data-del]").forEach((btn) => {
+    btn.onclick = () => removeToken(roomCode, btn.dataset.del);
+  });
+  list.querySelectorAll("button[data-vis]").forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.dataset.vis;
+      updateToken(roomCode, id, { visible: !(tokens[id].visible !== false) });
+    };
+  });
+  list.querySelectorAll("input[data-hpcur]").forEach((inp) => {
+    inp.onchange = () => {
+      const id = inp.dataset.hpcur;
+      const hp = resolveHp(tokens[id], pcList);
+      setTokenHp(roomCode, id, tokens[id], pcList, { ...hp, current: parseFloat(inp.value) || 0 });
+    };
+  });
+  list.querySelectorAll("input[data-hpmax]").forEach((inp) => {
+    inp.onchange = () => {
+      const id = inp.dataset.hpmax;
+      const hp = resolveHp(tokens[id], pcList);
+      setTokenHp(roomCode, id, tokens[id], pcList, { ...hp, max: parseFloat(inp.value) || 0 });
+    };
+  });
+  list.querySelectorAll("button[data-size]").forEach((btn) => {
+    btn.onclick = () => {
+      const [id, n] = btn.dataset.size.split(":");
+      updateToken(roomCode, id, { size: parseInt(n, 10) });
+    };
+  });
+  list.querySelectorAll("input[data-vision]").forEach((inp) => {
+    inp.onchange = () => updateToken(roomCode, inp.dataset.vision, { vision: Math.max(0, parseFloat(inp.value) || 0) });
+  });
+}
+
+/* ---------- drawing ---------- */
+function hexToRgba(hex, alpha) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16) || 0;
+  const g = parseInt(h.slice(2, 4), 16) || 0;
+  const b = parseInt(h.slice(4, 6), 16) || 0;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function drawToken(t, img, hpOverride) {
+  const r = tokenRadius(t);
+  ctx.save();
+  if (img) {
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(img, t.x - r, t.y - r, r * 2, r * 2);
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+    ctx.lineWidth = 2 / view.scale;
+    ctx.strokeStyle = "#111";
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = t.color;
+    ctx.fill();
+    ctx.lineWidth = 2 / view.scale;
+    ctx.strokeStyle = "#111";
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (t.label) {
+    ctx.fillStyle = "#fff";
+    ctx.font = `${12 / view.scale}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(t.label, t.x, t.y + r + 12 / view.scale);
+  }
+  const hp = hpOverride || t.hp;
+  if (hp && hp.max > 0) {
+    const w = r * 1.8, h = 5 / view.scale;
+    const bx = t.x - w / 2, by = t.y - r - h - 4 / view.scale;
+    const ratio = Math.max(0, Math.min(1, hp.current / hp.max));
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(bx, by, w, h);
+    ctx.fillStyle = ratio > 0.5 ? "#5fbf5f" : ratio > 0.25 ? "#d4a53a" : "#c0453a";
+    ctx.fillRect(bx, by, w * ratio, h);
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(view.x, view.y);
+  ctx.scale(view.scale, view.scale);
+
+  if (map && map.image) {
+    ctx.drawImage(map.image, 0, 0, map.widthPx, map.heightPx);
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 1 / view.scale;
+    for (let x = 0; x <= map.cols; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x * map.pxPerGrid, 0);
+      ctx.lineTo(x * map.pxPerGrid, map.heightPx);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= map.rows; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * map.pxPerGrid);
+      ctx.lineTo(map.widthPx, y * map.pxPerGrid);
+      ctx.stroke();
+    }
+  }
+
+  if (map && map.lights && map.lights.length) {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    map.lights.forEach((l) => {
+      if (!l.range) return;
+      const grad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.range);
+      const alpha = Math.max(0, Math.min(1, l.intensity)) * 0.09;
+      grad.addColorStop(0, hexToRgba(l.color, alpha));
+      grad.addColorStop(0.5, hexToRgba(l.color, alpha * 0.35));
+      grad.addColorStop(1, hexToRgba(l.color, 0));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(l.x, l.y, l.range, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  if (map && map.doors && map.doors.length) {
+    map.doors.forEach((d) => drawDoorIcon(ctx, d, view.scale));
+  }
+
+  if (showStructure && map) {
+    if (map.walls && map.walls.length) {
+      ctx.strokeStyle = "#e05a5a";
+      ctx.lineWidth = 3 / view.scale;
+      ctx.lineCap = "round";
+      map.walls.forEach((wall) => {
+        if (wall.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(wall[0].x, wall[0].y);
+        wall.slice(1).forEach((pt) => ctx.lineTo(pt.x, pt.y));
+        ctx.stroke();
+      });
+    }
+    if (map.lights && map.lights.length) {
+      map.lights.forEach((l) => drawLightIcon(ctx, l, view.scale));
+    }
+    Object.values(tokens).forEach((t) => {
+      const visionPx = tokenVisionPx(t, map.pxPerGrid);
+      if (visionPx <= 0) return;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, visionPx, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(107,176,224,0.5)";
+      ctx.lineWidth = 1.5 / view.scale;
+      ctx.setLineDash([3 / view.scale, 3 / view.scale]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+  }
+
+  Object.entries(tokens).forEach(([id, t]) => {
+    drawToken(t, tokenImages[id] && tokenImages[id].img, resolveHp(t, pcList));
+    if (t.visible === false) {
+      const r = tokenRadius(t);
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, r + 4 / view.scale, 0, Math.PI * 2);
+      ctx.strokeStyle = "#e0a55a";
+      ctx.setLineDash([4 / view.scale, 3 / view.scale]);
+      ctx.lineWidth = 2 / view.scale;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  });
+
+  const now = Date.now();
+  Object.values(pings).forEach((p) => {
+    const age = (now - p.ts) / 2000;
+    if (age > 1) return;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 10 + age * 60, 0, Math.PI * 2);
+    ctx.strokeStyle = p.color || "#d4a53a";
+    ctx.globalAlpha = 1 - age;
+    ctx.lineWidth = 4 / view.scale;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+
+  Object.entries(rulers).forEach(([id, r]) => {
+    ctx.beginPath();
+    ctx.moveTo(r.x1, r.y1);
+    ctx.lineTo(r.x2, r.y2);
+    ctx.strokeStyle = id === MYID ? "#d4a53a" : "#6bb0e0";
+    ctx.lineWidth = 2 / view.scale;
+    ctx.setLineDash([6 / view.scale, 4 / view.scale]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const label = formatDistance(dist(r.x1, r.y1, r.x2, r.y2), map ? map.pxPerGrid : 70, map ? map.feetPerSquare : 5);
+    ctx.fillStyle = "#fff";
+    ctx.font = `${13 / view.scale}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(label, (r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2 - 8 / view.scale);
+  });
+
+  if (map && fog && fog.length === map.cols * map.rows) {
+    ctx.fillStyle = "rgba(10,10,14,0.45)";
+    for (let row = 0; row < map.rows; row++) {
+      for (let col = 0; col < map.cols; col++) {
+        if (fog[row * map.cols + col] === "1") {
+          ctx.fillRect(col * map.pxPerGrid, row * map.pxPerGrid, map.pxPerGrid, map.pxPerGrid);
+        }
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+/* ---------- mouse interaction ---------- */
+function tokenAt(wx, wy) {
+  return Object.entries(tokens).find(([id, t]) => dist(wx, wy, t.x, t.y) <= tokenRadius(t));
+}
+
+canvas.addEventListener("mousedown", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+
+  if (e.button === 1) {
+    e.preventDefault();
+    panning = true;
+    panStart = { x: e.clientX - view.x, y: e.clientY - view.y };
+    canvas.classList.add("dragging");
+    return;
+  }
+
+  if (tool === "ping") {
+    sendPing(roomCode, w.x, w.y, "#d4a53a", myName);
+    return;
+  }
+  if (tool === "ruler") {
+    rulerDrag = { x1: w.x, y1: w.y };
+    return;
+  }
+  if (tool === "fog") {
+    painting = true;
+    paintFogAt(w.x, w.y);
+    return;
+  }
+  const doorIdx = doorAt(map, w.x, w.y);
+  if (doorIdx !== null) {
+    toggleDoor(roomCode, map, doorIdx);
+    return;
+  }
+  const hit = tokenAt(w.x, w.y);
+  if (hit) {
+    dragToken = hit[0];
+  } else {
+    panning = true;
+    panStart = { x: e.clientX - view.x, y: e.clientY - view.y };
+    canvas.classList.add("dragging");
+  }
+});
+
+window.addEventListener("mousemove", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+
+  if (dragToken && map) {
+    const snapped = snapToGrid(w.x, w.y, map.pxPerGrid);
+    moveToken(roomCode, dragToken, snapped.x, snapped.y);
+  } else if (panning) {
+    view.x = e.clientX - panStart.x;
+    view.y = e.clientY - panStart.y;
+    draw();
+  } else if (rulerDrag) {
+    setRuler(roomCode, MYID, { x1: rulerDrag.x1, y1: rulerDrag.y1, x2: w.x, y2: w.y });
+  } else if (painting) {
+    paintFogAt(w.x, w.y);
+    throttledFogSync();
+  }
+});
+
+let fogSyncTimer = null;
+function throttledFogSync() {
+  if (fogSyncTimer) return;
+  fogSyncTimer = setTimeout(() => { fogSyncTimer = null; setFog(roomCode, fog); }, 150);
+}
+
+window.addEventListener("mouseup", () => {
+  dragToken = null;
+  panning = false;
+  canvas.classList.remove("dragging");
+  if (rulerDrag) {
+    rulerDrag = null;
+    setTimeout(() => clearRuler(roomCode, MYID), 1500);
+  }
+  if (painting) {
+    painting = false;
+    setFog(roomCode, fog);
+  }
+});
+
+canvas.addEventListener("auxclick", (e) => { if (e.button === 1) e.preventDefault(); });
+
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const before = screenToWorld(sx, sy);
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  view.scale = Math.min(4, Math.max(0.1, view.scale * factor));
+  const after = worldToScreen(before.x, before.y);
+  view.x += sx - after.x;
+  view.y += sy - after.y;
+  draw();
+}, { passive: false });
+
+/* ---------- scenes ---------- */
+function renderSceneList() {
+  const list = document.getElementById("sceneList");
+  list.innerHTML = "";
+  scenes.forEach((s) => {
+    const row = document.createElement("div");
+    row.className = "scene-row";
+    row.innerHTML = `
+      <span class="scene-name">${s.name}</span>
+      <button data-load="${s.id}">Load</button>
+      <button data-delscene="${s.id}" class="danger">✕</button>
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll("button[data-load]").forEach((btn) => {
+    btn.onclick = () => {
+      const scene = scenes.find((s) => s.id === btn.dataset.load);
+      if (scene && confirm(`Load scene "${scene.name}"? This replaces the current map, fog, and tokens.`)) {
+        setMap(roomCode, scene.map || null);
+        setFog(roomCode, scene.fog || null);
+        setTokensAll(roomCode, scene.tokens || {});
+      }
+    };
+  });
+  list.querySelectorAll("button[data-delscene]").forEach((btn) => {
+    btn.onclick = () => deleteScene(roomCode, btn.dataset.delscene);
+  });
+}
+
+document.getElementById("sceneSave").onclick = () => {
+  const nameInp = document.getElementById("sceneName");
+  const name = nameInp.value.trim() || `Scene ${new Date().toLocaleTimeString()}`;
+  saveScene(roomCode, name, { map: rawMap || null, fog: fog || null, tokens: tokens || {} });
+  nameInp.value = "";
+};
+
+/* ---------- initiative ---------- */
+function sortedInitiative() {
+  return [...(initiativeData.list || [])].sort((a, b) => b.value - a.value);
+}
+
+function renderInitiativeBar() {
+  const bar = document.getElementById("initiativeBar");
+  bar.innerHTML = "";
+  const sorted = sortedInitiative();
+  if (sorted.length === 0) return;
+  const prevBtn = document.createElement("button");
+  prevBtn.className = "init-nav";
+  prevBtn.textContent = "\u25c0";
+  prevBtn.onclick = prevTurn;
+  bar.appendChild(prevBtn);
+  sorted.forEach((e) => {
+    const chip = document.createElement("div");
+    chip.className = "init-chip" + (e.id === initiativeData.current ? " current" : "");
+    chip.innerHTML = `<span>${e.name}</span><span class="val">${e.value}</span>`;
+    bar.appendChild(chip);
+  });
+  const nextBtn = document.createElement("button");
+  nextBtn.className = "init-nav";
+  nextBtn.textContent = "\u25b6";
+  nextBtn.onclick = nextTurn;
+  bar.appendChild(nextBtn);
+}
+
+function renderInitiativeList() {
+  const list = document.getElementById("initList");
+  list.innerHTML = "";
+  sortedInitiative().forEach((e) => {
+    const row = document.createElement("div");
+    row.className = "init-row" + (e.id === initiativeData.current ? " current" : "");
+    row.innerHTML = `
+      <input type="text" value="${e.name}" data-name="${e.id}" style="flex:1;">
+      <input type="text" class="val-input" value="${e.value}" data-value="${e.id}">
+      <button data-del="${e.id}">✕</button>
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll("input[data-name]").forEach((inp) => {
+    inp.onchange = () => renameInitiative(inp.dataset.name, inp.value);
+  });
+  list.querySelectorAll("input[data-value]").forEach((inp) => {
+    inp.onchange = () => updateInitiativeValue(inp.dataset.value, parseFloat(inp.value) || 0);
+  });
+  list.querySelectorAll("button[data-del]").forEach((btn) => {
+    btn.onclick = () => removeInitiative(btn.dataset.del);
+  });
+}
+
+function writeInitiative(list, current) {
+  setInitiative(roomCode, { list, current });
+}
+
+document.getElementById("initAdd").onclick = () => {
+  const nameInp = document.getElementById("initName");
+  const valInp = document.getElementById("initValue");
+  const name = nameInp.value.trim();
+  if (!name) return;
+  const value = parseFloat(valInp.value) || 0;
+  const id = uid();
+  const list = [...(initiativeData.list || []), { id, name, value }];
+  let current = initiativeData.current;
+  if (current === null || current === undefined) {
+    current = [...list].sort((a, b) => b.value - a.value)[0].id;
+  }
+  writeInitiative(list, current);
+  nameInp.value = "";
+  valInp.value = "";
+};
+
+function renameInitiative(id, name) {
+  const list = (initiativeData.list || []).map((e) => (e.id === id ? { ...e, name } : e));
+  writeInitiative(list, initiativeData.current);
+}
+
+function updateInitiativeValue(id, value) {
+  const list = (initiativeData.list || []).map((e) => (e.id === id ? { ...e, value } : e));
+  writeInitiative(list, initiativeData.current);
+}
+
+function removeInitiative(id) {
+  const list = (initiativeData.list || []).filter((e) => e.id !== id);
+  let current = initiativeData.current;
+  if (current === id) {
+    const sorted = [...list].sort((a, b) => b.value - a.value);
+    current = sorted.length ? sorted[0].id : null;
+  }
+  writeInitiative(list, current);
+}
+
+function nextTurn() {
+  const sorted = sortedInitiative();
+  if (sorted.length === 0) return;
+  const idx = sorted.findIndex((e) => e.id === initiativeData.current);
+  const next = sorted[(idx + 1) % sorted.length].id;
+  writeInitiative(initiativeData.list, next);
+}
+
+function prevTurn() {
+  const sorted = sortedInitiative();
+  if (sorted.length === 0) return;
+  const idx = sorted.findIndex((e) => e.id === initiativeData.current);
+  const prev = sorted[(idx - 1 + sorted.length) % sorted.length].id;
+  writeInitiative(initiativeData.list, prev);
+}
+
+document.getElementById("initPrev").onclick = prevTurn;
+document.getElementById("initNext").onclick = nextTurn;
+document.getElementById("initClear").onclick = () => writeInitiative([], null);
+
+/* ---------- dice ---------- */
+let pool = [];
+const diceButtons = document.getElementById("diceButtons");
+DIE_TYPES.forEach((sides) => {
+  const btn = document.createElement("button");
+  btn.className = "die-btn";
+  btn.style.clipPath = DIE_SHAPES[sides] || "none";
+  btn.textContent = "d" + sides;
+  btn.onclick = () => { pool.push(sides); renderPool(); };
+  diceButtons.appendChild(btn);
+});
+
+function renderPool() {
+  const el = document.getElementById("dicePool");
+  el.innerHTML = "";
+  pool.forEach((sides, i) => {
+    const chip = document.createElement("span");
+    chip.className = "pool-chip";
+    chip.textContent = "d" + sides;
+    chip.title = "Click to remove";
+    chip.onclick = () => { pool.splice(i, 1); renderPool(); };
+    el.appendChild(chip);
+  });
+}
+
+document.getElementById("rollBtn").onclick = () => {
+  if (pool.length === 0) return;
+  rollAndBroadcast(roomCode, [...pool], myName);
+  pool = [];
+  renderPool();
+};
+
+function renderDiceLog(entries) {
+  const log = document.getElementById("diceLog");
+  log.innerHTML = "";
+  entries.forEach((e) => {
+    const div = document.createElement("div");
+    div.className = "log-entry";
+    const breakdown = e.results.map((r) => `d${r.sides}:${r.value}`).join(" ");
+    div.innerHTML = `<span class="by">${e.by}</span> rolled ${breakdown} = <span class="total">${e.total}</span>`;
+    log.appendChild(div);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Classic VTT — Player</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="roomGate">
+  <div class="card">
+    <h2>Classic VTT — Player</h2>
+    <div class="sub">Enter the room code your GM gave you, and your character's name — this is the token you'll control.</div>
+    <input type="text" id="gateRoom" placeholder="Room code">
+    <input type="text" id="gateName" placeholder="Character name">
+    <button id="gateEnter" style="background:var(--accent); color:#1a1a1a; font-weight:700; border:none;">Join</button>
+  </div>
+</div>
+
+<div id="app" style="display:none;">
+  <div id="canvasWrap">
+    <div id="initiativeBar"></div>
+    <canvas id="canvas"></canvas>
+
+    <div id="cornerHud">
+      <span class="room-code" id="roomLabel"></span>
+    </div>
+    <div id="ownStatus" class="missing"></div>
+
+    <div id="floatingToolbar">
+      <button class="toolbar-handle" id="toolbarCollapse" title="Collapse toolbar">&#8943;</button>
+      <div id="toolbarIcons">
+        <button class="toolbar-icon-btn tool-btn active" data-tool="select" title="Select">&#8598;</button>
+        <button class="toolbar-icon-btn tool-btn" data-tool="ping" title="Ping">&#128205;</button>
+        <button class="toolbar-icon-btn tool-btn" data-tool="ruler" title="Ruler">&#128207;</button>
+        <button class="toolbar-icon-btn" id="diceToggleBtn" title="Dice">&#127922;</button>
+      </div>
+    </div>
+
+    <div id="dicePopover">
+      <div class="row" id="diceButtons"></div>
+      <div class="row" id="dicePool" style="margin-top:8px; min-height:24px;"></div>
+      <button id="rollBtn" style="margin-top:8px; width:100%;">Roll for everyone</button>
+      <div id="diceLog" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div class="section" id="hpSection" style="display:none;">
+      <h3>My Character</h3>
+      <div class="row">
+        <span class="hint">HP</span>
+        <input type="text" class="hp-input" id="myHpCurrent">
+        <span class="hp-sep">/</span>
+        <input type="text" class="hp-input" id="myHpMax">
+      </div>
+    </div>
+
+    <div class="hint">Drag empty space (or middle-click drag anywhere) to pan &middot; scroll to zoom &middot; move your token with the arrow keys &middot; walls and closed doors block movement &middot; click a door or press space near one to open/close it</div>
+  </div>
+</div>
+
+<script type="module">
+import {
+  dist, formatDistance, DIE_TYPES, DIE_SHAPES,
+  watchMap, watchTokens, moveToken, updateToken,
+  sendPing, watchPings, setRuler, clearRuler, watchRulers,
+  rollAndBroadcast, watchDiceLog, watchDiceBroadcast, triggerDiceOverlay,
+  presence, uid,
+  cellOf, isCellHidden, watchFog, watchInitiative,
+  resolveTokenImage, isWithinVision, tokenVisionPx,
+  movementBlocked, watchLocked,
+  doorAt, toggleDoor, nearestDoorInRange, drawDoorIcon,
+  DOOR_INTERACT_RANGE_SQUARES,
+  watchPcRoster, resolveHp, setTokenHp
+} from "./js/core.js?v=8";
+
+const MYID = uid();
+let roomCode = "";
+let myName = "Player";
+
+/* ---------- room gate ---------- */
+const params = new URLSearchParams(location.search);
+if (params.get("room")) document.getElementById("gateRoom").value = params.get("room");
+if (localStorage.getItem("vtt_name")) document.getElementById("gateName").value = localStorage.getItem("vtt_name");
+
+document.getElementById("gateEnter").onclick = enterRoom;
+function enterRoom() {
+  roomCode = document.getElementById("gateRoom").value.trim();
+  myName = document.getElementById("gateName").value.trim() || "Player";
+  if (!roomCode) return alert("Enter a room code");
+  localStorage.setItem("vtt_name", myName);
+  document.getElementById("roomGate").style.display = "none";
+  document.getElementById("app").style.display = "flex";
+  document.getElementById("roomLabel").textContent = roomCode;
+  presence(roomCode, MYID, myName, "player");
+  init();
+}
+
+/* ---------- canvas / view state ---------- */
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+let map = null;
+let tokens = {};
+let pings = {};
+let rulers = {};
+let tool = "select";
+let view = { x: 0, y: 0, scale: 1 };
+let panning = false;
+let panStart = null;
+let rulerDrag = null;
+let fog = null;
+let initiativeData = { list: [], current: null };
+let tokenImages = {}; // id -> { label, img }
+let pcList = [];  // real PC records from characters/pcs, matched to tokens by name
+let fogCanvas = null;  // offscreen layer so the vision cutout only erases fog, not the map/tokens
+let fogCtx = null;
+let locked = false;
+let lastMoveTs = 0;
+let lastMapImageSrc = null;
+
+function myTokenId() {
+  const entry = Object.entries(tokens).find(
+    ([, t]) => (t.label || "").trim().toLowerCase() === myName.trim().toLowerCase()
+  );
+  return entry ? entry[0] : null;
+}
+
+function resize() {
+  canvas.width = document.getElementById("canvasWrap").clientWidth;
+  canvas.height = document.getElementById("canvasWrap").clientHeight;
+  draw();
+}
+window.addEventListener("resize", resize);
+
+function screenToWorld(sx, sy) {
+  return { x: (sx - view.x) / view.scale, y: (sy - view.y) / view.scale };
+}
+function worldToScreen(wx, wy) {
+  return { x: wx * view.scale + view.x, y: wy * view.scale + view.y };
+}
+
+function init() {
+  resize();
+  watchMap(roomCode, (m) => {
+    if (!m || !m.image) { map = null; lastMapImageSrc = null; draw(); return; }
+    if (m.image === lastMapImageSrc && map) {
+      // same map already loaded — merge fields (doors/walls/lights/etc.)
+      // without re-decoding the image or resetting the player's view
+      map = { ...m, image: map.image };
+      draw();
+      return;
+    }
+    lastMapImageSrc = m.image;
+    const img = new Image();
+    img.onload = () => {
+      const firstLoad = !map;
+      map = { ...m, image: img };
+      if (firstLoad) {
+        const wrap = document.getElementById("canvasWrap");
+        view.scale = Math.min(wrap.clientWidth / m.widthPx, wrap.clientHeight / m.heightPx, 1);
+        view.x = (wrap.clientWidth - m.widthPx * view.scale) / 2;
+        view.y = (wrap.clientHeight - m.heightPx * view.scale) / 2;
+      }
+      draw();
+    };
+    img.src = m.image;
+  });
+  watchTokens(roomCode, (t) => { tokens = t; resolveTokenImages(); updateOwnStatus(); updateHpSection(); draw(); });
+  watchPcRoster((list) => { pcList = list; updateHpSection(); draw(); });
+  watchPings(roomCode, (p) => { pings = p; draw(); });
+  watchRulers(roomCode, (r) => { rulers = r; draw(); });
+  watchDiceLog(roomCode, renderDiceLog);
+  watchFog(roomCode, (f) => { fog = f; draw(); });
+  watchInitiative(roomCode, (i) => { initiativeData = i; renderInitiativeBar(); });
+  watchLocked(roomCode, (l) => { locked = l; updateOwnStatus(); });
+  let sawFirstBroadcast = false, lastDiceId = null;
+  watchDiceBroadcast(roomCode, (data) => {
+    if (!sawFirstBroadcast) { sawFirstBroadcast = true; lastDiceId = data && data.id; return; }
+    if (!data || data.id === lastDiceId) return;
+    lastDiceId = data.id;
+    triggerDiceOverlay(data);
+  });
+  requestAnimationFrame(tick);
+}
+
+function resolveTokenImages() {
+  Object.entries(tokens).forEach(([id, t]) => {
+    const existing = tokenImages[id];
+    if (existing && existing.label === t.label) return;
+    tokenImages[id] = { label: t.label, img: existing ? existing.img : null };
+    resolveTokenImage(t.label, (img) => {
+      tokenImages[id] = { label: t.label, img };
+      draw();
+    });
+  });
+  Object.keys(tokenImages).forEach((id) => { if (!tokens[id]) delete tokenImages[id]; });
+}
+
+function tokenRadius(t) {
+  return ((map && map.pxPerGrid) || 70) * (t.size || 1) / 2;
+}
+
+function updateHpSection() {
+  const section = document.getElementById("hpSection");
+  const id = myTokenId();
+  const curInp = document.getElementById("myHpCurrent");
+  const maxInp = document.getElementById("myHpMax");
+  if (!id) { section.style.display = "none"; return; }
+  section.style.display = "block";
+  const hp = resolveHp(tokens[id], pcList);
+  if (document.activeElement !== curInp) curInp.value = hp.current ?? 0;
+  if (document.activeElement !== maxInp) maxInp.value = hp.max ?? 0;
+}
+
+document.getElementById("myHpCurrent").onchange = (e) => {
+  const id = myTokenId();
+  if (!id) return;
+  const hp = resolveHp(tokens[id], pcList);
+  setTokenHp(roomCode, id, tokens[id], pcList, { ...hp, current: parseFloat(e.target.value) || 0 });
+};
+document.getElementById("myHpMax").onchange = (e) => {
+  const id = myTokenId();
+  if (!id) return;
+  const hp = resolveHp(tokens[id], pcList);
+  setTokenHp(roomCode, id, tokens[id], pcList, { ...hp, max: parseFloat(e.target.value) || 0 });
+};
+
+function updateOwnStatus() {
+  const el = document.getElementById("ownStatus");
+  const id = myTokenId();
+  if (id) {
+    el.textContent = locked ? `Controlling: ${myName} \u2014 movement locked by GM` : `Controlling: ${myName}`;
+    el.className = locked ? "missing" : "ok";
+  } else {
+    el.textContent = `No token named "${myName}" yet — ask your GM to add one`;
+    el.className = "missing";
+  }
+}
+
+function tick() {
+  draw();
+  requestAnimationFrame(tick);
+}
+
+/* ---------- tools ---------- */
+document.querySelectorAll(".tool-btn[data-tool]").forEach((btn) => {
+  btn.onclick = () => {
+    document.querySelectorAll(".tool-btn[data-tool]").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    tool = btn.dataset.tool;
+    canvas.className = tool !== "select" ? "tool-" + tool : "";
+  };
+});
+
+/* ---------- floating toolbar / dice popover ---------- */
+document.getElementById("toolbarCollapse").onclick = () => {
+  document.getElementById("floatingToolbar").classList.toggle("collapsed");
+};
+
+const dicePopover = document.getElementById("dicePopover");
+document.getElementById("diceToggleBtn").onclick = (e) => {
+  e.stopPropagation();
+  dicePopover.classList.toggle("open");
+};
+document.addEventListener("click", (e) => {
+  if (!dicePopover.classList.contains("open")) return;
+  if (dicePopover.contains(e.target) || e.target.id === "diceToggleBtn") return;
+  dicePopover.classList.remove("open");
+});
+
+/* ---------- drawing ---------- */
+function hexToRgba(hex, alpha) {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16) || 0;
+  const g = parseInt(h.slice(2, 4), 16) || 0;
+  const b = parseInt(h.slice(4, 6), 16) || 0;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function drawToken(t, img, hpOverride) {
+  const r = tokenRadius(t);
+  ctx.save();
+  if (img) {
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(img, t.x - r, t.y - r, r * 2, r * 2);
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+    ctx.lineWidth = 2 / view.scale;
+    ctx.strokeStyle = "#111";
+    ctx.stroke();
+  } else {
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = t.color;
+    ctx.fill();
+    ctx.lineWidth = 2 / view.scale;
+    ctx.strokeStyle = "#111";
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (t.label) {
+    ctx.fillStyle = "#fff";
+    ctx.font = `${12 / view.scale}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(t.label, t.x, t.y + r + 12 / view.scale);
+  }
+  const hp = hpOverride || t.hp;
+  if (hp && hp.max > 0) {
+    const w = r * 1.8, h = 5 / view.scale;
+    const bx = t.x - w / 2, by = t.y - r - h - 4 / view.scale;
+    const ratio = Math.max(0, Math.min(1, hp.current / hp.max));
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fillRect(bx, by, w, h);
+    ctx.fillStyle = ratio > 0.5 ? "#5fbf5f" : ratio > 0.25 ? "#d4a53a" : "#c0453a";
+    ctx.fillRect(bx, by, w * ratio, h);
+  }
+}
+
+/* ---------- drawing (identical to GM view) ---------- */
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(view.x, view.y);
+  ctx.scale(view.scale, view.scale);
+
+  if (map && map.image) {
+    ctx.drawImage(map.image, 0, 0, map.widthPx, map.heightPx);
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 1 / view.scale;
+    for (let x = 0; x <= map.cols; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x * map.pxPerGrid, 0);
+      ctx.lineTo(x * map.pxPerGrid, map.heightPx);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= map.rows; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y * map.pxPerGrid);
+      ctx.lineTo(map.widthPx, y * map.pxPerGrid);
+      ctx.stroke();
+    }
+  } else {
+    ctx.restore();
+    ctx.fillStyle = "#9a9ea6";
+    ctx.font = "16px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Waiting for the GM to load a map\u2026", canvas.width / 2, canvas.height / 2);
+    return;
+  }
+
+  if (map && map.lights && map.lights.length) {
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    map.lights.forEach((l) => {
+      if (!l.range) return;
+      const grad = ctx.createRadialGradient(l.x, l.y, 0, l.x, l.y, l.range);
+      const alpha = Math.max(0, Math.min(1, l.intensity)) * 0.09;
+      grad.addColorStop(0, hexToRgba(l.color, alpha));
+      grad.addColorStop(0.5, hexToRgba(l.color, alpha * 0.35));
+      grad.addColorStop(1, hexToRgba(l.color, 0));
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(l.x, l.y, l.range, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  if (map && map.doors && map.doors.length) {
+    map.doors.forEach((d) => {
+      const mid = doorMidpoint(d);
+      if (!isPointVisibleToMe(mid.x, mid.y)) return;
+      drawDoorIcon(ctx, d, view.scale);
+    });
+  }
+
+  const myId = myTokenId();
+  const myTok = myId ? tokens[myId] : null;
+  const fogActive = map && fog && fog.length === map.cols * map.rows;
+
+  function isTokenVisibleToMe(t) {
+    if (t.visible === false) return false;
+    if (!fogActive) return true;
+    const { col, row } = cellOf(t.x, t.y, map.pxPerGrid);
+    if (!isCellHidden(fog, col, row, map.cols, map.rows)) return true;
+    return isWithinVision(myTok, t.x, t.y, map.pxPerGrid);
+  }
+
+  Object.entries(tokens).forEach(([id, t]) => {
+    if (id !== myId && !isTokenVisibleToMe(t)) return;
+    drawToken(t, tokenImages[id] && tokenImages[id].img, resolveHp(t, pcList));
+  });
+
+  const now = Date.now();
+  Object.values(pings).forEach((p) => {
+    const age = (now - p.ts) / 2000;
+    if (age > 1) return;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 10 + age * 60, 0, Math.PI * 2);
+    ctx.strokeStyle = p.color || "#d4a53a";
+    ctx.globalAlpha = 1 - age;
+    ctx.lineWidth = 4 / view.scale;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+
+  Object.entries(rulers).forEach(([id, r]) => {
+    ctx.beginPath();
+    ctx.moveTo(r.x1, r.y1);
+    ctx.lineTo(r.x2, r.y2);
+    ctx.strokeStyle = id === MYID ? "#d4a53a" : "#6bb0e0";
+    ctx.lineWidth = 2 / view.scale;
+    ctx.setLineDash([6 / view.scale, 4 / view.scale]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const label = formatDistance(dist(r.x1, r.y1, r.x2, r.y2), map ? map.pxPerGrid : 70, map ? map.feetPerSquare : 5);
+    ctx.fillStyle = "#fff";
+    ctx.font = `${13 / view.scale}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(label, (r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2 - 8 / view.scale);
+  });
+
+  if (fogActive) {
+    if (!fogCanvas || fogCanvas.width !== map.widthPx || fogCanvas.height !== map.heightPx) {
+      fogCanvas = document.createElement("canvas");
+      fogCanvas.width = map.widthPx;
+      fogCanvas.height = map.heightPx;
+      fogCtx = fogCanvas.getContext("2d");
+    }
+    fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+    fogCtx.fillStyle = "#0a0a0e";
+    for (let row = 0; row < map.rows; row++) {
+      for (let col = 0; col < map.cols; col++) {
+        if (fog[row * map.cols + col] === "1") {
+          fogCtx.fillRect(col * map.pxPerGrid, row * map.pxPerGrid, map.pxPerGrid, map.pxPerGrid);
+        }
+      }
+    }
+    // punch a soft hole for my token's personal vision — erases only this
+    // offscreen fog layer, never the map art or other tokens beneath
+    const visionPx = myTok ? tokenVisionPx(myTok, map.pxPerGrid) : 0;
+    if (myTok && visionPx > 0) {
+      fogCtx.save();
+      fogCtx.globalCompositeOperation = "destination-out";
+      const grad = fogCtx.createRadialGradient(myTok.x, myTok.y, visionPx * 0.55, myTok.x, myTok.y, visionPx);
+      grad.addColorStop(0, "rgba(0,0,0,1)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      fogCtx.fillStyle = grad;
+      fogCtx.beginPath();
+      fogCtx.arc(myTok.x, myTok.y, visionPx, 0, Math.PI * 2);
+      fogCtx.fill();
+      fogCtx.restore();
+    }
+    ctx.drawImage(fogCanvas, 0, 0);
+    if (myTok) {
+      drawToken(myTok, tokenImages[myId] && tokenImages[myId].img, resolveHp(myTok, pcList));
+    }
+  }
+
+  ctx.restore();
+}
+
+/* ---------- mouse interaction (pan / ping / ruler only — movement is arrow-keys) ---------- */
+canvas.addEventListener("mousedown", (e) => {
+  if (!map) return;
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+
+  if (e.button === 1) {
+    e.preventDefault();
+    panning = true;
+    panStart = { x: e.clientX - view.x, y: e.clientY - view.y };
+    canvas.classList.add("dragging");
+    return;
+  }
+
+  if (tool === "ping") {
+    sendPing(roomCode, w.x, w.y, "#6bb0e0", myName);
+    return;
+  }
+  if (tool === "ruler") {
+    rulerDrag = { x1: w.x, y1: w.y };
+    return;
+  }
+  const doorIdx = doorAt(map, w.x, w.y);
+  if (doorIdx !== null) {
+    tryToggleDoor(doorIdx);
+    return;
+  }
+  panning = true;
+  panStart = { x: e.clientX - view.x, y: e.clientY - view.y };
+  canvas.classList.add("dragging");
+});
+
+canvas.addEventListener("auxclick", (e) => { if (e.button === 1) e.preventDefault(); });
+
+window.addEventListener("mousemove", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const w = screenToWorld(sx, sy);
+
+  if (panning) {
+    view.x = e.clientX - panStart.x;
+    view.y = e.clientY - panStart.y;
+    draw();
+  } else if (rulerDrag) {
+    setRuler(roomCode, MYID, { x1: rulerDrag.x1, y1: rulerDrag.y1, x2: w.x, y2: w.y });
+  }
+});
+
+window.addEventListener("mouseup", () => {
+  panning = false;
+  canvas.classList.remove("dragging");
+  if (rulerDrag) {
+    rulerDrag = null;
+    setTimeout(() => clearRuler(roomCode, MYID), 1500);
+  }
+});
+
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const before = screenToWorld(sx, sy);
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  view.scale = Math.min(4, Math.max(0.1, view.scale * factor));
+  const after = worldToScreen(before.x, before.y);
+  view.x += sx - after.x;
+  view.y += sy - after.y;
+  draw();
+}, { passive: false });
+
+/* ---------- door interaction (click or spacebar within range; fog-gated) ---------- */
+function isPointVisibleToMe(px, py) {
+  if (!map || !fog || fog.length !== map.cols * map.rows) return true;
+  const { col, row } = cellOf(px, py, map.pxPerGrid);
+  if (!isCellHidden(fog, col, row, map.cols, map.rows)) return true;
+  const myId = myTokenId();
+  const myTok = myId ? tokens[myId] : null;
+  return isWithinVision(myTok, px, py, map.pxPerGrid);
+}
+
+function doorMidpoint(d) {
+  return { x: (d.x1 + d.x2) / 2, y: (d.y1 + d.y2) / 2 };
+}
+
+function tryToggleDoor(idx) {
+  if (idx === null || !map || !map.doors || !map.doors[idx]) return false;
+  const myId = myTokenId();
+  if (!myId) return false;
+  const myTok = tokens[myId];
+  const mid = doorMidpoint(map.doors[idx]);
+  if (!isPointVisibleToMe(mid.x, mid.y)) return false;
+  if (dist(myTok.x, myTok.y, mid.x, mid.y) > map.pxPerGrid * DOOR_INTERACT_RANGE_SQUARES) return false;
+  toggleDoor(roomCode, map, idx);
+  return true;
+}
+
+/* ---------- keyboard movement (arrow keys, walls/closed doors block) ---------- */
+const ARROW_DELTAS = {
+  ArrowUp: { dx: 0, dy: -1 },
+  ArrowDown: { dx: 0, dy: 1 },
+  ArrowLeft: { dx: -1, dy: 0 },
+  ArrowRight: { dx: 1, dy: 0 },
+};
+
+window.addEventListener("keydown", (e) => {
+  const active = document.activeElement;
+  if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) return;
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+  if (e.code === "Space" || e.key === " ") {
+    e.preventDefault();
+    if (!map) return;
+    const myId = myTokenId();
+    if (!myId) return;
+    const myTok = tokens[myId];
+    const idx = nearestDoorInRange(map, myTok.x, myTok.y);
+    if (idx !== null) tryToggleDoor(idx);
+    return;
+  }
+
+  const delta = ARROW_DELTAS[e.key];
+  if (!delta) return;
+  e.preventDefault();
+  if (locked || !map) return;
+  const now = Date.now();
+  if (now - lastMoveTs < 120) return;
+  const myId = myTokenId();
+  if (!myId) return;
+  const t = tokens[myId];
+  const newX = t.x + delta.dx * map.pxPerGrid;
+  const newY = t.y + delta.dy * map.pxPerGrid;
+  if (movementBlocked(map, t.x, t.y, newX, newY)) return;
+  lastMoveTs = now;
+  moveToken(roomCode, myId, newX, newY);
+});
+
+/* ---------- initiative (read-only) ---------- */
+function renderInitiativeBar() {
+  const bar = document.getElementById("initiativeBar");
+  bar.innerHTML = "";
+  const sorted = [...(initiativeData.list || [])].sort((a, b) => b.value - a.value);
+  sorted.forEach((e) => {
+    const chip = document.createElement("div");
+    chip.className = "init-chip" + (e.id === initiativeData.current ? " current" : "");
+    chip.innerHTML = `<span>${e.name}</span><span class="val">${e.value}</span>`;
+    bar.appendChild(chip);
+  });
+}
+
+/* ---------- dice ---------- */
+let pool = [];
+const diceButtons = document.getElementById("diceButtons");
+DIE_TYPES.forEach((sides) => {
+  const btn = document.createElement("button");
+  btn.className = "die-btn";
+  btn.style.clipPath = DIE_SHAPES[sides] || "none";
+  btn.textContent = "d" + sides;
+  btn.onclick = () => { pool.push(sides); renderPool(); };
+  diceButtons.appendChild(btn);
+});
+
+function renderPool() {
+  const el = document.getElementById("dicePool");
+  el.innerHTML = "";
+  pool.forEach((sides, i) => {
+    const chip = document.createElement("span");
+    chip.className = "pool-chip";
+    chip.textContent = "d" + sides;
+    chip.title = "Click to remove";
+    chip.onclick = () => { pool.splice(i, 1); renderPool(); };
+    el.appendChild(chip);
+  });
+}
+
+document.getElementById("rollBtn").onclick = () => {
+  if (pool.length === 0) return;
+  rollAndBroadcast(roomCode, [...pool], myName);
+  pool = [];
+  renderPool();
+};
+
+function renderDiceLog(entries) {
+  const log = document.getElementById("diceLog");
+  log.innerHTML = "";
+  entries.forEach((e) => {
+    const div = document.createElement("div");
+    div.className = "log-entry";
+    const breakdown = e.results.map((r) => `d${r.sides}:${r.value}`).join(" ");
+    div.innerHTML = `<span class="by">${e.by}</span> rolled ${breakdown} = <span class="total">${e.total}</span>`;
+    log.appendChild(div);
+  });
+}
+</script>
+</body>
+</html>
