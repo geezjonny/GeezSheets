@@ -386,6 +386,7 @@ canvas{display:block;width:100%;height:100%}
     <button id="glossaryBtn" title="Glossary (G)">📖</button>
     <button id="micBtn">🎤 Mic</button>
     <button id="sheet-toggle-btn" title="Character Sheet" onclick="window._toggleSheetPanel && window._toggleSheetPanel()" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">📋</button>
+    <button id="pip3d-toggle-btn" title="3D view of your character's position" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">🧊 3D</button>
     <div id="dice-hud"></div>
     <div class="sep"></div>
     <span id="status">—</span>
@@ -399,6 +400,21 @@ canvas{display:block;width:100%;height:100%}
     <canvas id="tom-fog" style="position:absolute;inset:0;display:none;z-index:5000;pointer-events:none"></canvas>
     <div id="tom-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:5001;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;color:var(--gold-dim,#a8935a);text-transform:uppercase;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.8)">🎭 Theater of the Mind</div>
     <div id="investigate-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:400;max-width:70%;background:rgba(20,16,10,.88);border:1px solid var(--gold-dim,#a8935a);border-radius:6px;padding:8px 16px;font-family:'IM Fell English',serif;font-size:14px;line-height:1.5;color:var(--text,#d4c49a);text-align:center;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.6)"></div>
+
+    <!-- Picture-in-picture 3D view (viewer.html embedded via iframe). Same
+         data, same Firebase backend -- just a different renderer for it.
+         Draggable by its header, resizable via the bottom-right handle.
+         Hidden until toggled; the iframe's src is only set on first open so
+         a 3D scene isn't loaded for a panel nobody's looking at. -->
+    <div id="pip3d-panel" style="display:none;position:fixed;left:calc(100% - 380px);top:calc(var(--hud) + 16px);width:360px;height:260px;z-index:450;background:#0d0b08;border:1px solid var(--gold-dim,#a8935a);border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden;">
+      <div id="pip3d-header" style="height:22px;background:rgba(200,168,75,.12);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 8px;cursor:move;font-family:'Cinzel',serif;font-size:9px;color:var(--gold-dim,#a8935a);user-select:none;">
+        <span>🧊 3D View</span>
+        <span id="pip3d-close-btn" style="cursor:pointer;padding:0 4px;">✕</span>
+      </div>
+      <iframe id="pip3d-iframe" style="width:100%;height:calc(100% - 22px);border:none;display:block;" title="3D view"></iframe>
+      <div id="pip3d-resize-handle" style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,var(--gold-dim,#a8935a) 50%);opacity:.6;"></div>
+    </div>
+
 
     <audio id="ambience-audio" style="display:none" loop></audio>
     <button id="ambience-enable-btn" style="position:absolute;bottom:16px;left:16px;display:none;z-index:410;background:rgba(20,16,10,.9);border:1px solid var(--gold-dim,#a8935a);color:var(--gold-dim,#a8935a);border-radius:6px;padding:8px 14px;font-family:'Cinzel',serif;font-size:11px;cursor:pointer">🔇 Click to enable ambience</button>
@@ -1893,6 +1909,73 @@ function evaluateAllNodes(){
   // Start map subscription
   subscribeLive();
   draw();
+
+  // --- Picture-in-picture 3D view -----------------------------------------
+  // Embeds viewer.html (same Firebase data, different renderer) as a
+  // draggable/resizable panel. token=<id> on the iframe src tells viewer.html
+  // to skip its own login screen and drop straight into first-person as
+  // this exact character -- see myOwnTokenEntry() below for where that id
+  // comes from.
+  (function setupPip3D(){
+    const panel = document.getElementById("pip3d-panel");
+    const toggleBtn = document.getElementById("pip3d-toggle-btn");
+    const closeBtn = document.getElementById("pip3d-close-btn");
+    const header = document.getElementById("pip3d-header");
+    const iframe = document.getElementById("pip3d-iframe");
+    const resizeHandle = document.getElementById("pip3d-resize-handle");
+    let iframeLoaded = false;
+
+    function ensureIframeLoaded(){
+      if(iframeLoaded) return;
+      const entry = myOwnTokenEntry();
+      if(!entry){ toast("No character token on the map yet -- ask your GM to place one"); return; }
+      const [tokenId] = entry;
+      iframe.src = `viewer.html?token=${encodeURIComponent(tokenId)}`;
+      iframeLoaded = true;
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      const willShow = panel.style.display === "none";
+      panel.style.display = willShow ? "block" : "none";
+      if(willShow) ensureIframeLoaded();
+    });
+    closeBtn.addEventListener("click", () => { panel.style.display = "none"; });
+
+    // Drag by the header -- pointer events so it works the same for mouse/touch.
+    let dragOffX = 0, dragOffY = 0, dragging3D = false;
+    header.addEventListener("pointerdown", (e) => {
+      dragging3D = true;
+      header.setPointerCapture(e.pointerId);
+      const rect = panel.getBoundingClientRect();
+      dragOffX = e.clientX - rect.left; dragOffY = e.clientY - rect.top;
+    });
+    header.addEventListener("pointermove", (e) => {
+      if(!dragging3D) return;
+      let left = e.clientX - dragOffX, top = e.clientY - dragOffY;
+      // Keep it fully on-screen rather than lettable drag off into nowhere.
+      left = Math.max(0, Math.min(window.innerWidth - panel.offsetWidth, left));
+      top = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, top));
+      panel.style.left = left + "px"; panel.style.top = top + "px";
+    });
+    header.addEventListener("pointerup", (e) => { dragging3D = false; header.releasePointerCapture(e.pointerId); });
+
+    // Resize via the bottom-right handle.
+    let resizing3D = false, resizeStartW = 0, resizeStartH = 0, resizeStartX = 0, resizeStartY = 0;
+    resizeHandle.addEventListener("pointerdown", (e) => {
+      resizing3D = true;
+      resizeHandle.setPointerCapture(e.pointerId);
+      resizeStartW = panel.offsetWidth; resizeStartH = panel.offsetHeight;
+      resizeStartX = e.clientX; resizeStartY = e.clientY;
+      e.stopPropagation(); // don't also trigger the header's drag logic
+    });
+    resizeHandle.addEventListener("pointermove", (e) => {
+      if(!resizing3D) return;
+      const w = Math.max(220, resizeStartW + (e.clientX - resizeStartX));
+      const h = Math.max(160, resizeStartH + (e.clientY - resizeStartY));
+      panel.style.width = w + "px"; panel.style.height = h + "px";
+    });
+    resizeHandle.addEventListener("pointerup", (e) => { resizing3D = false; resizeHandle.releasePointerCapture(e.pointerId); });
+  })();
 })();
 </script>
 <!-- Reconnecting overlay -->

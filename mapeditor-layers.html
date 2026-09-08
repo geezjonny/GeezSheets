@@ -4163,7 +4163,22 @@ canvas.addEventListener("pointerdown",e=>{
   }
   if(activeCategory==="props"&&(activeVerb==="pencil"||activeVerb==="eraser")){
     pushUndo();
-    if(activeVerb==="pencil") paintAt(tx,ty); else eraseAt(tx,ty);
+    if(activeVerb==="pencil"){
+      paintAt(tx,ty);
+      // The dynamic/typed prop flow (currentProp not set -- see paintAt)
+      // uses blocking prompt() dialogs. Those pause the whole page, so by
+      // the time they resolve the real mouse button has almost always
+      // already been released -- but setPointerCapture()/dragging=true
+      // below would still fire AFTER that point, with no real pointerup
+      // left to ever clear it. That's exactly what caused placement to get
+      // "stuck to the pointer," re-placing on every subsequent mousemove
+      // with the button not even held. Fix: this path places once per
+      // click and never enters drag mode. Only a pre-selected prop
+      // (currentProp, no prompts, no blocking) is safe to drag-paint.
+      if(!currentProp) return;
+    } else {
+      eraseAt(tx,ty);
+    }
     canvas.setPointerCapture(e.pointerId);
     dragging=true;startX=wx;startY=wy;curX=wx;curY=wy;
     return;

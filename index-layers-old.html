@@ -522,12 +522,35 @@ function isPositionVisible(wx,wy){
   }catch(e){ return true; } // canvas read failed (e.g. tainted) -- fail open rather than crash
 }
 function getActiveLights(){
+  const f=myViewFloor();
   const tl=[];
   for(const[id,tok] of Object.entries(tokens)){
     if(!tok.light)continue;
+    if((tok.floor||0)!==f)continue;
     tl.push({id:`tok_light_${id}`,x:tok.x+0.5,y:tok.y+0.5,...tok.light});
   }
-  return[...geometry.lights,...tl];
+  return[...floorLights(f),...tl];
+}
+// Floors: each player's "current floor" is their own token's .floor (default
+// 0). By design, different floors share the same x,y coordinates (stacked
+// vertically) -- so vision, lighting, tile/trigger rendering, and door
+// interaction must all be scoped to the viewer's own floor, or geometry
+// from a floor they aren't even on would incorrectly block their sight/
+// light or let them interact with a door that isn't really there.
+function myViewFloor(){
+  const entry=myOwnTokenEntry();
+  return entry?(entry[1].floor||0):0;
+}
+function floorWalls(f=myViewFloor()){ return geometry.walls.filter(w=>(w.floor||0)===f); }
+function floorDoors(f=myViewFloor()){ return geometry.doors.filter(d=>(d.floor||0)===f); }
+function floorLights(f=myViewFloor()){ return geometry.lights.filter(l=>(l.floor||0)===f); }
+// mapeditor-layers.html writes tile/prop/stamp/impassable/trigger-node keys
+// as "floor,x,y" now (was "x,y") so painted content can be floor-tagged.
+// Old keys are still valid 2-part strings, implicitly floor 0 -- this stays
+// backward compatible with anything saved before floors existed.
+function parseTileKey(k){
+  const parts=k.split(",").map(Number);
+  return parts.length>=3?{floor:parts[0],x:parts[1],y:parts[2]}:{floor:0,x:parts[0],y:parts[1]};
 }
 let pcsData={};
 let playerName=localStorage.getItem("vtt_player_name")||"";
@@ -1238,8 +1261,9 @@ function drawMovementRange(){
   const speedTiles=Math.max(1,Math.round((pcsData[activeTok.characterId]?.speed??30)/5));
   const remaining=speedTiles-(activeTok.turnMovedTiles||0);
   if(remaining<=0) return;
-  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
-  const blocked=new Set(Object.keys(impassable));
+  const _actFloor=activeTok.floor||0;
+  const occ=activeOccluders(floorWalls(_actFloor),floorDoors(_actFloor));
+  const blocked=new Set(Object.keys(impassable).map(parseTileKey).filter(p=>p.floor===_actFloor).map(p=>`${p.x},${p.y}`));
   const reachable=computeReachableTiles(activeTok.x,activeTok.y,remaining,occ,blocked);
   ctx.save();
   for(const[key]of reachable){
@@ -1270,7 +1294,7 @@ function enterWeaponTargeting(weaponName,rangeFeetOrText){
   if(!entry){toast("Pick a character first");return;}
   const[,myTok]=entry;
   const rangeTiles=parseWeaponRangeTiles(rangeFeetOrText);
-  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+  const occ=activeOccluders(floorWalls(),floorDoors());
   const rangeSet=computeRangeTiles(myTok.x,myTok.y,rangeTiles,occ);
   _weaponTargeting={rangeSet,weaponName};
   _turnMenuCollapsed=true;updateTurnMenu(); // collapse so the map is clickable
@@ -1298,7 +1322,7 @@ function draw(){
   ctx.fillStyle="#0d0b08";ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
 
-  if(bgImage){
+  if(bgImage&&myViewFloor()===0){
     const s=TILE/(bgPpi||70);const bw=bgImage.width*s,bh=bgImage.height*s;
     if(timeOfDay!=="day"){
       ctx.save();ctx.filter="saturate(0.4) brightness(0.35)";ctx.drawImage(bgImage,0,0,bw,bh);
@@ -1307,6 +1331,7 @@ function draw(){
   }
   for(const layer of Object.values(confirmedMapLayers)){
     if(!layer.img)continue;
+    if((layer.floor||0)!==myViewFloor())continue;
     if(timeOfDay!=="day"){
       ctx.save();ctx.filter="saturate(0.4) brightness(0.35)";
       ctx.drawImage(layer.img,layer.x*TILE,layer.y*TILE,layer.w*TILE,layer.h*TILE);
@@ -1315,10 +1340,10 @@ function draw(){
       ctx.drawImage(layer.img,layer.x*TILE,layer.y*TILE,layer.w*TILE,layer.h*TILE);
     }
   }
-  for(const k in tiles){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,tiles[k].terrain);}
+  {const _vf=myViewFloor();for(const k in tiles){const{floor,x,y}=parseTileKey(k);if(floor!==_vf)continue;drawTileAt(x,y,tiles[k].terrain);}}
   if(timeOfDay!=="day"){
     ctx.save();ctx.fillStyle="rgba(13,11,8,.7)";
-    for(const k in tiles){const[x,y]=k.split(",").map(Number);ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+    {const _vf=myViewFloor();for(const k in tiles){const{floor,x,y}=parseTileKey(k);if(floor!==_vf)continue;ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}
     ctx.restore();
   }
 
@@ -1327,13 +1352,14 @@ function draw(){
   drawWeaponRange();
 
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;
-  for(const[k,emoji]of Object.entries(stamps)){const[x,y]=k.split(",").map(Number);ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
+  for(const[k,emoji]of Object.entries(stamps)){const{floor,x,y}=parseTileKey(k);if(floor!==myViewFloor())continue;ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}
   ctx.restore();
 
   ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";
   const _occupiedForNodes=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
   for(const[k,n]of Object.entries(triggerNodes)){
-    const[x,y]=k.split(",").map(Number);
+    const{floor,x,y}=parseTileKey(k);
+    if(floor!==myViewFloor())continue;
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
     const active=isNodeActive(n,k,_occupiedForNodes,triggerNodes);
     const color=active?"143,208,143":"200,168,75";
@@ -1354,9 +1380,10 @@ function draw(){
   ctx.restore();
 
   for(const[k,p]of Object.entries(props)){
-    let rx,ry;
-    if(p.attachedTo&&tokens[p.attachedTo]){rx=tokens[p.attachedTo].x+(p.offsetX||0);ry=tokens[p.attachedTo].y+(p.offsetY||0);}
-    else{[rx,ry]=k.split(",").map(Number);}
+    let rx,ry,propFloor;
+    if(p.attachedTo&&tokens[p.attachedTo]){const tok=tokens[p.attachedTo];rx=tok.x+(p.offsetX||0);ry=tok.y+(p.offsetY||0);propFloor=tok.floor||0;}
+    else{const parsed=parseTileKey(k);rx=parsed.x;ry=parsed.y;propFloor=parsed.floor;}
+    if(propFloor!==myViewFloor())continue;
     const effPropId=resolvePropId(p);
     const def=propDefs[effPropId]||{emoji:"📦",w:1,h:1};
     const px=rx*TILE,py=ry*TILE,pw=(p.w||def.w||1)*TILE,ph=(p.h||def.h||1)*TILE;
@@ -1373,12 +1400,13 @@ function draw(){
   drawChains(ctx,chains,tokens,camera.zoom);
   const _myViewerEntry=myOwnTokenEntry();
   const _myViewerTokId=_myViewerEntry?_myViewerEntry[0]:undefined;
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens,_myViewerTokId);
+  const _vf=myViewFloor();
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc"&&(tok.floor||0)===_vf)drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens,_myViewerTokId);
   drawFog(ctx,fog,camera.zoom,false);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc")drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens,_myViewerTokId);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc"&&(tok.floor||0)===_vf)drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens,_myViewerTokId);
 
   ctx.save();ctx.globalAlpha=1;
-  for(const[k,r]of Object.entries(roofs)){const[x,y]=k.split(",").map(Number);drawTileAt(x,y,r.terrain);}
+  for(const[k,r]of Object.entries(roofs)){const{floor,x,y}=parseTileKey(k);if(floor!==myViewFloor())continue;drawTileAt(x,y,r.terrain);}
   ctx.restore();
 
   ctx.strokeStyle="rgba(255,255,255,.03)";ctx.lineWidth=1/camera.zoom;
@@ -1409,7 +1437,7 @@ function draw(){
     // this same value as the occlusion layer's own opacity.
     _geoLX.fillStyle=`rgba(${_p.tint},1)`;_geoLX.fillRect(0,0,_geoLC.width,_geoLC.height);
     _geoLX.save();_geoLX.translate(camera.x,camera.y);_geoLX.scale(camera.zoom,camera.zoom);
-    const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
+    const _occ=activeOccluders(floorWalls(),floorDoors());
     // getActiveLights() returns EVERY light on the whole map, with no
     // scoping to the player at all -- without this clip, a light in a
     // totally separate/disconnected room can still reveal that room, since
@@ -1454,7 +1482,7 @@ function draw(){
     // players can't see through walls or across the whole map in daylight.
     const myTok=myCharacterId&&Object.values(tokens).find(t=>t.type==="pc"&&(t.characterId===myCharacterId||t.name?.toLowerCase()===playerName?.toLowerCase()));
     if(myTok){
-      const _occ=activeOccluders(geometry.walls,geometry.doors||[]);
+      const _occ=activeOccluders(floorWalls(),floorDoors());
       const DAY_SIGHT_RANGE=30; // generous — bounded mainly by walls, not this number
       const poly=computeVisibilityPolygon(myTok.x+0.5,myTok.y+0.5,_occ,DAY_SIGHT_RANGE);
       if(poly.length>=3){
@@ -1489,10 +1517,12 @@ function draw(){
 // ── Investigate (proximity-based) — notes appear automatically while your
 //    token is next to a prop that has them, no click needed ────────────────────
 function propAtTile(tx,ty){
+  const _vf=myViewFloor();
   for(const[k,p]of Object.entries(props)){
-    let px,py;
-    if(p.attachedTo&&tokens[p.attachedTo]){px=tokens[p.attachedTo].x+(p.offsetX||0);py=tokens[p.attachedTo].y+(p.offsetY||0);}
-    else{[px,py]=k.split(",").map(Number);}
+    let px,py,propFloor;
+    if(p.attachedTo&&tokens[p.attachedTo]){const tok=tokens[p.attachedTo];px=tok.x+(p.offsetX||0);py=tok.y+(p.offsetY||0);propFloor=tok.floor||0;}
+    else{const parsed=parseTileKey(k);px=parsed.x;py=parsed.y;propFloor=parsed.floor;}
+    if(propFloor!==_vf)continue;
     const def=propDefs[resolvePropId(p)]||{w:1,h:1};
     const w=p.w||def.w||1,h=p.h||def.h||1;
     if(tx>=px&&tx<px+w&&ty>=py&&ty<py+h)return k;
@@ -1516,9 +1546,9 @@ async function fireNodeOneShotEffect(node,tokId,tok){
     let targetKey=null;
     for(const[k,n]of Object.entries(triggerNodes)) if(n.id===target.id){ targetKey=k; break; }
     if(!targetKey) return;
-    const[tx,ty]=targetKey.split(",").map(Number);
-    tok.x=tx; tok.y=ty;
-    await update(ref(db,`maps/${currentMap}/tokens/${tokId}`),{x:tx,y:ty});
+    const{floor:tf,x:tx,y:ty}=parseTileKey(targetKey);
+    tok.x=tx; tok.y=ty; tok.floor=tf;
+    await update(ref(db,`maps/${currentMap}/tokens/${tokId}`),{x:tx,y:ty,floor:tf});
     toast("🌀 You are pulled through...");
   } else if(node.effect==="damage"){
     const{total,text}=rollDamage(node.damageAmount);
@@ -1597,12 +1627,13 @@ function updateInvestigateBanner(){
   const myTok=myCharacterId&&Object.values(tokens).find(t=>t.type==="pc"&&(t.characterId===myCharacterId||t.name?.toLowerCase()===playerName?.toLowerCase()));
   let found=null;
   if(myTok){
-    const mx=myTok.x+0.5,my=myTok.y+0.5;
+    const mx=myTok.x+0.5,my=myTok.y+0.5,myFloor=myTok.floor||0;
     for(const[k,p]of Object.entries(props)){
       if(!p.notes) continue;
-      let px,py;
-      if(p.attachedTo&&tokens[p.attachedTo]){px=tokens[p.attachedTo].x+(p.offsetX||0);py=tokens[p.attachedTo].y+(p.offsetY||0);}
-      else{[px,py]=k.split(",").map(Number);}
+      let px,py,propFloor;
+      if(p.attachedTo&&tokens[p.attachedTo]){const tok=tokens[p.attachedTo];px=tok.x+(p.offsetX||0);py=tok.y+(p.offsetY||0);propFloor=tok.floor||0;}
+      else{const parsed=parseTileKey(k);px=parsed.x;py=parsed.y;propFloor=parsed.floor;}
+      if(propFloor!==myFloor)continue;
       const def=propDefs[resolvePropId(p)]||{w:1,h:1};
       const w=p.w||def.w||1,h=p.h||def.h||1;
       const cx=px+w/2,cy=py+h/2;
@@ -1642,7 +1673,7 @@ viewport.addEventListener("pointerdown",e=>{
   }
 
   // Door click — geometry doors are the only door system now
-  const clickedDoorSeg=segmentAtPoint([],geometry.doors,wx/TILE,wy/TILE,0.4);
+  const clickedDoorSeg=segmentAtPoint([],floorDoors(),wx/TILE,wy/TILE,0.4);
   if(clickedDoorSeg){
     const d=geometry.doors.find(x=>x.id===clickedDoorSeg.id);
     if(d){
@@ -1710,7 +1741,7 @@ function pointInPolygon(px,py,poly){
   return inside;
 }
 function checkNpcSight(myTok){
-  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+  const occ=activeOccluders(floorWalls(),floorDoors());
   for(const[npcId,npc]of Object.entries(tokens)){
     if(npc.type!=="npc"||!npc.hostile) continue;
     const poly=computeVisibilityPolygon(npc.x+0.5,npc.y+0.5,occ,NPC_SIGHT_RANGE);
@@ -1747,9 +1778,10 @@ window.addEventListener("keydown",e=>{
   }
   const[dx,dy]=d;
   const fromX=tok.x,fromY=tok.y,toX=fromX+dx,toY=fromY+dy;
-  const occ=activeOccluders(geometry.walls,geometry.doors||[]);
+  const _tokFloor=tok.floor||0;
+  const occ=activeOccluders(floorWalls(_tokFloor),floorDoors(_tokFloor));
   if(pathBlocked(fromX+0.5,fromY+0.5,toX+0.5,toY+0.5,occ)) return; // blocked by a wall/closed door
-  if(impassable[`${toX},${toY}`]) return; // blocked by an impassable cell
+  if(impassable[`${_tokFloor},${toX},${toY}`]||(_tokFloor===0&&impassable[`${toX},${toY}`])) return; // blocked by an impassable cell (backward-compat: old saves used plain "x,y" for floor 0)
   _lastMoveTime=now;
   tok.x=toX;tok.y=toY;
   const updates={x:tok.x,y:tok.y};
@@ -1790,7 +1822,9 @@ window.addEventListener("keydown",e=>{
 
 function evaluateAllNodes(){
   const occupiedKeys=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
-  syncActivateEffects(currentMap,triggerNodes,geometry.doors,occupiedKeys).catch(()=>{});
+  const _vf=myViewFloor();
+  const _floorTriggerNodes=Object.fromEntries(Object.entries(triggerNodes).filter(([k])=>parseTileKey(k).floor===_vf));
+  syncActivateEffects(currentMap,_floorTriggerNodes,floorDoors(_vf),occupiedKeys).catch(()=>{});
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────

@@ -277,18 +277,6 @@
     let myLockedTokenId = null;
     let currentConnectedMap = null; // set by connect(), needed for movement writes
 
-    // --- Embedding support: index-layers.html can iframe this page as a
-    // picture-in-picture 3D view for whichever character is already logged
-    // in there, e.g. viewer.html?token=<tokenId> -- skips the login screen
-    // and the "who am I" HUD controls entirely, since the parent page
-    // already knows and shows that. Falls back to the normal standalone
-    // login flow whenever this param is absent (opening viewer.html directly).
-    const embedTokenId = new URLSearchParams(window.location.search).get('token');
-    if (embedTokenId) {
-      document.getElementById('hud').style.display = 'none';
-      document.getElementById('login-overlay').style.display = 'none'; // no login prompt in a small embedded panel -- just pops into view once the token loads
-    }
-
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -552,11 +540,7 @@
       // (need the token list to validate a saved PC login still exists);
       // otherwise keep the PC list on the login screen current so a
       // still-logging-in user sees newly-added characters appear live.
-      // The embed token param always wins over a saved localStorage login --
-      // the parent page embedding this is being explicit about who you are.
-      if (embedTokenId) {
-        if (!myRole && latestTokens[embedTokenId]) loginAsPC(embedTokenId);
-      } else if (!myRole) {
+      if (!myRole) {
         if (!tryAutoLogin()) renderLoginPCList();
       } else if (myRole === 'pc') {
         applyRoleRestrictions(); // refresh label/position if the token's data changed
