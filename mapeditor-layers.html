@@ -1157,6 +1157,23 @@ async function saveGeometryDoors() {
 let roofMode=false;
 let currentProp=null;
 let currentPropRotation=0; // degrees, 0/90/180/270 — applies to the next-placed prop
+// Dynamic prop placement (no pre-registered prop list needed): captured once
+// per paint gesture via prompts, then reused for every cell touched during
+// that same drag/fill so you're not prompted per-cell. Cleared on pointerup
+// so the next separate placement starts fresh.
+let pendingPropTemplate = null;
+function promptForPropTemplate(){
+  const name = prompt("Prop name (looks up props/<name>.png for 2D and props/<name>.glb for 3D):");
+  if(!name) return null;
+  const propId = name.trim().toLowerCase().replace(/\s+/g,"_");
+  if(!propId) return null;
+  const height = parseFloat(prompt("Prop height (grid units):","1")) || 1;
+  const dimStr = (prompt("Prop dimension, WxH in grid cells (e.g. 1x1):","1x1")||"").trim();
+  const m = /^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)$/i.exec(dimStr);
+  const w = m ? parseFloat(m[1]) : 1;
+  const h = m ? parseFloat(m[2]) : 1;
+  return { propId, w, h, height, rotation: currentPropRotation||0 };
+}
 let currentNodeRotation=0; // degrees, 0/90/180/270 — applies to the next-placed trigger node
 let dragging=false,startX=0,startY=0,curX=0,curY=0;
 let hoverTileX=0,hoverTileY=0,hoverWX=0,hoverWY=0,roofOpacity=0.5;
@@ -3551,6 +3568,7 @@ function setCategory(cat){
   if(activeCategory===cat) cat=null;
   activeCategory = cat;
   geoWallStart = null; geoDoorStart = null; geoSelected = null;
+  pendingPropTemplate = null; // don't carry a half-finished prop prompt session into an unrelated tool switch
   if(pasteArmed){pasteArmed=false;toast("Paste cancelled");}
   document.querySelectorAll(".cat-btn").forEach(b=>b.classList.remove("active"));
   if(cat) document.getElementById("cat-"+cat)?.classList.add("active");
@@ -4246,11 +4264,8 @@ canvas.addEventListener("pointermove",e=>{
 });
 
 canvas.addEventListener("pointerup",e=>{
+  pendingPropTemplate = null; // end of this paint gesture -- next click prompts fresh
   const[sx,sy]=screenPos(e);
-  if(rulerActive) return;
-  if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":cursorFor();return;}
-  if(draggingImportLayer){draggingImportLayer=null;return;}
-  if(pingMode){clearTimeout(pingHoldTimer);if(isHolding){stopLaser(myLaserRef);myLaserRef=null;}else{const[wx,wy]=toWorld(sx,sy);sendPing(Math.floor(wx/TILE),Math.floor(wy/TILE),playerName);}isHolding=false;pingMode=false;document.getElementById("pingBtn")?.classList.remove("active");return;}
 
   // Token drag end
   if(draggingToken){
@@ -4399,6 +4414,18 @@ function paintAt(tx,ty){
     const k=key(tx,ty);
     if(currentProp.isStamp){ stamps[k]=currentProp.emoji; saveStamp(getMapName(),k,currentProp.emoji); }
     else { props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h,rotation:currentPropRotation}; savePropsLocal(getMapName(),props); }
+  }
+  else if(activeCategory==="props" && !currentProp){
+    // Nothing picked from the props list -- the dynamic/typed flow: name,
+    // height, and dimension are asked for once per gesture (see
+    // pendingPropTemplate above) rather than requiring a pre-registered prop.
+    if(!pendingPropTemplate){
+      pendingPropTemplate = promptForPropTemplate();
+      if(!pendingPropTemplate) return; // cancelled
+    }
+    const k=key(tx,ty);
+    props[k] = {...pendingPropTemplate};
+    savePropsLocal(getMapName(),props);
   }
 }
 

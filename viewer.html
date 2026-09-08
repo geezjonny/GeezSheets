@@ -881,13 +881,15 @@
         if (model && model !== 'loading' && model !== 'error') {
           const instance = model.clone();
           // Normalize scale by the model's own bounding box -- we don't know
-          // a random GLB's native size, so fit its footprint to (w,h) and
-          // lift it so its lowest point sits on the floor rather than
-          // floating or clipping through it.
+          // a random GLB's native size. Prefer the prop's explicit height
+          // (from mapeditor-layers.html's placement prompt) as the scaling
+          // target when it's set, since a decorative object's height is
+          // usually its most visually important trait; fall back to fitting
+          // the footprint to (w,h) for props placed before that field
+          // existed.
           const box = new THREE.Box3().setFromObject(instance);
           const size = box.getSize(new THREE.Vector3());
-          const footprint = Math.max(size.x, size.z) || 1;
-          const scale = Math.max(w, h) / footprint;
+          const scale = p.height ? p.height / (size.y || 1) : Math.max(w, h) / (Math.max(size.x, size.z) || 1);
           instance.scale.setScalar(scale);
           instance.position.y = -box.min.y * scale;
           container.add(instance);
