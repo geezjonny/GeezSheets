@@ -4280,6 +4280,13 @@ canvas.addEventListener("pointermove",e=>{
 
 canvas.addEventListener("pointerup",e=>{
   pendingPropTemplate = null; // end of this paint gesture -- next click prompts fresh
+  // panning was set true on pointerdown (spacebar+drag / middle-mouse) but
+  // nothing anywhere in this file ever reset it back to false -- meaning
+  // after the FIRST pan gesture, every subsequent mousemove kept dragging
+  // the camera relative to that one stale start point forever, regardless
+  // of whether the mouse button or spacebar was still held. That's the
+  // "gets stuck" behavior.
+  if(panning){panning=false;canvas.style.cursor=spaceDown?"grab":cursorFor();return;}
   const[sx,sy]=screenPos(e);
 
   // Token drag end

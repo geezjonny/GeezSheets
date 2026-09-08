@@ -1942,14 +1942,25 @@ function evaluateAllNodes(){
     closeBtn.addEventListener("click", () => { panel.style.display = "none"; });
 
     // Drag by the header -- pointer events so it works the same for mouse/touch.
+    // The iframe gets pointer-events:none for the duration of the drag/resize:
+    // once the cursor crosses over an iframe's rendered area, its own
+    // document can swallow mouse events instead of the parent page ever
+    // seeing them -- setPointerCapture() on the header doesn't reliably
+    // survive that cross-document boundary in every browser. Without this,
+    // pointerup never fires once the drag crosses over the 3D view itself,
+    // and the panel stays stuck following the mouse forever (same root
+    // cause as the panning-never-resets bug in mapeditor-layers.html, just
+    // iframe-flavored instead of duplicate-listener-flavored). Listening on
+    // window rather than the header/handle themselves is the second half of
+    // the fix -- more robust than depending on capture alone.
     let dragOffX = 0, dragOffY = 0, dragging3D = false;
     header.addEventListener("pointerdown", (e) => {
       dragging3D = true;
-      header.setPointerCapture(e.pointerId);
+      iframe.style.pointerEvents = "none";
       const rect = panel.getBoundingClientRect();
       dragOffX = e.clientX - rect.left; dragOffY = e.clientY - rect.top;
     });
-    header.addEventListener("pointermove", (e) => {
+    window.addEventListener("pointermove", (e) => {
       if(!dragging3D) return;
       let left = e.clientX - dragOffX, top = e.clientY - dragOffY;
       // Keep it fully on-screen rather than lettable drag off into nowhere.
@@ -1957,24 +1968,24 @@ function evaluateAllNodes(){
       top = Math.max(0, Math.min(window.innerHeight - panel.offsetHeight, top));
       panel.style.left = left + "px"; panel.style.top = top + "px";
     });
-    header.addEventListener("pointerup", (e) => { dragging3D = false; header.releasePointerCapture(e.pointerId); });
+    window.addEventListener("pointerup", () => { dragging3D = false; iframe.style.pointerEvents = ""; });
 
-    // Resize via the bottom-right handle.
+    // Resize via the bottom-right handle. Same iframe pointer-events fix.
     let resizing3D = false, resizeStartW = 0, resizeStartH = 0, resizeStartX = 0, resizeStartY = 0;
     resizeHandle.addEventListener("pointerdown", (e) => {
       resizing3D = true;
-      resizeHandle.setPointerCapture(e.pointerId);
+      iframe.style.pointerEvents = "none";
       resizeStartW = panel.offsetWidth; resizeStartH = panel.offsetHeight;
       resizeStartX = e.clientX; resizeStartY = e.clientY;
       e.stopPropagation(); // don't also trigger the header's drag logic
     });
-    resizeHandle.addEventListener("pointermove", (e) => {
+    window.addEventListener("pointermove", (e) => {
       if(!resizing3D) return;
       const w = Math.max(220, resizeStartW + (e.clientX - resizeStartX));
       const h = Math.max(160, resizeStartH + (e.clientY - resizeStartY));
       panel.style.width = w + "px"; panel.style.height = h + "px";
     });
-    resizeHandle.addEventListener("pointerup", (e) => { resizing3D = false; resizeHandle.releasePointerCapture(e.pointerId); });
+    window.addEventListener("pointerup", () => { resizing3D = false; iframe.style.pointerEvents = ""; });
   })();
 })();
 </script>
