@@ -553,6 +553,12 @@
     // the temporal dead zone. Declaring these above animate() rather than
     // later in the file (where they were previously, inside the Token View
     // section) avoids that entirely, regardless of await ordering elsewhere.
+    //
+    // Ruler state hits the exact same issue -- also declared here for the
+    // same reason, since animate() calls updateRuler3d() every frame too.
+    let rulerActive3d = false;
+    const raycaster3d = new THREE.Raycaster();
+    const screenCenter = new THREE.Vector2(0, 0);
     function animate() {
       requestAnimationFrame(animate);
       if (firstPersonMode) updateFirstPersonCamera();
@@ -1078,9 +1084,7 @@
     // style) and continuously shows the distance to whatever you're facing.
     // 1 Three.js world unit = 1 grid tile = 5ft everywhere else in this app,
     // so raycaster hit distance is already in grid units, no conversion.
-    let rulerActive3d = false;
-    const raycaster3d = new THREE.Raycaster();
-    const screenCenter = new THREE.Vector2(0, 0);
+    // (state declared earlier, above animate() -- see the comment there)
     function updateRuler3d() {
       if (!rulerActive3d) return;
       raycaster3d.setFromCamera(screenCenter, camera);
