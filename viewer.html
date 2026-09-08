@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapeditor 3D Viewer</title>
+<!--
+  3D companion view for mapeditor.html. Connects to the SAME live Firebase
+  data your GM already edits in mapeditor.html, reading
+  maps/{name}/{tiles,geometry,tokens,background,backgroundPpi} and rendering
+  it in three.js. Mostly read-only, with ONE deliberate exception: a
+  logged-in PC moving their own token (WASD, relative to facing) writes that
+  token's x/y back to maps/{name}/tokens/{id} -- nothing else in this file
+  writes anything.
+
+  Drop this file in the SAME folder as mapeditor.html so its relative asset
+  paths resolve: ./config/terrains.json's colors are inlined below (fetch()
+  of local files is blocked under file://, unlike <img>/Image loads, which
+  is why terrain colors are baked in here instead of fetched), but
+  ./textures/<terrain>.png, ./tokens/<name>.png are loaded exactly the way
+  mapeditor.html itself loads them -- same paths, same fallback behavior.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    background: #0e0a06;
+    color: #ecdfc0;
+  }
+  #hud {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    background: rgba(30, 22, 14, 0.85);
+    border: 1px solid #3a2c18;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #hud input {
+    background: #241a10;
+    color: #ecdfc0;
+    border: 1px solid #5a462a;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    width: 140px;
+  }
+  #hud select {
+    background: #241a10;
+    color: #ecdfc0;
+    border: 1px solid #5a462a;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 13px;
+    max-width: 160px;
+  }
+  #hud button {
+    background: #3a2c18;
+    color: #ecdfc0;
+    border: 1px solid #5a462a;
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #hud button:hover { background: #4a3a22; }
+  #status { font-size: 12px; opacity: 0.75; }
+  canvas { display: block; }
+  #login-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(10, 8, 5, 0.94);
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 16px;
+    font-family: Arial, sans-serif;
+  }
+  #login-overlay h1 { font-size: 20px; color: #ecdfc0; font-weight: normal; }
+  #login-status { font-size: 12px; color: #ecdfc0; opacity: 0.7; }
+  .login-btn {
+    background: #241a10; color: #ecdfc0; border: 1px solid #5a462a;
+    border-radius: 6px; padding: 10px 24px; font-size: 14px; cursor: pointer;
+    min-width: 220px;
+  }
+  .login-btn:hover { background: #3a2c18; }
+  #login-gm-btn { border-color: #8a6d1a; color: #ffe066; }
+  #login-pc-list { display: flex; flex-direction: column; gap: 8px; }
+</style>
+</head>
+<body>
+
+  <div id="login-overlay">
+    <h1>Who are you?</h1>
+    <div id="login-status">Connecting...</div>
+    <!-- TODO: gate this behind a password once that's built -- for now
+         anyone can claim GM, same trust level as opening mapeditor.html
+         directly today. -->
+    <button class="login-btn" id="login-gm-btn">🛡 GM (Omniscient)</button>
+    <div id="login-pc-list"></div>
+  </div>
+
+  <div id="hud">
+    <label>Map:</label>
+    <input type="text" id="mapNameInput" value="dungeon-1">
+    <button id="connectBtn">Connect</button>
+    <span id="status">not connected</span>
+    <label style="margin-left:8px;">View as:</label>
+    <select id="viewAsSelect"><option value="">Overview (free camera)</option></select>
+    <span id="login-indicator" style="margin-left:8px;font-size:12px;opacity:0.85;"></span>
+    <button id="switch-user-btn" style="margin-left:4px;">Switch User</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
+  <script type="module">
+    // Firebase's own CDN modules are a remote https:// fetch, which works
+    // fine even when this page itself is opened via file:// -- it's only
+    // LOCAL file:// module imports / fetch() that get CORS-blocked, not
+    // fetching a different (remote) origin. Same Firebase project as
+    // js/firebase.js, so this reads the exact same live data.
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+    import { getDatabase, ref, onValue, update, set } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey:      "AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",
+      authDomain:  "sheets-e5838.firebaseapp.com",
+      databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com",
+      projectId:   "sheets-e5838",
+      storageBucket: "sheets-e5838.firebasestorage.app",
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- Terrain colors, inlined from config/terrains.json (can't fetch()
+    // a local file under file://, but this list is tiny and rarely changes;
+    // update it here if you add/edit terrains.json). ---
+    const TERRAINS = [
+      { id: "grass",  color: "#3a6b3a" },
+      { id: "stone",  color: "#6b6b6b" },
+      { id: "wood",   color: "#7a5c3a" },
+      { id: "water",  color: "#2a5a8a" },
+      { id: "cobble", color: "#9a9a8a" },
+      { id: "sand",   color: "#b8a86a" },
+      { id: "lava",   color: "#8b2a0a" },
+      { id: "dirt",   color: "#6b4a2a" },
+      { id: "gravel", color: "#555a50" },
+      { id: "ice",    color: "#a8d0e0" },
+      { id: "void",   color: "#080808" },
+      { id: "carpet", color: "#6b2a5a" },
+      { id: "marble", color: "#d0ccc0" },
+      { id: "mud",    color: "#4a3520" },
+    ];
+    const terrainColor = {};
+    for (const t of TERRAINS) terrainColor[t.id] = new THREE.Color(t.color);
+
+    // Same convention as js/config.js: 1 grid unit = 1 tile = 5ft.
+    // WALL_HEIGHT = 2 matches gm.html/modules/geometry.js's existing 10ft
+    // wall convention -- no per-layer extrusion here since mapeditor.html
+    // has no floor/layer concept at all, just one flat map.
+    const WALL_HEIGHT = 2;
+    const WALL_THICKNESS = 0.12;
+    // Floor-ish elements are all flat planes now (no box thickness anywhere)
+    // stacked with tiny epsilon gaps -- just enough to avoid z-fighting and
+    // keep the stacking order (imported art visually wins over a painted
+    // tile in the same cell, matching mapeditor.html's own 2D draw order).
+    const FALLBACK_FLOOR_Y = 0;
+    const TERRAIN_TILE_Y = 0.01;
+    const FLOOR_ART_Y = 0.02; // background/mapLayers
+    const FLOOR_SURFACE_Y = 0.03; // walls/doors/lights/tokens measure from this
+    // Wall height, worked out precisely: base = FLOOR_SURFACE_Y + floorY(N) =
+    // 0.03. Target ceiling = the NEXT floor's FLOOR_ART_Y + floorY(N+1) =
+    // 0.02 + 2 = 2.02. Needed height = 2.02 - 0.03 = 1.99 for an exact touch.
+    // Earlier this was WALL_HEIGHT - 0.05 (1.95) -- overcorrected from a
+    // genuine but tiny 0.01 overshoot into a much bigger 0.04 gap, which is
+    // exactly what let light bleed through the wall tops. Using -0.005
+    // instead of the mathematically exact -0.01: a hair of deliberate
+    // OVERLAP into the ceiling (imperceptible, hidden by the opaque floor
+    // art above it) rather than an exact coplanar touch, which risks
+    // z-fighting flicker right at the seam.
+    const WALL_MESH_HEIGHT = WALL_HEIGHT - 0.005;
+
+    // Per-floor vertical stacking. Floor is a plain integer (0 = ground);
+    // each one is WALL_HEIGHT (10ft) tall, matching mapeditor-layers.html's
+    // new Floor tool convention exactly, and stacking directly on top of the
+    // one below with no gap -- floor N's own FLOOR_SURFACE_Y etc. are all
+    // relative to floorY(N), same small offsets as floor 0 just shifted up.
+    // Assumes every floor's map is drawn at the same dimensions/origin so
+    // they align when stacked -- no per-floor sync/alignment step, that's a
+    // deliberate simplification for now, not something this file tries to
+    // solve. Undefined/missing .floor on any item defaults to 0.
+    function floorY(floor) { return (floor || 0) * WALL_HEIGHT; }
+
+    // --- THREE.JS SETUP ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0e0a06);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
+    camera.position.set(20, 25, 20);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 0, 0);
+    controls.enableDamping = true;
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const sun = new THREE.DirectionalLight(0xfff2d0, 0.6);
+    sun.position.set(20, 40, 20);
+    scene.add(sun);
+
+    // Day/night comes from geometry.timeOfDay -- kept as separate named
+    // lights (not baked into the constructors above) specifically so this
+    // can adjust them after the fact once real data arrives.
+    function updateSceneLighting(geometryData) {
+      const isNight = geometryData?.timeOfDay === 'night';
+      // Previously 0.6/0.6 for "day" -- that's a flat, uniform light applied
+      // to the WHOLE scene regardless of placed point lights, so removing
+      // every light from a hallway made no visible difference at all (the
+      // hallway was never lit by those lights in the first place, it was lit
+      // by this baseline). Dropped it much closer to night's level: dim
+      // enough that placed lights actually matter, not so dark you can't see
+      // geometry/textures at all for navigation.
+      ambientLight.intensity = isNight ? 0.08 : 0.18;
+      sun.intensity = isNight ? 0 : 0.15;
+    }
+
+    const worldGroup = new THREE.Group(); // tiles + walls/doors, undyed by camera framing
+    scene.add(worldGroup);
+    const tileGroup = new THREE.Group();  worldGroup.add(tileGroup);
+    const fallbackFloorGroup = new THREE.Group(); worldGroup.add(fallbackFloorGroup);
+    const wallGroup = new THREE.Group();  worldGroup.add(wallGroup);
+    const doorGroup = new THREE.Group();  worldGroup.add(doorGroup);
+    const lightGroup = new THREE.Group(); worldGroup.add(lightGroup);
+    const tokenGroup = new THREE.Group(); worldGroup.add(tokenGroup);
+    const bgGroup = new THREE.Group();    worldGroup.add(bgGroup);
+    const mapLayersGroup = new THREE.Group(); worldGroup.add(mapLayersGroup);
+    const propGroup = new THREE.Group(); worldGroup.add(propGroup);
+    const gltfLoader = new THREE.GLTFLoader();
+
+    // --- Token view state (must be declared before animate() runs -- see
+    // below for why). Same idea as index-layers.html's character picker,
+    // but for the 3D camera. Two modes:
+    //  - Overview-follow (default once a character is picked): orbit target
+    //    tracks the token, camera position/angle stay under free manual control.
+    //  - First-person: camera position is LOCKED to the token's head and
+    //    never moves on its own; dragging changes look direction (yaw/pitch)
+    //    from that fixed point, instead of orbiting a target. OrbitControls
+    //    can't do this (it always keeps camera pointed AT a target and moves
+    //    the camera around it) -- this is a small hand-rolled look controller.
+    let viewAsTokenId = '';
+    let firstPersonMode = false;
+    const FP_HEAD_HEIGHT = 1.2; // grid units above the floor surface -- rough eye level for a Medium creature
+    let fpYaw = 0, fpPitch = 0;
+    let fpDragging = false, fpLastX = 0, fpLastY = 0;
+
+    // --- Login / role gating -------------------------------------------------
+    // Same login concept as index-layers.html (pick who you are), but here it
+    // GATES the view rather than just tagging a player name: a PC login locks
+    // viewAsTokenId permanently to their own token (dropdown disabled, can't
+    // switch to anyone else's view) -- "GM" is the only role with the free
+    // Overview camera and the ability to preview any token. No password on
+    // GM yet, matching the plan to add that later; right now it's the same
+    // trust level as being able to open mapeditor.html directly.
+    const LOGIN_ROLE_KEY = 'vtt3d_role';
+    const LOGIN_TOKEN_KEY = 'vtt3d_pc_token_id';
+    let myRole = null; // null (not logged in yet) | 'gm' | 'pc'
+    let myLockedTokenId = null;
+    let currentConnectedMap = null; // set by connect(), needed for movement writes
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // animate() references firstPersonMode and is invoked immediately below.
+    // These are declared with `let`, so if anything earlier in this module
+    // uses `await` (Firebase calls do), execution can pause there and yield
+    // to the event loop -- an already-scheduled requestAnimationFrame from a
+    // PRIOR page state wouldn't apply here, but any code path that reaches
+    // this point via a re-entrant call after an await could otherwise hit
+    // the temporal dead zone. Declaring these above animate() rather than
+    // later in the file (where they were previously, inside the Token View
+    // section) avoids that entirely, regardless of await ordering elsewhere.
+    function animate() {
+      requestAnimationFrame(animate);
+      if (firstPersonMode) updateFirstPersonCamera();
+      else controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // --- Texture loading: same file paths + fallback order as
+    // js/assets.js's tryLoadTokenTexture/loadTerrainTextures, so this
+    // renders correctly against whatever's actually on disk in this folder,
+    // no separate asset pipeline to maintain. ---
+    // Every texture in this file gets built from an arbitrary-sized Image
+    // (screenshots, dd2vtt exports, hand-made art -- none guaranteed to be
+    // power-of-two dimensions). Three.js's default filtering needs mipmaps,
+    // which silently fail to generate for non-power-of-two textures under
+    // WebGL1 -- the texture can render solid black or simply never update,
+    // with NO error or warning surfaced to onerror. Disabling mipmaps here
+    // sidesteps that failure mode entirely, for every texture in the scene.
+    function makeTexture(img) {
+      const tex = new THREE.Texture(img);
+      tex.minFilter = THREE.LinearFilter;
+      tex.generateMipmaps = false;
+      tex.needsUpdate = true;
+      return tex;
+    }
+
+    const terrainMaterialCache = {}; // terrain id -> MeshStandardMaterial (mutated in place once an image loads)
+    function getTerrainMaterial(terrainId) {
+      if (terrainMaterialCache[terrainId]) return terrainMaterialCache[terrainId];
+      const color = terrainColor[terrainId] || new THREE.Color(0x444444);
+      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.85 });
+      terrainMaterialCache[terrainId] = material;
+
+      const img = new Image();
+      img.onload = () => {
+        const tex = makeTexture(img);
+        material.map = tex;
+        material.color.set(0xffffff);
+        material.needsUpdate = true;
+      };
+      img.onerror = () => { /* keep the flat terrain color -- same fallback mapeditor.html itself uses */ };
+      img.src = `./textures/${terrainId}.png`;
+
+      return material;
+    }
+
+    const tokenMaterialCache = {}; // cacheKey -> MeshBasicMaterial (billboard face)
+    function getTokenMaterial(tok) {
+      const lookupName = tok.lookupName || tok.name || tok.characterId || 'token';
+      const cacheKey = tok.characterId === '__npc__' && tok.name ? `__npc__:${tok.name.toLowerCase()}` : (tok.characterId || lookupName);
+      if (tokenMaterialCache[cacheKey]) return tokenMaterialCache[cacheKey];
+
+      const material = new THREE.MeshBasicMaterial({ color: 0xc8a84b, transparent: true });
+      tokenMaterialCache[cacheKey] = material;
+
+      const fname = lookupName.toLowerCase().replace(/\s+/g, '_');
+      const img = new Image();
+      img.onload = () => {
+        const tex = makeTexture(img);
+        material.map = tex;
+        material.color.set(0xffffff);
+        material.needsUpdate = true;
+      };
+      img.onerror = () => {
+        // js/assets.js falls back to an RTDB-hosted base64 upload next --
+        // same fallback here.
+        import("https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js").then(({ get, ref: dbRef }) => {
+          get(dbRef(db, `assets/uploads/tokens/${cacheKey}`)).then(snap => {
+            const b64 = snap.val();
+            if (!b64) return; // no art anywhere -- keep the plain colored disc
+            const i = new Image();
+            i.onload = () => {
+              const tex = makeTexture(i);
+              material.map = tex;
+              material.color.set(0xffffff);
+              material.needsUpdate = true;
+            };
+            i.src = b64;
+          });
+        });
+      };
+      img.src = `./tokens/${fname}.png`;
+
+      return material;
+    }
+
+    // --- Rebuilders: one per data section, so a change to just tokens
+    // doesn't rebuild the whole map's geometry, etc. ---
+    let latestTiles = {}, latestGeometry = { walls: [], doors: [], lights: [] }, latestTokens = {}, latestProps = {};
+
+    // mapeditor-layers.html now writes tile keys as "floor,x,y" (was "x,y")
+    // so painted terrain can be tagged per-floor -- old keys are still valid
+    // 2-part strings, implicitly floor 0, so this stays backward compatible
+    // with any tiles saved before floors existed.
+    function parseTileKey(k) {
+      const parts = k.split(',').map(Number);
+      return parts.length >= 3 ? { floor: parts[0], x: parts[1], y: parts[2] } : { floor: 0, x: parts[0], y: parts[1] };
+    }
+
+    function rebuildTiles() {
+      while (tileGroup.children.length) tileGroup.remove(tileGroup.children[0]);
+      const geo = new THREE.PlaneGeometry(1, 1);
+      for (const key in latestTiles) {
+        const { floor, x, y } = parseTileKey(key);
+        const cell = latestTiles[key];
+        const material = getTerrainMaterial(cell.terrain);
+        material.side = THREE.DoubleSide;
+        const mesh = new THREE.Mesh(geo, material);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(x + 0.5, TERRAIN_TILE_Y + floorY(floor), y + 0.5);
+        mesh.receiveShadow = true;
+        tileGroup.add(mesh);
+      }
+      console.log(`[tiles] ${Object.keys(latestTiles).length} painted cell(s)`);
+    }
+    function rebuildGeometry() {
+      while (wallGroup.children.length) wallGroup.remove(wallGroup.children[0]);
+      while (doorGroup.children.length) doorGroup.remove(doorGroup.children[0]);
+      while (lightGroup.children.length) lightGroup.remove(lightGroup.children[0]);
+
+      const unitBox = new THREE.BoxGeometry(1, 1, 1);
+      // No per-wall/door texture field exists in mapeditor's actual data --
+      // confirmed from the real Firebase export, geometry.walls/doors carry
+      // no texture info at all. So these use fixed defaults instead of a
+      // per-instance lookup, reusing the exact same terrain texture loader
+      // (same ./textures/<name>.png convention, same color fallback) rather
+      // than a separate hardcoded-color material -- if you've already made
+      // stone.png/wood.png for terrain, walls/doors pick them up for free.
+      const wallMat = getTerrainMaterial('stone');
+      const doorMat = getTerrainMaterial('wood');
+
+      function addSegment(seg, group, material) {
+        const dx = seg.x2 - seg.x1, dz = seg.y2 - seg.y1;
+        const length = Math.hypot(dx, dz);
+        if (length < 1e-6) return;
+        const angle = -Math.atan2(dz, dx);
+        const y = FLOOR_SURFACE_Y + WALL_MESH_HEIGHT / 2 + floorY(seg.floor);
+
+        // One box per ~1-grid-unit cell along the wall's run, instead of a
+        // single box with the texture stretched the whole length -- a
+        // 10-unit wall reads as 10 separate tiled copies of the texture,
+        // not one image squashed 10x. cellLen divides the length evenly
+        // (not a fixed 1) so there's no leftover sliver cell at the end.
+        const nCells = Math.max(1, Math.round(length));
+        const cellLen = length / nCells;
+        for (let i = 0; i < nCells; i++) {
+          const t = (i + 0.5) / nCells;
+          const mesh = new THREE.Mesh(unitBox, material);
+          mesh.scale.set(cellLen, WALL_MESH_HEIGHT, WALL_THICKNESS);
+          mesh.position.set(seg.x1 + dx * t, y, seg.y1 + dz * t);
+          mesh.rotation.y = angle;
+          mesh.castShadow = true;
+          group.add(mesh);
+        }
+      }
+      for (const w of latestGeometry.walls || []) addSegment(w, wallGroup, wallMat);
+      // Open doors render as nothing -- an actual gap you can see/walk
+      // through -- matching isMoveBlocked()'s existing "open doors don't
+      // block" rule below. Without this, toggling a door open via spacebar
+      // would still show a solid box even though movement already treats it
+      // as passable, a confusing mismatch.
+      for (const d of latestGeometry.doors || []) { if (d.closed !== false) addSegment(d, doorGroup, doorMat); }
+
+      for (const l of latestGeometry.lights || []) {
+        const h = (l.color || 'ffffffff').replace('#', '');
+        const colorHex = parseInt(h.length >= 8 ? h.slice(2) : h, 16) || 0xffffff;
+        const pointLight = new THREE.PointLight(colorHex, (l.intensity ?? 1) * 0.65, (l.range ?? 5) * 2); // -35% brightness
+        pointLight.position.set(l.x, FLOOR_SURFACE_Y + 0.8 + floorY(l.floor), l.y);
+        lightGroup.add(pointLight);
+        // No visible marker mesh -- just the actual light source now.
+      }
+
+      const floorsPresent = [...new Set([...(latestGeometry.walls||[]), ...(latestGeometry.doors||[]), ...(latestGeometry.lights||[])].map(o => o.floor || 0))].sort((a,b)=>a-b);
+      console.log(`[geometry] ${latestGeometry.walls?.length || 0} walls, ${latestGeometry.doors?.length || 0} doors, ${latestGeometry.lights?.length || 0} lights, ${Object.keys(latestTiles).length} painted tile cells, floors present: [${floorsPresent.join(', ')}]`);
+    }
+
+    // Fallback ground: ONLY when there's genuinely no other floor data at
+    // all (no painted tiles, no background, no mapLayers) -- a gap-filler
+    // for walls floating over nothing, not a blanket under everything.
+    // Earlier version always rendered this sized to the walls' bounding
+    // box, which is often LARGER than any one piece of real floor art; from
+    // a camera angle below FLOOR_ART_Y (an orbit dipping under the map),
+    // that big opaque plane -- being the lowest layer -- was the first
+    // thing an upward-looking ray hit, correctly-but-wrongly blocking the
+    // real floor art sitting above it. Only exists now when there's nothing
+    // else to see regardless of angle.
+    function rebuildFallbackFloor(mapLayers, hasBackground, hasTiles) {
+      while (fallbackFloorGroup.children.length) fallbackFloorGroup.remove(fallbackFloorGroup.children[0]);
+
+      // tiles/background have no per-floor concept in mapeditor yet -- both
+      // are always floor 0. mapLayers pieces each carry their own .floor
+      // (via the new Floor tool), so real floor art can exist on any floor.
+      const floorsWithArt = new Set();
+      if (hasTiles) floorsWithArt.add(0);
+      if (hasBackground) floorsWithArt.add(0);
+      for (const layer of Object.values(mapLayers || {})) floorsWithArt.add(layer.floor || 0);
+
+      // Group wall/door segments by floor -- a combined bounding box across
+      // ALL floors would be meaningless once they're stacked at different
+      // heights, so each floor needing a filler gets its own box sized to
+      // just that floor's own geometry.
+      const byFloor = {};
+      for (const seg of [...(latestGeometry.walls || []), ...(latestGeometry.doors || [])]) {
+        const f = seg.floor || 0;
+        (byFloor[f] = byFloor[f] || []).push(seg);
+      }
+
+      for (const [floorStr, segs] of Object.entries(byFloor)) {
+        const floor = Number(floorStr);
+        if (floorsWithArt.has(floor)) continue; // real floor art already covers this floor
+        const xs = segs.flatMap(s => [s.x1, s.x2]);
+        const ys = segs.flatMap(s => [s.y1, s.y2]);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        const w = maxX - minX, h = maxY - minY;
+        if (w <= 0 || h <= 0) continue;
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(w, h),
+          new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.95, side: THREE.DoubleSide })
+        );
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set((minX + maxX) / 2, FALLBACK_FLOOR_Y + floorY(floor), (minY + maxY) / 2);
+        fallbackFloorGroup.add(mesh);
+      }
+    }
+
+    function rebuildTokens() {
+      while (tokenGroup.children.length) tokenGroup.remove(tokenGroup.children[0]);
+      const geo = new THREE.CircleGeometry(0.5, 24);
+      for (const id in latestTokens) {
+        const tok = latestTokens[id];
+        const size = tok.size || 1;
+        const material = getTokenMaterial(tok);
+        const disc = new THREE.Mesh(geo, material);
+        disc.scale.set(size, size, 1);
+        disc.rotation.x = -Math.PI / 2;
+        disc.position.set(tok.x + size / 2, FLOOR_SURFACE_Y + 0.02 + floorY(tok.floor), tok.y + size / 2); // just above the floor ART (mapLayers/background), not just above y=0 -- avoids being hidden under it
+        tokenGroup.add(disc);
+      }
+      console.log(`[tokens] ${Object.keys(latestTokens).length} token(s)`, latestTokens);
+      populateViewAsDropdown();
+      followViewAsToken(); // keep the orbit target on the selected character as their position/floor updates, without resetting the camera's chosen angle/distance
+
+      // Login gating: try to resume a saved session once tokens are known
+      // (need the token list to validate a saved PC login still exists);
+      // otherwise keep the PC list on the login screen current so a
+      // still-logging-in user sees newly-added characters appear live.
+      if (!myRole) {
+        if (!tryAutoLogin()) renderLoginPCList();
+      } else if (myRole === 'pc') {
+        applyRoleRestrictions(); // refresh label/position if the token's data changed
+      }
+    }
+
+    // --- Token view helpers (state declared earlier, above animate()) --------
+    function populateViewAsDropdown() {
+      const sel = document.getElementById('viewAsSelect');
+      const prevValue = sel.value;
+      const pcTokens = Object.entries(latestTokens).filter(([, t]) => t.type === 'pc');
+      sel.innerHTML = '<option value="">Overview (free camera)</option>' +
+        pcTokens.map(([id, t]) => `<option value="${id}">${t.name || id}</option>`).join('');
+      if (pcTokens.some(([id]) => id === prevValue)) {
+        sel.value = prevValue;
+      } else if (prevValue && viewAsTokenId === prevValue) {
+        // the token we were following disappeared (removed/changed type) -- fall back to overview rather than silently pointing at nothing
+        viewAsTokenId = '';
+        sel.value = '';
+        setFirstPerson(false);
+      }
+    }
+    function tokenWorldPos(tok) {
+      const size = tok.size || 1;
+      return new THREE.Vector3(tok.x + size / 2, FLOOR_SURFACE_Y + 0.5 + floorY(tok.floor), tok.y + size / 2);
+    }
+    function tokenHeadPos(tok) {
+      const size = tok.size || 1;
+      return new THREE.Vector3(tok.x + size / 2, FLOOR_SURFACE_Y + FP_HEAD_HEIGHT + floorY(tok.floor), tok.y + size / 2);
+    }
+    function snapCameraToToken(tokId) {
+      const tok = latestTokens[tokId];
+      if (!tok) return;
+      const pos = tokenWorldPos(tok);
+      controls.target.copy(pos);
+      camera.position.set(pos.x + 4, pos.y + 4, pos.z + 4);
+    }
+    function followViewAsToken() {
+      if (!viewAsTokenId || firstPersonMode) return; // first-person updates its own position/look every frame instead
+      const tok = latestTokens[viewAsTokenId];
+      if (!tok) return;
+      controls.target.copy(tokenWorldPos(tok)); // retarget only -- leave camera.position alone so manual orbit/zoom isn't fought
+    }
+    function updateFirstPersonCamera() {
+      if (!firstPersonMode || !viewAsTokenId) return;
+      const tok = latestTokens[viewAsTokenId];
+      if (!tok) return;
+      const headPos = tokenHeadPos(tok); // re-read every frame -- camera follows the token if it moves, without any extra plumbing
+      camera.position.copy(headPos);
+      const dir = new THREE.Vector3(
+        Math.cos(fpPitch) * Math.sin(fpYaw),
+        Math.sin(fpPitch),
+        Math.cos(fpPitch) * Math.cos(fpYaw)
+      );
+      camera.lookAt(headPos.clone().add(dir));
+    }
+    function setFirstPerson(on) {
+      firstPersonMode = on && !!viewAsTokenId; // never true without a token to anchor to
+      controls.enabled = !firstPersonMode;
+      if (firstPersonMode) { fpYaw = 0; fpPitch = 0; updateFirstPersonCamera(); }
+    }
+    // Viewing a specific token is ALWAYS first-person -- no free-look/orbit
+    // option while locked onto someone's perspective, no manual toggle
+    // needed. Choosing Overview is the only way back to a free camera.
+    document.getElementById('viewAsSelect').addEventListener('change', (e) => {
+      viewAsTokenId = e.target.value;
+      if (viewAsTokenId) { snapCameraToToken(viewAsTokenId); setFirstPerson(true); }
+      else setFirstPerson(false);
+    });
+
+    // --- Login gating implementation -----------------------------------------
+    function showLoginOverlay() { document.getElementById('login-overlay').style.display = 'flex'; }
+    function hideLoginOverlay() { document.getElementById('login-overlay').style.display = 'none'; }
+
+    function applyRoleRestrictions() {
+      const sel = document.getElementById('viewAsSelect');
+      const indicator = document.getElementById('login-indicator');
+      if (myRole === 'pc') {
+        viewAsTokenId = myLockedTokenId || '';
+        sel.value = viewAsTokenId;
+        sel.disabled = true; // can't switch to anyone else's view, or Overview
+        const tok = latestTokens[myLockedTokenId];
+        indicator.textContent = `Playing as: ${tok ? (tok.name || myLockedTokenId) : '(token removed)'}`;
+        // Deliberately does NOT touch camera position or fpYaw/fpPitch here.
+        // This function runs on every Firebase sync -- including the ones
+        // caused by your OWN movement writes -- so resetting the view here
+        // was fighting the player turning to look around (every step reset
+        // the look direction back to whatever it was at login). Live
+        // position-following is handled per-frame by updateFirstPersonCamera()
+        // already; the one-time snap-into-first-person only happens once, at
+        // login, in loginAsPC() below.
+      } else if (myRole === 'gm') {
+        sel.disabled = false;
+        indicator.textContent = 'GM (omniscient)';
+      }
+    }
+
+    function loginAsGM() {
+      myRole = 'gm';
+      myLockedTokenId = null;
+      localStorage.setItem(LOGIN_ROLE_KEY, 'gm');
+      localStorage.removeItem(LOGIN_TOKEN_KEY);
+      hideLoginOverlay();
+      applyRoleRestrictions();
+    }
+    function loginAsPC(tokId) {
+      myRole = 'pc';
+      myLockedTokenId = tokId;
+      localStorage.setItem(LOGIN_ROLE_KEY, 'pc');
+      localStorage.setItem(LOGIN_TOKEN_KEY, tokId);
+      hideLoginOverlay();
+      applyRoleRestrictions();
+      // One-time snap into first-person, here at login only -- NOT inside
+      // applyRoleRestrictions(), which runs on every subsequent sync
+      // (including your own movement writes) and would otherwise reset
+      // fpYaw/fpPitch back to 0 every time you took a step.
+      const tok = latestTokens[tokId];
+      if (tok) { snapCameraToToken(tokId); setFirstPerson(true); }
+    }
+    function logout() {
+      myRole = null;
+      myLockedTokenId = null;
+      localStorage.removeItem(LOGIN_ROLE_KEY);
+      localStorage.removeItem(LOGIN_TOKEN_KEY);
+      document.getElementById('viewAsSelect').disabled = false;
+      document.getElementById('login-indicator').textContent = '';
+      setFirstPerson(false);
+      viewAsTokenId = '';
+      document.getElementById('viewAsSelect').value = '';
+      renderLoginPCList();
+      showLoginOverlay();
+    }
+    // Returns true if a saved session was successfully resumed.
+    function tryAutoLogin() {
+      const savedRole = localStorage.getItem(LOGIN_ROLE_KEY);
+      if (savedRole === 'gm') { loginAsGM(); return true; }
+      if (savedRole === 'pc') {
+        const savedTok = localStorage.getItem(LOGIN_TOKEN_KEY);
+        if (savedTok && latestTokens[savedTok]) { loginAsPC(savedTok); return true; }
+      }
+      return false;
+    }
+    function renderLoginPCList() {
+      const list = document.getElementById('login-pc-list');
+      const status = document.getElementById('login-status');
+      const pcTokens = Object.entries(latestTokens).filter(([, t]) => t.type === 'pc');
+      if (!pcTokens.length) {
+        status.textContent = 'No PC tokens on this map yet -- pick GM, or wait for the GM to place one.';
+        list.innerHTML = '';
+        return;
+      }
+      status.textContent = 'Or choose your character:';
+      list.innerHTML = '';
+      for (const [id, t] of pcTokens) {
+        const btn = document.createElement('button');
+        btn.className = 'login-btn';
+        btn.textContent = t.name || id;
+        btn.onclick = () => loginAsPC(id);
+        list.appendChild(btn);
+      }
+    }
+    document.getElementById('login-gm-btn').addEventListener('click', loginAsGM);
+    document.getElementById('switch-user-btn').addEventListener('click', logout);
+
+    // --- Movement: WASD, relative to which way you're currently facing --
+    // same idea as index-layers.html's arrow-key movement, but "forward" is
+    // whatever direction the camera yaw is currently pointing rather than a
+    // fixed compass direction. Still snaps to a single grid step on the N/S/
+    // E/W axis (not free/analog movement) -- tokens live on a discrete grid
+    // everywhere else in this app, so this stays consistent with that rather
+    // than introducing sub-tile positions only the 3D view understands.
+    // PC-only, and only for your own locked token: this is the one place
+    // viewer.html writes anything back to Firebase, specifically scoped to
+    // "move my own character," not a general editing capability.
+    function segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+      const d1 = (x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3);
+      const d2 = (x4 - x3) * (y2 - y3) - (y4 - y3) * (x2 - x3);
+      const d3 = (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1);
+      const d4 = (x2 - x1) * (y4 - y1) - (y2 - y1) * (x4 - x1);
+      return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+    }
+    function isMoveBlocked(floor, fromX, fromY, toX, toY) {
+      const fx = fromX + 0.5, fy = fromY + 0.5, tx = toX + 0.5, ty = toY + 0.5;
+      for (const w of latestGeometry.walls || []) {
+        if ((w.floor || 0) !== floor) continue;
+        if (segmentsIntersect(fx, fy, tx, ty, w.x1, w.y1, w.x2, w.y2)) return true;
+      }
+      for (const d of latestGeometry.doors || []) {
+        if ((d.floor || 0) !== floor) continue;
+        if (d.closed === false) continue; // open doors don't block
+        if (segmentsIntersect(fx, fy, tx, ty, d.x1, d.y1, d.x2, d.y2)) return true;
+      }
+      return false;
+    }
+    function distToSegment(px, py, x1, y1, x2, y2) {
+      const dx = x2 - x1, dy = y2 - y1;
+      const lenSq = dx * dx + dy * dy;
+      let t = lenSq === 0 ? 0 : ((px - x1) * dx + (py - y1) * dy) / lenSq;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+    }
+    // Finds the closest door on this floor to a point just ahead of the
+    // player (in whichever direction they're facing) -- how spacebar decides
+    // which door you mean, since there's no click-to-target in first-person.
+    function findNearbyDoor(floor, playerX, playerY, facingX, facingY) {
+      const aheadX = playerX + 0.5 + facingX * 0.9, aheadY = playerY + 0.5 + facingY * 0.9;
+      let closest = null, closestDist = 0.6; // 0.6 = "close enough to reach," not a hard game-balance number
+      for (const d of latestGeometry.doors || []) {
+        if ((d.floor || 0) !== floor) continue;
+        const dist = distToSegment(aheadX, aheadY, d.x1, d.y1, d.x2, d.y2);
+        if (dist < closestDist) { closest = d; closestDist = dist; }
+      }
+      return closest;
+    }
+    // Snaps a raw (dx,dz) facing-relative direction to a single N/S/E/W grid
+    // step -- whichever axis has the larger component wins, matching how a
+    // player would read "which way am I mostly facing" at a glance.
+    function snapToGridDir(dx, dz) {
+      return Math.abs(dx) > Math.abs(dz) ? { dx: dx > 0 ? 1 : -1, dy: 0 } : { dx: 0, dy: dz > 0 ? 1 : -1 };
+    }
+    const MOVE_KEYS = { w: 'forward', s: 'back', a: 'left', d: 'right' };
+    const MOVE_COOLDOWN_MS = 160; // one tile per keypress, not a flood of writes while held
+    let lastMoveTime = 0;
+    window.addEventListener('keydown', (e) => {
+      if (myRole !== 'pc' || !firstPersonMode || !myLockedTokenId || !currentConnectedMap) return;
+      const tok = latestTokens[myLockedTokenId];
+      if (!tok) return;
+      const floor = tok.floor || 0;
+      const facing = { x: Math.sin(fpYaw), z: Math.cos(fpYaw) };
+
+      // Interact: open/close whatever door is directly ahead. Chests are a
+      // later feature -- this is deliberately a single "interact" branch so
+      // adding chest-opening later just means another check here, not a
+      // second key binding.
+      if (e.code === 'Space') {
+        e.preventDefault(); // stop the page from scrolling
+        const door = findNearbyDoor(floor, tok.x, tok.y, facing.x, facing.z);
+        if (!door) return;
+        if (door.locked) { console.log('[door] locked, cannot open without a key'); return; }
+        const doors = (latestGeometry.doors || []).map(d => d.id === door.id ? { ...d, closed: !d.closed } : d);
+        latestGeometry.doors = doors; // optimistic local update, same pattern as movement below
+        rebuildGeometry();
+        set(ref(db, `maps/${currentConnectedMap}/geometry/doors`), doors.length ? doors : null).catch(() => {});
+        return;
+      }
+
+      const action = MOVE_KEYS[e.key.toLowerCase()];
+      if (!action) return;
+      const now = performance.now();
+      if (now - lastMoveTime < MOVE_COOLDOWN_MS) return;
+
+      const right = { x: Math.cos(fpYaw), z: -Math.sin(fpYaw) };
+      let rawX = 0, rawZ = 0;
+      if (action === 'forward') { rawX = facing.x; rawZ = facing.z; }
+      else if (action === 'back') { rawX = -facing.x; rawZ = -facing.z; }
+      else if (action === 'left') { rawX = right.x; rawZ = right.z; }
+      else if (action === 'right') { rawX = -right.x; rawZ = -right.z; }
+
+      const { dx, dy } = snapToGridDir(rawX, rawZ);
+      const newX = tok.x + dx, newY = tok.y + dy;
+      if (isMoveBlocked(floor, tok.x, tok.y, newX, newY)) return;
+
+      tok.x = newX; tok.y = newY; // optimistic local update -- the live Firebase listener will reconcile shortly regardless
+      lastMoveTime = now;
+      update(ref(db, `maps/${currentConnectedMap}/tokens/${myLockedTokenId}`), { x: newX, y: newY }).catch(() => {});
+    });
+
+    renderer.domElement.addEventListener('mousedown', (e) => {
+      if (!firstPersonMode) return;
+      fpDragging = true; fpLastX = e.clientX; fpLastY = e.clientY;
+    });
+    window.addEventListener('mouseup', () => { fpDragging = false; });
+    window.addEventListener('mousemove', (e) => {
+      if (!firstPersonMode || !fpDragging) return;
+      const dx = e.clientX - fpLastX, dy = e.clientY - fpLastY;
+      fpLastX = e.clientX; fpLastY = e.clientY;
+      fpYaw -= dx * 0.005;
+      fpPitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, fpPitch - dy * 0.005));
+    });
+
+    let lastBgKey = null; // url+ppi fingerprint of what's currently rendered
+    // --- Props: same data driving both 2D (mapeditor-layers.html) and 3D --
+    // 2D loads ./props/<propId>.png (js/assets.js's PROP_PATH convention).
+    // 3D tries ./props/<propId>.glb first (a real 3D model), falling back to
+    // a flat billboard using that SAME png if no model exists yet, falling
+    // back to a plain marker if neither exists. GLB (binary glTF) rather
+    // than OBJ/FBX specifically because it's one self-contained file --
+    // geometry+materials+textures all embedded -- matching the "just drop a
+    // file named <propId>" convention every other asset type here already
+    // uses, instead of needing several companion files per prop.
+    const propModelCache = {}; // propId -> 'loading' | THREE.Object3D (template scene, cloned per instance) | 'error'
+    function ensurePropModelLoaded(propId) {
+      if (propModelCache[propId]) return; // already loading, loaded, or errored
+      propModelCache[propId] = 'loading';
+      gltfLoader.load(
+        `props/${propId}.glb`,
+        (gltf) => { propModelCache[propId] = gltf.scene; rebuildProps(); },
+        undefined,
+        () => { propModelCache[propId] = 'error'; rebuildProps(); }
+      );
+    }
+    const propBillboardMaterialCache = {}; // propId -> MeshBasicMaterial (mutated in place once the PNG loads, same live-swap pattern as terrain textures)
+    function getPropBillboardMaterial(propId) {
+      if (propBillboardMaterialCache[propId]) return propBillboardMaterialCache[propId];
+      const material = new THREE.MeshBasicMaterial({ color: 0xc8a84b, transparent: true, side: THREE.DoubleSide });
+      propBillboardMaterialCache[propId] = material;
+      const img = new Image();
+      img.onload = () => { material.map = makeTexture(img); material.color.set(0xffffff); material.needsUpdate = true; };
+      img.onerror = () => { /* keep the flat color -- no model, no png, just a placeholder */ };
+      img.src = `props/${propId}.png`;
+      return material;
+    }
+    function rebuildProps() {
+      while (propGroup.children.length) propGroup.remove(propGroup.children[0]);
+      for (const key in latestProps) {
+        const p = latestProps[key];
+        let px, py, floor;
+        if (p.attachedTo && latestTokens[p.attachedTo]) {
+          const tok = latestTokens[p.attachedTo];
+          px = tok.x + (p.offsetX || 0); py = tok.y + (p.offsetY || 0); floor = tok.floor || 0;
+        } else {
+          const parsed = parseTileKey(key);
+          px = parsed.x; py = parsed.y; floor = parsed.floor;
+        }
+        const propId = (p.disguise && p.disguise.propId) || p.propId; // resolvePropId()'s exact logic -- matches what mapeditor's own 2D view shows, disguises included
+        if (!propId) continue;
+        const w = p.w || 1, h = p.h || 1;
+        const cx = px + w / 2, cz = py + h / 2;
+        const baseY = FLOOR_SURFACE_Y + floorY(floor);
+
+        ensurePropModelLoaded(propId);
+        const model = propModelCache[propId];
+
+        const container = new THREE.Group();
+        container.position.set(cx, baseY, cz);
+        container.rotation.y = -((p.rotation || 0) * Math.PI / 180);
+
+        if (model && model !== 'loading' && model !== 'error') {
+          const instance = model.clone();
+          // Normalize scale by the model's own bounding box -- we don't know
+          // a random GLB's native size, so fit its footprint to (w,h) and
+          // lift it so its lowest point sits on the floor rather than
+          // floating or clipping through it.
+          const box = new THREE.Box3().setFromObject(instance);
+          const size = box.getSize(new THREE.Vector3());
+          const footprint = Math.max(size.x, size.z) || 1;
+          const scale = Math.max(w, h) / footprint;
+          instance.scale.setScalar(scale);
+          instance.position.y = -box.min.y * scale;
+          container.add(instance);
+        } else {
+          const billboard = new THREE.Mesh(new THREE.PlaneGeometry(w, h), getPropBillboardMaterial(propId));
+          billboard.rotation.x = -Math.PI / 2;
+          billboard.position.y = 0.05;
+          container.add(billboard);
+        }
+        propGroup.add(container);
+      }
+      console.log(`[props] ${Object.keys(latestProps).length} prop(s)`);
+    }
+
+    function rebuildBackground(url, ppi) {
+      const key = url ? `${url}|${ppi}` : null;
+      if (key === lastBgKey) return; // nothing actually changed -- skip the teardown+async-reload that was causing a black flash on every sync (including movement writes, which don't touch background at all)
+      lastBgKey = key;
+      while (bgGroup.children.length) bgGroup.remove(bgGroup.children[0]);
+      if (!url) { console.log('[background] none set for this map'); return; }
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth / (ppi || 70), h = img.naturalHeight / (ppi || 70);
+        const tex = makeTexture(img);
+        const mesh = new THREE.Mesh(
+          new THREE.PlaneGeometry(w, h),
+          new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, side: THREE.DoubleSide })
+        );
+        mesh.rotation.x = -Math.PI / 2;
+        // FLOOR_ART_Y sits above the terrain tiles' plane (TERRAIN_TILE_Y),
+        // stacking order matching mapeditor.html's own 2D draw order.
+        mesh.position.set(w / 2, FLOOR_ART_Y, h / 2);
+        bgGroup.add(mesh);
+        console.log(`[background] loaded ${img.naturalWidth}x${img.naturalHeight}px @ ${ppi}ppi -> ${w.toFixed(1)}x${h.toFixed(1)} grid units`);
+      };
+      img.onerror = () => console.error('[background] image failed to load (malformed data URL?)');
+      img.src = url;
+    }
+
+    // "mapLayers" -- the multi-piece dd2vtt import system, confirmed via a
+    // real Firebase export to be genuinely separate from the single
+    // background/backgroundPpi fields above (mapeditor.html renders BOTH,
+    // background first then these on top). Each layer already gives its own
+    // x,y (top-left corner) and w,h in grid units directly -- no ppi
+    // conversion needed here, unlike background.
+    let lastMapLayersKey = null;
+    function rebuildMapLayers(mapLayers) {
+      const key = JSON.stringify(mapLayers || {});
+      if (key === lastMapLayersKey) return; // same reasoning as rebuildBackground -- avoid re-triggering async image loads (and the resulting flash) on syncs that didn't touch mapLayers at all, e.g. your own movement writes
+      lastMapLayersKey = key;
+      while (mapLayersGroup.children.length) mapLayersGroup.remove(mapLayersGroup.children[0]);
+      const entries = Object.entries(mapLayers || {});
+      console.log(`[mapLayers] ${entries.length} layer(s)`);
+      for (const [id, layer] of entries) {
+        const img = new Image();
+        img.onload = () => {
+          const tex = makeTexture(img);
+          const mesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(layer.w, layer.h),
+            new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, side: THREE.DoubleSide })
+          );
+          mesh.rotation.x = -Math.PI / 2;
+          // Same clearance reasoning as the background plane -- must sit
+          // above the terrain tile boxes' top surface, not at y~0.
+          mesh.position.set(layer.x + layer.w / 2, FLOOR_ART_Y + floorY(layer.floor), layer.y + layer.h / 2);
+          mapLayersGroup.add(mesh);
+          console.log(`[mapLayers] "${id}" loaded, ${layer.w}x${layer.h} grid units at (${layer.x},${layer.y}), floor ${layer.floor || 0}`);
+        };
+        img.onerror = () => console.error(`[mapLayers] "${id}" image failed to load`);
+        img.src = layer.url;
+      }
+    }
+
+
+    // --- Firebase subscription ---
+    // Matches mapeditor.html/index.html's own pattern exactly: ONE onValue
+    // on the whole maps/{name} node, destructured into sections -- not
+    // separate subscriptions per child path. Keeps this viewer reading data
+    // the exact same way the apps that write it do.
+    let unsubscribe = null;
+    function connect(mapName) {
+      if (unsubscribe) unsubscribe();
+      currentConnectedMap = mapName; // needed for movement writes below, connect() only had this as a local param before
+      document.getElementById('status').textContent = `connecting to "${mapName}"...`;
+
+      unsubscribe = onValue(ref(db, `maps/${mapName}`), snap => {
+        const data = snap.val() || {};
+
+        latestTiles = data.tiles || {};
+        rebuildTiles();
+
+        latestGeometry = {
+          walls: data.geometry?.walls || [],
+          doors: data.geometry?.doors || [],
+          lights: data.geometry?.lights || [],
+        };
+        rebuildGeometry();
+        updateSceneLighting(data.geometry);
+
+        latestTokens = data.tokens || {};
+        rebuildTokens();
+
+        latestProps = data.props || {};
+        rebuildProps();
+
+        rebuildBackground(data.background || null, data.backgroundPpi || 70);
+        rebuildMapLayers(data.mapLayers || null);
+
+        rebuildFallbackFloor(data.mapLayers, !!data.background, Object.keys(latestTiles).length > 0);
+
+        document.getElementById('status').textContent = `connected: ${mapName}`;
+      });
+    }
+
+    // Follow the GM's active map automatically, exactly like index.html
+    // does -- rather than requiring you to type/guess the right map name.
+    // Manual override still works: typing a name + Connect switches away
+    // from auto-follow until you reload.
+    let followingSession = true;
+    onValue(ref(db, "session/currentMap"), snap => {
+      const name = snap.val() || "dungeon-1";
+      if (!followingSession) return;
+      document.getElementById('mapNameInput').value = name;
+      connect(name);
+    });
+
+    document.getElementById('connectBtn').addEventListener('click', () => {
+      followingSession = false; // manual connect from here on
+      const name = document.getElementById('mapNameInput').value.trim() || 'dungeon-1';
+      connect(name);
+    });
+  </script>
+</body>
+</html>
