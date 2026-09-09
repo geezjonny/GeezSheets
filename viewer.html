@@ -653,34 +653,55 @@
       for (const id in latestTokens) {
         const tok = latestTokens[id];
         const size = tok.size || 1;
-        const lookupName = tok.lookupName || tok.name || tok.characterId || 'token';
-        const cacheKey = tok.characterId === '__npc__' && tok.name ? `__npc__:${tok.name.toLowerCase()}` : (tok.characterId || lookupName);
-        const fname = lookupName.toLowerCase().replace(/\s+/g, '_');
-        ensureTokenModelLoaded(cacheKey, fname);
-        const model = tokenModelCache[cacheKey];
 
         const container = new THREE.Group();
         container.position.set(tok.x + size / 2, FLOOR_SURFACE_Y + floorY(tok.floor), tok.y + size / 2);
 
-        if (model && model !== 'loading' && model !== 'error') {
-          // Same footprint-fit approach as props: scale by the model's own
-          // bounding box so it fills a size x size grid area -- "the same
-          // token size call" as the 2D disc below (tok.size), not a
-          // separate GLB-specific sizing scheme.
-          const instance = model.clone();
-          const box = new THREE.Box3().setFromObject(instance);
-          const dims = box.getSize(new THREE.Vector3());
-          const scale = size / (Math.max(dims.x, dims.z) || 1);
-          instance.scale.setScalar(scale);
-          instance.position.y = -box.min.y * scale; // stand on the floor rather than float/clip through it
-          container.add(instance);
+        if (tok.type === 'pc') {
+          // PCs only: try a real 3D model first (./tokens/<name>.glb),
+          // falling back to the flat lying-down disc. NPCs/monsters never
+          // attempt this -- see the standee branch below.
+          const lookupName = tok.lookupName || tok.name || tok.characterId || 'token';
+          const cacheKey = tok.characterId === '__npc__' && tok.name ? `__npc__:${tok.name.toLowerCase()}` : (tok.characterId || lookupName);
+          const fname = lookupName.toLowerCase().replace(/\s+/g, '_');
+          ensureTokenModelLoaded(cacheKey, fname);
+          const model = tokenModelCache[cacheKey];
+
+          if (model && model !== 'loading' && model !== 'error') {
+            // Same footprint-fit approach as props: scale by the model's own
+            // bounding box so it fills a size x size grid area -- "the same
+            // token size call" as the 2D disc below (tok.size), not a
+            // separate GLB-specific sizing scheme.
+            const instance = model.clone();
+            const box = new THREE.Box3().setFromObject(instance);
+            const dims = box.getSize(new THREE.Vector3());
+            const scale = size / (Math.max(dims.x, dims.z) || 1);
+            instance.scale.setScalar(scale);
+            instance.position.y = -box.min.y * scale; // stand on the floor rather than float/clip through it
+            container.add(instance);
+          } else {
+            const material = getTokenMaterial(tok);
+            const disc = new THREE.Mesh(geo, material);
+            disc.scale.set(size, size, 1);
+            disc.rotation.x = -Math.PI / 2;
+            disc.position.y = 0.02; // just above the floor ART (mapLayers/background), not just above y=0 -- avoids being hidden under it
+            container.add(disc);
+          }
         } else {
-          const material = getTokenMaterial(tok);
-          const disc = new THREE.Mesh(geo, material);
-          disc.scale.set(size, size, 1);
-          disc.rotation.x = -Math.PI / 2;
-          disc.position.y = 0.02; // just above the floor ART (mapLayers/background), not just above y=0 -- avoids being hidden under it
-          container.add(disc);
+          // Everyone else (NPCs, monsters): a standing paper-mini-style
+          // standee instead of a GLB -- no model to source/normalize for
+          // every monster in the bestiary, just the same 2D art (./tokens/
+          // <name>.png) that already exists, applied to a flat card that
+          // actually stands up. Two planes (not one double-sided plane) so
+          // the front and back both show the art right-way-round instead of
+          // one side being a mirror image.
+          const material = getTokenMaterial(tok); // same PNG lookup/RTDB-fallback chain as PCs' disc
+          const cardGeo = new THREE.PlaneGeometry(size, size);
+          const front = new THREE.Mesh(cardGeo, material);
+          front.position.y = size / 2; // lift so the card's bottom edge rests on the floor, not its center
+          const back = front.clone();
+          back.rotation.y = Math.PI; // faces the opposite direction, same (non-mirrored) texture
+          container.add(front, back);
         }
         tokenGroup.add(container);
       }
@@ -1140,32 +1161,23 @@
     let lastBgKey = null; // url+ppi fingerprint of what's currently rendered
     // --- Props: same data driving both 2D (mapeditor-layers.html) and 3D --
     // 2D loads ./props/<propId>.png (js/assets.js's PROP_PATH convention).
-    // 3D tries ./props/<propId>.glb first (a real 3D model), falling back to
-    // a flat billboard using that SAME png if no model exists yet, falling
-    // back to a plain marker if neither exists. GLB (binary glTF) rather
-    // than OBJ/FBX specifically because it's one self-contained file --
-    // geometry+materials+textures all embedded -- matching the "just drop a
-    // file named <propId>" convention every other asset type here already
-    // uses, instead of needing several companion files per prop.
-    const propModelCache = {}; // propId -> 'loading' | THREE.Object3D (template scene, cloned per instance) | 'error'
-    function ensurePropModelLoaded(propId) {
-      if (propModelCache[propId]) return; // already loading, loaded, or errored
-      propModelCache[propId] = 'loading';
-      gltfLoader.load(
-        `props/${propId}.glb`,
-        (gltf) => { propModelCache[propId] = gltf.scene; rebuildProps(); },
-        undefined,
-        () => { propModelCache[propId] = 'error'; rebuildProps(); }
-      );
-    }
-    const propBillboardMaterialCache = {}; // propId -> MeshBasicMaterial (mutated in place once the PNG loads, same live-swap pattern as terrain textures)
-    function getPropBillboardMaterial(propId) {
-      if (propBillboardMaterialCache[propId]) return propBillboardMaterialCache[propId];
-      const material = new THREE.MeshBasicMaterial({ color: 0xc8a84b, transparent: true, side: THREE.DoubleSide });
-      propBillboardMaterialCache[propId] = material;
+    // 3D uses a single box sized to the prop's w/h/height, with that same
+    // PNG applied uniformly to all 6 faces -- matching how gm.html's
+    // original voxel props worked (e.g. a bush as stacked cubes, same
+    // texture on every face). Not attempting a GLB here: normalizing/
+    // sourcing a real model for every prop type is real per-asset work,
+    // and a plain textured box already gives correct size + visual presence
+    // for free, using art that already exists for the 2D view. GLB stays
+    // reserved for PC tokens only, where looking good matters more and
+    // there are far fewer of them to source models for.
+    const propBoxMaterialCache = {}; // propId -> MeshBasicMaterial (mutated in place once the PNG loads, same live-swap pattern as terrain textures)
+    function getPropBoxMaterial(propId) {
+      if (propBoxMaterialCache[propId]) return propBoxMaterialCache[propId];
+      const material = new THREE.MeshBasicMaterial({ color: 0xc8a84b, transparent: true });
+      propBoxMaterialCache[propId] = material;
       const img = new Image();
       img.onload = () => { material.map = makeTexture(img); material.color.set(0xffffff); material.needsUpdate = true; };
-      img.onerror = () => { /* keep the flat color -- no model, no png, just a placeholder */ };
+      img.onerror = () => { /* keep the flat color -- no png, just a placeholder */ };
       img.src = `props/${propId}.png`;
       return material;
     }
@@ -1183,38 +1195,17 @@
         }
         const propId = (p.disguise && p.disguise.propId) || p.propId; // resolvePropId()'s exact logic -- matches what mapeditor's own 2D view shows, disguises included
         if (!propId) continue;
-        const w = p.w || 1, h = p.h || 1;
+        const w = p.w || 1, h = p.h || 1, propHeight = p.height || 1;
         const cx = px + w / 2, cz = py + h / 2;
         const baseY = FLOOR_SURFACE_Y + floorY(floor);
-
-        ensurePropModelLoaded(propId);
-        const model = propModelCache[propId];
 
         const container = new THREE.Group();
         container.position.set(cx, baseY, cz);
         container.rotation.y = -((p.rotation || 0) * Math.PI / 180);
 
-        if (model && model !== 'loading' && model !== 'error') {
-          const instance = model.clone();
-          // Normalize scale by the model's own bounding box -- we don't know
-          // a random GLB's native size. Prefer the prop's explicit height
-          // (from mapeditor-layers.html's placement prompt) as the scaling
-          // target when it's set, since a decorative object's height is
-          // usually its most visually important trait; fall back to fitting
-          // the footprint to (w,h) for props placed before that field
-          // existed.
-          const box = new THREE.Box3().setFromObject(instance);
-          const size = box.getSize(new THREE.Vector3());
-          const scale = p.height ? p.height / (size.y || 1) : Math.max(w, h) / (Math.max(size.x, size.z) || 1);
-          instance.scale.setScalar(scale);
-          instance.position.y = -box.min.y * scale;
-          container.add(instance);
-        } else {
-          const billboard = new THREE.Mesh(new THREE.PlaneGeometry(w, h), getPropBillboardMaterial(propId));
-          billboard.rotation.x = -Math.PI / 2;
-          billboard.position.y = 0.05;
-          container.add(billboard);
-        }
+        const box = new THREE.Mesh(new THREE.BoxGeometry(w, propHeight, h), getPropBoxMaterial(propId));
+        box.position.y = propHeight / 2; // box center up to half its height, so its bottom face sits on the floor
+        container.add(box);
         propGroup.add(container);
       }
       console.log(`[props] ${Object.keys(latestProps).length} prop(s)`);
