@@ -1161,15 +1161,57 @@
     let lastBgKey = null; // url+ppi fingerprint of what's currently rendered
     // --- Props: same data driving both 2D (mapeditor-layers.html) and 3D --
     // 2D loads ./props/<propId>.png (js/assets.js's PROP_PATH convention).
-    // 3D uses a single box sized to the prop's w/h/height, with that same
-    // PNG applied uniformly to all 6 faces -- matching how gm.html's
-    // original voxel props worked (e.g. a bush as stacked cubes, same
-    // texture on every face). Not attempting a GLB here: normalizing/
-    // sourcing a real model for every prop type is real per-asset work,
-    // and a plain textured box already gives correct size + visual presence
-    // for free, using art that already exists for the 2D view. GLB stays
-    // reserved for PC tokens only, where looking good matters more and
-    // there are far fewer of them to source models for.
+    // 3D tries a voxel model first (./props/<propId>.json, made with
+    // prop-maker.html -- a uniform grid of colored unit cubes, Minecraft-
+    // style), falling back to a single box with that same PNG applied to
+    // all 6 faces if no voxel model exists yet, matching how gm.html's
+    // original voxel props worked. Not attempting a GLB here at all:
+    // normalizing/sourcing a real model for every prop type is real
+    // per-asset work, whereas a voxel model or a plain textured box already
+    // give correct size + visual presence for free, using art/tools that
+    // already exist. GLB stays reserved for PC tokens only.
+    const propVoxelCache = {}; // propId -> 'loading' | THREE.Group (template, cloned per instance) | 'error'
+    function ensurePropVoxelLoaded(propId) {
+      if (propVoxelCache[propId]) return; // already loading, loaded, or errored
+      propVoxelCache[propId] = 'loading';
+      fetch(`props/${propId}.json`)
+        .then(res => { if (!res.ok) throw new Error('not found'); return res.json(); })
+        .then(data => {
+          const voxelList = data.voxels || [];
+          if (!voxelList.length) { propVoxelCache[propId] = 'error'; return; }
+          // Normalize to the voxels actually used (not the full declared
+          // grid -- a chest painted in a corner of an 8x8x8 grid shouldn't
+          // scale as if it filled the whole thing), so sizing to a prop's
+          // w/h/height is exact, no bounding-box guessing needed like GLBs.
+          let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+          for (const v of voxelList) {
+            minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
+            minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
+            minZ = Math.min(minZ, v.z); maxZ = Math.max(maxZ, v.z);
+          }
+          const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+          const template = new THREE.Group();
+          const usedX = maxX - minX + 1, usedZ = maxZ - minZ + 1;
+          for (const v of voxelList) {
+            // X/Z are centered around the template's local origin (not
+            // starting at a corner) to match how rebuildProps() positions
+            // the container -- at the CENTER of the prop's footprint, not
+            // a corner. Without this the model rendered shifted by half its
+            // own size, straddling into the neighboring cell instead of
+            // sitting inside its own -- looked like a sizing bug but was
+            // actually a mismatched-pivot bug. Y is NOT centered -- it
+            // should rest on the floor (span 0..height), same convention
+            // the PNG-box fallback already uses.
+            const mesh = new THREE.Mesh(cubeGeo, new THREE.MeshLambertMaterial({ color: v.c || '#c8a84b' }));
+            mesh.position.set(v.x - minX - usedX / 2 + 0.5, v.y - minY + 0.5, v.z - minZ - usedZ / 2 + 0.5);
+            template.add(mesh);
+          }
+          template.userData.usedSize = { x: usedX, y: maxY - minY + 1, z: usedZ };
+          propVoxelCache[propId] = template;
+          rebuildProps();
+        })
+        .catch(() => { propVoxelCache[propId] = 'error'; }); // no voxel model -- fall back to the PNG box below
+    }
     const propBoxMaterialCache = {}; // propId -> MeshBasicMaterial (mutated in place once the PNG loads, same live-swap pattern as terrain textures)
     function getPropBoxMaterial(propId) {
       if (propBoxMaterialCache[propId]) return propBoxMaterialCache[propId];
@@ -1199,13 +1241,27 @@
         const cx = px + w / 2, cz = py + h / 2;
         const baseY = FLOOR_SURFACE_Y + floorY(floor);
 
+        ensurePropVoxelLoaded(propId);
+        const voxelTemplate = propVoxelCache[propId];
+
         const container = new THREE.Group();
         container.position.set(cx, baseY, cz);
         container.rotation.y = -((p.rotation || 0) * Math.PI / 180);
 
-        const box = new THREE.Mesh(new THREE.BoxGeometry(w, propHeight, h), getPropBoxMaterial(propId));
-        box.position.y = propHeight / 2; // box center up to half its height, so its bottom face sits on the floor
-        container.add(box);
+        if (voxelTemplate && voxelTemplate !== 'loading' && voxelTemplate !== 'error') {
+          // Exact fit, per-axis -- these are already unit cubes on a known
+          // grid, so (unlike GLB scaling) no bounding-box estimate is
+          // needed, and non-uniform scaling here doesn't look distorted the
+          // way squashing a real mesh would.
+          const instance = voxelTemplate.clone(true);
+          const used = voxelTemplate.userData.usedSize;
+          instance.scale.set(w / used.x, propHeight / used.y, h / used.z);
+          container.add(instance);
+        } else {
+          const box = new THREE.Mesh(new THREE.BoxGeometry(w, propHeight, h), getPropBoxMaterial(propId));
+          box.position.y = propHeight / 2; // box center up to half its height, so its bottom face sits on the floor
+          container.add(box);
+        }
         propGroup.add(container);
       }
       console.log(`[props] ${Object.keys(latestProps).length} prop(s)`);

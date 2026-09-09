@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Prop Maker</title>
+<!--
+  Paints a uniform-grid voxel model (like Minecraft: many same-size cubes,
+  not a few variable-sized boxes) and saves it as <name>.json in the format
+  viewer.html's prop loader expects:
+
+    { "name": "chest", "gridSize": 8, "voxels": [ {"x":0,"y":0,"z":0,"c":"#5a3a1a"}, ... ] }
+
+  x/y/z are integer cell coordinates within a gridSize^3 cube (y = up).
+  Drop the saved file in your GeezSheets project's /props folder as
+  <propId>.json, alongside the existing <propId>.png -- viewer.html tries
+  the voxel model first, falling back to the flat PNG-textured box if no
+  .json exists for that prop.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    height: 100vh; overflow: hidden; font-family: Arial, sans-serif;
+    background: #0e0a06; color: #ecdfc0;
+  }
+  #hud {
+    position: absolute; top: 12px; left: 12px; z-index: 10;
+    background: rgba(30, 22, 14, 0.9); border: 1px solid #3a2c18; border-radius: 8px;
+    padding: 10px 14px; font-size: 13px; display: flex; align-items: center;
+    gap: 8px; flex-wrap: wrap; max-width: 90vw;
+  }
+  #hud label { font-size: 12px; opacity: .8; }
+  #hud input[type="text"], #hud input[type="number"] {
+    background: #241a10; color: #ecdfc0; border: 1px solid #5a462a;
+    border-radius: 4px; padding: 4px 8px; font-size: 13px;
+  }
+  #hud input[type="text"] { width: 110px; }
+  #hud input[type="number"] { width: 55px; }
+  #hud input[type="color"] {
+    width: 34px; height: 26px; border: 1px solid #5a462a; border-radius: 4px;
+    background: none; padding: 0; cursor: pointer;
+  }
+  #hud button {
+    background: #3a2c18; color: #ecdfc0; border: 1px solid #5a462a;
+    border-radius: 4px; padding: 5px 10px; font-size: 12px; cursor: pointer;
+  }
+  #hud button:hover { background: #4a3a22; }
+  .sep { width: 1px; height: 20px; background: #3a2c18; }
+  #hint {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 10; background: rgba(30, 22, 14, 0.85); border: 1px solid #3a2c18;
+    border-radius: 8px; padding: 6px 14px; font-size: 12px; opacity: .85;
+    text-align: center;
+  }
+  #voxelCount {
+    position: absolute; top: 12px; right: 12px; z-index: 10;
+    background: rgba(30, 22, 14, 0.9); border: 1px solid #3a2c18; border-radius: 8px;
+    padding: 8px 12px; font-size: 12px; opacity: .85;
+  }
+  canvas { display: block; }
+  #fileInput { display: none; }
+</style>
+</head>
+<body>
+
+  <div id="hud">
+    <label>Name:</label>
+    <input type="text" id="nameInput" value="chest" spellcheck="false">
+    <label>Grid:</label>
+    <input type="number" id="gridSizeInput" value="8" min="2" max="32">
+    <button id="resizeBtn" title="Rebuild the grid at the new size -- clears the canvas">Resize</button>
+    <div class="sep"></div>
+    <label>Color:</label>
+    <input type="color" id="colorInput" value="#8b5a2b">
+    <div class="sep"></div>
+    <button id="clearBtn" title="Remove every voxel">Clear</button>
+    <div class="sep"></div>
+    <button id="saveBtn">💾 Save JSON</button>
+    <button id="loadBtn">📂 Load JSON</button>
+    <input type="file" id="fileInput" accept=".json">
+  </div>
+
+  <div id="voxelCount">0 voxels</div>
+  <div id="hint">Left-click: place &nbsp;|&nbsp; Right-click: erase &nbsp;|&nbsp; Drag either to paint a line along that face &nbsp;|&nbsp; Middle-drag: pan &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Space + middle-drag: orbit</div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    // --- Scene setup, same conventions as viewer.html's own Three.js setup ---
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x141019);
+
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(10, 10, 10);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 2, 0);
+    // Left/right are freed up entirely for voxel placement/erasure below --
+    // OrbitControls never sees them. Middle-drag pans by default; holding
+    // spacebar swaps it to orbit instead (OrbitControls reads this mapping
+    // fresh on every pointerdown, so just flipping it on keydown/keyup is
+    // enough -- no need to hand-roll the actual camera math).
+    controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.PAN, RIGHT: null };
+    let spaceDown = false;
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !spaceDown) {
+        spaceDown = true;
+        controls.mouseButtons.MIDDLE = THREE.MOUSE.ROTATE;
+        e.preventDefault(); // stop the page from scrolling / "clicking" a focused button
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') {
+        spaceDown = false;
+        controls.mouseButtons.MIDDLE = THREE.MOUSE.PAN;
+      }
+    });
+    controls.update();
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambient);
+    const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+    sun.position.set(5, 10, 7);
+    scene.add(sun);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- Grid state ---------------------------------------------------------
+    let gridSize = 8;
+    const voxelGeo = new THREE.BoxGeometry(1, 1, 1);
+    const voxels = new Map(); // "x,y,z" -> { mesh, color }
+    const voxelGroup = new THREE.Group();
+    scene.add(voxelGroup);
+
+    let groundPlane, gridHelper;
+    function rebuildGroundHelpers() {
+      if (groundPlane) scene.remove(groundPlane);
+      if (gridHelper) scene.remove(gridHelper);
+      // Invisible plane at y=0 purely for raycasting -- lets you place the
+      // very first voxel before anything else exists to click on.
+      groundPlane = new THREE.Mesh(
+        new THREE.PlaneGeometry(gridSize, gridSize),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      groundPlane.rotation.x = -Math.PI / 2;
+      groundPlane.position.set(gridSize / 2, 0, gridSize / 2);
+      groundPlane.userData.isGround = true;
+      scene.add(groundPlane);
+
+      gridHelper = new THREE.GridHelper(gridSize, gridSize, 0x8a6d1a, 0x3a2c18);
+      gridHelper.position.set(gridSize / 2, 0, gridSize / 2);
+      scene.add(gridHelper);
+    }
+    rebuildGroundHelpers();
+
+    function cellKey(x, y, z) { return `${x},${y},${z}`; }
+    function inBounds(x, y, z) {
+      return x >= 0 && x < gridSize && y >= 0 && y < gridSize && z >= 0 && z < gridSize;
+    }
+    function updateVoxelCount() {
+      document.getElementById('voxelCount').textContent = `${voxels.size} voxel${voxels.size === 1 ? '' : 's'}`;
+    }
+    function addVoxel(x, y, z, color) {
+      if (!inBounds(x, y, z)) return;
+      const key = cellKey(x, y, z);
+      if (voxels.has(key)) return; // already occupied
+      const mesh = new THREE.Mesh(voxelGeo, new THREE.MeshLambertMaterial({ color }));
+      mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+      mesh.userData.cell = { x, y, z };
+      voxelGroup.add(mesh);
+      voxels.set(key, { mesh, color });
+      updateVoxelCount();
+    }
+    function removeVoxel(x, y, z) {
+      const key = cellKey(x, y, z);
+      const entry = voxels.get(key);
+      if (!entry) return;
+      voxelGroup.remove(entry.mesh);
+      voxels.delete(key);
+      updateVoxelCount();
+    }
+    function clearAllVoxels() {
+      for (const { mesh } of voxels.values()) voxelGroup.remove(mesh);
+      voxels.clear();
+      updateVoxelCount();
+    }
+
+    // --- Placement/erasure: left-click places, right-click erases, both
+    // adjacent to whichever face was clicked (Minecraft convention).
+    // Dragging either button paints/erases a continuous line, but LOCKED to
+    // the axis of that first face's normal -- e.g. click the ground (a
+    // +Y-facing hit) and drag, and every cell placed during that drag stays
+    // at that same Y, tracing across X/Z as the cursor moves, rather than
+    // jumping to whatever depth the cursor happens to be hovering at each
+    // instant. Same lock applies symmetrically to erase-dragging.
+    const raycaster = new THREE.Raycaster();
+    const pointerNDC = new THREE.Vector2();
+    let paintButton = null; // 0 = left (place), 2 = right (erase), null = not currently painting
+    let dragAxis = null;    // 'x' | 'y' | 'z' -- which coordinate stays fixed for the rest of this drag
+    let dragLockValue = null;
+
+    renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault()); // right-click is erase, not a context menu
+
+    function raycastVoxels(e) {
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointerNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointerNDC.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(pointerNDC, camera);
+      const hits = raycaster.intersectObjects([groundPlane, ...voxelGroup.children], false);
+      return hits.length ? hits[0] : null;
+    }
+    // Whichever axis the face normal points along most -- that's the one
+    // that gets locked for the rest of the drag.
+    function dominantAxis(normal) {
+      const ax = Math.abs(normal.x), ay = Math.abs(normal.y), az = Math.abs(normal.z);
+      if (ax >= ay && ax >= az) return 'x';
+      if (ay >= ax && ay >= az) return 'y';
+      return 'z';
+    }
+    function placementCellFromHit(hit) {
+      const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+      const point = hit.point.clone().add(normal.clone().multiplyScalar(0.5));
+      return { x: Math.floor(point.x), y: Math.floor(point.y), z: Math.floor(point.z), axis: dominantAxis(normal) };
+    }
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 && e.button !== 2) return; // middle button is camera pan/orbit, handled by OrbitControls
+      const hit = raycastVoxels(e);
+      if (!hit) return;
+
+      if (e.button === 0) {
+        const cell = placementCellFromHit(hit);
+        addVoxel(cell.x, cell.y, cell.z, document.getElementById('colorInput').value);
+        paintButton = 0; dragAxis = cell.axis; dragLockValue = cell[cell.axis];
+      } else {
+        if (!hit.object.userData.cell) return; // right-clicked the ground -- nothing there to erase
+        const { x, y, z } = hit.object.userData.cell;
+        const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+        removeVoxel(x, y, z);
+        paintButton = 2; dragAxis = dominantAxis(normal); dragLockValue = { x, y, z }[dragAxis];
+      }
+    });
+
+    renderer.domElement.addEventListener('pointermove', (e) => {
+      if (paintButton === null) return;
+      const hit = raycastVoxels(e);
+      if (!hit) return;
+
+      if (paintButton === 0) {
+        const cell = placementCellFromHit(hit);
+        if (cell[dragAxis] !== dragLockValue) return; // off the locked plane -- ignore rather than jump depth
+        addVoxel(cell.x, cell.y, cell.z, document.getElementById('colorInput').value);
+      } else {
+        if (!hit.object.userData.cell) return;
+        const { x, y, z } = hit.object.userData.cell;
+        if ({ x, y, z }[dragAxis] !== dragLockValue) return;
+        removeVoxel(x, y, z);
+      }
+    });
+
+    window.addEventListener('pointerup', () => { paintButton = null; dragAxis = null; dragLockValue = null; });
+
+    // --- Toolbar -------------------------------------------------------------
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (confirm('Clear every voxel?')) clearAllVoxels();
+    });
+    document.getElementById('resizeBtn').addEventListener('click', () => {
+      const newSize = parseInt(document.getElementById('gridSizeInput').value, 10) || 8;
+      if (voxels.size && !confirm(`Resizing clears the current model (${voxels.size} voxels). Continue?`)) {
+        document.getElementById('gridSizeInput').value = gridSize;
+        return;
+      }
+      gridSize = Math.max(2, Math.min(32, newSize));
+      document.getElementById('gridSizeInput').value = gridSize;
+      clearAllVoxels();
+      rebuildGroundHelpers();
+      controls.target.set(gridSize / 2, gridSize / 4, gridSize / 2);
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const name = document.getElementById('nameInput').value.trim().toLowerCase().replace(/\s+/g, '_') || 'prop';
+      const data = {
+        name, gridSize,
+        voxels: [...voxels.entries()].map(([key, { color }]) => {
+          const [x, y, z] = key.split(',').map(Number);
+          return { x, y, z, c: '#' + new THREE.Color(color).getHexString() };
+        }),
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${name}.json`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('loadBtn').addEventListener('click', () => {
+      document.getElementById('fileInput').click();
+    });
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          gridSize = data.gridSize || 8;
+          document.getElementById('gridSizeInput').value = gridSize;
+          document.getElementById('nameInput').value = data.name || 'prop';
+          clearAllVoxels();
+          rebuildGroundHelpers();
+          for (const v of data.voxels || []) addVoxel(v.x, v.y, v.z, v.c);
+          controls.target.set(gridSize / 2, gridSize / 4, gridSize / 2);
+        } catch (err) {
+          alert('Could not read that file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = ''; // allow re-loading the same filename later
+    });
+
+    // --- Render loop ---------------------------------------------------------
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

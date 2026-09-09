@@ -777,6 +777,7 @@ canvas{display:block;cursor:crosshair}
   <div id="prop-ctx-notes" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">📝 Investigation notes…</div>
   <div id="prop-ctx-container" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">📦 Flag as container…</div>
   <div id="prop-ctx-disguise" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">🎭 Disguise as…</div>
+  <div id="prop-ctx-resize" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--gold-dim,#a8935a)">📏 Edit size…</div>
   <div style="height:1px;background:var(--border);margin:3px 0"></div>
   <div id="prop-ctx-delete" style="padding:7px 14px;font-family:'Cinzel',serif;font-size:10px;cursor:pointer;color:var(--red-bright)">✕ Delete prop</div>
 </div>
@@ -1165,7 +1166,12 @@ let pendingPropTemplate = null;
 function promptForPropTemplate(){
   const name = prompt("Prop name (looks up props/<name>.png for 2D and props/<name>.glb for 3D):");
   if(!name) return null;
-  const propId = name.trim().toLowerCase().replace(/\s+/g,"_");
+  // Only whitespace was being replaced before -- any other stray character
+  // (a "?", an apostrophe, whatever got typed) passed straight through into
+  // the file lookup, so "chest?" would go looking for props/chest?.png
+  // instead of the real props/chest.png. Strip anything that isn't
+  // filename-safe instead of just whitespace.
+  const propId = name.trim().toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_-]/g,"");
   if(!propId) return null;
   const height = parseFloat(prompt("Prop height (grid units):","1")) || 1;
   const dimStr = (prompt("Prop dimension, WxH in grid cells (e.g. 1x1):","1x1")||"").trim();
@@ -1365,8 +1371,8 @@ function screenPos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.
 function hasWall(x,y){const t=tiles[key(x,y)]||(currentFloor===0?tiles[`${x},${y}`]:undefined);return t&&t.walls;}
 
 
-function applyTile(x,y){const k=key(x,y);if(currentTerrain==="erase"){delete tiles[k];return;}tiles[k]={terrain:currentTerrain,walls:wallsEnabled};}
-function applyRoof(x,y){const k=key(x,y);if(currentTerrain==="erase"){delete roofs[k];return;}roofs[k]={terrain:currentTerrain};}
+function applyTile(x,y){const k=key(x,y);tiles[k]={terrain:currentTerrain,walls:wallsEnabled};}
+function applyRoof(x,y){const k=key(x,y);roofs[k]={terrain:currentTerrain};}
 let toastTimer;
 function toast(msg){toastEl.textContent=msg;toastEl.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove("show"),2200);}
 function setStatus(s,text){statusEl.className=s;statusEl.textContent=text;}
@@ -2137,6 +2143,24 @@ function openPropDisguiseModal(propKey){
   document.getElementById("prop-disguise-modal").classList.remove("hidden");
 }
 document.getElementById("prop-disguise-cancel").onclick=()=>{document.getElementById("prop-disguise-modal").classList.add("hidden");ctxPropKey=null;};
+document.getElementById("prop-ctx-resize").onclick=async()=>{
+  propCtxMenu.style.display="none";
+  if(!ctxPropKey) return;
+  const p=props[ctxPropKey];
+  if(!p) return;
+  // Same WxH parsing as the dynamic placement prompt (promptForPropTemplate
+  // above), just pre-filled with this prop's current values instead of
+  // 1x1/1 defaults -- lets you correct a prop's size after the fact instead
+  // of deleting and re-placing it from scratch.
+  const heightStr=prompt("Prop height (grid units):", p.height||1);
+  const dimStr=(prompt("Prop dimension, WxH in grid cells (e.g. 2x1):", `${p.w||1}x${p.h||1}`)||"").trim();
+  const m=/^(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)$/i.exec(dimStr);
+  if(m){ p.w=parseFloat(m[1]); p.h=parseFloat(m[2]); }
+  const parsedHeight=parseFloat(heightStr);
+  if(!isNaN(parsedHeight)) p.height=parsedHeight;
+  await savePropsLocal(getMapName(),props);
+  toast(`Resized to ${p.w}x${p.h}, height ${p.height}`);
+};
 document.getElementById("prop-ctx-delete").onclick=async()=>{propCtxMenu.style.display="none";if(!ctxPropKey)return;delete props[ctxPropKey];await savePropsLocal(getMapName(),props);toast("Prop deleted");};
 document.getElementById("attach-cancel").onclick=()=>document.getElementById("attach-modal").classList.add("hidden");
 
@@ -2977,10 +3001,9 @@ document.getElementById("prop-confirm").onclick=()=>{const id=document.getElemen
 function buildTerrainDropdown(){
   const dd=document.getElementById("terrain-dropdown");dd.innerHTML="";
   const TERRAINS=getTERRAINS();
-  [...TERRAINS,{id:"erase",label:"Erase",color:"#1a1510"}].forEach(t=>{
+  TERRAINS.forEach(t=>{
     const el=document.createElement("div");el.className="pd-item"+(t.id===currentTerrain?" active":"");
-    if(t.id==="erase"){el.innerHTML=`<div style="font-size:16px;line-height:40px">✕</div><div class="pd-item-label">Erase</div>`;el.style.background="#1a1510";}
-    else{el.innerHTML=`<div class="pd-item-inner"></div><div class="pd-item-label">${t.label}</div>`;const inner=el.querySelector(".pd-item-inner");if(textures[t.id])inner.style.backgroundImage=`url(${textures[t.id].src})`;else inner.style.backgroundColor=t.color;}
+    el.innerHTML=`<div class="pd-item-inner"></div><div class="pd-item-label">${t.label}</div>`;const inner=el.querySelector(".pd-item-inner");if(textures[t.id])inner.style.backgroundImage=`url(${textures[t.id].src})`;else inner.style.backgroundColor=t.color;
     el.onclick=()=>{selectTerrain(t.id);dd.classList.remove("open");};dd.appendChild(el);
   });
   // Custom color picker tile
@@ -3002,8 +3025,7 @@ function selectTerrain(t){
   const TERRAINS=getTERRAINS();const def=TERRAINS.find(x=>x.id===t)||{label:t,color:"#333"};
   currentTerrain=t;document.getElementById("terrain-preview-label").textContent=def.label;
   const sw=document.getElementById("terrain-preview-swatch");
-  if(t==="erase"){sw.style.background="#1a1510";sw.textContent="✕";}
-  else{sw.style.background=def.color;sw.textContent="";sw.style.backgroundImage=textures[t]?`url(${textures[t].src})`:"none";}
+  sw.style.background=def.color;sw.textContent="";sw.style.backgroundImage=textures[t]?`url(${textures[t].src})`:"none";
   buildTerrainDropdown();
 }
 document.getElementById("terrain-picker-btn").onclick=(e)=>{e.stopPropagation();const r=document.getElementById("terrain-picker-btn").getBoundingClientRect();document.getElementById("terrain-dropdown").style.left=r.left+"px";document.getElementById("terrain-dropdown").classList.toggle("open");};
@@ -3011,14 +3033,13 @@ document.getElementById("terrain-picker-btn").onclick=(e)=>{e.stopPropagation();
 
 function buildPropDropdown(){
   const dd=document.getElementById("prop-dropdown");dd.innerHTML="";
-  const eraseEl=document.createElement("div");eraseEl.className="pd-item pd-stamp"+(currentProp==="erase"?" active":"");eraseEl.textContent="✕";eraseEl.style.fontSize="16px";eraseEl.onclick=()=>{selectProp("erase");dd.classList.remove("open");};dd.appendChild(eraseEl);
   const addEl=document.createElement("div");addEl.className="pd-item pd-stamp";addEl.textContent="➕";addEl.onclick=()=>{dd.classList.remove("open");document.getElementById("prop-modal").classList.remove("hidden");};dd.appendChild(addEl);
   customProps.forEach(p=>{const el=document.createElement("div");el.className="pd-item"+(currentProp&&!currentProp.isStamp&&currentProp.id===p.id?" active":"");const img=propTextures[p.id];if(img){el.innerHTML=`<div class="pd-item-inner" style="background-image:url(${img.src})"></div><div class="pd-item-label">${p.label}</div>`;}else{el.innerHTML=`<div style="font-size:18px;line-height:36px">${p.emoji}</div><div class="pd-item-label">${p.label}</div>`;}el.onclick=()=>{selectProp(p);dd.classList.remove("open");};dd.appendChild(el);});
   // Former "stamps" -- decals like blood, cracks, moss -- now just part of Props
   const STAMPS=getSTAMPS();
   STAMPS.forEach(s=>{const item={isStamp:true,emoji:s,label:s};const el=document.createElement("div");el.className="pd-item pd-stamp"+(currentProp&&currentProp.isStamp&&currentProp.emoji===s?" active":"");el.textContent=s;el.onclick=()=>{selectProp(item);dd.classList.remove("open");};dd.appendChild(el);});
 }
-function selectProp(p){currentProp=p;document.getElementById("prop-preview-label").textContent=p==="erase"?"Erase ✕":(p.emoji||p.label||"None");buildPropDropdown();}
+function selectProp(p){currentProp=p;document.getElementById("prop-preview-label").textContent=p.emoji||p.label||"None";buildPropDropdown();}
 document.getElementById("prop-picker-btn").onclick=(e)=>{e.stopPropagation();const r=document.getElementById("prop-picker-btn").getBoundingClientRect();document.getElementById("prop-dropdown").style.left=r.left+"px";document.getElementById("prop-dropdown").classList.toggle("open");};
 
 // Close all dropdowns on click
@@ -3073,7 +3094,7 @@ function drawProps(){
     ctx.restore();
     if(p.attachedTo){ctx.save();ctx.strokeStyle="rgba(200,168,75,0.5)";ctx.lineWidth=1/camera.zoom;ctx.setLineDash([3/camera.zoom,3/camera.zoom]);ctx.strokeRect(px,py,pw,ph);ctx.setLineDash([]);ctx.restore();}
   }
-  if(currentProp&&currentProp!=="erase"){
+  if(currentProp){
     ctx.save();ctx.globalAlpha=0.5;
     if(currentProp.isStamp){
       ctx.font=`${Math.round(TILE*.65)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";
@@ -3209,7 +3230,7 @@ function drawTriggerNodes(){
 
 function drawGrid(){ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1/camera.zoom;const l=-camera.x/camera.zoom,t=-camera.y/camera.zoom,r=(canvas.width-camera.x)/camera.zoom,b=(canvas.height-camera.y)/camera.zoom;for(let x=Math.floor(l/TILE)*TILE;x<r;x+=TILE){ctx.beginPath();ctx.moveTo(x,t);ctx.lineTo(x,b);ctx.stroke();}for(let y=Math.floor(t/TILE)*TILE;y<b;y+=TILE){ctx.beginPath();ctx.moveTo(l,y);ctx.lineTo(r,y);ctx.stroke();}}
 
-function drawPreview(){if(!(activeCategory==="background"&&activeVerb==="pencil"))return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle=currentTerrain==="erase"?"rgba(220,60,60,0.25)":"rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
+function drawPreview(){if(!(activeCategory==="background"&&activeVerb==="pencil"))return;if(!dragging){ctx.fillStyle="rgba(200,168,75,0.15)";ctx.fillRect(hoverTileX*TILE,hoverTileY*TILE,TILE,TILE);return;}const minX=Math.floor(Math.min(startX,curX)/TILE),maxX=Math.floor(Math.max(startX,curX)/TILE);const minY=Math.floor(Math.min(startY,curY)/TILE),maxY=Math.floor(Math.max(startY,curY)/TILE);ctx.fillStyle="rgba(200,168,75,0.28)";if(currentShape==="rect"){for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}else if(currentShape==="circle"){const cx=(minX+maxX)/2,cy=(minY+maxY)/2,rx=(maxX-minX)/2||0.5,ry=(maxY-minY)/2||0.5;for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const dx=(x-cx)/rx,dy=(y-cy)/ry;if(dx*dx+dy*dy<=1)ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}else if(currentShape==="line"){let x0=Math.floor(startX/TILE),y0=Math.floor(startY/TILE),x1=Math.floor(curX/TILE),y1=Math.floor(curY/TILE);const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy;while(true){ctx.fillRect(x0*TILE,y0*TILE,TILE,TILE);if(x0===x1&&y0===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x0+=sx;}if(e2<dx){err+=dx;y0+=sy;}}}}
 
 // Floor-assignment rectangle preview -- separate from drawPreview() above
 // since it's a plain outline over arbitrary geometry, not a tile-fill.
@@ -3308,7 +3329,7 @@ function drawSelection(){if(currentShape!=="select")return;if(selectPhase==="mar
 // ── Selection helpers ─────────────────────────────────────────────────────────
 function inSelection(wx,wy){if(!selectPhase||selectPhase==="marquee")return false;const tx=Math.floor(wx/TILE),ty=Math.floor(wy/TILE);return tx>=selMinX+moveOffX&&tx<=selMaxX+moveOffX&&ty>=selMinY+moveOffY&&ty<=selMaxY+moveOffY;}
 
-function liftSelection(minX,minY,maxX,maxY){selectTiles={};selMinX=minX;selMinY=minY;selMaxX=maxX;selMaxY=maxY;selStamps={};selProps={};selTokenIds=[];for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);if(tiles[k])selectTiles[k]={...tiles[k]};if(currentTerrain!=="erase")tiles[k]={terrain:currentTerrain,walls:wallsEnabled};else delete tiles[k];if(stamps[k]){selStamps[k]=stamps[k];delete stamps[k];}if(props[k]){selProps[k]={...props[k]};delete props[k];}}for(const[id,tok]of Object.entries(tokens)){if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY)selTokenIds.push(id);}moveOffX=0;moveOffY=0;scheduleSave();}
+function liftSelection(minX,minY,maxX,maxY){selectTiles={};selMinX=minX;selMinY=minY;selMaxX=maxX;selMaxY=maxY;selStamps={};selProps={};selTokenIds=[];for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){const k=key(x,y);if(tiles[k])selectTiles[k]={...tiles[k]};tiles[k]={terrain:currentTerrain,walls:wallsEnabled};if(stamps[k]){selStamps[k]=stamps[k];delete stamps[k];}if(props[k]){selProps[k]={...props[k]};delete props[k];}}for(const[id,tok]of Object.entries(tokens)){if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY)selTokenIds.push(id);}moveOffX=0;moveOffY=0;scheduleSave();}
 
 function commitSelection(){pushUndo();const ox=moveOffX,oy=moveOffY;for(const k in selectTiles){const{x:tx,y:ty}=parseTileKey(k);tiles[key(tx+ox,ty+oy)]={...selectTiles[k]};}for(const k in selStamps){const{x:tx,y:ty}=parseTileKey(k);const nk=key(tx+ox,ty+oy);stamps[nk]=selStamps[k];saveStamp(getMapName(),nk,selStamps[k]);}for(const k in selProps){const{x:tx,y:ty}=parseTileKey(k);props[key(tx+ox,ty+oy)]={...selProps[k]};}for(const id of selTokenIds){if(tokens[id]){tokens[id].x+=ox;tokens[id].y+=oy;saveTokenRTDB(getMapName(),id,tokens[id]);}}selectTiles={};selStamps={};selProps={};selTokenIds=[];selectPhase=null;moveOffX=0;moveOffY=0;scheduleSave();savePropsLocal(getMapName(),props);}
 
@@ -3585,6 +3606,12 @@ function setVerb(v){
   document.getElementById("verb-"+v)?.classList.add("active");
   canvas.style.cursor = cursorFor();
 }
+// Escape backs out of Pencil/Eraser to the "nothing selected" baseline
+// (same state as never having picked a verb) -- a quick, universal way out
+// of whatever drawing mode you're in, regardless of category.
+window.addEventListener("keydown", e => {
+  if(e.key==="Escape" && !e.target.matches("input,textarea,select,[contenteditable]")) setVerb("select");
+});
 
 // --- Bottom toolbar helpers -------------------------------------------------
 // Reuses 100% existing tool logic (setCategory/structureType/etc.) — this is
@@ -4035,7 +4062,7 @@ window.addEventListener("keydown",e=>{
     } else if(draggingProp){
       const p=props[draggingProp.oldKey];
       if(p){ p.rotation=((p.rotation||0)+delta+360)%360; }
-    } else if(activeCategory==="props"&&activeVerb==="pencil"&&currentProp&&currentProp!=="erase"){
+    } else if(activeCategory==="props"&&activeVerb==="pencil"&&currentProp){
       currentPropRotation=(currentPropRotation+delta+360)%360;
     } else if(activeCategory==="structure"&&activeVerb==="pencil"&&structureType?.startsWith("node-")&&structureType!=="node-connect"){
       currentNodeRotation=(currentNodeRotation+delta+360)%360;
@@ -4432,7 +4459,7 @@ canvas.addEventListener("contextmenu",e=>{
 // ── paintAt / eraseAt — dispatch by layer + tool ─────────────────────────────
 function paintAt(tx,ty){
   if(activeCategory==="background"){ applyTile(tx,ty); }
-  else if(activeCategory==="props" && currentProp && currentProp!=="erase"){
+  else if(activeCategory==="props" && currentProp){
     const k=key(tx,ty);
     if(currentProp.isStamp){ stamps[k]=currentProp.emoji; saveStamp(getMapName(),k,currentProp.emoji); }
     else { props[k]={propId:currentProp.id,w:currentProp.w,h:currentProp.h,rotation:currentPropRotation}; savePropsLocal(getMapName(),props); }
