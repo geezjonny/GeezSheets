@@ -506,7 +506,7 @@ import { sendChat, renderChat } from "./js/chat.js";
 import { loadLootData, generateContainerLoot, summarizeLoot } from "./js/loot.js";
 import { rollDie } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, nextTurn } from "./js/initiative.js";
-import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, resolveLinkedDoor, syncActivateEffects, rollDamage, BUTTON_PULSE_MS } from "./js/triggers.js";
+import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, resolveLinkedDoor, syncActivateEffects, rollDamage, BUTTON_PULSE_MS, isTriggerOn, fireTrigger, syncTriggerEffects } from "./js/triggers.js";
 import { subscribeRestRequest, runApprovedRest } from "./js/sheet.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMetaText, loadSheetApi, getCharacterSkillModifiers, getSpellRange, getWeaponRangeFeet } from "./js/sheet.js";
 import { subscribeTheaterMode, startTheaterFog, stopTheaterFog } from "./js/theater.js";
@@ -545,7 +545,7 @@ function getActiveLights(){
     if((tok.floor||0)!==f)continue;
     tl.push({id:`tok_light_${id}`,x:tok.x+0.5,y:tok.y+0.5,...tok.light});
   }
-  return[...floorLights(f),...tl];
+  return[...floorLights(f).filter(l=>l.on!==false),...tl]; // l.on!==false -- undefined (pre-existing lights, never touched by a trigger) still means on
 }
 // Floors: each player's "current floor" is their own token's .floor (default
 // 0). By design, different floors share the same x,y coordinates (stacked
@@ -1021,6 +1021,12 @@ function hasVisibilityBeacon(){ return mapFullVisibility||Object.values(tokens).
 function myOwnTokenEntry(){
   return Object.entries(tokens).find(([id,t])=>t.type==="pc"&&(t.name?.toLowerCase()===playerName.toLowerCase()||t.characterId===myCharacterId));
 }
+// "Within 1 space" -- Chebyshev distance (a diagonal neighbor counts as 1
+// space away, same as a straight one), from the token's center to a point
+// in world/grid coordinates. Shared by the lever and door click checks.
+function withinReach(tok,px,py){
+  return Math.max(Math.abs(tok.x+0.5-px),Math.abs(tok.y+0.5-py))<=1;
+}
 function updateTurnMenu(){
   const menu=document.getElementById("turn-menu"),tab=document.getElementById("turn-menu-tab");
   if(!menu||!tab) return;
@@ -1377,19 +1383,22 @@ function draw(){
     const{floor,x,y}=parseTileKey(k);
     if(floor!==myViewFloor())continue;
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
-    const active=isNodeActive(n,k,_occupiedForNodes,triggerNodes);
+    const active=n.type==="trigger"?isTriggerOn(n):isNodeActive(n,k,_occupiedForNodes,triggerNodes);
     const color=active?"143,208,143":"200,168,75";
     ctx.strokeStyle=`rgba(${color},0.85)`;ctx.lineWidth=Math.max(1,TILE*0.045);
     ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-    const img=propTextures[n.type];
-    const rot=(n.rotation||0)*Math.PI/180;
+    // Portal keeps its fixed icon; a trigger's look is whatever texture
+    // swatch the GM picked at placement -- same lookup as mapeditor-layers.html.
+    const lookupId=n.type==="trigger"?n.textureId:n.type;
+    if(lookupId) tryLoadPropTexture(lookupId);
+    const img=propTextures[lookupId];
     ctx.save();
-    ctx.translate(cx,cy);ctx.rotate(rot);
+    ctx.translate(cx,cy);
     if(img){
       ctx.drawImage(img,-TILE/2,-TILE/2,TILE,TILE);
     } else {
       ctx.font=`${Math.round(TILE*0.32)}px serif`;ctx.fillStyle=`rgba(${color},0.95)`;
-      ctx.fillText(NODE_ICONS[n.type]||"❓",0,0);
+      ctx.fillText(NODE_ICONS[n.type]||"🎯",0,0);
     }
     ctx.restore();
   }
@@ -1604,14 +1613,51 @@ async function toggleFlipNode(nodeKey,node){
   evaluateAllNodes();
 }
 
-function openContainerAt(tx,ty){
+// BG3-style: right-click is the only way to interact with a lever, door, or
+// container -- no left-click, no shift+click, no spacebar for any of them.
+// Same reach rule (within 1 space of your own token) applies to all three.
+function interactAt(tx,ty,wx,wy){
   const nodeKey=key(tx,ty);
   const node=triggerNodes[nodeKey];
   if(node&&node.trigger==="flip"){ toggleFlipNode(nodeKey,node); return; }
+
+  const myEntry=myOwnTokenEntry();
+
+  // Lever -- floor-aware key ("floor,x,y", matching how mapeditor-layers.html's
+  // key() actually stores these), unlike the floor-less nodeKey above.
+  const triggerKey=`${myViewFloor()},${tx},${ty}`;
+  const triggerNode=triggerNodes[triggerKey];
+  if(triggerNode&&triggerNode.type==="trigger"){
+    if(!myEntry||!withinReach(myEntry[1],tx+0.5,ty+0.5)){ toast("Too far away to reach that."); return; }
+    fireTrigger(currentMap,triggerKey,triggerNode).then(()=>evaluateAllNodes());
+    toast("🔗 You flip it.");
+    return;
+  }
+
+  // Door -- uses the actual click position (not just the cell center) for
+  // the hit test, since a door can run along a cell edge rather than
+  // through its middle.
+  const clickedDoorSeg=segmentAtPoint([],floorDoors(),wx/TILE,wy/TILE,0.4);
+  if(clickedDoorSeg){
+    const d=geometry.doors.find(x=>x.id===clickedDoorSeg.id);
+    if(d){
+      if(!myEntry||!withinReach(myEntry[1],(d.x1+d.x2)/2,(d.y1+d.y2)/2)){ toast("Too far away to reach that."); return; }
+      if(d.locked){
+        toast(`🔒 This door is locked.`);
+      } else {
+        d.closed=!d.closed;
+        set(ref(db,`maps/${currentMap}/geometry/doors`), geometry.doors.length?geometry.doors:null);
+      }
+    }
+    return;
+  }
+
+  // Container
   const pk=propAtTile(tx,ty);
   if(!pk||!props[pk]?.container) return;
   const container=props[pk].container;
   if(container.looted){ toast("It's already empty."); return; }
+  if(!myEntry||!withinReach(myEntry[1],tx+0.5,ty+0.5)){ toast("Too far away to reach that."); return; }
   if(!myCharacterId){ toast("Pick a character first."); return; }
   const{coins,items}=generateContainerLoot(container.tier);
   (async()=>{
@@ -1632,7 +1678,7 @@ viewport.addEventListener("contextmenu",e=>{
   if(e.target.closest("#turn-menu,#turn-menu-tab")) return;
   e.preventDefault();
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);const[tx,ty]=worldToTile(wx,wy,TILE);
-  openContainerAt(tx,ty);
+  interactAt(tx,ty,wx,wy);
 });
 
 
@@ -1682,26 +1728,14 @@ viewport.addEventListener("pointerdown",e=>{
     _weaponTargeting=null;
     return;
   }
-  if(e.shiftKey){ openContainerAt(tx,ty); return; }
   const tokId=tokenAtTile(tokens,tx,ty);
   if(tokId){
     return; // sheets only open from the initiative bar now, not by clicking tokens on the map
   }
 
-  // Door click — geometry doors are the only door system now
-  const clickedDoorSeg=segmentAtPoint([],floorDoors(),wx/TILE,wy/TILE,0.4);
-  if(clickedDoorSeg){
-    const d=geometry.doors.find(x=>x.id===clickedDoorSeg.id);
-    if(d){
-      if(d.locked){
-        toast(`🔒 This door is locked.`);
-      } else {
-        d.closed=!d.closed;
-        set(ref(db,`maps/${currentMap}/geometry/doors`), geometry.doors.length?geometry.doors:null);
-      }
-    }
-    return;
-  }
+  // Levers, doors, and containers are all right-click only now (see the
+  // contextmenu handler above) -- left-click here is purely for panning/
+  // pinging/laser-pointing.
   isHolding=false;
   if(!pingsLocked) pingHoldTimer=setTimeout(()=>{isHolding=true;myLaserRef=startLaser(playerName,wx,wy);},300);
   panning=true;panStartX=e.clientX;panStartY=e.clientY;camStartX=camera.x;camStartY=camera.y;
@@ -1721,6 +1755,7 @@ viewport.addEventListener("pointerup",e=>{
   if(draggingToken){
     const tok=tokens[draggingToken.id];
     update(ref(db,`maps/${currentMap}/tokens/${draggingToken.id}`),{x:tok.x,y:tok.y});
+    checkTriggersAtLanding(tok,draggingToken.id);
     draggingToken=null;return;
   }
   clearTimeout(pingHoldTimer);
@@ -1771,10 +1806,10 @@ function checkNpcSight(myTok){
   }
 }
 
-// ── Keyboard movement (arrow keys) — own token only, wall-blocked ─────────────
+// ── Keyboard movement (arrow keys or WASD) — own token only, wall-blocked ─────
 let _lastMoveTime=0;
 window.addEventListener("keydown",e=>{
-  const dirs={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0]};
+  const dirs={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],a:[-1,0],s:[0,1],d:[1,0],W:[0,-1],A:[-1,0],S:[0,1],D:[1,0]};
   const d=dirs[e.key];
   if(!d) return;
   if(e.target.matches("input,textarea,select,[contenteditable]")) return;
@@ -1810,6 +1845,15 @@ window.addEventListener("keydown",e=>{
     applyMirrorMovement(currentMap,mirrors,tokens,tokId,dx,dy).catch(()=>{});
   }
   checkNpcSight(tok);
+  checkTriggersAtLanding(tok,tokId);
+});
+
+// Shared by every way a token's position can change (keyboard movement
+// above, drag-to-move below) -- so a trigger fires the same way regardless
+// of how the token got there. Previously this logic only lived inside the
+// keyboard-movement handler, so dragging a token past a trigger silently
+// did nothing.
+function checkTriggersAtLanding(tok,tokId){
   // Step-trigger node check -- latch nodes fire their one-shot effect only
   // the first time they're ever triggered; momentary nodes fire every time
   // (arriving IS the edge, there's no persisted state to compare against).
@@ -1833,14 +1877,24 @@ window.addEventListener("keydown",e=>{
       fireNodeOneShotEffect(landedNode,tokId,tok);
     }
   }
+  // New unified trigger system (type:"trigger") is interact-only now (no
+  // occupy-based firing) -- levers are flipped via right-click (interactAt),
+  // not by walking onto them. Nothing to check on landing for it.
   evaluateAllNodes();
-});
+}
 
 function evaluateAllNodes(){
   const occupiedKeys=new Set(Object.values(tokens).map(t=>`${t.x},${t.y}`));
   const _vf=myViewFloor();
   const _floorTriggerNodes=Object.fromEntries(Object.entries(triggerNodes).filter(([k])=>parseTileKey(k).floor===_vf));
   syncActivateEffects(currentMap,_floorTriggerNodes,floorDoors(_vf),occupiedKeys).catch(()=>{});
+  // New unified trigger system -- separate call, using the FULL doors/lights
+  // arrays rather than floor-filtered ones, since syncTriggerEffects writes
+  // the whole array back to Firebase -- passing a floor-filtered subset
+  // would silently delete every other floor's doors/lights from the
+  // database on the next write. No occupancy needed anymore -- levers are
+  // interact-only now.
+  syncTriggerEffects(currentMap,triggerNodes,geometry.doors,geometry.lights).catch(()=>{});
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
