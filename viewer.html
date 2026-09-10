@@ -138,6 +138,20 @@
     border-radius: 8px; padding: 6px 10px; gap: 6px; align-items: center;
     font-family: 'Cinzel', serif;
   }
+  #viewer-toast {
+    display: none; position: fixed; bottom: 18%; left: 50%; transform: translateX(-50%);
+    z-index: 20; background: rgba(30, 22, 14, 0.9); border: 1px solid #3a2c18;
+    border-radius: 8px; padding: 8px 16px; font-family: 'Cinzel', serif;
+    font-size: 13px; color: #ecdfc0; pointer-events: none; text-align: center;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  #viewer-toast.show { display: block; opacity: 1; }
+  #map-panel {
+    display: none; position: fixed; top: 12px; right: 12px; z-index: 15;
+    width: 340px; height: 340px; background: #0d0b08; border: 2px solid #3a2c18;
+    border-radius: 8px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.5);
+  }
+  #map-panel-iframe { width: 100%; height: 100%; border: 0; }
   .init-pill {
     font-size: 11px; padding: 4px 10px; border-radius: 999px;
     background: rgba(255,255,255,0.06); color: #ecdfc0;
@@ -205,6 +219,12 @@
 
   <div id="initiative-bar"></div>
 
+  <div id="viewer-toast"></div>
+
+  <div id="map-panel">
+    <iframe id="map-panel-iframe" title="Map"></iframe>
+  </div>
+
   <div id="rpg-hud">
     <div id="rpg-hud-top">
       <span id="rpg-hud-name"></span>
@@ -231,7 +251,6 @@
     import { sHpColor } from "./js/sheet.js";
     import { rollDie, animateDiceResult } from "./js/dice.js";
     import { sendPing } from "./js/pings.js";
-    import { fireTrigger, syncTriggerEffects } from "./js/triggers.js";
     import { generateContainerLoot, summarizeLoot } from "./js/loot.js";
     import { sendChat } from "./js/chat.js";
 
@@ -297,12 +316,36 @@
     // deliberate simplification for now, not something this file tries to
     // solve. Undefined/missing .floor on any item defaults to 0.
     function floorY(floor) { return (floor || 0) * WALL_HEIGHT; }
+    // Three.js supports layers 0-31. Floors are typically small integers
+    // (basements can go negative), so +16 keeps any realistic floor number
+    // in range without floors needing to know about this offset at all --
+    // it's purely a rendering-visibility mechanism, used by the top-down
+    // camera to show only one floor at a time instead of every floor
+    // stacked on top of each other. Layer 0 is intentionally never used by
+    // any real floor (floor -16 would collide with it) so it's free for
+    // anything that should always render regardless of camera.layers.
+    function layerForFloor(floor) { return Math.max(1, Math.min(31, (floor || 0) + 16)); }
+    // Tags an object AND every descendant with a floor's layer -- layers
+    // are NOT inherited from parent to child in Three.js, so a Group with
+    // untagged children would still render on layer 0 regardless of what
+    // the group itself is set to.
+    function setFloorLayer(object, floor) {
+      const layer = layerForFloor(floor);
+      object.traverse(o => o.layers.set(layer));
+    }
 
     // --- THREE.JS SETUP ---
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0e0a06);
 
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 2000);
+    // Every mesh is tagged with a floor-specific layer (1-31, see
+    // layerForFloor above) -- without this, the camera's default (layer 0
+    // only) would render nothing at all, since nothing is ON layer 0. This
+    // keeps every mode seeing every floor stacked, same as before the
+    // tagging existed; the layer data itself is just currently-unused
+    // infrastructure, kept because it's harmless and may be useful again.
+    camera.layers.enableAll();
     camera.position.set(20, 25, 20);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -346,7 +389,6 @@
     const bgGroup = new THREE.Group();    worldGroup.add(bgGroup);
     const mapLayersGroup = new THREE.Group(); worldGroup.add(mapLayersGroup);
     const propGroup = new THREE.Group(); worldGroup.add(propGroup);
-    const triggerGroup = new THREE.Group(); worldGroup.add(triggerGroup);
     const gltfLoader = new THREE.GLTFLoader();
 
     // --- Token view state (must be declared before animate() runs -- see
@@ -411,6 +453,7 @@
     // same reason, since animate() calls updateRuler3d() every frame too.
     let rulerActive3d = false;
     const raycaster3d = new THREE.Raycaster();
+    raycaster3d.layers.enableAll(); // same reasoning as camera.layers.enableAll() above -- nothing is on layer 0 anymore
     const screenCenter = new THREE.Vector2(0, 0);
     function animate() {
       requestAnimationFrame(animate);
@@ -517,7 +560,7 @@
 
     // --- Rebuilders: one per data section, so a change to just tokens
     // doesn't rebuild the whole map's geometry, etc. ---
-    let latestTiles = {}, latestGeometry = { walls: [], doors: [], lights: [] }, latestTokens = {}, latestProps = {}, latestTriggerNodes = {};
+    let latestTiles = {}, latestGeometry = { walls: [], doors: [], lights: [] }, latestTokens = {}, latestProps = {};
 
     // mapeditor-layers.html now writes tile keys as "floor,x,y" (was "x,y")
     // so painted terrain can be tagged per-floor -- old keys are still valid
@@ -540,6 +583,7 @@
         mesh.rotation.x = -Math.PI / 2;
         mesh.position.set(x + 0.5, TERRAIN_TILE_Y + floorY(floor), y + 0.5);
         mesh.receiveShadow = true;
+        mesh.layers.set(layerForFloor(floor));
         tileGroup.add(mesh);
       }
       console.log(`[tiles] ${Object.keys(latestTiles).length} painted cell(s)`);
@@ -559,6 +603,10 @@
       // stone.png/wood.png for terrain, walls/doors pick them up for free.
       const wallMat = getTerrainMaterial('stone');
       const doorMat = getTerrainMaterial('wood');
+      // Glass-like, not texture-based like the others -- a window is a
+      // fixed pane, never opens/closes, so there's no "closed" art to swap
+      // to the way a door has. Distinct on sight from both wall and door.
+      const windowMat = new THREE.MeshStandardMaterial({ color: 0xaad4e8, roughness: 0.15, transparent: true, opacity: 0.45 });
 
       function addSegment(seg, group, material) {
         const dx = seg.x2 - seg.x1, dz = seg.y2 - seg.y1;
@@ -582,16 +630,22 @@
           mesh.rotation.y = angle;
           mesh.castShadow = true;
           mesh.userData.segId = seg.id; // lets a raycast hit trace back to which door (or wall) this came from
+          mesh.layers.set(layerForFloor(seg.floor));
           group.add(mesh);
         }
       }
       for (const w of latestGeometry.walls || []) addSegment(w, wallGroup, wallMat);
-      // Open doors render as nothing -- an actual gap you can see/walk
-      // through -- matching isMoveBlocked()'s existing "open doors don't
-      // block" rule below. Without this, toggling a door open via spacebar
-      // would still show a solid box even though movement already treats it
-      // as passable, a confusing mismatch.
-      for (const d of latestGeometry.doors || []) { if (d.closed !== false) addSegment(d, doorGroup, doorMat); }
+      // A window is a fixed pane -- always rendered, regardless of
+      // closed/open, since it has no opening mechanism at all (dd2vtt's
+      // tagWindowsFromMixedDoors forces closed:true on these for exactly
+      // this reason, but checking isWindow directly here doesn't even rely
+      // on that). Open doors (closed:false, and NOT a window) render as
+      // nothing -- an actual gap you can see/walk through -- matching
+      // isMoveBlocked()'s existing "open doors don't block" rule below.
+      for (const d of latestGeometry.doors || []) {
+        if (d.isWindow) { addSegment(d, doorGroup, windowMat); continue; }
+        if (d.closed !== false) addSegment(d, doorGroup, doorMat);
+      }
 
       for (const l of latestGeometry.lights || []) {
         if (l.on === false) continue; // l.on!==false -- undefined (pre-existing lights, never touched by a trigger) still means on, same convention as index-layers.html/mapeditor-layers.html
@@ -653,6 +707,7 @@
         );
         mesh.rotation.x = -Math.PI / 2;
         mesh.position.set((minX + maxX) / 2, FALLBACK_FLOOR_Y + floorY(floor), (minY + maxY) / 2);
+        mesh.layers.set(layerForFloor(floor));
         fallbackFloorGroup.add(mesh);
       }
     }
@@ -713,6 +768,7 @@
           back.rotation.y = Math.PI; // faces the opposite direction, same (non-mirrored) texture
           container.add(front, back);
         }
+        setFloorLayer(container, tok.floor);
         tokenGroup.add(container);
       }
       console.log(`[tokens] ${Object.keys(latestTokens).length} token(s)`, latestTokens);
@@ -793,6 +849,7 @@
         const tok = latestTokens[myLockedTokenId];
         indicator.textContent = `Playing as: ${tok ? (tok.name || myLockedTokenId) : '(token removed)'}`;
         updateRpgHud();
+        setupMapPanelIframe(tok);
         // Deliberately does NOT touch camera position or fpYaw/fpPitch here.
         // This function runs on every Firebase sync -- including the ones
         // caused by your OWN movement writes -- so resetting the view here
@@ -805,6 +862,29 @@
         indicator.textContent = 'GM (omniscient)';
         document.getElementById('rpg-hud').style.display = 'none';
       }
+    }
+    // The map panel: index-layers.html embedded read-only-ish, toolbar
+    // hidden, auto-logged-in as the same character this app is already
+    // showing -- see index-layers.html's own `embed=1` handling. Identity is
+    // read off the actual resolved token record (tok.name/tok.characterId),
+    // not the separate myPlayerName/myCharacterId variables, because those
+    // are never set at all when login happened via the older saved-role/
+    // saved-token restore path (tryAutoLogin) rather than the name+character
+    // form -- the token record is the one thing guaranteed to exist
+    // whichever path got you logged in. Guarded against reassigning src to
+    // the same URL, which would otherwise reload the iframe on every sync.
+    function setupMapPanelIframe(tok) {
+      const iframe = document.getElementById('map-panel-iframe');
+      if (!iframe || !tok) return;
+      const params = new URLSearchParams({
+        embed: '1',
+        name: tok.name || '',
+        charId: tok.characterId || '',
+        charName: myCharacterName || tok.name || '',
+      });
+      const url = `index-layers.html?${params.toString()}`;
+      if (iframe.getAttribute('src') !== url) iframe.src = url;
+      document.getElementById('map-panel').style.display = 'block';
     }
 
     function loginAsGM() {
@@ -1077,7 +1157,7 @@
       }
       for (const d of latestGeometry.doors || []) {
         if ((d.floor || 0) !== floor) continue;
-        if (d.closed === false) continue; // open doors don't block
+        if (!d.isWindow && d.closed === false) continue; // open doors don't block -- but a window always blocks, regardless of its (forced-true) closed state
         if (segmentsIntersect(fx, fy, tx, ty, d.x1, d.y1, d.x2, d.y2)) return true;
       }
       return false;
@@ -1087,15 +1167,6 @@
     // now right-click-only, via the crosshair raycast (interactWithLookedAt/
     // resolveInteractable below), which needs no distance-to-segment math at
     // all since THREE.js's raycaster already does the geometry intersection.
-    // Flips a lever and re-syncs whatever door/light it's linked to --
-    // shared by both the spacebar and right-click interact paths below.
-    function interactWithLever(lever) {
-      fireTrigger(currentConnectedMap, lever.key, lever.node).then(() => {
-        lever.node.on = !lever.node.on; // optimistic local update, same pattern as door toggling above
-        rebuildTriggerNodes(); // so the flip shows immediately, not just once Firebase's own update round-trips back
-        return syncTriggerEffects(currentConnectedMap, latestTriggerNodes, latestGeometry.doors, latestGeometry.lights);
-      }).catch(() => {});
-    }
     // Opens a container prop -- same flow as index-layers.html's
     // openContainerAt (loot roll, inventory write, mark looted, chat
     // announcement), just reached by looking at it and clicking instead of
@@ -1117,15 +1188,26 @@
       prop.container.looted = true;
       sendChat(`🎒 ${myCharacterName || myPlayerName || 'Someone'} searched it and found: ${summarizeLoot(coins, items)}.`, 'GM', 'system');
     }
-    // Walks up from a raycast-hit mesh to find which door/lever/prop it
-    // belongs to -- individual meshes aren't tagged (a door can be several
-    // small wall-segment boxes, a voxel model dozens of tiny cubes), but
-    // the group containing all of them is.
+    // Simple fixed-position toast for brief feedback (e.g. "door is locked")
+    // -- viewer.html had no notification system at all before this; a
+    // locked door previously only logged to the console, so failing to
+    // open one looked identical to the interaction being broken.
+    let toastTimer = null;
+    function toast(msg) {
+      const el = document.getElementById('viewer-toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+    // Walks up from a raycast-hit mesh to find which door/prop it belongs
+    // to -- individual meshes aren't tagged (a door can be several small
+    // wall-segment boxes, a voxel model dozens of tiny cubes), but the
+    // group containing all of them is.
     function resolveInteractable(object) {
       let o = object;
       while (o) {
         if (o.userData.segId !== undefined) return { kind: 'door', id: o.userData.segId };
-        if (o.userData.triggerKey !== undefined) return { kind: 'trigger', key: o.userData.triggerKey };
         if (o.userData.propKey !== undefined) return { kind: 'prop', key: o.userData.propKey };
         o = o.parent;
       }
@@ -1141,9 +1223,9 @@
       if (!hits.length || hits[0].distance > 1.5) return null;
       return resolveInteractable(hits[0].object);
     }
-    // BG3-style: right-click interacts with whatever door/lever/container
-    // you're aiming at (crosshair raycast) -- the only way to interact in
-    // 3D now, no left-click, no spacebar.
+    // BG3-style: right-click interacts with whatever door/container you're
+    // aiming at (crosshair raycast) -- the only way to interact in 3D now,
+    // no left-click, no spacebar.
     function interactWithLookedAt() {
       if (myRole !== 'pc' || !firstPersonMode || !myLockedTokenId || !currentConnectedMap) return;
       const target = findLookedAtInteractable();
@@ -1151,14 +1233,12 @@
       if (target.kind === 'door') {
         const door = (latestGeometry.doors || []).find(d => d.id === target.id);
         if (!door) return; // was actually a wall segment, not a door
-        if (door.locked) { console.log('[door] locked, cannot open without a key'); return; }
+        if (door.isWindow) { toast('🪟 Just a window.'); return; }
+        if (door.locked) { toast('🔒 This door is locked.'); return; }
         const doors = (latestGeometry.doors || []).map(d => d.id === door.id ? { ...d, closed: !d.closed } : d);
         latestGeometry.doors = doors;
         rebuildGeometry();
         set(ref(db, `maps/${currentConnectedMap}/geometry/doors`), doors.length ? doors : null).catch(() => {});
-      } else if (target.kind === 'trigger') {
-        const node = latestTriggerNodes[target.key];
-        if (node) interactWithLever({ key: target.key, node });
       } else if (target.kind === 'prop') {
         openContainer3d(target.key).catch(() => {});
       }
@@ -1326,59 +1406,10 @@
           box.position.y = propHeight / 2; // box center up to half its height, so its bottom face sits on the floor
           container.add(box);
         }
+        setFloorLayer(container, floor);
         propGroup.add(container);
       }
       console.log(`[props] ${Object.keys(latestProps).length} prop(s)`);
-    }
-
-    // Trigger nodes (levers) -- same texture/voxel lookup chain as props,
-    // since textureId is just a swatch reference into the same ./props/
-    // folder. Portal nodes aren't rendered here at all yet -- only type:
-    // "trigger" (levers). Fixed small size (not w/h/height like props,
-    // since triggers don't carry those fields) -- a lever is a small
-    // interactive object, not a placed prop with its own footprint.
-    const TRIGGER_SIZE = 0.4;
-    function rebuildTriggerNodes() {
-      while (triggerGroup.children.length) triggerGroup.remove(triggerGroup.children[0]);
-      for (const key in latestTriggerNodes) {
-        const n = latestTriggerNodes[key];
-        if (n.type !== 'trigger' || !n.textureId) continue;
-        const { floor, x, y } = parseTileKey(key);
-        const cx = x + 0.5, cz = y + 0.5;
-        const baseY = FLOOR_SURFACE_Y + floorY(floor);
-
-        ensurePropVoxelLoaded(n.textureId);
-        const voxelTemplate = propVoxelCache[n.textureId];
-
-        const container = new THREE.Group();
-        container.position.set(cx, baseY, cz);
-        container.userData.triggerKey = key; // lets a raycast hit trace back to this lever
-
-        // Spins 180 degrees to face the opposite direction when activated --
-        // a physical state indicator instead of a color/glow. Rotating
-        // around Y keeps it upright the whole time, no flip/inversion.
-        // Pivoting at the model's own vertical center (not the floor) so it
-        // turns in place rather than swinging its base off to one side.
-        const spinGroup = new THREE.Group();
-        spinGroup.position.y = TRIGGER_SIZE / 2;
-        if (n.on) spinGroup.rotation.y = Math.PI;
-        container.add(spinGroup);
-
-        if (voxelTemplate && voxelTemplate !== 'loading' && voxelTemplate !== 'error') {
-          const instance = voxelTemplate.clone(true);
-          const used = voxelTemplate.userData.usedSize;
-          instance.scale.set(TRIGGER_SIZE / used.x, TRIGGER_SIZE / used.y, TRIGGER_SIZE / used.z);
-          instance.position.y = -TRIGGER_SIZE / 2; // model's own coords run 0..TRIGGER_SIZE (resting on floor) -- shift so its center lines up with spinGroup's pivot
-          spinGroup.add(instance);
-        } else {
-          // BoxGeometry is centered at its own origin by default, which is
-          // exactly spinGroup's pivot point -- no extra offset needed here.
-          const box = new THREE.Mesh(new THREE.BoxGeometry(TRIGGER_SIZE, TRIGGER_SIZE, TRIGGER_SIZE), getPropBoxMaterial(n.textureId));
-          spinGroup.add(box);
-        }
-        triggerGroup.add(container);
-      }
-      console.log(`[triggers] ${Object.keys(latestTriggerNodes).length} node(s)`);
     }
 
     function rebuildBackground(url, ppi) {
@@ -1401,6 +1432,7 @@
         // painted tile in a given cell visually wins over the background
         // there while unpainted cells show the background straight through.
         mesh.position.set(w / 2, FLOOR_ART_Y, h / 2);
+        mesh.layers.set(layerForFloor(0)); // background has no per-floor concept yet -- always floor 0
         bgGroup.add(mesh);
         console.log(`[background] loaded ${img.naturalWidth}x${img.naturalHeight}px @ ${ppi}ppi -> ${w.toFixed(1)}x${h.toFixed(1)} grid units`);
       };
@@ -1434,6 +1466,7 @@
           // Same "truth" layer as the background plane -- painted tiles
           // still render above this, same reasoning as rebuildBackground().
           mesh.position.set(layer.x + layer.w / 2, FLOOR_ART_Y + floorY(layer.floor), layer.y + layer.h / 2);
+          mesh.layers.set(layerForFloor(layer.floor));
           mapLayersGroup.add(mesh);
           console.log(`[mapLayers] "${id}" loaded, ${layer.w}x${layer.h} grid units at (${layer.x},${layer.y}), floor ${layer.floor || 0}`);
         };
@@ -1470,9 +1503,6 @@
 
         latestTokens = data.tokens || {};
         rebuildTokens();
-
-        latestTriggerNodes = data.triggerNodes || {};
-        rebuildTriggerNodes();
 
         latestProps = data.props || {};
         rebuildProps();

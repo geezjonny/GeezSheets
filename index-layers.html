@@ -31,7 +31,6 @@ button.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168
 #viewport.pinging{cursor:crosshair}
 canvas{display:block;width:100%;height:100%}
 #scale-label{position:absolute;bottom:8px;left:8px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);pointer-events:none}
-#weather-indicator{position:absolute;bottom:8px;left:60px;font-family:'Cinzel',serif;font-size:9px;color:var(--dim);pointer-events:none}
 #session-header{display:none}
 #session-header{font-family:'Cinzel',serif;font-size:10px;color:var(--gold);letter-spacing:.1em;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0}
 #chat-log{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px}
@@ -281,15 +280,6 @@ canvas{display:block;width:100%;height:100%}
 .login-field input:focus,.login-field select:focus{border-color:var(--gold-dim)}
 .login-field select option{background:var(--panel)}
 .login-divider{height:1px;background:var(--border);margin:6px 0 16px}
-.mic-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:6px;margin-bottom:14px;cursor:pointer;transition:border-color .15s}
-.mic-row:hover{border-color:var(--gold-dim)}
-.mic-row.granted{border-color:rgba(90,154,90,.5);background:rgba(90,154,90,.05)}
-.mic-row.denied{border-color:rgba(224,64,64,.4);background:rgba(224,64,64,.04);cursor:default}
-.mic-icon{font-size:20px;flex-shrink:0}
-.mic-text{flex:1}
-.mic-text strong{font-family:'Cinzel',serif;font-size:.7rem;font-weight:600;color:var(--text);display:block;margin-bottom:1px}
-.mic-text span{font-family:'Cinzel',serif;font-size:.6rem;color:var(--dim)}
-.mic-check{font-size:14px}
 .login-btn{width:100%;height:42px;border:1px solid rgba(200,168,75,.5);border-radius:6px;background:rgba(200,168,75,.08);color:var(--gold);font-family:'Cinzel',serif;font-size:.8rem;font-weight:600;letter-spacing:.08em;cursor:pointer;margin-top:4px;transition:all .15s}
 .login-btn:hover{background:rgba(200,168,75,.16);border-color:var(--gold)}
 .login-err{font-family:'Cinzel',serif;font-size:.65rem;color:var(--red);text-align:center;min-height:16px;margin-top:-8px;margin-bottom:4px}
@@ -342,15 +332,6 @@ canvas{display:block;width:100%;height:100%}
 
     <div class="login-divider"></div>
 
-    <div class="mic-row" id="mic-row" onclick="requestMic()">
-      <div class="mic-icon">🎤</div>
-      <div class="mic-text">
-        <strong>Microphone</strong>
-        <span id="mic-status-text">Click to enable talking indicator</span>
-      </div>
-      <div class="mic-check" id="mic-check">○</div>
-    </div>
-
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-confirm">Enter the Dungeon</button>
   </div>
@@ -384,7 +365,6 @@ canvas{display:block;width:100%;height:100%}
     <button id="pingBtn">📍 Ping</button>
     <button id="rulerBtn" title="Ruler">📏 Ruler</button>
     <button id="glossaryBtn" title="Glossary (G)">📖</button>
-    <button id="micBtn">🎤 Mic</button>
     <button id="sheet-toggle-btn" title="Character Sheet" onclick="window._toggleSheetPanel && window._toggleSheetPanel()" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">📋</button>
     <button id="pip3d-toggle-btn" title="3D view of your character's position" style="height:26px;padding:0 10px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text-dim);font-family:'Cinzel',serif;font-size:9px;cursor:pointer">🧊 3D</button>
     <div id="dice-hud"></div>
@@ -396,9 +376,6 @@ canvas{display:block;width:100%;height:100%}
   <div id="viewport">
     <canvas id="canvas"></canvas>
     <div id="scale-label">100%</div>
-    <div id="weather-indicator"></div>
-    <canvas id="tom-fog" style="position:absolute;inset:0;display:none;z-index:5000;pointer-events:none"></canvas>
-    <div id="tom-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:5001;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;color:var(--gold-dim,#a8935a);text-transform:uppercase;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.8)">🎭 Theater of the Mind</div>
     <div id="investigate-banner" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:none;z-index:400;max-width:70%;background:rgba(20,16,10,.88);border:1px solid var(--gold-dim,#a8935a);border-radius:6px;padding:8px 16px;font-family:'IM Fell English',serif;font-size:14px;line-height:1.5;color:var(--text,#d4c49a);text-align:center;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.6)"></div>
 
     <!-- Picture-in-picture 3D view (viewer.html embedded via iframe). Same
@@ -491,30 +468,25 @@ import { db }                from "./js/firebase.js";
 import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getDICE, TILE } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
-import { weather, initParticles, applyWeatherData, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
 import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, pathBlocked, computeReachableTiles, computeRangeTiles, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser, sendAttackTarget, drawAttackTargets } from "./js/pings.js";
-import { drawChains } from "./js/chains.js";
-import { mirrorsForLeader, applyMirrorMovement } from "./js/mirrors.js";
 import { resolvePropId, tokenDisguiseRules } from "./js/disguise.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
-import { startMicListener, stopMicListener, subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { subscribePassphrase, checkPassphrase, hasPassphraseSet, saveAuthSession, loadAuthSession } from "./js/auth.js";
 import { sendChat, renderChat } from "./js/chat.js";
 import { loadLootData, generateContainerLoot, summarizeLoot } from "./js/loot.js";
 import { rollDie } from "./js/dice.js";
 import { subscribeTokenStrip, rollInitiative, nextTurn } from "./js/initiative.js";
-import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, resolveLinkedDoor, syncActivateEffects, rollDamage, BUTTON_PULSE_MS, isTriggerOn, fireTrigger, syncTriggerEffects } from "./js/triggers.js";
+import { saveTriggerNodes, genNodeId, isNodeActive, resolveLinkedNode, syncActivateEffects, rollDamage, BUTTON_PULSE_MS } from "./js/triggers.js";
 import { subscribeRestRequest, runApprovedRest } from "./js/sheet.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, sheetSpellDesc, sheetSpellMetaText, loadSheetApi, getCharacterSkillModifiers, getSpellRange, getWeaponRangeFeet } from "./js/sheet.js";
-import { subscribeTheaterMode, startTheaterFog, stopTheaterFog } from "./js/theater.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},chains={},triggerNodes={},mirrors={};
+let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},triggerNodes={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let mapFullVisibility=false; // per-map, mirrors maps/{mapName}/fullVisibility
 // Confirmed map-stitching layers -- read-only here, players never place or
@@ -578,8 +550,6 @@ const activePings={},activeLasers={},activeAttackTargets={};
 let draggingToken=null,panning=false;
 let panStartX=0,panStartY=0,camStartX=0,camStartY=0;
 let rulerStart=null,rulerEnd=null,rulerActive=false;
-let micEnabled=false;
-let micPermission="unknown"; // "unknown" | "granted" | "denied"
 let myCharacterId=null,myCharacterName=null;
 let initiative={order:[],active:null};
 let liveUnsub=null;
@@ -599,7 +569,6 @@ const nameDisplay= document.getElementById("player-name-display");
 const chatLog    = document.getElementById("chat-log");
 const chatInput  = document.getElementById("chat-input");
 const initTrack  = document.getElementById("init-track");
-const micBtn     = document.getElementById("micBtn");
 
 // Login elements
 const loginName      = document.getElementById("login-name");
@@ -608,36 +577,12 @@ const loginChar      = document.getElementById("login-char");
 const loginPass      = document.getElementById("login-pass");
 const loginPassField = document.getElementById("login-pass-field");
 const loginErr       = document.getElementById("login-err");
-const micRow         = document.getElementById("mic-row");
-const micStatusText  = document.getElementById("mic-status-text");
-const micCheck       = document.getElementById("mic-check");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function setStatus(cls,text){statusEl.className=cls;statusEl.textContent=text;}
 function toast(msg){pingToast.textContent=msg;pingToast.classList.add("show");setTimeout(()=>pingToast.classList.remove("show"),2500);}
 function screenPos(e){const r=viewport.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
 
-// ── Mic permission request (login modal) ──────────────────────────────────────
-window.requestMic = async function(){
-  if(micPermission==="denied") return;
-  if(micPermission==="granted"){micPermission="unknown";updateMicUI();return;}
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    stream.getTracks().forEach(t=>t.stop()); // just checking permission
-    micPermission="granted";
-  }catch(e){
-    micPermission="denied";
-  }
-  updateMicUI();
-};
-
-function updateMicUI(){
-  micRow.classList.toggle("granted",micPermission==="granted");
-  micRow.classList.toggle("denied",micPermission==="denied");
-  if(micPermission==="granted"){micStatusText.textContent="Microphone enabled";micCheck.textContent="✓";}
-  else if(micPermission==="denied"){micStatusText.textContent="Access denied — check browser settings";micCheck.textContent="✗";}
-  else{micStatusText.textContent="Click to enable talking indicator";micCheck.textContent="○";}
-}
 
 // ── Populate login dropdowns from RTDB ────────────────────────────────────────
 async function populateLoginDropdowns(){
@@ -687,12 +632,6 @@ async function confirmLogin(){
   myCharacterName=charEntry?.name||null;
   saveAuthSession(name,charId,charEntry?.name||null,loginCampaign.value);
 
-  // Start mic if permission was granted in the modal
-  if(micPermission==="granted"&&!micEnabled){
-    const ok=await startMicListener(playerName);
-    if(ok){micEnabled=true;micBtn.classList.add("active");micBtn.textContent="🎤 On";}
-  }
-
   loginModal.classList.add("hidden");
   nameDisplay.textContent=playerName+(myCharacterName?` · ${myCharacterName}`:"");
   writePresence(playerName,"map");
@@ -705,20 +644,6 @@ window.addEventListener("beforeunload",()=>{if(playerName)set(ref(db,`presence/$
 document.getElementById("login-confirm").onclick=confirmLogin;
 loginName.addEventListener("keydown",e=>{if(e.key==="Enter")confirmLogin();});
 
-// ── HUD mic toggle ────────────────────────────────────────────────────────────
-micBtn.onclick=async()=>{
-  if(!playerName){loginModal.classList.remove("hidden");return;}
-  micEnabled=!micEnabled;
-  if(micEnabled){
-    const ok=await startMicListener(playerName);
-    if(!ok){micEnabled=false;toast("Mic access denied");return;}
-    micBtn.classList.add("active");micBtn.textContent="🎤 On";
-  }else{
-    stopMicListener(playerName);
-    micBtn.classList.remove("active");micBtn.textContent="🎤 Mic";
-  }
-};
-
 // Re-login from name display
 nameDisplay.onclick=()=>{
   populateLoginDropdowns();
@@ -726,18 +651,12 @@ nameDisplay.onclick=()=>{
 };
 
 // ── Resize ────────────────────────────────────────────────────────────────────
-function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;initParticles(canvas.width,canvas.height);}
+function resize(){canvas.width=viewport.clientWidth;canvas.height=viewport.clientHeight;}
 resize();window.addEventListener("resize",resize);
 
 // ── RTDB Listeners ────────────────────────────────────────────────────────────
 onValue(ref(db,"characters/pcs"),snap=>{for(const k in pcsData)delete pcsData[k];if(snap.exists())Object.assign(pcsData,snap.val());});
 onValue(ref(db,"propDefs"),snap=>{const data=snap.val();if(!data)return;for(const[id,p]of Object.entries(data)){propDefs[id]=p;tryLoadPropTexture(id);}});
-onValue(ref(db,"weather"),snap=>{
-  const data=snap.val();if(!data)return;
-  applyWeatherData(data);
-  const active=["rain","snow","mist","storm"].filter(t=>weather[t].enabled).map(t=>t[0].toUpperCase()+t.slice(1));
-  document.getElementById("weather-indicator").textContent=active.length?active.join(" · "):"";
-});
 onValue(ref(db,"pings"),snap=>{
   const data=snap.val()||{};const now=Date.now();
   for(const[id,ping]of Object.entries(data)){
@@ -881,8 +800,6 @@ function subscribeLive(){
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in impassable)delete impassable[k];
-    for(const k in chains)delete chains[k];
-    for(const k in mirrors)delete mirrors[k];
     for(const k in triggerNodes)delete triggerNodes[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
@@ -892,8 +809,6 @@ function subscribeLive(){
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
       if(data.impassable)Object.assign(impassable,data.impassable);
-      if(data.chains)Object.assign(chains,data.chains);
-      if(data.mirrors)Object.assign(mirrors,data.mirrors);
       if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
       geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
       if(data.geometry){
@@ -1216,19 +1131,6 @@ onValue(ref(db,"session/currentMap"),snap=>{
   setTimeout(doFit,1200);
 });
 
-// ── Theater of the Mind ──────────────────────────────────────────────────────
-subscribeTheaterMode(active=>{
-  const fogEl=document.getElementById("tom-fog"),bannerEl=document.getElementById("tom-banner"),initBar=document.getElementById("initiative-bar");
-  if(active){
-    fogEl.style.display="block";bannerEl.style.display="block";
-    if(initBar)initBar.style.display="none";
-    startTheaterFog(fogEl);
-  }else{
-    stopTheaterFog();
-    fogEl.style.display="none";bannerEl.style.display="none";
-    if(initBar)initBar.style.display="";
-  }
-});
 
 // ── Chat & Dice ───────────────────────────────────────────────────────────────
 document.getElementById("chat-send").onclick=()=>{
@@ -1383,12 +1285,14 @@ function draw(){
     const{floor,x,y}=parseTileKey(k);
     if(floor!==myViewFloor())continue;
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.32;
-    const active=n.type==="trigger"?isTriggerOn(n):isNodeActive(n,k,_occupiedForNodes,triggerNodes);
+    const active=n.type==="trigger"?!!n.on:isNodeActive(n,k,_occupiedForNodes,triggerNodes);
     const color=active?"143,208,143":"200,168,75";
     ctx.strokeStyle=`rgba(${color},0.85)`;ctx.lineWidth=Math.max(1,TILE*0.045);
     ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-    // Portal keeps its fixed icon; a trigger's look is whatever texture
-    // swatch the GM picked at placement -- same lookup as mapeditor-layers.html.
+    // Portal keeps its fixed icon. type:"trigger" nodes no longer get
+    // created (the lever system was removed), but an old map might still
+    // have one saved -- this keeps it rendering reasonably rather than
+    // erroring.
     const lookupId=n.type==="trigger"?n.textureId:n.type;
     if(lookupId) tryLoadPropTexture(lookupId);
     const img=propTextures[lookupId];
@@ -1422,13 +1326,12 @@ function draw(){
     ctx.restore();
   }
 
-  drawChains(ctx,chains,tokens,camera.zoom);
   const _myViewerEntry=myOwnTokenEntry();
   const _myViewerTokId=_myViewerEntry?_myViewerEntry[0]:undefined;
   const _vf=myViewFloor();
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc"&&(tok.floor||0)===_vf)drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens,_myViewerTokId);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc"&&(tok.floor||0)===_vf)drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,undefined,false,tokens,_myViewerTokId);
   drawFog(ctx,fog,camera.zoom,false);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc"&&(tok.floor||0)===_vf)drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),false,tokens,_myViewerTokId);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc"&&(tok.floor||0)===_vf)drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,undefined,false,tokens,_myViewerTokId);
 
   ctx.save();ctx.globalAlpha=1;
   for(const[k,r]of Object.entries(roofs)){const{floor,x,y}=parseTileKey(k);if(floor!==myViewFloor())continue;drawTileAt(x,y,r.terrain);}
@@ -1530,7 +1433,6 @@ function draw(){
       ctx.restore();
     }
   }}
-  drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy),ping=>isPositionVisible(ping.wx,ping.wy));
   drawAttackTargets(ctx,activeAttackTargets,(wx,wy)=>toScreen(wx,wy),tgt=>isPositionVisible(tgt.wx,tgt.wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
@@ -1613,26 +1515,15 @@ async function toggleFlipNode(nodeKey,node){
   evaluateAllNodes();
 }
 
-// BG3-style: right-click is the only way to interact with a lever, door, or
-// container -- no left-click, no shift+click, no spacebar for any of them.
-// Same reach rule (within 1 space of your own token) applies to all three.
+// BG3-style: right-click is the only way to interact with a door or
+// container -- no left-click, no shift+click, no spacebar for either.
+// Same reach rule (within 1 space of your own token) applies to both.
 function interactAt(tx,ty,wx,wy){
   const nodeKey=key(tx,ty);
   const node=triggerNodes[nodeKey];
   if(node&&node.trigger==="flip"){ toggleFlipNode(nodeKey,node); return; }
 
   const myEntry=myOwnTokenEntry();
-
-  // Lever -- floor-aware key ("floor,x,y", matching how mapeditor-layers.html's
-  // key() actually stores these), unlike the floor-less nodeKey above.
-  const triggerKey=`${myViewFloor()},${tx},${ty}`;
-  const triggerNode=triggerNodes[triggerKey];
-  if(triggerNode&&triggerNode.type==="trigger"){
-    if(!myEntry||!withinReach(myEntry[1],tx+0.5,ty+0.5)){ toast("Too far away to reach that."); return; }
-    fireTrigger(currentMap,triggerKey,triggerNode).then(()=>evaluateAllNodes());
-    toast("🔗 You flip it.");
-    return;
-  }
 
   // Door -- uses the actual click position (not just the cell center) for
   // the hit test, since a door can run along a cell edge rather than
@@ -1642,7 +1533,9 @@ function interactAt(tx,ty,wx,wy){
     const d=geometry.doors.find(x=>x.id===clickedDoorSeg.id);
     if(d){
       if(!myEntry||!withinReach(myEntry[1],(d.x1+d.x2)/2,(d.y1+d.y2)/2)){ toast("Too far away to reach that."); return; }
-      if(d.locked){
+      if(d.isWindow){
+        toast(`🪟 Just a window.`);
+      } else if(d.locked){
         toast(`🔒 This door is locked.`);
       } else {
         d.closed=!d.closed;
@@ -1841,9 +1734,6 @@ window.addEventListener("keydown",e=>{
     updates.turnMovedTiles=tok.turnMovedTiles;
   }
   update(ref(db,`maps/${currentMap}/tokens/${tokId}`),updates);
-  if(mirrorsForLeader(mirrors,tokId).length){
-    applyMirrorMovement(currentMap,mirrors,tokens,tokId,dx,dy).catch(()=>{});
-  }
   checkNpcSight(tok);
   checkTriggersAtLanding(tok,tokId);
 });
@@ -1888,19 +1778,11 @@ function evaluateAllNodes(){
   const _vf=myViewFloor();
   const _floorTriggerNodes=Object.fromEntries(Object.entries(triggerNodes).filter(([k])=>parseTileKey(k).floor===_vf));
   syncActivateEffects(currentMap,_floorTriggerNodes,floorDoors(_vf),occupiedKeys).catch(()=>{});
-  // New unified trigger system -- separate call, using the FULL doors/lights
-  // arrays rather than floor-filtered ones, since syncTriggerEffects writes
-  // the whole array back to Firebase -- passing a floor-filtered subset
-  // would silently delete every other floor's doors/lights from the
-  // database on the next write. No occupancy needed anymore -- levers are
-  // interact-only now.
-  syncTriggerEffects(currentMap,triggerNodes,geometry.doors,geometry.lights).catch(()=>{});
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async()=>{
   subscribePassphrase();
-  subscribeTalking();
   await loadConfig();
   loadSheetApi();
   buildConditionsMap();
@@ -1935,7 +1817,24 @@ function evaluateAllNodes(){
   if(sheetViewEl){new MutationObserver(()=>registerTerms(sheetViewEl)).observe(sheetViewEl,{childList:true,subtree:true});}
 
   // Check if there's a saved session — show login or restore
-  const saved=loadAuthSession();
+  // Embedding (viewer.html?embed=1&name=..&charId=..&charName=..) passes
+  // identity directly via URL params instead of a saved session -- the
+  // parent page already knows who's logged in and has its own HUD, so this
+  // skips the login modal AND hides this app's whole toolbar (#hud), same
+  // reasoning as viewer.html's own ?token= embed mode.
+  const embedParams=new URLSearchParams(window.location.search);
+  const isEmbedded=embedParams.get("embed")==="1";
+  if(isEmbedded){
+    document.getElementById("hud").style.display="none";
+    document.getElementById("initiative-bar").style.display="none";
+    document.getElementById("turn-menu").style.display="none";
+    document.getElementById("turn-menu-tab").style.display="none";
+    document.getElementById("chat-strip").style.display="none";
+    document.getElementById("chat-drawer").style.display="none";
+  }
+  const saved=isEmbedded
+    ?{playerName:embedParams.get("name"),characterId:embedParams.get("charId"),characterName:embedParams.get("charName")}
+    :loadAuthSession();
   if(saved&&saved.playerName){
     playerName=saved.playerName;
     myCharacterId=saved.characterId||null;

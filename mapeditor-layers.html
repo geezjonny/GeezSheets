@@ -15,7 +15,7 @@
 :root{--chat-collapsed:36px;--initiative:82px}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
 
-/* ── Top bar (map name, ping, weather, etc.) ── */
+/* ── Top bar (map name, ping, etc.) ── */
 #topbar{position:fixed;top:8px;left:8px;z-index:31;display:flex;align-items:center;gap:5px;background:rgba(26,21,16,.9);border:1px solid var(--border);border-radius:8px;padding:5px;box-shadow:0 4px 16px rgba(0,0,0,.5);max-width:calc(100vw - 16px);overflow-x:auto}
 #topbar>*:not(.keep-corner){display:none!important}
 /* #context-bar itself must NOT be display:none -- its children (.ctx-panel
@@ -198,8 +198,6 @@ canvas{display:block;cursor:crosshair}
 .modal-btns{display:flex;gap:8px;position:sticky;bottom:0;padding-top:10px;background:var(--panel)}
 .modal-btns button{flex:1;height:36px}
 .modal-btns button.primary{border-color:var(--gold);color:var(--gold)}
-#weather-panel{position:fixed;bottom:calc(var(--initiative) + var(--chat-collapsed) + 120px);z-index:1000;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:none;flex-direction:column;gap:12px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
-#weather-panel.open{display:flex}
 #dice-popup-ed{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.8);z-index:1000;background:var(--panel);border:1px solid var(--gold);border-radius:12px;padding:20px 32px;text-align:center;box-shadow:0 0 60px rgba(200,168,75,.25),0 16px 48px rgba(0,0,0,.8);pointer-events:none;opacity:0;transition:opacity .2s,transform .2s;min-width:160px}
 #dice-popup-ed.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 #dice-popup-ed.hide{opacity:0;transform:translate(-50%,-50%) scale(0.9)}
@@ -387,7 +385,7 @@ canvas{display:block;cursor:crosshair}
   <button class="tb-btn cat-btn" id="cat-structure"  title="Structure — walls, lights, doors, trigger nodes (gameplay-affecting)">🧱 Structure</button>
   <button class="tb-btn cat-btn" id="cat-tokens"      title="Tokens — PCs and NPCs">⚔ Tokens</button>
   <button class="tb-btn cat-btn" id="cat-props"       title="Props — furniture, clutter, decals">🪑 Props</button>
-  <button class="tb-btn cat-btn" id="cat-setting"     title="Setting — time of day, lighting, weather, Theater of Mind">🌗 Setting</button>
+  <button class="tb-btn cat-btn" id="cat-setting"     title="Setting — time of day, lighting, weather">🌗 Setting</button>
   <button class="tb-btn cat-btn" id="cat-floor"       title="Floor — drag a rectangle to assign existing walls/doors/lights/imported art to a 10ft floor level, for the 3D renderer">🏢 Floor</button>
 
   <div class="tb-sep"></div>
@@ -459,8 +457,8 @@ canvas{display:block;cursor:crosshair}
   <div id="ctx-structure" class="ctx-panel" style="display:none;align-items:center;gap:6px">
     <span class="opt-label">Type</span>
     <button class="opt-btn struct-type-btn active" data-structtype="wall"   title="Wall">🧱 Wall</button>
-    <button class="opt-btn struct-type-btn"        data-structtype="light" title="Light — Shift+right-click one to add a trigger to it">💡 Light</button>
-    <button class="opt-btn struct-type-btn"        data-structtype="door"  title="Door — Shift+right-click one to add a trigger to it">🚪 Door</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="light" title="Light">💡 Light</button>
+    <button class="opt-btn struct-type-btn"        data-structtype="door"  title="Door">🚪 Door</button>
     <button class="opt-btn struct-type-btn"        data-structtype="impassable" title="Impassable — blocks movement only, not sight">🚫 Impassable</button>
     <button class="opt-btn struct-type-btn"        data-structtype="node-portal" title="Portal — right-click it, then click another portal, to link them">🌀 Portal</button>
   </div>
@@ -494,9 +492,6 @@ canvas{display:block;cursor:crosshair}
     <span style="font-family:'Cinzel',serif;font-size:9px;color:var(--dim);letter-spacing:.06em;white-space:nowrap">LIGHT</span>
     <input type="range" id="ctrl-light-punch" min="0" max="1" step="0.01" value="1"
       style="width:60px;accent-color:var(--gold);cursor:pointer" title="Light brightness/cut (0=invisible, 1=full)">
-    <div class="tb-sep"></div>
-    <button class="tb-btn" id="weatherBtn" title="Weather">🌦 Weather</button>
-    <button class="tb-btn" id="theaterBtn" title="Theater of the Mind — hides the map/tokens/initiative on players' screens">🎭 Theater of the Mind</button>
   </div>
 
   <!-- Floor panel -->
@@ -525,9 +520,6 @@ canvas{display:block;cursor:crosshair}
   <span class="opt-label">Time</span>
   <button class="tb-btn tod-btn" data-tod="day" onclick="document.querySelector('[data-tod=day]').click()">☀ Day</button>
   <button class="tb-btn tod-btn" data-tod="night" onclick="document.querySelector('[data-tod=night]').click()">🌙 Night</button>
-  <div class="tb-sep"></div>
-  <button class="tb-btn" onclick="document.getElementById('weatherBtn').click()">🌦 Weather</button>
-  <button class="tb-btn" onclick="document.getElementById('theaterBtn').click()">🎭 Theater of the Mind</button>
 </div>
 
 <div id="ctx-clear" class="ctx-panel" style="display:none;align-items:center;gap:6px">
@@ -571,13 +563,13 @@ canvas{display:block;cursor:crosshair}
     <button class="tbi-btn create-icon" title="Lights" onclick="selectStructureType('light')">💡</button>
     <button class="tbi-btn create-icon" title="Doors" onclick="selectStructureType('door')">🚪</button>
     <button class="tbi-btn create-icon" title="Portal" onclick="selectStructureType('node-portal')">🌀</button>
-    <button class="tbi-btn create-icon" title="Props (incl. interactive: traps, levers, triggers)" onclick="setCategory('props')">🪑</button>
+    <button class="tbi-btn create-icon" title="Props (incl. interactive levers/triggers)" onclick="setCategory('props')">🪑</button>
     <div class="tbi-sep create-icon"></div>
     <button class="tbi-btn create-icon" title="Import dd2vtt" onclick="showFlyout('ctx-import')">📥</button>
     <button class="tbi-btn create-icon" title="Assign Floor — tag existing content with a 10ft floor level" onclick="setCategory('floor')">🏢</button>
     <!-- VTT mode -->
     <button class="tbi-btn vtt-icon" title="Tokens" style="display:none" onclick="setCategory('tokens')">⚔</button>
-    <button class="tbi-btn vtt-icon" title="Time / Weather / Theater" style="display:none" onclick="showFlyout('ctx-time')">🌗</button>
+    <button class="tbi-btn vtt-icon" title="Time / Weather" style="display:none" onclick="showFlyout('ctx-time')">🌗</button>
     <button class="tbi-btn vtt-icon" title="Fog" style="display:none" onclick="showFlyout('ctx-fog')">🌫</button>
     <button class="tbi-btn vtt-icon" title="Ping" style="display:none" onclick="document.getElementById('pingBtn').click()">📍</button>
     <button class="tbi-btn vtt-icon" title="Ruler" style="display:none" onclick="document.getElementById('rulerBtnEd').click()">📏</button>
@@ -626,7 +618,6 @@ canvas{display:block;cursor:crosshair}
     <!-- Action buttons -->
     <div style="display:flex;gap:4px;flex-wrap:wrap">
       <button class="gm-tool-btn" id="stc-edit"    style="flex:1;min-width:60px">✏ Edit</button>
-      <button class="gm-tool-btn" id="stc-chain"   style="flex:1;min-width:60px">🔗 Chain</button>
       <button class="gm-tool-btn" id="stc-hide-hp" style="flex:1;min-width:60px">👁 HP</button>
       <button class="gm-tool-btn" id="stc-delete"  style="flex:1;min-width:60px;color:var(--red-bright);border-color:rgba(224,64,64,.3)">🗑</button>
     </div>
@@ -701,14 +692,6 @@ canvas{display:block;cursor:crosshair}
   <div class="dp-label">d20</div>
 </div>
 
-<!-- Weather panel -->
-<div id="weather-panel">  <div class="wx-row"><input class="wx-check" type="checkbox" id="wx-rain-toggle"><span class="wx-label">Rain</span><input class="wx-slider" type="range" id="wx-rain-intensity" min="0" max="1" step="0.05" value="0.5"></div>
-  <div class="wx-row"><input class="wx-check" type="checkbox" id="wx-snow-toggle"><span class="wx-label">Snow</span><input class="wx-slider" type="range" id="wx-snow-intensity" min="0" max="1" step="0.05" value="0.3"></div>
-  <div class="wx-row"><input class="wx-check" type="checkbox" id="wx-mist-toggle"><span class="wx-label">Mist</span><input class="wx-slider" type="range" id="wx-mist-intensity" min="0" max="1" step="0.05" value="0.4"></div>
-  <div class="wx-row"><input class="wx-check" type="checkbox" id="wx-storm-toggle"><span class="wx-label">Storm</span><input class="wx-slider" type="range" id="wx-storm-intensity" min="0" max="1" step="0.05" value="0.5"></div>
-  <div class="wx-sub">Storm adds lightning — works best with rain</div>
-</div>
-
 <!-- Context menu -->
 <div id="ctx-menu">
   <div class="ctx-label">Conditions</div>
@@ -728,9 +711,6 @@ canvas{display:block;cursor:crosshair}
   <div class="ctx-item" data-action="sheet">📜 View Sheet</div>
   <div class="ctx-item" data-action="light-add">🕯 Add Light</div>
   <div class="ctx-item" data-action="light-remove" style="display:none">🔦 Remove Light</div>
-  <div class="ctx-item" data-action="chain">🔗 Chain to token…</div>
-  <div class="ctx-item" data-action="mirror">🪞 Mirror to token…</div>
-  <div class="ctx-item" data-action="unchain" style="display:none">⛓✕ Remove chain</div>
   <div class="ctx-item" data-action="hide-hp" style="display:none">🙈 Hide HP bar</div>
   <div class="ctx-item" data-action="show-hp" style="display:none">❤️ Show HP bar</div>
   <div class="ctx-item" data-action="hide-name" style="display:none">🏷 Hide name tag</div>
@@ -859,23 +839,6 @@ canvas{display:block;cursor:crosshair}
   </div>
 </div>
 
-<div id="chain-modal" class="modal-overlay hidden">
-  <div class="modal-box" style="min-width:320px"><h2>Chain to Token</h2><p>Pick the other token and a max distance (visual only — no movement restriction)</p>
-    <div id="chain-token-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:200px;overflow-y:auto"></div>
-    <div class="modal-row" style="margin-top:10px">
-      <div class="modal-section"><label>Max distance (tiles)</label><input id="chain-max-dist" type="number" value="6" min="1" max="30"></div>
-    </div>
-    <div class="modal-btns" style="margin-top:14px"><button id="chain-cancel">Cancel</button></div>
-  </div>
-</div>
-
-<div id="mirror-modal" class="modal-overlay hidden">
-  <div class="modal-box" style="min-width:320px"><h2>Mirror to Token</h2><p>Pick the token that should follow this one — whenever this token moves, the picked one moves the same amount. No visible link, movement only.</p>
-    <div id="mirror-token-list" style="display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:200px;overflow-y:auto"></div>
-    <div class="modal-btns" style="margin-top:14px"><button id="mirror-cancel">Cancel</button></div>
-  </div>
-</div>
-
 <div id="handout-modal" class="modal-overlay hidden">
   <div class="modal-box" style="min-width:380px;max-width:480px"><h2>Handout</h2>
     <div class="modal-row" style="margin-top:8px">
@@ -931,18 +894,13 @@ const CAMPAIGN_BASE = `campaigns/${CAMPAIGN_ID}`;
 import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, TILE } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
-import { weather, initParticles, saveWeather, drawWeather } from "./js/weather.js";
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser, sendAttackTarget, drawAttackTargets } from "./js/pings.js";
-import { saveChain, deleteChain, chainsForToken, drawChains } from "./js/chains.js";
-import { saveMirror, deleteMirror, mirrorsForLeader, mirrorsForFollower, applyMirrorMovement } from "./js/mirrors.js";
 import { resolvePropId, tokenDisguiseRules } from "./js/disguise.js";
-import { subscribeTalking, getShakeOffset } from "./js/mic.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { sendChat, renderChat } from "./js/chat.js";
 import { rollDie } from "./js/dice.js";
 import { findMonster } from "./js/data.js";
-import { setTheaterMode, subscribeTheaterMode } from "./js/theater.js";
 import {
   parseDD2VTT, computeVisibilityPolygon, activeOccluders,
   drawWallsGeometry, drawDoorsGeometry, drawDoorsWithArt, drawLightsGeometry, drawLight,
@@ -960,14 +918,13 @@ window.addEventListener("keydown", e => {
     toggleGlossarySearch();
 });
 import { saveStamp, savePropsLocal, saveImpassable, saveTiles, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
-import { saveTriggerNodes, genNodeId, isNodeActive, isTriggerOn, fireTrigger, syncTriggerEffects } from "./js/triggers.js";
+import { saveTriggerNodes, genNodeId, isNodeActive } from "./js/triggers.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest, grantRest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
-import { setLayer } from "./js/layers.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},tokens={},stamps={},roofs={},props={},impassable={},chains={},triggerNodes={},mirrors={};
+const tiles={},tokens={},stamps={},roofs={},props={},impassable={},triggerNodes={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let mapFullVisibility=false; // per-map, mirrors maps/{mapName}/fullVisibility
 let pcsData={};
@@ -994,8 +951,7 @@ let geoWallStart = null; // [gx,gy] for first wall click
 let geoDragEp    = null; // endpoint being dragged
 let geoDragLight = null; // light id being dragged
 let paintingImpassable=false, erasingImpassable=false;
-let linkingFromKey=null; // trigger/portal node key waiting for the next click to pick its target
-let pendingTriggerTarget=null; // {kind:"door"|"light", id} -- armed by Shift+right-click on a door/light, waiting for the next click to place a trigger for it
+let linkingFromKey=null; // portal node key waiting for the next click to pick the other portal to link to
 let geoSelected  = null; // selected wall/light id
 
 // Combined lights: geometry lights + any token-attached lights
@@ -1239,7 +1195,6 @@ const nameModal =document.getElementById("name-modal");
 const nameInputEl=document.getElementById("name-input");
 const nameDisplay=document.getElementById("player-name-display");
 const propCtxMenu=document.getElementById("prop-ctx-menu");
-const weatherPanel=document.getElementById("weather-panel");
 const canvasWrap=document.getElementById("canvas-wrap");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1279,7 +1234,6 @@ function resize(){
   if(!w||w.clientWidth===0||w.clientHeight===0) return;
   canvas.width=w.clientWidth;
   canvas.height=w.clientHeight;
-  initParticles(canvas.width,canvas.height);
 }
 // Defer first resize until after browser layout
 requestAnimationFrame(()=>requestAnimationFrame(resize));
@@ -1309,11 +1263,8 @@ function subscribeLive(){
     for(const k in tokens)delete tokens[k];for(const k in stamps)delete stamps[k];
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in impassable)delete impassable[k];
-    for(const k in chains)delete chains[k];
-    for(const k in mirrors)delete mirrors[k];
     for(const k in triggerNodes)delete triggerNodes[k];
     if(data){
-      if(data.mirrors)Object.assign(mirrors,data.mirrors);
       if(data.tokens){
         Object.assign(tokens,data.tokens);
         Object.values(data.tokens).forEach(t=>{tryLoadTokenTexture(t.characterId,t.lookupName||t.name);for(const rule of tokenDisguiseRules(t))tryLoadTokenTexture("__npc__",rule.lookupName);});
@@ -1322,7 +1273,6 @@ function subscribeLive(){
       if(data.roofs)Object.assign(roofs,data.roofs);
       if(data.props)Object.assign(props,data.props);
       if(data.impassable)Object.assign(impassable,data.impassable);
-      if(data.chains)Object.assign(chains,data.chains);
       if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
       // Load geometry (walls, lights, doors for lighting system)
       if(!isSavingGeometry){
@@ -1520,21 +1470,6 @@ document.getElementById("new-blank-map-btn").onclick=async()=>{
   }
 };
 
-// ── Weather ───────────────────────────────────────────────────────────────────
-function buildWeatherPanel(){
-  ["rain","snow","mist","storm"].forEach(t=>{
-    const toggle=document.getElementById(`wx-${t}-toggle`);
-    const slider=document.getElementById(`wx-${t}-intensity`);
-    toggle.checked=weather[t].enabled;slider.value=weather[t].intensity;
-    toggle.onchange=()=>{weather[t].enabled=toggle.checked;saveWeather();};
-    slider.oninput=()=>{weather[t].intensity=parseFloat(slider.value);saveWeather();};
-  });
-}
-document.getElementById("weatherBtn").onclick=(e)=>{e.stopPropagation();const r=document.getElementById("weatherBtn").getBoundingClientRect();weatherPanel.style.left=r.left+"px";weatherPanel.classList.toggle("open");};
-weatherPanel.addEventListener("click",e=>e.stopPropagation());
-weatherPanel.addEventListener("pointerdown",e=>e.stopPropagation());
-weatherPanel.addEventListener("pointerup",e=>e.stopPropagation());
-
 // ── Chat & Dice UI ────────────────────────────────────────────────────────────
 document.getElementById("chat-send").onclick=()=>{if(!playerName){showNameModal();return;}sendChat(chatInput.value,playerName);chatInput.value="";};
 chatInput.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(!playerName){showNameModal();return;}sendChat(chatInput.value,playerName);chatInput.value="";}});
@@ -1585,9 +1520,6 @@ document.querySelectorAll(".ctx-item").forEach(item=>{
       if(tokens[ctxTokenId]) delete tokens[ctxTokenId].light;
     }
     if(action==="edit"){ctxMenu.classList.remove("open");openEditTokenModal(ctxTokenId);return;}
-    if(action==="chain")openChainModal(ctxTokenId);
-    if(action==="mirror")openMirrorModal(ctxTokenId);
-    if(action==="unchain")removeChainsForToken(ctxTokenId);
     if(action==="hide-hp")setTokenHideHp(ctxTokenId,true);
     if(action==="show-hp")setTokenHideHp(ctxTokenId,false);
     if(action==="hide-name"||action==="show-name"){
@@ -1764,83 +1696,6 @@ document.getElementById("tok-disguise-enable").addEventListener("change",e=>{
 
 const NODE_ICONS={portal:"🌀"};
 
-function openMirrorModal(tokId){
-  const list=document.getElementById("mirror-token-list");list.innerHTML="";
-  // tokId (right-clicked) is about to become a LEADER -- if it's currently
-  // a FOLLOWER of something else, that's a separate, still-valid relationship
-  // (chains are fine: A leads B, B leads C) so we don't touch that here.
-  // What we DO offer to clear is anything tokId is currently LEADING, since
-  // re-picking a target below should replace, not stack, its own outgoing mirror.
-  const existingAsLeader=mirrorsForLeader(mirrors,tokId);
-  if(existingAsLeader.length){
-    const rmBtn=document.createElement("button");
-    rmBtn.style.cssText="width:100%;height:36px;text-align:left;padding:0 12px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--red-bright,#e04040);border-radius:4px;background:rgba(224,64,64,.08);color:#fca5a5;cursor:pointer";
-    rmBtn.textContent="✕ Stop mirroring to anything";
-    rmBtn.onclick=async()=>{
-      const mapName=mapInput.value.trim()||"dungeon-1";
-      for(const[existingId]of existingAsLeader) await deleteMirror(mapName,existingId,mirrors);
-      document.getElementById("mirror-modal").classList.add("hidden");
-      toast(`${tokens[tokId]?.name} no longer mirrors to anything`);
-    };
-    list.appendChild(rmBtn);
-  }
-  for(const[id,tok]of Object.entries(tokens)){
-    if(id===tokId)continue;
-    const btn=document.createElement("button");
-    btn.style.cssText="width:100%;height:36px;text-align:left;padding:0 12px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text);cursor:pointer";
-    btn.textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;
-    btn.onmouseenter=()=>btn.style.borderColor="var(--gold-dim)";
-    btn.onmouseleave=()=>btn.style.borderColor="var(--border)";
-    btn.onclick=async()=>{
-      const mapName=mapInput.value.trim()||"dungeon-1";
-      // The PICKED token (id) is becoming a follower -- it should only ever
-      // track one leader, so clear any mirror where IT is already a follower.
-      for(const[existingId]of mirrorsForFollower(mirrors,id)) await deleteMirror(mapName,existingId,mirrors);
-      const mirrorId="mirror_"+Date.now();
-      await saveMirror(mapName,mirrorId,tokId,id);
-      mirrors[mirrorId]={leader:tokId,follower:id};
-      document.getElementById("mirror-modal").classList.add("hidden");
-      toast(`${tok.name} now mirrors ${tokens[tokId]?.name}'s movement`);
-    };
-    list.appendChild(btn);
-  }
-  if(!Object.keys(tokens).filter(id=>id!==tokId).length)list.innerHTML=`<p style="font-size:12px;color:var(--text-dim)">No other tokens on map</p>`;
-  document.getElementById("mirror-modal").classList.remove("hidden");
-}
-document.getElementById("mirror-cancel").onclick=()=>{document.getElementById("mirror-modal").classList.add("hidden");ctxTokenId=null;};
-
-function openChainModal(tokId){
-  const list=document.getElementById("chain-token-list");list.innerHTML="";
-  for(const[id,tok]of Object.entries(tokens)){
-    if(id===tokId)continue;
-    const btn=document.createElement("button");
-    btn.style.cssText="width:100%;height:36px;text-align:left;padding:0 12px;font-family:'Cinzel',serif;font-size:11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--text);cursor:pointer";
-    btn.textContent=`${tok.type==="pc"?"👤":"👹"} ${tok.name}`;
-    btn.onmouseenter=()=>btn.style.borderColor="var(--gold-dim)";
-    btn.onmouseleave=()=>btn.style.borderColor="var(--border)";
-    btn.onclick=async()=>{
-      const maxDist=parseInt(document.getElementById("chain-max-dist").value)||6;
-      const chainId="chain_"+Date.now();
-      const mapName=mapInput.value.trim()||"dungeon-1";
-      await saveChain(mapName,chainId,tokId,id,maxDist);
-      chains[chainId]={tokenA:tokId,tokenB:id,maxDistance:maxDist};
-      document.getElementById("chain-modal").classList.add("hidden");
-      toast(`Chained ${tokens[tokId]?.name} ↔ ${tok.name}`);
-    };
-    list.appendChild(btn);
-  }
-  if(!Object.keys(tokens).filter(id=>id!==tokId).length)list.innerHTML=`<p style="font-size:12px;color:var(--text-dim)">No other tokens on map</p>`;
-  document.getElementById("chain-modal").classList.remove("hidden");
-}
-document.getElementById("chain-cancel").onclick=()=>{document.getElementById("chain-modal").classList.add("hidden");ctxTokenId=null;};
-
-async function removeChainsForToken(tokId){
-  const mapName=mapInput.value.trim()||"dungeon-1";
-  const matches=chainsForToken(chains,tokId);
-  for(const[chainId]of matches){await deleteChain(mapName,chainId,chains);}
-  toast(matches.length?"Chain removed":"No chain on this token");
-}
-
 // ── Prop context menu ─────────────────────────────────────────────────────────
 function propAtTile(tx,ty){for(const[k,p]of Object.entries(props)){let px,py,propFloor;if(p.attachedTo&&tokens[p.attachedTo]){const tok=tokens[p.attachedTo];px=tok.x+(p.offsetX||0);py=tok.y+(p.offsetY||0);propFloor=tok.floor||0;}else{const parsed=parseTileKey(k);px=parsed.x;py=parsed.y;propFloor=parsed.floor;}if(propFloor!==currentFloor)continue;const w=p.w||1,h=p.h||1;if(tx>=px&&tx<px+w&&ty>=py&&ty<py+h)return k;}return null;}
 
@@ -1917,14 +1772,14 @@ document.getElementById("clearBtn").onclick=(e)=>{e.stopPropagation();const r=do
 clearDropdown.addEventListener("click",e=>e.stopPropagation());
 async function clearSection(section){
   const mapName=mapInput.value.trim()||"dungeon-1";
-  const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",tiles:"Clear all tiles?",roofs:"Clear all roofs?",geometry:"Clear all structure (walls/lights/doors)?",all:"Clear EVERYTHING?"};
+  const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",tiles:"Clear all tiles?",roofs:"Clear all roofs?",geometry:"Clear all structure (walls/lights/doors/portals)?",all:"Clear EVERYTHING?"};
   if(!confirm(confirm_msg[section]))return;
   if(section==="tiles"||section==="all")pushUndo();
   if(section==="bg"||section==="all"){bgImage=null;bgUrl="";bgPpi=70;await set(ref(db,`maps/${mapName}/background`),null);await set(ref(db,`maps/${mapName}/backgroundPpi`),null);for(const k in confirmedMapLayers)delete confirmedMapLayers[k];await set(ref(db,`maps/${mapName}/mapLayers`),null);}
-  if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);for(const k in chains)delete chains[k];await set(ref(db,`maps/${mapName}/chains`),null);for(const k in mirrors)delete mirrors[k];await set(ref(db,`maps/${mapName}/mirrors`),null);}
+  if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);}
   if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
   if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);}
-  if(section==="geometry"||section==="all"){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];await set(ref(db,`maps/${mapName}/geometry`),null);}
+  if(section==="geometry"||section==="all"){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];await set(ref(db,`maps/${mapName}/geometry`),null);for(const k in triggerNodes)delete triggerNodes[k];await set(ref(db,`maps/${mapName}/triggerNodes`),null);}
   if(section==="roofs"||section==="all"){for(const k in roofs)delete roofs[k];await set(ref(db,`maps/${mapName}/roofs`),null);}
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
 }
@@ -2802,7 +2657,6 @@ document.getElementById("prop-add-btn").onclick=()=>{
 // Close all dropdowns on click
 document.addEventListener("click",()=>{
   document.querySelectorAll(".picker-dropdown").forEach(d=>d.classList.remove("open"));
-  weatherPanel.classList.remove("open");
   ctxMenu.classList.remove("open");
   propCtxMenu.style.display="none";
 });
@@ -2816,13 +2670,6 @@ document.getElementById("rulerBtnEd").onclick=()=>{
   if(!rulerMode){rulerStart=null;rulerEnd=null;rulerActive=false;}
 };
 document.getElementById("pingBtn").onclick=()=>{if(!playerName){showNameModal();return;}pingMode=!pingMode;document.getElementById("pingBtn").classList.toggle("active",pingMode);if(pingMode)showPingToast("Click to ping, hold to laser");};
-document.getElementById("theaterBtn").onclick=async()=>{
-  const btn=document.getElementById("theaterBtn");
-  const active=!btn.classList.contains("active");
-  await setTheaterMode(active);
-  toast(active?"Theater of the Mind ON — players' screens are fogged":"Theater of the Mind OFF");
-};
-subscribeTheaterMode(active=>{document.getElementById("theaterBtn")?.classList.toggle("active",active);});
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
 function drawTileAt(x,y,terrain){
@@ -2933,13 +2780,14 @@ function drawTriggerNodes(){
     const{floor,x,y}=parseTileKey(k);
     if(floor!==currentFloor)continue;
     const cx=x*TILE+TILE/2,cy=y*TILE+TILE/2,r=TILE*0.34;
-    const active=n.type==="trigger"?isTriggerOn(n):isNodeActive(n,k,occupiedKeys,triggerNodes);
+    const active=n.type==="trigger"?!!n.on:isNodeActive(n,k,occupiedKeys,triggerNodes);
     const color=active?"143,208,143":"200,168,75"; // green when active, gold when not
     ctx.strokeStyle=`rgba(${color},0.9)`;ctx.lineWidth=Math.max(1,TILE*0.045);
     ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
-    // Portal keeps its fixed icon; a lever's look is whatever texture
-    // swatch the GM picked at placement (./props/<textureId>.png), purely
-    // cosmetic.
+    // Portal keeps its fixed icon. type:"trigger" nodes no longer get
+    // created (the lever system was removed), but an old map might still
+    // have one saved -- this keeps it rendering reasonably rather than
+    // erroring, so the GM can see and delete it via the right-click menu.
     const lookupId=n.type==="trigger"?n.textureId:n.type;
     if(lookupId) tryLoadPropTexture(lookupId);
     const img=propTextures[lookupId];
@@ -3111,9 +2959,8 @@ function render(){
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
   ctx.restore();
   drawStamps();drawProps();drawImpassable();drawTriggerNodes();drawTriggerWires();
-  drawChains(ctx,chains,tokens,camera.zoom);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc"&&!hiddenFloors.has(tok.floor||0))drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),true,tokens);
-  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc"&&!hiddenFloors.has(tok.floor||0))drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),true,tokens);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="npc"&&!hiddenFloors.has(tok.floor||0))drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,undefined,true,tokens);
+  for(const[id,tok]of Object.entries(tokens))if(tok.type==="pc"&&!hiddenFloors.has(tok.floor||0))drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,undefined,true,tokens);
   // Placing token preview
   if(placingToken){const alpha=0.6+0.2*Math.sin(Date.now()/300);drawToken(ctx,{...placingToken,x:hoverTileX,y:hoverTileY},camera.zoom,pcsData,CONDITIONS,alpha);}
   // Roofs
@@ -3251,12 +3098,11 @@ function render(){
   if(geometry.timeOfDay!=="day"&&geometry.lightingParams.blackAlpha>0.1){
     ctx.save();ctx.translate(camera.x,camera.y);ctx.scale(camera.zoom,camera.zoom);
     for(const[,tok]of Object.entries(tokens)){
-      drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,getShakeOffset(tok.name),true,tokens);
+      drawToken(ctx,tok,camera.zoom,pcsData,CONDITIONS,1,undefined,true,tokens);
     }
     ctx.restore();
   }
 
-  drawWeather(ctx,canvas.width,canvas.height);
   drawPings(ctx,activePings,(wx,wy)=>toScreen(wx,wy));
   drawAttackTargets(ctx,activeAttackTargets,(wx,wy)=>toScreen(wx,wy));
   drawLasers(ctx,activeLasers,(wx,wy)=>toScreen(wx,wy));
@@ -3540,14 +3386,6 @@ canvas.addEventListener("contextmenu",e=>{
   if(li!==null){
     const light=geometry.lights.find(l=>l.id===li);
     if(!light)return;
-    if(e.shiftKey){
-      // Add-a-trigger flow: the target comes first, then you click a cell
-      // to place a trigger for it -- can be done as many times as needed,
-      // each one ANDed together (see syncTriggerEffects in triggers.js).
-      pendingTriggerTarget={kind:"light",id:light.id};
-      toast("🎯 Click a cell to place a trigger for this light");
-      return;
-    }
     const choice=prompt(
       `Light — Range: ${light.range} tiles | Intensity: ${light.intensity} | Blocked by walls: ${light.shadows!==false?"Yes":"NO — shines through walls!"}\n\n`+
       `Enter new values as "range,intensity,shadows" (e.g. 6,1.5,yes — shadows is yes/no, whether this light is blocked by walls)\n`+
@@ -3570,11 +3408,6 @@ canvas.addEventListener("contextmenu",e=>{
   if(doorSeg){
     const d=geometry.doors.find(x=>x.id===doorSeg.id);
     if(d){
-      if(e.shiftKey){
-        pendingTriggerTarget={kind:"door",id:d.id};
-        toast("🎯 Click a cell to place a trigger for this door");
-        return;
-      }
       d.locked=!d.locked;
       if(d.locked) d.closed=true; // a locked door is shut by definition
       saveGeometryDoors();
@@ -3607,24 +3440,6 @@ canvas.addEventListener("pointerdown",e=>{
   if(e.button!==0||activeCategory!=="structure") return;
   const[sx,sy]=screenPos(e);const[wx,wy]=toWorld(sx,sy);
   const gx=wx/TILE, gy=wy/TILE;
-
-  // Completing an "Add trigger" armed by Shift+right-clicking a door/light
-  // above -- takes priority over whatever tool/verb is active, since the
-  // very next click is always meant to place the trigger.
-  if(pendingTriggerTarget){
-    const[tx,ty]=worldToTile(wx,wy,TILE);
-    const k=key(tx,ty);
-    if(triggerNodes[k]){
-      toast("There's already a trigger there");
-    } else {
-      const textureId=(prompt("Lever texture (looks up ./props/<name>.png):","lever")||"").trim().toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_-]/g,"")||"lever";
-      triggerNodes[k]={id:genNodeId(),type:"trigger",textureId,on:false,linkKind:pendingTriggerTarget.kind,linkTo:pendingTriggerTarget.id};
-      saveTriggerNodes(getMapName(),triggerNodes);
-      toast("🎯 Lever placed and linked — Shift+right-click the "+pendingTriggerTarget.kind+" again to add another");
-    }
-    pendingTriggerTarget=null;
-    e.stopPropagation();return;
-  }
 
   // Completing a portal link armed by right-clicking a portal node above --
   // takes priority over whatever tool/verb happens to be active, since the
@@ -4058,12 +3873,8 @@ canvas.addEventListener("pointerup",e=>{
       openTokenInspector(draggingToken.id);
     } else {
       const tok=tokens[draggingToken.id];
-      const dx=tok.x-draggingToken.startTX, dy=tok.y-draggingToken.startTY;
       saveTokenRTDB(getMapName(),draggingToken.id,tok);
       savePropsLocal(getMapName(),props);
-      if(mirrorsForLeader(mirrors,draggingToken.id).length){
-        applyMirrorMovement(getMapName(),mirrors,tokens,draggingToken.id,dx,dy).catch(()=>{});
-      }
     }
     draggingToken=null;return;
   }
@@ -4173,8 +3984,6 @@ canvas.addEventListener("contextmenu",e=>{
   if(tokId){
     ctxTokenId=tokId;
     const tok=tokens[tokId];
-    const hasChain=chainsForToken(chains,tokId).length>0;
-    document.querySelector('.ctx-item[data-action="unchain"]').style.display=hasChain?"flex":"none";
     document.querySelector('.ctx-item[data-action="hide-hp"]').style.display=(!tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="show-hp"]').style.display=(tok.hideHp)?"flex":"none";
     document.querySelector('.ctx-item[data-action="adjust-hp"]').style.display="flex";
@@ -4268,11 +4077,9 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
 
   // Dice buttons built in HUD after loadConfig (see bottom of init)
   await loadTerrainTextures(getTERRAINS());
-  ["door","doorclosed","portal","tripwire","trap","latch","lever","plate"].forEach(id=>tryLoadPropTexture(id)); // structure art, reuses the Props texture set
+  ["door","doorclosed","portal","lever"].forEach(id=>tryLoadPropTexture(id)); // structure art, reuses the Props texture set
   buildTerrainSwatchBar();buildPropSwatchBar();buildStampSwatchBar();
   selectTerrain("grass");
-  buildWeatherPanel();
-  subscribeTalking();
 
   // Monster lookup → drop-in: wire the Almanac's "Add to Map" button (only
   // shown here in the DM tool, never in index.html/sheet.html) to the same
@@ -4491,7 +4298,6 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     toast(`💔 ${tok.name} −${delta} HP`);
   };
   document.getElementById("stc-edit").onclick=()=>{if(_inspectedTokId)openEditTokenModal(_inspectedTokId);};
-  document.getElementById("stc-chain").onclick=()=>{if(_inspectedTokId)openChainModal(_inspectedTokId);};
   document.getElementById("stc-delete").onclick=async()=>{
     if(!_inspectedTokId)return;
     if(!confirm(`Delete ${tokens[_inspectedTokId]?.name}?`))return;
@@ -4535,16 +4341,6 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
       applyCondition(getMapName(),_inspectedTokId,cond,tokens);
       toast(`Applied: ${cond}`);
     };
-  });
-
-  // ── Wire toolbar mode buttons to layers.js setLayer ──────────────────
-  const layerBtnMap={
-    "ground-mode-btn":"ground","wall-mode-btn":"walls",
-    "fog-mode-btn":"fog","roof-mode-btn":"objects",
-    "token-mode-btn":"objects","stamp-mode-btn":"objects",
-  };
-  Object.entries(layerBtnMap).forEach(([id,layer])=>{
-    document.getElementById(id)?.addEventListener("click",()=>setLayer(layer));
   });
 
 })();
