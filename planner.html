@@ -1626,6 +1626,44 @@
       import { db } from "./js/firebase.js";
       import { ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
       import { rollDie, animateDiceResult } from "./js/dice.js";
+      import { sampleElevationFeet } from "./js/elevation.js";
+
+      // Inverse of convertCoordLocal -- given a mesh vertex's own local
+      // (x,y), recovers the grid-space point it corresponds to. Needed to
+      // apply SAVED elevation data back onto a freshly-created (flat)
+      // mesh: for each vertex, work out which grid cell it's over, look up
+      // the saved height there, and set that vertex's Z accordingly.
+      function convertCoordLocalInverse(localX, localY, gridW, gridH) {
+        return { x: localX + gridW / 2, y: gridH / 2 - localY };
+      }
+
+      // Applies previously-saved elevation (our sparse per-cell format,
+      // see js/elevation.js) onto a freshly-created flat mesh. Uses
+      // sampleElevationFeet -- the SAME smooth bilinear sampling
+      // viewer.html's own render3d-tiles.js uses -- so what planner shows
+      // on load matches what players actually see, not a different
+      // interpretation of the same data. Without this, reloading a map
+      // after saving elevation would show a flat mesh again: the save
+      // direction existed, but nothing ever read it back in.
+      function applyElevationToMesh(entity, elevationData) {
+        const geometry = entity.mapRec.floorMesh.geometry;
+        const posAttr = geometry.attributes.position;
+        let changed = 0;
+        for (let i = 0; i < posAttr.count; i++) {
+          const localX = posAttr.getX(i), localY = posAttr.getY(i);
+          const grid = convertCoordLocalInverse(localX, localY, entity.gridW, entity.gridH);
+          const absX = grid.x + entity.lx, absY = grid.y + entity.ly;
+          const feet = sampleElevationFeet(elevationData, entity.floor, absX, absY);
+          const units = feet / 5; // 1 world unit = 5ft, established convention
+          if (Math.abs(units) > 1e-6) changed++;
+          posAttr.setZ(i, units);
+        }
+        posAttr.needsUpdate = true;
+        geometry.computeVertexNormals();
+        updateMeshColorOverlay(entity.mapRec.floorMesh); // planner's own global function -- refreshes the heatmap overlay from current Z-values, same call its own paint tools already make
+        console.log(`[firebase-load] applied saved elevation to floor ${entity.floor}: ${changed}/${posAttr.count} vertices non-flat`);
+      }
+
 
       // Which loaded map entity (a background or one mapLayers piece)
       // corresponds to a given floor, and the info needed to position a
@@ -1883,10 +1921,11 @@
       // already uses for this identical image.
       async function loadSingleBackground(mapName, imageSrc) {
         console.log(`[firebase-load] found a single background image (length ${imageSrc.length}); loading...`);
-        const [ppiSnap, geomSnap, tilesSnap] = await Promise.all([
+        const [ppiSnap, geomSnap, tilesSnap, elevSnap] = await Promise.all([
           get(ref(db, `maps/${mapName}/backgroundPpi`)),
           get(ref(db, `maps/${mapName}/geometry`)),
           get(ref(db, `maps/${mapName}/tiles`)),
+          get(ref(db, `maps/${mapName}/elevation`)),
         ]);
         const ppi = ppiSnap.val() || 70;
         const geom = geomSnap.val() || {};
@@ -1906,7 +1945,9 @@
         const mapRec = createMapEntity(fakeData, `${mapName} (Firebase)`, 0);
         // Single background is always floor 0, always anchored with no
         // shift (lx=ly=0) -- see loadTokens below for how this is used.
-        entityByFloor[0] = { mapRec, gridW: fakeData.resolution.map_size.x, gridH: fakeData.resolution.map_size.y, lx: 0, ly: 0 };
+        const entity = { mapRec, gridW: fakeData.resolution.map_size.x, gridH: fakeData.resolution.map_size.y, lx: 0, ly: 0, floor: 0 };
+        entityByFloor[0] = entity;
+        applyElevationToMesh(entity, elevSnap.val() || {});
         loadTilesForFloor(0, tilesSnap.val() || {});
         loadTokens(mapName);
       }
@@ -1924,12 +1965,14 @@
       async function loadMapLayers(mapName, layers) {
         const entries = Object.entries(layers);
         console.log(`[firebase-load] found ${entries.length} mapLayers piece(s); loading each...`);
-        const [geomSnap, tilesSnap] = await Promise.all([
+        const [geomSnap, tilesSnap, elevSnap] = await Promise.all([
           get(ref(db, `maps/${mapName}/geometry`)),
           get(ref(db, `maps/${mapName}/tiles`)),
+          get(ref(db, `maps/${mapName}/elevation`)),
         ]);
         const geom = geomSnap.val() || {};
         const tiles = tilesSnap.val() || {};
+        const elevation = elevSnap.val() || {};
         for (const [layerId, layer] of entries) {
           if (!layer.url) continue;
           const floor = layer.floor || 0;
@@ -1983,7 +2026,8 @@
             // rather than needing a second, independent calculation.
             mapRec.group.position.set(lx + layer.w / 2, ly + layer.h / 2, 0);
           }
-          entityByFloor[floor] = { mapRec, gridW: layer.w, gridH: layer.h, lx, ly };
+          entityByFloor[floor] = { mapRec, gridW: layer.w, gridH: layer.h, lx, ly, floor };
+          applyElevationToMesh(entityByFloor[floor], elevation);
           loadTilesForFloor(floor, tiles);
         }
         loadTokens(mapName);
