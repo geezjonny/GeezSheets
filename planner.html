@@ -215,6 +215,11 @@
         </div>
 
         <div class="control-group">
+            <label>Save Elevation to Firebase (writes maps/{name}/elevation — planner is the source of truth for terrain shape)</label>
+            <button id="save-elevation-btn" class="secondary">Save Elevation to Firebase</button>
+        </div>
+
+        <div class="control-group">
             <label>Dice (writes to dice/last — visible to everyone, same as viewer.html/index-layers.html)</label>
             <div id="dice-tray" style="display:flex;flex-wrap:wrap;gap:4px">
                 <button class="secondary dice-btn" data-sides="4" style="width:auto;flex:1">d4</button>
@@ -1619,7 +1624,7 @@
       // here writes back to Firebase -- purely "get the current map in,
       // then paint elevation on it locally."
       import { db } from "./js/firebase.js";
-      import { ref, get, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+      import { ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
       import { rollDie, animateDiceResult } from "./js/dice.js";
 
       // Which loaded map entity (a background or one mapLayers piece)
@@ -1740,6 +1745,60 @@
         return material;
       }
 
+      // Terrain texture cache, same ./textures/<name>.png lookup convention
+      // as everywhere else, falling back to a flat gray if none exists --
+      // matches getTerrainMaterial's own fallback in render3d-materials.js.
+      const terrainTextureCache = {};
+      function getTerrainTexture(terrainId) {
+        if (terrainTextureCache[terrainId]) return terrainTextureCache[terrainId];
+        const material = new THREE.MeshStandardMaterial({ color: 0x888888, side: THREE.DoubleSide });
+        terrainTextureCache[terrainId] = material;
+        const img = new Image();
+        img.onload = () => {
+          const tex = new THREE.Texture(img);
+          tex.needsUpdate = true;
+          material.map = tex;
+          material.color.set(0xffffff);
+          material.needsUpdate = true;
+        };
+        img.onerror = () => { /* keep the flat gray -- no texture for this terrain id */ };
+        img.src = `./textures/${terrainId}.png`;
+        return material;
+      }
+
+      const tileMeshes = {}; // "floor,x,y" -> THREE.Mesh
+      // Painted terrain tiles, rendered as small flat quads sitting just
+      // above whatever's underneath (the background image, or bare ground
+      // if there's none) -- same "painted tile wins visually where it
+      // exists" behavior viewer.html's own rendering already has. Height
+      // comes from planner's own terrain mesh (same sampleFloorHeightLocal
+      // used for tokens), so a painted tile sits correctly on top of
+      // elevation painted in planner, not at a fixed flat height. Only
+      // renders for floors that already have a loaded map entity to anchor
+      // to (same limitation as tokens) -- a tile-only floor with no
+      // background/mapLayers image at all isn't handled yet.
+      function loadTilesForFloor(floor, tiles) {
+        const entity = entityByFloor[floor];
+        if (!entity) { console.warn(`[firebase-load] floor ${floor} has painted tiles but no loaded map piece to anchor them to -- skipping.`); return; }
+        const geo = new THREE.PlaneGeometry(1, 1);
+        let count = 0;
+        for (const [key, cell] of Object.entries(tiles)) {
+          const parts = key.split(',').map(Number);
+          const [tFloor, tx, ty] = parts.length >= 3 ? parts : [0, parts[0], parts[1]];
+          if (tFloor !== floor) continue;
+          count++;
+          const localX = (tx + 0.5) - entity.lx;
+          const localY = (ty + 0.5) - entity.ly;
+          const local = convertCoordLocal(localX, localY, entity.gridW, entity.gridH);
+          const z = sampleFloorHeightLocal(entity.mapRec.floorMesh, local.x, local.y);
+          const mesh = new THREE.Mesh(geo, getTerrainTexture(cell.terrain));
+          mesh.position.set(local.x, local.y, z + 0.01); // just above the ground surface
+          entity.mapRec.group.add(mesh);
+          tileMeshes[key] = mesh;
+        }
+        console.log(`[firebase-load] floor ${floor}: ${count} painted tile(s) loaded`);
+      }
+
       function rebuildTokenMarkers(tokens) {
         const seenIds = new Set(Object.keys(tokens));
         // Remove markers for tokens that no longer exist.
@@ -1824,9 +1883,10 @@
       // already uses for this identical image.
       async function loadSingleBackground(mapName, imageSrc) {
         console.log(`[firebase-load] found a single background image (length ${imageSrc.length}); loading...`);
-        const [ppiSnap, geomSnap] = await Promise.all([
+        const [ppiSnap, geomSnap, tilesSnap] = await Promise.all([
           get(ref(db, `maps/${mapName}/backgroundPpi`)),
           get(ref(db, `maps/${mapName}/geometry`)),
+          get(ref(db, `maps/${mapName}/tiles`)),
         ]);
         const ppi = ppiSnap.val() || 70;
         const geom = geomSnap.val() || {};
@@ -1847,6 +1907,7 @@
         // Single background is always floor 0, always anchored with no
         // shift (lx=ly=0) -- see loadTokens below for how this is used.
         entityByFloor[0] = { mapRec, gridW: fakeData.resolution.map_size.x, gridH: fakeData.resolution.map_size.y, lx: 0, ly: 0 };
+        loadTilesForFloor(0, tilesSnap.val() || {});
         loadTokens(mapName);
       }
 
@@ -1863,8 +1924,12 @@
       async function loadMapLayers(mapName, layers) {
         const entries = Object.entries(layers);
         console.log(`[firebase-load] found ${entries.length} mapLayers piece(s); loading each...`);
-        const geomSnap = await get(ref(db, `maps/${mapName}/geometry`));
+        const [geomSnap, tilesSnap] = await Promise.all([
+          get(ref(db, `maps/${mapName}/geometry`)),
+          get(ref(db, `maps/${mapName}/tiles`)),
+        ]);
         const geom = geomSnap.val() || {};
+        const tiles = tilesSnap.val() || {};
         for (const [layerId, layer] of entries) {
           if (!layer.url) continue;
           const floor = layer.floor || 0;
@@ -1919,6 +1984,7 @@
             mapRec.group.position.set(lx + layer.w / 2, ly + layer.h / 2, 0);
           }
           entityByFloor[floor] = { mapRec, gridW: layer.w, gridH: layer.h, lx, ly };
+          loadTilesForFloor(floor, tiles);
         }
         loadTokens(mapName);
       }
@@ -1939,6 +2005,52 @@
           animateDiceResult({ sides, result }, document.getElementById('dice-result'));
         });
       });
+
+      // --- Elevation write-back: planner is now the source of truth for
+      // elevation authoring, per direct instruction -- this is the first
+      // step of actually persisting that. Extracts the CURRENT terrain
+      // mesh's vertex heights (dense, one Z-value per vertex) and samples
+      // them at each grid CELL's center, converting into our sparse
+      // per-cell format ("floor,x,y" -> feet) so mapeditor-layers.html and
+      // viewer.html keep reading exactly the same data shape they always
+      // have -- planner is just the tool that now paints it. An explicit
+      // button, not auto-synced on every paint stroke: a mid-drag brush
+      // stroke shouldn't go live to anyone else looking at this map
+      // elsewhere while the GM is still shaping the terrain.
+      async function saveElevationToFirebase() {
+        const mapName = document.getElementById('firebase-map-name').value.trim();
+        if (!mapName) { alert('No map name set -- load a map from Firebase first.'); return; }
+        if (Object.keys(entityByFloor).length === 0) { alert('Nothing loaded yet -- load a map from Firebase first.'); return; }
+        const btn = document.getElementById('save-elevation-btn');
+        btn.disabled = true; btn.textContent = 'Saving…';
+        try {
+          const elevation = {};
+          let cellCount = 0;
+          for (const [floorStr, entity] of Object.entries(entityByFloor)) {
+            const floor = parseInt(floorStr, 10);
+            const gridW = Math.round(entity.gridW), gridH = Math.round(entity.gridH);
+            for (let x = 0; x < gridW; x++) {
+              for (let y = 0; y < gridH; y++) {
+                const local = convertCoordLocal(x + 0.5, y + 0.5, entity.gridW, entity.gridH);
+                const heightUnits = sampleFloorHeightLocal(entity.mapRec.floorMesh, local.x, local.y);
+                const heightFeet = Math.round(heightUnits * 5 * 10) / 10; // 1 world unit = 5ft, established convention; rounded to 1 decimal
+                if (Math.abs(heightFeet) < 0.05) continue; // essentially flat -- keep the sparse format sparse, matching "unpainted = 0" everywhere else in this data model
+                elevation[`${floor},${x + entity.lx},${y + entity.ly}`] = heightFeet;
+                cellCount++;
+              }
+            }
+          }
+          await set(ref(db, `maps/${mapName}/elevation`), Object.keys(elevation).length ? elevation : null);
+          console.log(`[firebase-save] wrote ${cellCount} elevation cell(s) to maps/${mapName}/elevation`, elevation);
+          alert(`Saved ${cellCount} elevation cell(s) to Firebase for map "${mapName}".`);
+        } catch (err) {
+          alert('Failed to save elevation: ' + err.message);
+          console.error(err);
+        } finally {
+          btn.disabled = false; btn.textContent = 'Save Elevation to Firebase';
+        }
+      }
+      document.getElementById('save-elevation-btn').addEventListener('click', saveElevationToFirebase);
 
       document.getElementById('firebase-load-btn').addEventListener('click', loadBackgroundFromFirebase);
     </script>
