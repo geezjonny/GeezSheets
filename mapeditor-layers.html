@@ -12,7 +12,7 @@
   --gold:#c8a84b;--gold-dim:#7a6228;--red:#8b2020;--red-bright:#e04040;
   --text:#d4c49a;--text-dim:#6b5a38;--green:#5a9a5a;
 }
-:root{--chat-collapsed:36px;--initiative:82px}
+:root{--chat-collapsed:36px;--initiative:82px;--gm3d-width:0px}
 html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-family:'IM Fell English',serif;color:var(--text)}
 
 /* ── Top bar (map name, ping, etc.) ── */
@@ -60,7 +60,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);font-famil
 .opt-sep{width:1px;height:20px;background:var(--border);flex-shrink:0}
 
 /* ── Canvas area ── */
-#canvas-wrap{position:fixed;top:0;left:0;right:0;bottom:calc(var(--initiative) + var(--chat-collapsed));overflow:hidden}
+#canvas-wrap{position:fixed;top:0;left:0;right:var(--gm3d-width);bottom:calc(var(--initiative) + var(--chat-collapsed));overflow:hidden;transition:right .15s}
+#gm-3d-panel{position:fixed;top:0;right:0;bottom:calc(var(--initiative) + var(--chat-collapsed));width:var(--gm3d-width);background:#0d0b08;border-left:1px solid var(--border);overflow:hidden;z-index:20}
+#gm-3d-panel iframe{width:100%;height:100%;border:0;display:block}
+#gm3d-toggle-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08)}
 
 /* ── Corner bar (map session controls only — everything else moved to the bottom toolbar) ── */
 #corner-bar{position:fixed;top:8px;left:8px;z-index:31;display:flex;align-items:center;gap:5px;background:rgba(26,21,16,.9);border:1px solid var(--border);border-radius:8px;padding:5px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
@@ -389,6 +392,9 @@ canvas{display:block;cursor:crosshair}
   <button class="tb-btn cat-btn" id="cat-floor"       title="Floor — drag a rectangle to assign existing walls/doors/lights/imported art to a 10ft floor level, for the 3D renderer">🏢 Floor</button>
 
   <div class="tb-sep"></div>
+  <button class="tb-btn" id="gm3d-toggle-btn" title="Free-roaming 3D overview of the live map, side-by-side with the 2D editor -- fly around, no token lock">🧊 3D</button>
+
+  <div class="tb-sep"></div>
 
   <!-- Persistent utilities — always available regardless of category -->
   <button class="tb-btn" id="rulerBtnEd" title="Ruler">📏</button>
@@ -436,8 +442,16 @@ canvas{display:block;cursor:crosshair}
 
   <!-- Background sub-panel -->
   <div id="ctx-background" class="ctx-panel" style="display:none;align-items:center;gap:6px">
+    <span class="opt-label">Layer</span>
+    <button class="opt-btn bg-mode-btn active" data-bgmode="terrain" title="Paint terrain texture">🎨 Terrain</button>
+    <button class="opt-btn bg-mode-btn"        data-bgmode="elevation" title="Paint ground elevation -- affects 3D terrain height only, never walls/doors/lights">⛰ Elevation</button>
+    <div class="tb-sep"></div>
     <div id="terrain-swatch-bar" style="display:flex;align-items:center;gap:4px"></div>
     <button class="opt-btn" id="terrain-add-btn" title="Add a tile by name -- looks up ./textures/<name>.png">+ Add</button>
+    <div id="elevation-swatch-bar" style="display:none;align-items:center;gap:4px"></div>
+    <input id="elevation-add-input" type="number" step="1" placeholder="ft" style="display:none;height:26px;width:56px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 6px;outline:none;text-align:center" title="Type a custom elevation in feet and press Enter to add it as a swatch">
+    <button class="opt-btn" id="elevation-fill-btn" style="display:none" title="Fill: click one cell to flood the active elevation across the whole connected region at that cell's current elevation">🪣 Fill</button>
+    <label id="elevation-overlay-label" style="display:none;align-items:center;gap:4px;font-family:'Cinzel',serif;font-size:10px;color:var(--dim)"><input type="checkbox" id="elevation-overlay-toggle" checked> Show overlay</label>
     <div class="tb-sep"></div>
     <span class="opt-label">Shape</span>
     <button class="opt-btn shape-btn active" data-shape="rect" title="Rectangle">▭</button>
@@ -655,6 +669,8 @@ canvas{display:block;cursor:crosshair}
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cinzel',serif;font-size:18px;color:var(--gold);letter-spacing:.15em">🖼 Drop PNG here</div>
     </div>
   </div>
+
+  <div id="gm-3d-panel"></div>
 <div id="initiative-bar">
     <div id="init-track"></div>
   </div>
@@ -902,13 +918,14 @@ import { sendChat, renderChat } from "./js/chat.js";
 import { rollDie } from "./js/dice.js";
 import { findMonster } from "./js/data.js";
 import {
-  parseDD2VTT, computeVisibilityPolygon, activeOccluders,
+  computeVisibilityPolygon, activeOccluders,
   drawWallsGeometry, drawDoorsGeometry, drawDoorsWithArt, drawLightsGeometry, drawLight,
   TIME_OF_DAY_PRESETS,
   addWall, addLight, addDoor, deleteById,
   segmentAtPoint, lightAtPoint, endpointAtPoint, moveEndpoint,
   pathBlocked, computeReachableTiles,
 } from "./js/geometry.js";
+import { parseDD2VTTFile, loadImage, shrinkImageToFitFirebase } from "./js/dd2vtt-import.js";
 import { subscribeTokenStrip, rollInitiative } from "./js/initiative.js";
 import { toggleGlossarySearch, registerTerms, setAddTokenHandler } from "./js/glossary.js";
 window.toggleGlossarySearch = toggleGlossarySearch;
@@ -917,14 +934,17 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { saveStamp, savePropsLocal, saveImpassable, saveTiles, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
+import { saveStamp, savePropsLocal, saveImpassable, saveTiles, saveElevation, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
 import { saveTriggerNodes, genNodeId, isNodeActive } from "./js/triggers.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest, grantRest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
+import { createSwatchBar, createCustomSwatchList, sanitizeSwatchName } from "./js/swatch-bar.js";
+import { captureClipboard, applyClipboardToData } from "./js/clipboard.js";
+import { getElevationColorCss, bucketFillElevation } from "./js/elevation.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-const tiles={},tokens={},stamps={},roofs={},props={},impassable={},triggerNodes={};
+const tiles={},tokens={},stamps={},roofs={},props={},impassable={},triggerNodes={},elevation={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let mapFullVisibility=false; // per-map, mirrors maps/{mapName}/fullVisibility
 let pcsData={};
@@ -1008,10 +1028,9 @@ let currentPropRotation=0; // degrees, 0/90/180/270 — applies to the next-plac
 // predefined source, so it's seeded once below. Both persist in
 // localStorage per-browser -- deliberately not per-map RTDB data, since a
 // swatch is just "a name I've used before", not map content.
-let terrainSwatches = JSON.parse(localStorage.getItem("geez_terrainSwatches")||"[]");
-let propSwatches = JSON.parse(localStorage.getItem("geez_propSwatches")||'["table","torch","bush","tree","bed","crate","barrel","chest","cage"]');
-function saveTerrainSwatches(){ localStorage.setItem("geez_terrainSwatches", JSON.stringify(terrainSwatches)); }
-function savePropSwatches(){ localStorage.setItem("geez_propSwatches", JSON.stringify(propSwatches)); }
+const terrainSwatchList = createCustomSwatchList("geez_terrainSwatches", []);
+const propSwatchList = createCustomSwatchList("geez_propSwatches", ["table","torch","bush","tree","bed","crate","barrel","chest","cage"]);
+let terrainSwatches = terrainSwatchList.items, propSwatches = propSwatchList.items;
 // Lazy per-name terrain texture load, same pattern as tryLoadPropTexture in
 // js/assets.js but for the textures{} cache -- needed because custom swatch
 // names aren't part of the static config/terrains.json list that
@@ -1038,106 +1057,26 @@ let clipSelMinX=null, clipSelMinY=null, clipSelMaxX=null, clipSelMaxY=null;
 let mapClipboard=null;
 let pasteArmed=false;
 
-function captureClipboard(minX,minY,maxX,maxY){
-  const clip={w:maxX-minX+1,h:maxY-minY+1,tiles:{},stamps:{},props:{},tokens:[],triggerNodes:{},impassable:{},walls:[],doors:[],lights:[]};
-  for(let x=minX;x<=maxX;x++)for(let y=minY;y<=maxY;y++){
-    const k=key(x,y);
-    if(tiles[k]) clip.tiles[`${x-minX},${y-minY}`]={...tiles[k]};
-    if(stamps[k]) clip.stamps[`${x-minX},${y-minY}`]=stamps[k];
-    if(props[k]) clip.props[`${x-minX},${y-minY}`]={...props[k]};
-    if(triggerNodes[k]) clip.triggerNodes[`${x-minX},${y-minY}`]={...triggerNodes[k]};
-    if(impassable[k]) clip.impassable[`${x-minX},${y-minY}`]=true;
-  }
-  for(const tok of Object.values(tokens)){
-    if(tok.x>=minX&&tok.x<=maxX&&tok.y>=minY&&tok.y<=maxY){
-      clip.tokens.push({...tok,_dx:tok.x-minX,_dy:tok.y-minY});
-    }
-  }
-  // Walls/doors: only include if BOTH endpoints are inside the box, to avoid
-  // ambiguous partial copies of a wall that only partly overlaps the selection.
-  const inBox=(x,y)=>x>=minX&&x<=maxX+1&&y>=minY&&y<=maxY+1;
-  for(const w of geometry.walls){
-    if(inBox(w.x1,w.y1)&&inBox(w.x2,w.y2)){
-      clip.walls.push({x1:w.x1-minX,y1:w.y1-minY,x2:w.x2-minX,y2:w.y2-minY});
-    }
-  }
-  for(const d of geometry.doors){
-    if(inBox(d.x1,d.y1)&&inBox(d.x2,d.y2)){
-      clip.doors.push({x1:d.x1-minX,y1:d.y1-minY,x2:d.x2-minX,y2:d.y2-minY,closed:d.closed,locked:d.locked});
-    }
-  }
-  for(const l of geometry.lights){
-    if(l.x>=minX&&l.x<=maxX+1&&l.y>=minY&&l.y<=maxY+1){
-      clip.lights.push({...l,x:l.x-minX,y:l.y-minY});
-    }
-  }
-  return clip;
-}
+// captureClipboard now comes from js/clipboard.js (see import above).
 
 async function commitPaste(anchorX,anchorY){
   if(!mapClipboard) return;
-  console.log(`[paste debug] clipboard has: tiles=${Object.keys(mapClipboard.tiles).length} stamps=${Object.keys(mapClipboard.stamps).length} props=${Object.keys(mapClipboard.props).length} tokens=${mapClipboard.tokens.length} walls=${mapClipboard.walls?.length||0} doors=${mapClipboard.doors?.length||0} lights=${mapClipboard.lights?.length||0}`);
   pushUndo();
-  for(const[rel,t]of Object.entries(mapClipboard.tiles)){
-    const[dx,dy]=rel.split(",").map(Number);
-    tiles[key(anchorX+dx,anchorY+dy)]={...t};
-  }
-  console.log(`[paste debug] after tiles loop, local tiles object now has ${Object.keys(tiles).length} total entries`);
-  for(const[rel,emoji]of Object.entries(mapClipboard.stamps)){
+  const touched=applyClipboardToData(mapClipboard,anchorX,anchorY,{key,tiles,stamps,props,triggerNodes,impassable,tokens,geometry,floor:currentFloor,genNodeId,addWall,addDoor,addLight});
+  // Stamps save per-cell (not batched like tiles/props/etc below) -- same
+  // pattern mapeditor-layers.html always used for them elsewhere.
+  for(const rel of Object.keys(mapClipboard.stamps||{})){
     const[dx,dy]=rel.split(",").map(Number);
     const nk=key(anchorX+dx,anchorY+dy);
-    stamps[nk]=emoji; saveStamp(getMapName(),nk,emoji);
+    saveStamp(getMapName(),nk,stamps[nk]);
   }
-  for(const[rel,p]of Object.entries(mapClipboard.props)){
-    const[dx,dy]=rel.split(",").map(Number);
-    props[key(anchorX+dx,anchorY+dy)]={...p};
-  }
-  // Trigger nodes: generate fresh IDs for each pasted node, then remap any
-  // links that point at ANOTHER node included in this same paste (internal
-  // links stay wired together); links to nodes outside the copy get dropped,
-  // since the original target wasn't duplicated. Door-links are left as-is,
-  // since doors aren't copied/duplicated -- pointing at the same door is correct.
-  const idRemap={};
-  for(const[rel,n]of Object.entries(mapClipboard.triggerNodes||{})){
-    idRemap[n.id]=genNodeId();
-  }
-  for(const[rel,n]of Object.entries(mapClipboard.triggerNodes||{})){
-    const[dx,dy]=rel.split(",").map(Number);
-    const newNode={...n,id:idRemap[n.id]};
-    if(newNode.linkKind==="node"){
-      newNode.linkTo=idRemap[newNode.linkTo]||null;
-      if(!newNode.linkTo) newNode.linkKind=null;
-    }
-    triggerNodes[key(anchorX+dx,anchorY+dy)]=newNode;
-  }
-  for(const rel of Object.keys(mapClipboard.impassable||{})){
-    const[dx,dy]=rel.split(",").map(Number);
-    impassable[key(anchorX+dx,anchorY+dy)]=true;
-  }
-  for(const w of (mapClipboard.walls||[])){
-    addWall(geometry.walls,anchorX+w.x1,anchorY+w.y1,anchorX+w.x2,anchorY+w.y2).floor=currentFloor;
-  }
-  for(const d of (mapClipboard.doors||[])){
-    addDoor(geometry.doors,anchorX+d.x1,anchorY+d.y1,anchorX+d.x2,anchorY+d.y2,{closed:d.closed}).floor=currentFloor;
-  }
-  for(const l of (mapClipboard.lights||[])){
-    addLight(geometry.lights,anchorX+l.x,anchorY+l.y,{range:l.range,intensity:l.intensity,shadows:l.shadows,color:l.color}).floor=currentFloor;
-  }
-  for(const tok of mapClipboard.tokens){
-    const newId="tok_"+Date.now()+"_"+Math.floor(Math.random()*10000);
-    const newTok={...tok,x:anchorX+tok._dx,y:anchorY+tok._dy,floor:currentFloor};
-    delete newTok._dx; delete newTok._dy;
-    tokens[newId]=newTok;
-    saveTokenRTDB(getMapName(),newId,newTok);
-  }
+  for(const id of touched.newTokenIds) saveTokenRTDB(getMapName(),id,tokens[id]);
   isSavingTiles=true;
   try{ await saveTiles(getMapName(),tiles); } finally{ isSavingTiles=false; }
   await savePropsLocal(getMapName(),props);
-  if(Object.keys(mapClipboard.triggerNodes||{}).length) await saveTriggerNodes(getMapName(),triggerNodes);
-  if(Object.keys(mapClipboard.impassable||{}).length) await saveImpassable(getMapName(),impassable);
-  if((mapClipboard.walls?.length)||(mapClipboard.doors?.length)||(mapClipboard.lights?.length)){
-    await saveGeometry();
-  }
+  if(touched.touchedTriggerNodes) await saveTriggerNodes(getMapName(),triggerNodes);
+  if(touched.touchedImpassable) await saveImpassable(getMapName(),impassable);
+  if(touched.touchedGeometry) await saveGeometry();
   toast("Pasted — click again to paste more, Esc to stop");
 }
 
@@ -1242,7 +1181,7 @@ window.addEventListener("resize",resize);
 new ResizeObserver(resize).observe(canvasWrap);
 
 // ── RTDB save helpers ─────────────────────────────────────────────────────────
-function scheduleSave(){clearTimeout(saveTimer);setStatus("saving","Saving…");saveTimer=setTimeout(async()=>{const mapName=mapInput.value.trim()||"dungeon-1";try{isSavingTiles=true;await set(ref(db,`maps/${mapName}/tiles`),Object.keys(tiles).length?tiles:null);await set(ref(db,`maps/${mapName}/updatedAt`),Date.now());setStatus("live","Live ✓");}catch(e){setStatus("error","Error");}finally{isSavingTiles=false;}},600);}
+function scheduleSave(){clearTimeout(saveTimer);setStatus("saving","Saving…");saveTimer=setTimeout(async()=>{const mapName=mapInput.value.trim()||"dungeon-1";try{isSavingTiles=true;await set(ref(db,`maps/${mapName}/tiles`),Object.keys(tiles).length?tiles:null);await saveElevation(mapName,elevation);await set(ref(db,`maps/${mapName}/updatedAt`),Date.now());setStatus("live","Live ✓");}catch(e){setStatus("error","Error");}finally{isSavingTiles=false;}},600);}
 async function saveRoofs(){const m=mapInput.value.trim()||"dungeon-1";await set(ref(db,`maps/${m}/roofs`),Object.keys(roofs).length?roofs:null);}
 async function deleteStamp(k){const m=mapInput.value.trim()||"dungeon-1";await remove(ref(db,`maps/${m}/stamps/${k.replace(",","_")}`));delete stamps[k];}
 
@@ -1264,6 +1203,7 @@ function subscribeLive(){
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in impassable)delete impassable[k];
     for(const k in triggerNodes)delete triggerNodes[k];
+    for(const k in elevation)delete elevation[k];
     if(data){
       if(data.tokens){
         Object.assign(tokens,data.tokens);
@@ -1274,6 +1214,7 @@ function subscribeLive(){
       if(data.props)Object.assign(props,data.props);
       if(data.impassable)Object.assign(impassable,data.impassable);
       if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
+      if(data.elevation)Object.assign(elevation,data.elevation);
       // Load geometry (walls, lights, doors for lighting system)
       if(!isSavingGeometry){
         geometry.walls.length=0; geometry.lights.length=0; geometry.doors=[];
@@ -1383,8 +1324,31 @@ function rewireStrip() {
   });
 }
 
-mapInput.addEventListener("change", ()=>{_firstMapLoad=true;subscribeLive();});
+mapInput.addEventListener("change", ()=>{_firstMapLoad=true;subscribeLive();refreshGm3dPanel();});
 mapInput.addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); mapInput.blur(); } });
+
+// ── Embedded 3D overview: viewer.html with no ?token= param, which leaves
+// it permanently in its default free-roaming orbit camera (nothing ever
+// calls loginAsPC to lock it into first-person) -- exactly the "fly around
+// and look at the whole map" GM view, with zero new code needed in
+// viewer.html for the camera itself. ?map=<name> pins it to whatever's
+// actually being edited here, not whatever's currently live for players
+// (see viewer.html's own comment on this -- those can genuinely differ).
+let gm3dOpen=false, gm3dLoadedMap=null;
+function refreshGm3dPanel(){
+  if(!gm3dOpen)return;
+  const mapName=getMapName();
+  if(mapName===gm3dLoadedMap)return; // already showing this map -- avoid an unnecessary reload
+  gm3dLoadedMap=mapName;
+  document.getElementById("gm-3d-panel").innerHTML=`<iframe src="viewer.html?map=${encodeURIComponent(mapName)}&_v=${Date.now()}" title="3D overview"></iframe>`;
+}
+document.getElementById("gm3d-toggle-btn").addEventListener("click",()=>{
+  gm3dOpen=!gm3dOpen;
+  document.getElementById("gm3d-toggle-btn").classList.toggle("active",gm3dOpen);
+  document.documentElement.style.setProperty("--gm3d-width",gm3dOpen?"480px":"0px");
+  if(gm3dOpen) refreshGm3dPanel();
+  else { gm3dLoadedMap=null; document.getElementById("gm-3d-panel").innerHTML=""; } // drop the iframe entirely while closed, not just hide it -- no point rendering a 3D scene nobody can see
+});
 
 // ── Map dropdown — lists every map that actually exists in Firebase, so picking
 // one can never hit the case-mismatch / typo problem free-typing has. ──────────
@@ -1772,13 +1736,13 @@ document.getElementById("clearBtn").onclick=(e)=>{e.stopPropagation();const r=do
 clearDropdown.addEventListener("click",e=>e.stopPropagation());
 async function clearSection(section){
   const mapName=mapInput.value.trim()||"dungeon-1";
-  const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",tiles:"Clear all tiles?",roofs:"Clear all roofs?",geometry:"Clear all structure (walls/lights/doors/portals)?",all:"Clear EVERYTHING?"};
+  const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",tiles:"Clear all tiles (and any painted elevation)?",roofs:"Clear all roofs?",geometry:"Clear all structure (walls/lights/doors/portals)?",all:"Clear EVERYTHING?"};
   if(!confirm(confirm_msg[section]))return;
   if(section==="tiles"||section==="all")pushUndo();
   if(section==="bg"||section==="all"){bgImage=null;bgUrl="";bgPpi=70;await set(ref(db,`maps/${mapName}/background`),null);await set(ref(db,`maps/${mapName}/backgroundPpi`),null);for(const k in confirmedMapLayers)delete confirmedMapLayers[k];await set(ref(db,`maps/${mapName}/mapLayers`),null);}
   if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);}
   if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
-  if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);}
+  if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);for(const k in elevation)delete elevation[k];await set(ref(db,`maps/${mapName}/elevation`),null);}
   if(section==="geometry"||section==="all"){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];await set(ref(db,`maps/${mapName}/geometry`),null);for(const k in triggerNodes)delete triggerNodes[k];await set(ref(db,`maps/${mapName}/triggerNodes`),null);}
   if(section==="roofs"||section==="all"){for(const k in roofs)delete roofs[k];await set(ref(db,`maps/${mapName}/roofs`),null);}
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
@@ -1941,8 +1905,7 @@ subscribeRestRequest(req=>{
 document.getElementById("vttFileInput").addEventListener("change",async e=>{
   const file=e.target.files[0];if(!file)return;e.target.value="";
   try{
-    const json=JSON.parse(await file.text());
-    const parsed=parseDD2VTT(json);
+    const{parsed,windowCount}=await parseDD2VTTFile(file);
     // Load geometry
     geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
     geometry.walls.push(...parsed.walls);
@@ -1960,61 +1923,31 @@ document.getElementById("vttFileInput").addEventListener("change",async e=>{
     await saveGeometry();
     const mapName=mapInput.value.trim()||"dungeon-1";
     if(parsed.imageDataUrl){
-      const img=new Image();
-      await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=parsed.imageDataUrl;});
+      const img=await loadImage(parsed.imageDataUrl);
       const safeUrl=await shrinkImageToFitFirebase(img,parsed.imageDataUrl);
       if(safeUrl!==parsed.imageDataUrl) toast("Background image was too large for Firebase, shrunk to fit");
       await set(ref(db,`maps/${mapName}/background`),safeUrl);
       await set(ref(db,`maps/${mapName}/backgroundPpi`),parsed.pixelsPerGrid||70);
     }
-    toast(`DD2VTT: ${parsed.walls.length} walls · ${parsed.lights.length} lights · ${parsed.doors?.length||0} doors`);
+    const doorCount=(parsed.doors?.length||0)-windowCount;
+    toast(`DD2VTT: ${parsed.walls.length} walls · ${parsed.lights.length} lights · ${doorCount} doors${windowCount?` · ${windowCount} windows detected`:''}`);
   }catch(err){toast("DD2VTT failed: "+err.message);console.error(err);}
 });
 
-/** Firebase RTDB rejects any single value over 10MB. A large dd2vtt export
- *  (a 100x100 grid map at typical pixels-per-grid settings can easily be
- *  7000x7000+ pixels) routinely exceeds that as a base64 PNG. This
- *  progressively downscales and re-encodes as JPEG (which compresses
- *  battlemap art far better than lossless PNG) until the result comfortably
- *  fits, leaving real margin below the hard limit rather than cutting it
- *  close. Returns the original data URL unchanged if it's already small
- *  enough -- this never touches an image that doesn't need it. */
-async function shrinkImageToFitFirebase(img,dataUrl,maxBytes=9*1024*1024){
-  if(dataUrl.length<=maxBytes) return dataUrl;
-  const off=document.createElement("canvas");
-  const octx=off.getContext("2d");
-  let scale=1;
-  for(let attempt=0;attempt<8;attempt++){
-    scale*=0.75;
-    off.width=Math.max(1,Math.round(img.width*scale));
-    off.height=Math.max(1,Math.round(img.height*scale));
-    octx.clearRect(0,0,off.width,off.height);
-    octx.drawImage(img,0,0,off.width,off.height);
-    const jpegUrl=off.toDataURL("image/jpeg",0.85);
-    if(jpegUrl.length<=maxBytes) return jpegUrl;
-  }
-  // Still too big after 8 halving-ish passes (roughly a 10x linear
-  // reduction) -- something unusual is going on. Return the smallest
-  // attempt rather than the original; the caller's own save will still
-  // fail loudly if this genuinely isn't small enough, rather than silently
-  // pretending success.
-  return off.toDataURL("image/jpeg",0.7);
-}
+// shrinkImageToFitFirebase now comes from js/dd2vtt-import.js (see import above).
 document.getElementById("addVttSectionBtn").onclick=()=>document.getElementById("vttSectionInput").click();
 document.getElementById("vttSectionInput").addEventListener("change",async e=>{
   const files=Array.from(e.target.files);e.target.value="";
   for(const file of files){
     try{
-      const json=JSON.parse(await file.text());
-      const parsed=parseDD2VTT(json);
+      const{parsed,windowCount}=await parseDD2VTTFile(file);
+      if(windowCount) toast(`${file.name}: ${windowCount} window(s) detected among the doors`);
       if(!parsed.imageDataUrl){toast(`${file.name}: no embedded image, skipped`);continue;}
-      const img=new Image();
-      await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=parsed.imageDataUrl;});
+      const img=await loadImage(parsed.imageDataUrl);
       const safeUrl=await shrinkImageToFitFirebase(img,parsed.imageDataUrl);
       let finalImg=img;
       if(safeUrl!==parsed.imageDataUrl){
-        finalImg=new Image();
-        await new Promise((res,rej)=>{finalImg.onload=res;finalImg.onerror=rej;finalImg.src=safeUrl;});
+        finalImg=await loadImage(safeUrl);
         toast(`${file.name}: image was too large for Firebase, shrunk to fit`);
       }
       // Stagger each new piece's starting position so multiple imports in one
@@ -2187,7 +2120,7 @@ async function confirmImportLayer(id){
   // additive, ignored by this 2D editor's own rendering entirely, read only
   // by the 3D renderer to pick which 10ft elevation band to place things at.
   const addedWalls=layer.walls.map(w=>{const o=addWall(geometry.walls,w.x1+ox,w.y1+oy,w.x2+ox,w.y2+oy);o.sourceLayerId=layer.id;o.floor=floorVal;return o;});
-  const addedDoors=layer.doors.map(d=>{const o=addDoor(geometry.doors,d.x1+ox,d.y1+oy,d.x2+ox,d.y2+oy,{closed:d.closed,freestanding:d.freestanding});o.sourceLayerId=layer.id;o.floor=floorVal;return o;});
+  const addedDoors=layer.doors.map(d=>{const o=addDoor(geometry.doors,d.x1+ox,d.y1+oy,d.x2+ox,d.y2+oy,{closed:d.closed,freestanding:d.freestanding,isWindow:d.isWindow});o.sourceLayerId=layer.id;o.floor=floorVal;return o;});
   const addedLights=layer.lights.map(l=>{const o=addLight(geometry.lights,l.x+ox,l.y+oy,{range:l.range,intensity:l.intensity,color:l.color,shadows:l.shadows});o.sourceLayerId=layer.id;o.floor=floorVal;return o;});
   try{
     await saveGeometry();
@@ -2599,58 +2532,107 @@ document.getElementById("tok-place").onclick=async()=>{
 // a new name to add one), then Pencil paints it and Eraser removes whatever
 // is there -- no dropdowns, no upload forms, no separate "erase" option
 // living inside the swatch list itself.
-function buildTerrainSwatchBar(){
-  const bar=document.getElementById("terrain-swatch-bar");bar.innerHTML="";
-  const TERRAINS=getTERRAINS();
-  const allIds=[...TERRAINS.map(t=>t.id),...terrainSwatches.filter(id=>!TERRAINS.find(t=>t.id===id))];
-  for(const id of allIds){
-    const t=TERRAINS.find(x=>x.id===id)||{id,label:id,color:"#888"};
-    const el=document.createElement("div");el.className="pd-item"+(id===currentTerrain?" active":"");
-    el.innerHTML=`<div class="pd-item-inner"></div><div class="pd-item-label">${t.label}</div>`;
-    const inner=el.querySelector(".pd-item-inner");
-    if(textures[id])inner.style.backgroundImage=`url(${textures[id].src})`;else inner.style.backgroundColor=t.color;
-    el.onclick=()=>selectTerrain(id);
-    bar.appendChild(el);
-  }
-}
+const terrainSwatchBar = createSwatchBar({
+  container: document.getElementById("terrain-swatch-bar"),
+  getItems: () => { const TERRAINS=getTERRAINS(); return [...TERRAINS.map(t=>t.id), ...terrainSwatches.filter(id=>!TERRAINS.find(t=>t.id===id))]; },
+  isActive: id => id===currentTerrain,
+  renderItem: id => {
+    const t=getTERRAINS().find(x=>x.id===id)||{id,label:id,color:"#888"};
+    const bg = textures[id] ? `background-image:url(${textures[id].src})` : `background-color:${t.color}`;
+    return `<div class="pd-item-inner" style="${bg}"></div><div class="pd-item-label">${t.label}</div>`;
+  },
+  onSelect: id => selectTerrain(id),
+});
+function buildTerrainSwatchBar(){ terrainSwatchBar.render(); }
 function selectTerrain(t){
   currentTerrain=t;
   tryLoadTerrainTexture(t);
   buildTerrainSwatchBar();
 }
 document.getElementById("terrain-add-btn").onclick=()=>{
-  const name=(prompt("Tile name (looks up ./textures/<name>.png):")||"").trim().toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_-]/g,"");
+  const name=sanitizeSwatchName(prompt("Tile name (looks up ./textures/<name>.png):"));
   if(!name)return;
-  if(!getTERRAINS().find(t=>t.id===name)&&!terrainSwatches.includes(name)){terrainSwatches.push(name);saveTerrainSwatches();}
+  if(!getTERRAINS().find(t=>t.id===name)) terrainSwatchList.add(name);
   selectTerrain(name);
 };
 
-function buildPropSwatchBar(){
-  const bar=document.getElementById("prop-swatch-bar");bar.innerHTML="";
-  for(const id of propSwatches){
-    tryLoadPropTexture(id);
-    const el=document.createElement("div");el.className="pd-item"+(currentProp===id?" active":"");
+// ── Background layer mode: Terrain (texture) vs Elevation (ground height,
+// 3D-only -- never affects walls/doors/lights, see js/elevation.js) --------
+let backgroundPaintMode="terrain"; // "terrain" | "elevation"
+let currentElevation=0;
+let elevationFillActive=false;
+let showElevationOverlay=true;
+const elevationSwatchList = createCustomSwatchList("geez_elevationSwatches", [-10,0,5,10,20]);
+const elevationSwatchBar = createSwatchBar({
+  container: document.getElementById("elevation-swatch-bar"),
+  getItems: () => elevationSwatchList.items,
+  isActive: h => h===currentElevation,
+  itemClass: () => "pd-item",
+  renderItem: h => `<div class="pd-item-inner" style="background-color:${getElevationColorCss(h)}"></div><div class="pd-item-label">${h>0?"+"+h:h}ft</div>`,
+  onSelect: h => selectElevation(h),
+});
+function buildElevationSwatchBar(){ elevationSwatchBar.render(); }
+function selectElevation(h){ currentElevation=h; buildElevationSwatchBar(); }
+document.getElementById("elevation-add-input").addEventListener("keydown",e=>{
+  if(e.key!=="Enter")return;
+  const val=parseFloat(e.target.value);
+  if(isNaN(val))return;
+  elevationSwatchList.add(val);
+  selectElevation(val);
+  e.target.value="";
+});
+document.querySelectorAll(".bg-mode-btn").forEach(btn=>{
+  btn.onclick=()=>{
+    backgroundPaintMode=btn.dataset.bgmode;
+    document.querySelectorAll(".bg-mode-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    const isElev=backgroundPaintMode==="elevation";
+    document.getElementById("terrain-swatch-bar").style.display=isElev?"none":"flex";
+    document.getElementById("terrain-add-btn").style.display=isElev?"none":"flex";
+    document.getElementById("elevation-swatch-bar").style.display=isElev?"flex":"none";
+    document.getElementById("elevation-add-input").style.display=isElev?"inline-block":"none";
+    document.getElementById("elevation-fill-btn").style.display=isElev?"flex":"none";
+    document.getElementById("elevation-overlay-label").style.display=isElev?"flex":"none";
+    if(isElev) buildElevationSwatchBar();
+  };
+});
+document.getElementById("elevation-fill-btn").onclick=()=>{
+  elevationFillActive=!elevationFillActive;
+  document.getElementById("elevation-fill-btn").classList.toggle("active",elevationFillActive);
+};
+document.getElementById("elevation-overlay-toggle").addEventListener("change",e=>{
+  showElevationOverlay=e.target.checked;
+});
+
+const propSwatchBar = createSwatchBar({
+  container: document.getElementById("prop-swatch-bar"),
+  getItems: () => { propSwatches.forEach(id=>tryLoadPropTexture(id)); return propSwatches; },
+  isActive: id => currentProp===id,
+  renderItem: id => {
     const img=propTextures[id];
-    if(img){el.innerHTML=`<div class="pd-item-inner" style="background-image:url(${img.src})"></div><div class="pd-item-label">${id}</div>`;}
-    else{el.innerHTML=`<div style="font-size:18px;line-height:36px">📦</div><div class="pd-item-label">${id}</div>`;}
-    el.onclick=()=>selectProp(id);
-    bar.appendChild(el);
-  }
-}
-function buildStampSwatchBar(){
-  const bar=document.getElementById("stamp-swatch-bar");bar.innerHTML="";
-  getSTAMPS().forEach(s=>{
-    const el=document.createElement("div");el.className="pd-item pd-stamp"+(currentProp&&currentProp.isStamp&&currentProp.emoji===s?" active":"");
-    el.textContent=s;
-    el.onclick=()=>selectProp({isStamp:true,emoji:s,label:s});
-    bar.appendChild(el);
-  });
-}
+    return img
+      ? `<div class="pd-item-inner" style="background-image:url(${img.src})"></div><div class="pd-item-label">${id}</div>`
+      : `<div style="font-size:18px;line-height:36px">📦</div><div class="pd-item-label">${id}</div>`;
+  },
+  onSelect: id => selectProp(id),
+});
+function buildPropSwatchBar(){ propSwatchBar.render(); }
+
+const stampSwatchBar = createSwatchBar({
+  container: document.getElementById("stamp-swatch-bar"),
+  getItems: () => getSTAMPS(),
+  isActive: s => !!(currentProp && currentProp.isStamp && currentProp.emoji===s),
+  itemClass: () => "pd-item pd-stamp",
+  renderItem: s => s,
+  onSelect: s => selectProp({isStamp:true,emoji:s,label:s}),
+});
+function buildStampSwatchBar(){ stampSwatchBar.render(); }
+
 function selectProp(p){ currentProp=p; buildPropSwatchBar(); buildStampSwatchBar(); }
 document.getElementById("prop-add-btn").onclick=()=>{
-  const name=(prompt("Prop name (looks up ./props/<name>.png for 2D and ./props/<name>.json for 3D):")||"").trim().toLowerCase().replace(/\s+/g,"_").replace(/[^a-z0-9_-]/g,"");
+  const name=sanitizeSwatchName(prompt("Prop name (looks up ./props/<name>.png for 2D and ./props/<name>.json for 3D):"));
   if(!name)return;
-  if(!propSwatches.includes(name)){propSwatches.push(name);savePropSwatches();}
+  propSwatchList.add(name);
   selectProp(name);
 };
 
@@ -2718,6 +2700,23 @@ function drawProps(){
 }
 
 function drawStamps(){ctx.save();ctx.textAlign="center";ctx.textBaseline="middle";ctx.font=`${Math.round(TILE*.65)}px serif`;for(const[k,emoji]of Object.entries(stamps)){const{floor,x,y}=parseTileKey(k);if(floor!==currentFloor)continue;ctx.fillText(emoji,x*TILE+TILE/2,y*TILE+TILE/2);}ctx.restore();}
+// Heatmap-style overlay, same color gradient as the 3D reference prototype
+// (js/elevation.js's getElevationColorCss) -- white at 0, warm colors
+// rising, cool/dark blue sinking. Semi-transparent so terrain art
+// underneath still reads through; toggleable via the Elevation panel's
+// "Show overlay" checkbox since it's only useful while actively working on
+// terrain height, not during ordinary map editing.
+function drawElevation(){
+  if(!showElevationOverlay)return;
+  ctx.save();ctx.globalAlpha=0.45;
+  for(const k in elevation){
+    const{floor,x,y}=parseTileKey(k);
+    if(floor!==currentFloor)continue;
+    ctx.fillStyle=getElevationColorCss(elevation[k]);
+    ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+  }
+  ctx.restore();
+}
 function drawImpassable(){
   ctx.save();
   for(const k in impassable){
@@ -2955,6 +2954,7 @@ function render(){
     ctx.drawImage(layer.img,layer.x*TILE,layer.y*TILE,layer.w*TILE,layer.h*TILE);
   }
   for(const k in tiles){const{floor,x,y}=parseTileKey(k);if(floor!==currentFloor)continue;drawTileAt(x,y,tiles[k].terrain);}
+  drawElevation();
   // Darkness overlay
   ctx.save();ctx.fillStyle="rgba(10,5,20,0.7)";
   ctx.restore();
@@ -3123,7 +3123,7 @@ window.addEventListener("keydown",e=>{
   if((e.ctrlKey||e.metaKey)&&e.key==="c"&&!e.target.matches("input,textarea,select,[contenteditable]")){
     if(clipSelMinX==null) return;
     e.preventDefault();
-    mapClipboard=captureClipboard(clipSelMinX,clipSelMinY,clipSelMaxX,clipSelMaxY);
+    mapClipboard=captureClipboard(clipSelMinX,clipSelMinY,clipSelMaxX,clipSelMaxY,{key,tiles,stamps,props,triggerNodes,impassable,tokens,geometry});
     toast(`Copied ${mapClipboard.w}×${mapClipboard.h} area — Ctrl+V to paste`);
   }
   if((e.ctrlKey||e.metaKey)&&e.key==="v"&&!e.target.matches("input,textarea,select,[contenteditable]")){
@@ -3408,10 +3408,19 @@ canvas.addEventListener("contextmenu",e=>{
   if(doorSeg){
     const d=geometry.doors.find(x=>x.id===doorSeg.id);
     if(d){
-      d.locked=!d.locked;
-      if(d.locked) d.closed=true; // a locked door is shut by definition
-      saveGeometryDoors();
-      toast(d.locked?"🔒 Door locked":"🔓 Door unlocked");
+      if(d.isWindow){
+        if(confirm("This is tagged as a window. Untag it and treat it as a real door instead?")){
+          delete d.isWindow;
+          d.closed=false;d.locked=false; // sensible default once it's a real door again -- its old closed:true meant nothing as a window
+          saveGeometryDoors();
+          toast("🚪 Now treated as a door");
+        }
+      } else {
+        d.locked=!d.locked;
+        if(d.locked) d.closed=true; // a locked door is shut by definition
+        saveGeometryDoors();
+        toast(d.locked?"🔒 Door locked":"🔓 Door unlocked");
+      }
     }
     return;
   }
@@ -3945,6 +3954,16 @@ canvas.addEventListener("pointerup",e=>{
     scheduleSave();return;
   }
 
+  // Elevation fill: single click flood-fills the connected same-elevation
+  // region starting at the clicked cell -- takes priority over the normal
+  // shape-drag pencil behavior below whenever Fill is toggled on, so a
+  // dragged rect/circle/line never accidentally floods a huge area.
+  if(activeCategory==="background"&&activeVerb==="pencil"&&backgroundPaintMode==="elevation"&&elevationFillActive){
+    pushUndo();
+    if(bucketFillElevation(elevation,key,minTX,minTY,currentElevation)) scheduleSave();
+    return;
+  }
+
   // Background pencil -- resolve as a shape fill (rect/circle/line) over the drag extent.
   // A plain click with no drag naturally fills just the one cell.
   if(activeCategory==="background"&&activeVerb==="pencil"){
@@ -4002,8 +4021,9 @@ canvas.addEventListener("contextmenu",e=>{
 });
 
 // ── paintAt / eraseAt — dispatch by layer + tool ─────────────────────────────
+function applyElevation(x,y){elevation[key(x,y)]=currentElevation;}
 function paintAt(tx,ty){
-  if(activeCategory==="background"){ applyTile(tx,ty); }
+  if(activeCategory==="background"){ if(backgroundPaintMode==="elevation") applyElevation(tx,ty); else applyTile(tx,ty); }
   else if(activeCategory==="props" && currentProp){
     const k=key(tx,ty);
     if(currentProp.isStamp){ stamps[k]=currentProp.emoji; saveStamp(getMapName(),k,currentProp.emoji); }
@@ -4016,7 +4036,7 @@ function paintAt(tx,ty){
 
 function eraseAt(tx,ty){
   const k=key(tx,ty);
-  if(activeCategory==="background"){ delete tiles[k]; }
+  if(activeCategory==="background"){ if(backgroundPaintMode==="elevation") delete elevation[k]; else delete tiles[k]; }
   else if(activeCategory==="props"){
     if(props[k]){delete props[k];savePropsLocal(getMapName(),props);}
     if(stamps[k]){deleteStamp(k);}
@@ -4108,7 +4128,7 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
   // New modules
   // Category/verb system starts with nothing selected by default —
   // no init call needed (matches "starts with nothing selected" behavior).
-    initUndo({tiles}, getMapName, toast);
+    initUndo({tiles,elevation}, getMapName, toast);
   setSheetToastFn(toast);
   subscribePresence(document.getElementById("presence-row"));
 

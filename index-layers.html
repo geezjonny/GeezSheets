@@ -471,6 +471,7 @@ import { textures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLo
 import { drawToken, tokenAtTile } from "./js/tokens.js";
 import { drawFog } from "./js/fog.js";
 import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, pathBlocked, computeReachableTiles, computeRangeTiles, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
+import { isElevationStepBlocked } from "./js/elevation.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser, sendAttackTarget, drawAttackTargets } from "./js/pings.js";
 import { resolvePropId, tokenDisguiseRules } from "./js/disguise.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
@@ -486,7 +487,7 @@ import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/p
 import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},triggerNodes={};
+let tiles={},fog={},tokens={},stamps={},roofs={},props={},propDefs={},impassable={},triggerNodes={},elevation={};
 let bgImage=null,bgUrl="",bgPpi=70,timeOfDay="day";
 let mapFullVisibility=false; // per-map, mirrors maps/{mapName}/fullVisibility
 // Confirmed map-stitching layers -- read-only here, players never place or
@@ -801,6 +802,7 @@ function subscribeLive(){
     for(const k in roofs)delete roofs[k];for(const k in props)delete props[k];
     for(const k in impassable)delete impassable[k];
     for(const k in triggerNodes)delete triggerNodes[k];
+    for(const k in elevation)delete elevation[k];
     if(data){
       if(data.tiles)Object.assign(tiles,data.tiles);
       if(data.fog)Object.assign(fog,data.fog);
@@ -810,6 +812,7 @@ function subscribeLive(){
       if(data.props)Object.assign(props,data.props);
       if(data.impassable)Object.assign(impassable,data.impassable);
       if(data.triggerNodes)Object.assign(triggerNodes,data.triggerNodes);
+      if(data.elevation)Object.assign(elevation,data.elevation);
       geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];
       if(data.geometry){
         if(data.geometry.walls)geometry.walls.push(...Object.values(data.geometry.walls));
@@ -1726,9 +1729,15 @@ window.addEventListener("keydown",e=>{
   const occ=activeOccluders(floorWalls(_tokFloor),floorDoors(_tokFloor));
   if(pathBlocked(fromX+0.5,fromY+0.5,toX+0.5,toY+0.5,occ)) return; // blocked by a wall/closed door
   if(impassable[`${_tokFloor},${toX},${toY}`]||(_tokFloor===0&&impassable[`${toX},${toY}`])) return; // blocked by an impassable cell (backward-compat: old saves used plain "x,y" for floor 0)
+  if(isElevationStepBlocked(elevation,_tokFloor,fromX,fromY,toX,toY)) return; // a sudden elevation change (cliff/ledge) blocks movement the same way a wall does -- see js/elevation.js
   _lastMoveTime=now;
   tok.x=toX;tok.y=toY;
-  const updates={x:tok.x,y:tok.y};
+  // Facing: yaw angle consistent with viewer.html's own camera-facing
+  // convention (x=sin(yaw), z=cos(yaw) there) so the 3D view can rotate a
+  // token's model/standee to match its last movement direction without
+  // any unit-conversion mismatch between the two apps.
+  tok.facing=Math.atan2(dx,dy);
+  const updates={x:tok.x,y:tok.y,facing:tok.facing};
   if(inCombat&&initiativeState.order.length&&initiativeState.active===(tok.id||tokId)){
     tok.turnMovedTiles=(tok.turnMovedTiles||0)+1;
     updates.turnMovedTiles=tok.turnMovedTiles;
@@ -1817,24 +1826,7 @@ function evaluateAllNodes(){
   if(sheetViewEl){new MutationObserver(()=>registerTerms(sheetViewEl)).observe(sheetViewEl,{childList:true,subtree:true});}
 
   // Check if there's a saved session — show login or restore
-  // Embedding (viewer.html?embed=1&name=..&charId=..&charName=..) passes
-  // identity directly via URL params instead of a saved session -- the
-  // parent page already knows who's logged in and has its own HUD, so this
-  // skips the login modal AND hides this app's whole toolbar (#hud), same
-  // reasoning as viewer.html's own ?token= embed mode.
-  const embedParams=new URLSearchParams(window.location.search);
-  const isEmbedded=embedParams.get("embed")==="1";
-  if(isEmbedded){
-    document.getElementById("hud").style.display="none";
-    document.getElementById("initiative-bar").style.display="none";
-    document.getElementById("turn-menu").style.display="none";
-    document.getElementById("turn-menu-tab").style.display="none";
-    document.getElementById("chat-strip").style.display="none";
-    document.getElementById("chat-drawer").style.display="none";
-  }
-  const saved=isEmbedded
-    ?{playerName:embedParams.get("name"),characterId:embedParams.get("charId"),characterName:embedParams.get("charName")}
-    :loadAuthSession();
+  const saved=loadAuthSession();
   if(saved&&saved.playerName){
     playerName=saved.playerName;
     myCharacterId=saved.characterId||null;
@@ -1883,7 +1875,10 @@ function evaluateAllNodes(){
       const entry = myOwnTokenEntry();
       if(!entry){ toast("No character token on the map yet -- ask your GM to place one"); return; }
       const [tokenId] = entry;
-      iframe.src = `viewer.html?token=${encodeURIComponent(tokenId)}`;
+      // Cache-bust with a timestamp -- plain static-file hosting (no
+      // no-cache headers) can otherwise serve a stale cached viewer.html
+      // from a previous session even after the file on disk changes.
+      iframe.src = `viewer.html?token=${encodeURIComponent(tokenId)}&_v=${Date.now()}`;
       iframeLoaded = true;
     }
 

@@ -40,6 +40,10 @@ export async function saveImpassable(mapName, impassable) {
   await set(ref(db, `maps/${mapName}/impassable`), Object.keys(impassable).length ? impassable : null);
 }
 
+export async function saveElevation(mapName, elevation) {
+  await set(ref(db, `maps/${mapName}/elevation`), Object.keys(elevation).length ? elevation : null);
+}
+
 export async function saveTraps(mapName, traps) {
   await set(ref(db, `maps/${mapName}/traps`), Object.keys(traps).length ? traps : null);
 }

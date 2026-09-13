@@ -74,70 +74,6 @@
   #hud button.active { background: #6a5228; border-color: #ffe066; color: #ffe066; }
   #status { font-size: 12px; opacity: 0.75; }
   canvas { display: block; }
-  #login-overlay {
-    position: fixed; inset: 0; z-index: 100;
-    background: rgba(10, 8, 5, 0.94);
-    display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 16px;
-    font-family: Arial, sans-serif;
-  }
-  #login-overlay h1 { font-size: 20px; color: #ecdfc0; font-weight: normal; }
-  .login-btn {
-    background: #241a10; color: #ecdfc0; border: 1px solid #5a462a;
-    border-radius: 6px; padding: 10px 24px; font-size: 14px; cursor: pointer;
-    min-width: 220px;
-  }
-  .login-btn:hover { background: #3a2c18; }
-  .login-field { display: flex; flex-direction: column; gap: 4px; width: 240px; }
-  .login-field label { font-size: 11px; opacity: .75; }
-  .login-field input, .login-field select {
-    background: #241a10; color: #ecdfc0; border: 1px solid #5a462a;
-    border-radius: 4px; padding: 6px 8px; font-size: 13px;
-  }
-  #login-error { color: #e08080; font-size: 12px; min-height: 14px; }
-  #login-gm-link { color: #ffe066; text-decoration: underline; cursor: pointer; font-size: 11px; opacity: .75; }
-  #player-toolbar { display: flex; gap: 6px; }
-  #dice-popup-3d {
-    display: none; position: fixed; top: 56px; left: 12px; z-index: 10;
-    background: rgba(30, 22, 14, 0.95); border: 1px solid #3a2c18; border-radius: 8px;
-    padding: 10px; font-family: Arial, sans-serif;
-    grid-template-columns: repeat(4, 1fr); gap: 6px; width: 200px;
-  }
-  #dice-popup-3d.open { display: grid; }
-  .dice-die-btn {
-    background: #3a2c18; color: #ecdfc0; border: 1px solid #5a462a;
-    border-radius: 4px; padding: 6px 0; cursor: pointer; font-size: 12px;
-  }
-  .dice-die-btn:hover { background: #4a3a22; }
-  #dice-result-3d {
-    grid-column: span 4; text-align: center; font-size: 20px; color: #ffe066;
-    font-family: 'JetBrains Mono', monospace; padding: 6px 0;
-  }
-  #dice-result-3d.rolling { color: #ecdfc0; opacity: .7; }
-  /* Video-game-style RPG HUD: name/level/HP, bottom-left, ambient (not a
-     tool you click) -- pointer-events:none so it never intercepts clicks
-     meant for the 3D scene behind it. */
-  #rpg-hud {
-    position: fixed; left: 16px; bottom: 16px; z-index: 10;
-    background: rgba(20, 15, 9, 0.82); border: 1px solid #3a2c18; border-radius: 8px;
-    padding: 10px 14px; font-family: Arial, sans-serif; color: #ecdfc0;
-    pointer-events: none; min-width: 180px; display: none;
-  }
-  #rpg-hud-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
-  #rpg-hud-name { font-size: 14px; font-weight: bold; }
-  #rpg-hud-level { font-size: 11px; opacity: .8; white-space: nowrap; }
-  #rpg-hud-hp-wrap { width: 100%; height: 10px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
-  #rpg-hud-hp-bar { height: 100%; border-radius: 999px; transition: width .3s; }
-  #rpg-hud-hp-text { font-size: 10px; opacity: .75; margin-top: 3px; text-align: right; }
-  /* Simple initiative bar -- just names in turn order, active one
-     highlighted. Not the full rich token-strip UI from index-layers.html
-     (portraits, HP bars, roll buttons) -- deliberately minimal here. */
-  #initiative-bar {
-    display: none; position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-    z-index: 10; background: rgba(30, 22, 14, 0.85); border: 1px solid #3a2c18;
-    border-radius: 8px; padding: 6px 10px; gap: 6px; align-items: center;
-    font-family: 'Cinzel', serif;
-  }
   #viewer-toast {
     display: none; position: fixed; bottom: 18%; left: 50%; transform: translateX(-50%);
     z-index: 20; background: rgba(30, 22, 14, 0.9); border: 1px solid #3a2c18;
@@ -146,93 +82,11 @@
     opacity: 0; transition: opacity 0.2s;
   }
   #viewer-toast.show { display: block; opacity: 1; }
-  #map-panel {
-    display: none; position: fixed; top: 12px; right: 12px; z-index: 15;
-    width: 340px; height: 340px; background: #0d0b08; border: 2px solid #3a2c18;
-    border-radius: 8px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.5);
-  }
-  #map-panel-iframe { width: 100%; height: 100%; border: 0; }
-  .init-pill {
-    font-size: 11px; padding: 4px 10px; border-radius: 999px;
-    background: rgba(255,255,255,0.06); color: #ecdfc0;
-    border: 1px solid #3a2c18; white-space: nowrap;
-  }
-  .init-pill.active { background: rgba(200,168,75,.2); border-color: #ffe066; color: #ffe066; }
 </style>
 </head>
 <body>
 
-  <div id="login-overlay">
-    <h1>⚔ Who are you?</h1>
-    <div id="login-form">
-      <div class="login-field">
-        <label>Your Name</label>
-        <input id="login-name" type="text" placeholder="How shall you be known?" maxlength="30" spellcheck="false" autocomplete="off">
-      </div>
-      <div class="login-field" id="login-campaign-field">
-        <label>Campaign</label>
-        <select id="login-campaign"><option value="">Loading…</option></select>
-      </div>
-      <div class="login-field">
-        <label>Your Character</label>
-        <select id="login-char"><option value="">— Choose your character —</option></select>
-      </div>
-      <div class="login-field" id="login-pass-field" style="display:none;">
-        <label>Session Passphrase</label>
-        <input id="login-pass" type="password" placeholder="Ask your GM" maxlength="40" spellcheck="false">
-      </div>
-      <div id="login-error"></div>
-      <button class="login-btn" id="login-confirm-btn">Enter</button>
-      <!-- TODO: gate this behind a password once that's built -- for now
-           anyone can claim GM, same trust level as opening mapeditor.html
-           directly today. -->
-      <div style="margin-top:8px;"><a id="login-gm-link">or continue as GM (omniscient)</a></div>
-    </div>
-    <div id="login-waiting" style="display:none;text-align:center;">
-      <div id="login-waiting-text">Waiting for your character to appear on the map…</div>
-      <div style="margin-top:10px;"><a id="login-cancel-link">not you? switch</a></div>
-    </div>
-  </div>
-
-  <div id="hud">
-    <span id="login-indicator" style="font-size:12px;opacity:0.85;"></span>
-    <button id="toolbar-toggle-btn" title="Tools">☰</button>
-    <div id="player-toolbar" style="display:none;">
-      <button id="pingBtn3d" title="Ping your current location">📍 Ping</button>
-      <button id="rulerBtn3d" title="Measure distance to whatever's in front of you">📏 Ruler</button>
-      <button id="sheetBtn3d" title="Character Sheet">📋 Sheet</button>
-      <button id="diceBtn3d" title="Roll dice">🎲 Dice</button>
-    </div>
-    <span id="ruler-readout" style="display:none;font-family:'JetBrains Mono',monospace;font-size:12px;color:#ffe066;"></span>
-  </div>
-
-  <div id="dice-popup-3d">
-    <button class="dice-die-btn" data-sides="4">d4</button>
-    <button class="dice-die-btn" data-sides="6">d6</button>
-    <button class="dice-die-btn" data-sides="8">d8</button>
-    <button class="dice-die-btn" data-sides="10">d10</button>
-    <button class="dice-die-btn" data-sides="12">d12</button>
-    <button class="dice-die-btn" data-sides="20">d20</button>
-    <button class="dice-die-btn" data-sides="100">d100</button>
-    <div id="dice-result-3d">—</div>
-  </div>
-
-  <div id="initiative-bar"></div>
-
   <div id="viewer-toast"></div>
-
-  <div id="map-panel">
-    <iframe id="map-panel-iframe" title="Map"></iframe>
-  </div>
-
-  <div id="rpg-hud">
-    <div id="rpg-hud-top">
-      <span id="rpg-hud-name"></span>
-      <span id="rpg-hud-level"></span>
-    </div>
-    <div id="rpg-hud-hp-wrap"><div id="rpg-hud-hp-bar"></div></div>
-    <div id="rpg-hud-hp-text"></div>
-  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
@@ -247,12 +101,16 @@
     // than duplicating a second standalone Firebase connection.
     import { ref, onValue, update, set, get } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
     import { db } from "./js/firebase.js";
-    import { subscribePassphrase, checkPassphrase, hasPassphraseSet, saveAuthSession, loadAuthSession, clearAuthSession } from "./js/auth.js";
-    import { sHpColor } from "./js/sheet.js";
-    import { rollDie, animateDiceResult } from "./js/dice.js";
-    import { sendPing } from "./js/pings.js";
     import { generateContainerLoot, summarizeLoot } from "./js/loot.js";
     import { sendChat } from "./js/chat.js";
+    import { makeTexture, createTerrainMaterialCache, createTokenMaterialCache, createTokenModelCache, createPropVoxelCache, createPropBoxMaterialCache } from "./js/render3d-materials.js";
+    import { createFloorY, layerForFloor, segmentsIntersect } from "./js/render3d-core.js";
+    import { rebuildTiles as renderTiles } from "./js/render3d-tiles.js";
+    import { rebuildGeometry as renderGeometry, updateSceneLighting } from "./js/render3d-geometry.js";
+    import { rebuildTokens as renderTokens } from "./js/render3d-tokens.js";
+    import { rebuildProps as renderProps } from "./js/render3d-props.js";
+    import { updateFirstPersonCamera as stepFirstPersonCamera, snapCameraToToken as snapCamToToken } from "./js/render3d-camera.js";
+    import { isElevationStepBlocked } from "./js/elevation.js";
 
     // --- Terrain colors, inlined from config/terrains.json (can't fetch()
     // a local file under file://, but this list is tiny and rarely changes;
@@ -281,6 +139,7 @@
     // wall convention -- no per-layer extrusion here since mapeditor.html
     // has no floor/layer concept at all, just one flat map.
     const WALL_HEIGHT = 2;
+    const floorY = createFloorY(WALL_HEIGHT); // from render3d-core.js
     const WALL_THICKNESS = 0.12;
     // Floor-ish elements are all flat planes now (no box thickness anywhere)
     // stacked with tiny epsilon gaps -- just enough to avoid z-fighting and
@@ -315,24 +174,11 @@
     // they align when stacked -- no per-floor sync/alignment step, that's a
     // deliberate simplification for now, not something this file tries to
     // solve. Undefined/missing .floor on any item defaults to 0.
-    function floorY(floor) { return (floor || 0) * WALL_HEIGHT; }
-    // Three.js supports layers 0-31. Floors are typically small integers
-    // (basements can go negative), so +16 keeps any realistic floor number
-    // in range without floors needing to know about this offset at all --
-    // it's purely a rendering-visibility mechanism, used by the top-down
-    // camera to show only one floor at a time instead of every floor
-    // stacked on top of each other. Layer 0 is intentionally never used by
-    // any real floor (floor -16 would collide with it) so it's free for
-    // anything that should always render regardless of camera.layers.
-    function layerForFloor(floor) { return Math.max(1, Math.min(31, (floor || 0) + 16)); }
-    // Tags an object AND every descendant with a floor's layer -- layers
-    // are NOT inherited from parent to child in Three.js, so a Group with
-    // untagged children would still render on layer 0 regardless of what
-    // the group itself is set to.
-    function setFloorLayer(object, floor) {
-      const layer = layerForFloor(floor);
-      object.traverse(o => o.layers.set(layer));
-    }
+    // floorY/layerForFloor now come from render3d-core.js (setFloorLayer's
+    // only other use was inside functions since moved into their own
+    // modules, so it's no longer imported directly here either).
+    // (see import above) -- WALL_HEIGHT is defined a few lines down, so
+    // floorY is created there instead, right after it.
 
     // --- THREE.JS SETUP ---
     const scene = new THREE.Scene();
@@ -362,21 +208,9 @@
     sun.position.set(20, 40, 20);
     scene.add(sun);
 
-    // Day/night comes from geometry.timeOfDay -- kept as separate named
-    // lights (not baked into the constructors above) specifically so this
-    // can adjust them after the fact once real data arrives.
-    function updateSceneLighting(geometryData) {
-      const isNight = geometryData?.timeOfDay === 'night';
-      // Previously 0.6/0.6 for "day" -- that's a flat, uniform light applied
-      // to the WHOLE scene regardless of placed point lights, so removing
-      // every light from a hallway made no visible difference at all (the
-      // hallway was never lit by those lights in the first place, it was lit
-      // by this baseline). Dropped it much closer to night's level: dim
-      // enough that placed lights actually matter, not so dark you can't see
-      // geometry/textures at all for navigation.
-      ambientLight.intensity = isNight ? 0.08 : 0.18;
-      sun.intensity = isNight ? 0 : 0.15;
-    }
+    // Day/night comes from geometry.timeOfDay -- updateSceneLighting now
+    // comes from render3d-geometry.js (see import above), called with
+    // (ambientLight, sun, geometryData) at its one call site below.
 
     const worldGroup = new THREE.Group(); // tiles + walls/doors, undyed by camera framing
     scene.add(worldGroup);
@@ -407,31 +241,23 @@
     let fpYaw = 0, fpPitch = 0;
     let fpDragging = false, fpLastX = 0, fpLastY = 0;
 
-    // --- Login / role gating -------------------------------------------------
-    // Same login concept as index-layers.html (pick who you are), but here it
-    // GATES the view rather than just tagging a player name: a PC login locks
-    // viewAsTokenId permanently to their own token (dropdown disabled, can't
-    // switch to anyone else's view) -- "GM" is the only role with the free
-    // Overview camera and the ability to preview any token. No password on
-    // GM yet, matching the plan to add that later; right now it's the same
-    // trust level as being able to open mapeditor.html directly.
-    const LOGIN_ROLE_KEY = 'vtt3d_role';
-    const LOGIN_TOKEN_KEY = 'vtt3d_pc_token_id';
-    let myRole = null; // null (not logged in yet) | 'gm' | 'pc'
+    // --- Role gating ----------------------------------------------------------
+    // Always embedded now (see embedTokenId below) -- myRole only ever
+    // becomes 'pc', locked permanently to whichever token the parent page
+    // (index-layers.html) told this page to follow via ?token=. The old
+    // standalone GM/free-camera role and its own login screen are gone;
+    // that trust level lived entirely in mapeditor-layers.html/index-layers.html
+    // now anyway.
+    let myRole = null; // null (token not resolved yet) | 'pc'
     let myLockedTokenId = null;
     let currentConnectedMap = null; // set by connect(), needed for movement writes
 
-    // --- Embedding support: index-layers.html can iframe this page as a
-    // picture-in-picture 3D view for whichever character is already logged
-    // in there, e.g. viewer.html?token=<tokenId> -- skips the login screen
-    // and the "who am I" HUD controls entirely, since the parent page
-    // already knows and shows that. Falls back to the normal standalone
-    // login flow whenever this param is absent (opening viewer.html directly).
+    // Always embedded now: index-layers.html iframes this page as a 3D
+    // view for whichever character is already logged in there --
+    // viewer.html?token=<tokenId>. No standalone login/HUD exists anymore;
+    // the parent page owns all of that and simply tells this page which
+    // token to follow.
     const embedTokenId = new URLSearchParams(window.location.search).get('token');
-    if (embedTokenId) {
-      document.getElementById('hud').style.display = 'none';
-      document.getElementById('login-overlay').style.display = 'none'; // no login prompt in a small embedded panel -- just pops into view once the token loads
-    }
 
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -448,10 +274,6 @@
     // the temporal dead zone. Declaring these above animate() rather than
     // later in the file (where they were previously, inside the Token View
     // section) avoids that entirely, regardless of await ordering elsewhere.
-    //
-    // Ruler state hits the exact same issue -- also declared here for the
-    // same reason, since animate() calls updateRuler3d() every frame too.
-    let rulerActive3d = false;
     const raycaster3d = new THREE.Raycaster();
     raycaster3d.layers.enableAll(); // same reasoning as camera.layers.enableAll() above -- nothing is on layer 0 anymore
     const screenCenter = new THREE.Vector2(0, 0);
@@ -459,7 +281,6 @@
       requestAnimationFrame(animate);
       if (firstPersonMode) updateFirstPersonCamera();
       else controls.update();
-      updateRuler3d();
       renderer.render(scene, camera);
     }
     animate();
@@ -475,190 +296,40 @@
     // WebGL1 -- the texture can render solid black or simply never update,
     // with NO error or warning surfaced to onerror. Disabling mipmaps here
     // sidesteps that failure mode entirely, for every texture in the scene.
-    function makeTexture(img) {
-      const tex = new THREE.Texture(img);
-      tex.minFilter = THREE.LinearFilter;
-      tex.generateMipmaps = false;
-      tex.needsUpdate = true;
-      return tex;
-    }
-
-    const terrainMaterialCache = {}; // terrain id -> MeshStandardMaterial (mutated in place once an image loads)
-    function getTerrainMaterial(terrainId) {
-      if (terrainMaterialCache[terrainId]) return terrainMaterialCache[terrainId];
-      const color = terrainColor[terrainId] || new THREE.Color(0x444444);
-      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.85 });
-      terrainMaterialCache[terrainId] = material;
-
-      const img = new Image();
-      img.onload = () => {
-        const tex = makeTexture(img);
-        material.map = tex;
-        material.color.set(0xffffff);
-        material.needsUpdate = true;
-      };
-      img.onerror = () => { /* keep the flat terrain color -- same fallback mapeditor.html itself uses */ };
-      img.src = `./textures/${terrainId}.png`;
-
-      return material;
-    }
-
-    const tokenMaterialCache = {}; // cacheKey -> MeshBasicMaterial (billboard face)
-    function getTokenMaterial(tok) {
-      const lookupName = tok.lookupName || tok.name || tok.characterId || 'token';
-      const cacheKey = tok.characterId === '__npc__' && tok.name ? `__npc__:${tok.name.toLowerCase()}` : (tok.characterId || lookupName);
-      if (tokenMaterialCache[cacheKey]) return tokenMaterialCache[cacheKey];
-
-      const material = new THREE.MeshBasicMaterial({ color: 0xc8a84b, transparent: true });
-      tokenMaterialCache[cacheKey] = material;
-
-      const fname = lookupName.toLowerCase().replace(/\s+/g, '_');
-      const img = new Image();
-      img.onload = () => {
-        const tex = makeTexture(img);
-        material.map = tex;
-        material.color.set(0xffffff);
-        material.needsUpdate = true;
-      };
-      img.onerror = () => {
-        // js/assets.js falls back to an RTDB-hosted base64 upload next --
-        // same fallback here.
-        import("https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js").then(({ get, ref: dbRef }) => {
-          get(dbRef(db, `assets/uploads/tokens/${cacheKey}`)).then(snap => {
-            const b64 = snap.val();
-            if (!b64) return; // no art anywhere -- keep the plain colored disc
-            const i = new Image();
-            i.onload = () => {
-              const tex = makeTexture(i);
-              material.map = tex;
-              material.color.set(0xffffff);
-              material.needsUpdate = true;
-            };
-            i.src = b64;
-          });
-        });
-      };
-      img.src = `./tokens/${fname}.png`;
-
-      return material;
-    }
-
-    // 3D model lookup for tokens, same idea as props: try ./tokens/<name>.glb
-    // first, falling back to the existing flat billboard disc (getTokenMaterial
-    // above) if no model exists yet for that token.
-    const tokenModelCache = {}; // cacheKey -> 'loading' | THREE.Object3D (template scene, cloned per instance) | 'error'
-    function ensureTokenModelLoaded(cacheKey, fname) {
-      if (tokenModelCache[cacheKey]) return; // already loading, loaded, or errored
-      tokenModelCache[cacheKey] = 'loading';
-      gltfLoader.load(
-        `./tokens/${fname}.glb`,
-        (gltf) => { tokenModelCache[cacheKey] = gltf.scene; rebuildTokens(); },
-        undefined,
-        () => { tokenModelCache[cacheKey] = 'error'; } // no rebuild needed -- the disc fallback is already showing
-      );
-    }
+    // Materials/models: creation moved to js/render3d-materials.js (shared
+    // with any future 3D tool); these caches are just this app's own
+    // instances of them. onLoaded callbacks re-render whatever was showing
+    // a fallback in place of the now-arrived asset -- rebuildTokens/
+    // rebuildProps are function declarations, so referencing them here
+    // (before their own textual declaration) is safe: they're hoisted.
+    const { getTerrainMaterial } = createTerrainMaterialCache(terrainColor);
+    const { getTokenMaterial } = createTokenMaterialCache({ db });
+    const { ensureTokenModelLoaded, cache: tokenModelCache } = createTokenModelCache({ gltfLoader, onLoaded: () => rebuildTokens() });
+    const { ensurePropVoxelLoaded, cache: propVoxelCache } = createPropVoxelCache({ onLoaded: () => rebuildProps() });
+    const { getPropBoxMaterial } = createPropBoxMaterialCache();
 
     // --- Rebuilders: one per data section, so a change to just tokens
     // doesn't rebuild the whole map's geometry, etc. ---
-    let latestTiles = {}, latestGeometry = { walls: [], doors: [], lights: [] }, latestTokens = {}, latestProps = {};
+    let latestTiles = {}, latestGeometry = { walls: [], doors: [], lights: [] }, latestTokens = {}, latestProps = {}, latestElevation = {};
 
     // mapeditor-layers.html now writes tile keys as "floor,x,y" (was "x,y")
     // so painted terrain can be tagged per-floor -- old keys are still valid
     // 2-part strings, implicitly floor 0, so this stays backward compatible
-    // with any tiles saved before floors existed.
-    function parseTileKey(k) {
-      const parts = k.split(',').map(Number);
-      return parts.length >= 3 ? { floor: parts[0], x: parts[1], y: parts[2] } : { floor: 0, x: parts[0], y: parts[1] };
-    }
+    // with any tiles saved before floors existed. parseTileKey (which
+    // understands this) lives in render3d-core.js now, used internally by
+    // render3d-tiles.js/render3d-props.js -- not needed directly here.
 
     function rebuildTiles() {
-      while (tileGroup.children.length) tileGroup.remove(tileGroup.children[0]);
-      const geo = new THREE.PlaneGeometry(1, 1);
-      for (const key in latestTiles) {
-        const { floor, x, y } = parseTileKey(key);
-        const cell = latestTiles[key];
-        const material = getTerrainMaterial(cell.terrain);
-        material.side = THREE.DoubleSide;
-        const mesh = new THREE.Mesh(geo, material);
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(x + 0.5, TERRAIN_TILE_Y + floorY(floor), y + 0.5);
-        mesh.receiveShadow = true;
-        mesh.layers.set(layerForFloor(floor));
-        tileGroup.add(mesh);
-      }
-      console.log(`[tiles] ${Object.keys(latestTiles).length} painted cell(s)`);
+      const count = renderTiles({ tileGroup, latestTiles, getTerrainMaterial, floorY, terrainTileY: TERRAIN_TILE_Y, elevation: latestElevation });
+      console.log(`[tiles] ${count} painted cell(s)`);
     }
     function rebuildGeometry() {
-      while (wallGroup.children.length) wallGroup.remove(wallGroup.children[0]);
-      while (doorGroup.children.length) doorGroup.remove(doorGroup.children[0]);
-      while (lightGroup.children.length) lightGroup.remove(lightGroup.children[0]);
-
-      const unitBox = new THREE.BoxGeometry(1, 1, 1);
-      // No per-wall/door texture field exists in mapeditor's actual data --
-      // confirmed from the real Firebase export, geometry.walls/doors carry
-      // no texture info at all. So these use fixed defaults instead of a
-      // per-instance lookup, reusing the exact same terrain texture loader
-      // (same ./textures/<name>.png convention, same color fallback) rather
-      // than a separate hardcoded-color material -- if you've already made
-      // stone.png/wood.png for terrain, walls/doors pick them up for free.
-      const wallMat = getTerrainMaterial('stone');
-      const doorMat = getTerrainMaterial('wood');
-      // Glass-like, not texture-based like the others -- a window is a
-      // fixed pane, never opens/closes, so there's no "closed" art to swap
-      // to the way a door has. Distinct on sight from both wall and door.
-      const windowMat = new THREE.MeshStandardMaterial({ color: 0xaad4e8, roughness: 0.15, transparent: true, opacity: 0.45 });
-
-      function addSegment(seg, group, material) {
-        const dx = seg.x2 - seg.x1, dz = seg.y2 - seg.y1;
-        const length = Math.hypot(dx, dz);
-        if (length < 1e-6) return;
-        const angle = -Math.atan2(dz, dx);
-        const y = FLOOR_SURFACE_Y + WALL_MESH_HEIGHT / 2 + floorY(seg.floor);
-
-        // One box per ~1-grid-unit cell along the wall's run, instead of a
-        // single box with the texture stretched the whole length -- a
-        // 10-unit wall reads as 10 separate tiled copies of the texture,
-        // not one image squashed 10x. cellLen divides the length evenly
-        // (not a fixed 1) so there's no leftover sliver cell at the end.
-        const nCells = Math.max(1, Math.round(length));
-        const cellLen = length / nCells;
-        for (let i = 0; i < nCells; i++) {
-          const t = (i + 0.5) / nCells;
-          const mesh = new THREE.Mesh(unitBox, material);
-          mesh.scale.set(cellLen, WALL_MESH_HEIGHT, WALL_THICKNESS);
-          mesh.position.set(seg.x1 + dx * t, y, seg.y1 + dz * t);
-          mesh.rotation.y = angle;
-          mesh.castShadow = true;
-          mesh.userData.segId = seg.id; // lets a raycast hit trace back to which door (or wall) this came from
-          mesh.layers.set(layerForFloor(seg.floor));
-          group.add(mesh);
-        }
-      }
-      for (const w of latestGeometry.walls || []) addSegment(w, wallGroup, wallMat);
-      // A window is a fixed pane -- always rendered, regardless of
-      // closed/open, since it has no opening mechanism at all (dd2vtt's
-      // tagWindowsFromMixedDoors forces closed:true on these for exactly
-      // this reason, but checking isWindow directly here doesn't even rely
-      // on that). Open doors (closed:false, and NOT a window) render as
-      // nothing -- an actual gap you can see/walk through -- matching
-      // isMoveBlocked()'s existing "open doors don't block" rule below.
-      for (const d of latestGeometry.doors || []) {
-        if (d.isWindow) { addSegment(d, doorGroup, windowMat); continue; }
-        if (d.closed !== false) addSegment(d, doorGroup, doorMat);
-      }
-
-      for (const l of latestGeometry.lights || []) {
-        if (l.on === false) continue; // l.on!==false -- undefined (pre-existing lights, never touched by a trigger) still means on, same convention as index-layers.html/mapeditor-layers.html
-        const h = (l.color || 'ffffffff').replace('#', '');
-        const colorHex = parseInt(h.length >= 8 ? h.slice(2) : h, 16) || 0xffffff;
-        const pointLight = new THREE.PointLight(colorHex, (l.intensity ?? 1) * 0.65, (l.range ?? 5) * 2); // -35% brightness
-        pointLight.position.set(l.x, FLOOR_SURFACE_Y + 0.8 + floorY(l.floor), l.y);
-        lightGroup.add(pointLight);
-        // No visible marker mesh -- just the actual light source now.
-      }
-
-      const floorsPresent = [...new Set([...(latestGeometry.walls||[]), ...(latestGeometry.doors||[]), ...(latestGeometry.lights||[])].map(o => o.floor || 0))].sort((a,b)=>a-b);
-      console.log(`[geometry] ${latestGeometry.walls?.length || 0} walls, ${latestGeometry.doors?.length || 0} doors, ${latestGeometry.lights?.length || 0} lights, ${Object.keys(latestTiles).length} painted tile cells, floors present: [${floorsPresent.join(', ')}]`);
+      const { wallCount, doorCount, lightCount, floorsPresent } = renderGeometry({
+        wallGroup, doorGroup, lightGroup, latestGeometry, getTerrainMaterial, floorY,
+        wallMeshHeight: WALL_MESH_HEIGHT, wallThickness: WALL_THICKNESS, floorSurfaceY: FLOOR_SURFACE_Y,
+        elevation: latestElevation,
+      });
+      console.log(`[geometry] ${wallCount} walls, ${doorCount} doors, ${lightCount} lights, ${Object.keys(latestTiles).length} painted tile cells, floors present: [${floorsPresent.join(', ')}]`);
     }
 
     // Fallback ground: ONLY when there's genuinely no other floor data at
@@ -713,109 +384,36 @@
     }
 
     function rebuildTokens() {
-      while (tokenGroup.children.length) tokenGroup.remove(tokenGroup.children[0]);
-      const geo = new THREE.CircleGeometry(0.5, 24);
-      for (const id in latestTokens) {
-        const tok = latestTokens[id];
-        const size = tok.size || 1;
+      const count = renderTokens({ tokenGroup, latestTokens, getTokenMaterial, ensureTokenModelLoaded, tokenModelCache, floorY, floorSurfaceY: FLOOR_SURFACE_Y, elevation: latestElevation });
+      console.log(`[tokens] ${count} token(s)`, latestTokens);
 
-        const container = new THREE.Group();
-        container.position.set(tok.x + size / 2, FLOOR_SURFACE_Y + floorY(tok.floor), tok.y + size / 2);
-
-        if (tok.type === 'pc') {
-          // PCs only: try a real 3D model first (./tokens/<name>.glb),
-          // falling back to the flat lying-down disc. NPCs/monsters never
-          // attempt this -- see the standee branch below.
-          const lookupName = tok.lookupName || tok.name || tok.characterId || 'token';
-          const cacheKey = tok.characterId === '__npc__' && tok.name ? `__npc__:${tok.name.toLowerCase()}` : (tok.characterId || lookupName);
-          const fname = lookupName.toLowerCase().replace(/\s+/g, '_');
-          ensureTokenModelLoaded(cacheKey, fname);
-          const model = tokenModelCache[cacheKey];
-
-          if (model && model !== 'loading' && model !== 'error') {
-            // Same footprint-fit approach as props: scale by the model's own
-            // bounding box so it fills a size x size grid area -- "the same
-            // token size call" as the 2D disc below (tok.size), not a
-            // separate GLB-specific sizing scheme.
-            const instance = model.clone();
-            const box = new THREE.Box3().setFromObject(instance);
-            const dims = box.getSize(new THREE.Vector3());
-            const scale = size / (Math.max(dims.x, dims.z) || 1);
-            instance.scale.setScalar(scale);
-            instance.position.y = -box.min.y * scale; // stand on the floor rather than float/clip through it
-            container.add(instance);
-          } else {
-            const material = getTokenMaterial(tok);
-            const disc = new THREE.Mesh(geo, material);
-            disc.scale.set(size, size, 1);
-            disc.rotation.x = -Math.PI / 2;
-            disc.position.y = 0.02; // just above the floor ART (mapLayers/background), not just above y=0 -- avoids being hidden under it
-            container.add(disc);
-          }
-        } else {
-          // Everyone else (NPCs, monsters): a standing paper-mini-style
-          // standee instead of a GLB -- no model to source/normalize for
-          // every monster in the bestiary, just the same 2D art (./tokens/
-          // <name>.png) that already exists, applied to a flat card that
-          // actually stands up. Two planes (not one double-sided plane) so
-          // the front and back both show the art right-way-round instead of
-          // one side being a mirror image.
-          const material = getTokenMaterial(tok); // same PNG lookup/RTDB-fallback chain as PCs' disc
-          const cardGeo = new THREE.PlaneGeometry(size, size);
-          const front = new THREE.Mesh(cardGeo, material);
-          front.position.y = size / 2; // lift so the card's bottom edge rests on the floor, not its center
-          const back = front.clone();
-          back.rotation.y = Math.PI; // faces the opposite direction, same (non-mirrored) texture
-          container.add(front, back);
-        }
-        setFloorLayer(container, tok.floor);
-        tokenGroup.add(container);
-      }
-      console.log(`[tokens] ${Object.keys(latestTokens).length} token(s)`, latestTokens);
-
-      // Login gating: try to resume a saved session once tokens are known
-      // (need the token list to validate a saved PC login still exists).
-      // The embed token param always wins over a saved localStorage login --
-      // the parent page embedding this is being explicit about who you are.
-      // tryResolveMyToken() keeps retrying every sync while a name+character
-      // login has been submitted but no matching token has appeared yet.
-      if (embedTokenId) {
-        if (!myRole && latestTokens[embedTokenId]) loginAsPC(embedTokenId);
-      } else if (!myRole) {
-        if (!tryAutoLogin()) tryResolveMyToken();
+      // Identity: lock onto the embedded token id as soon as it actually
+      // shows up in latestTokens (it may not exist yet on the very first
+      // sync after the iframe loads). Once locked, just keep the view in
+      // sync with whatever that token's own data currently is.
+      if (!myRole) {
+        if (latestTokens[embedTokenId]) loginAsPC(embedTokenId);
       } else if (myRole === 'pc') {
         applyRoleRestrictions(); // refresh label/position if the token's data changed
       }
     }
 
     // --- Token view helpers (state declared earlier, above animate()) --------
-    function tokenWorldPos(tok) {
-      const size = tok.size || 1;
-      return new THREE.Vector3(tok.x + size / 2, FLOOR_SURFACE_Y + 0.5 + floorY(tok.floor), tok.y + size / 2);
-    }
-    function tokenHeadPos(tok) {
-      const size = tok.size || 1;
-      return new THREE.Vector3(tok.x + size / 2, FLOOR_SURFACE_Y + FP_HEAD_HEIGHT + floorY(tok.floor), tok.y + size / 2);
-    }
+    // updateFirstPersonCamera(math)/snapCameraToToken(math) come from
+    // render3d-camera.js (imported above, aliased to avoid colliding with
+    // these same-named wrapper functions) -- those wrappers own the
+    // app-specific state (firstPersonMode, fpYaw, fpPitch, viewAsTokenId)
+    // the pure math functions don't know about.
     function snapCameraToToken(tokId) {
       const tok = latestTokens[tokId];
       if (!tok) return;
-      const pos = tokenWorldPos(tok);
-      controls.target.copy(pos);
-      camera.position.set(pos.x + 4, pos.y + 4, pos.z + 4);
+      snapCamToToken({ camera, controls, tok, floorY, floorSurfaceY: FLOOR_SURFACE_Y, elevation: latestElevation });
     }
     function updateFirstPersonCamera() {
       if (!firstPersonMode || !viewAsTokenId) return;
       const tok = latestTokens[viewAsTokenId];
       if (!tok) return;
-      const headPos = tokenHeadPos(tok); // re-read every frame -- camera follows the token if it moves, without any extra plumbing
-      camera.position.copy(headPos);
-      const dir = new THREE.Vector3(
-        Math.cos(fpPitch) * Math.sin(fpYaw),
-        Math.sin(fpPitch),
-        Math.cos(fpPitch) * Math.cos(fpYaw)
-      );
-      camera.lookAt(headPos.clone().add(dir));
+      stepFirstPersonCamera({ camera, tok, fpYaw, fpPitch, floorY, headPosOpts: { floorSurfaceY: FLOOR_SURFACE_Y, headHeight: FP_HEAD_HEIGHT, elevation: latestElevation } });
     }
     function setFirstPerson(on) {
       firstPersonMode = on && !!viewAsTokenId; // never true without a token to anchor to
@@ -823,314 +421,42 @@
       if (firstPersonMode) { fpYaw = 0; fpPitch = 0; updateFirstPersonCamera(); }
     }
 
-    // --- Login gating implementation -----------------------------------------
-    // PC login no longer offers a "View as" dropdown -- a PC's view is always
-    // their own locked token now (see applyRoleRestrictions below), and GM
-    // dropped token-preview along with removing that dropdown, keeping the
-    // omniscient free camera only. If GM-side token preview turns out to be
-    // missed, that's a small, separate feature to re-add later.
-    function showLoginOverlay() { document.getElementById('login-overlay').style.display = 'flex'; }
-    function hideLoginOverlay() { document.getElementById('login-overlay').style.display = 'none'; }
-    function showLoginForm() {
-      document.getElementById('login-form').style.display = 'block';
-      document.getElementById('login-waiting').style.display = 'none';
-      showLoginOverlay();
-    }
-    function showWaitingForToken() {
-      document.getElementById('login-form').style.display = 'none';
-      document.getElementById('login-waiting').style.display = 'block';
-      showLoginOverlay();
-    }
+    // --- Identity: always resolved from the embedded token id (see
+    // embedTokenId above) -- no standalone login exists anymore. Once that
+    // token appears in latestTokens, loginAsPC() locks onto it permanently
+    // and derives myPlayerName/myCharacterId/myCharacterName straight from
+    // the token record itself (still used elsewhere -- ping/dice/chat
+    // messages, container-search inventory lookups), since there's no
+    // separate typed-name login form to get them from anymore.
+    let myPlayerName = null, myCharacterId = null, myCharacterName = null;
 
     function applyRoleRestrictions() {
-      const indicator = document.getElementById('login-indicator');
-      if (myRole === 'pc') {
-        viewAsTokenId = myLockedTokenId || '';
-        const tok = latestTokens[myLockedTokenId];
-        indicator.textContent = `Playing as: ${tok ? (tok.name || myLockedTokenId) : '(token removed)'}`;
-        updateRpgHud();
-        setupMapPanelIframe(tok);
-        // Deliberately does NOT touch camera position or fpYaw/fpPitch here.
-        // This function runs on every Firebase sync -- including the ones
-        // caused by your OWN movement writes -- so resetting the view here
-        // was fighting the player turning to look around (every step reset
-        // the look direction back to whatever it was at login). Live
-        // position-following is handled per-frame by updateFirstPersonCamera()
-        // already; the one-time snap-into-first-person only happens once, at
-        // login, in loginAsPC() below.
-      } else if (myRole === 'gm') {
-        indicator.textContent = 'GM (omniscient)';
-        document.getElementById('rpg-hud').style.display = 'none';
-      }
-    }
-    // The map panel: index-layers.html embedded read-only-ish, toolbar
-    // hidden, auto-logged-in as the same character this app is already
-    // showing -- see index-layers.html's own `embed=1` handling. Identity is
-    // read off the actual resolved token record (tok.name/tok.characterId),
-    // not the separate myPlayerName/myCharacterId variables, because those
-    // are never set at all when login happened via the older saved-role/
-    // saved-token restore path (tryAutoLogin) rather than the name+character
-    // form -- the token record is the one thing guaranteed to exist
-    // whichever path got you logged in. Guarded against reassigning src to
-    // the same URL, which would otherwise reload the iframe on every sync.
-    function setupMapPanelIframe(tok) {
-      const iframe = document.getElementById('map-panel-iframe');
-      if (!iframe || !tok) return;
-      const params = new URLSearchParams({
-        embed: '1',
-        name: tok.name || '',
-        charId: tok.characterId || '',
-        charName: myCharacterName || tok.name || '',
-      });
-      const url = `index-layers.html?${params.toString()}`;
-      if (iframe.getAttribute('src') !== url) iframe.src = url;
-      document.getElementById('map-panel').style.display = 'block';
+      if (myRole !== 'pc') return;
+      viewAsTokenId = myLockedTokenId || '';
+      // Deliberately does NOT touch camera position or fpYaw/fpPitch here.
+      // This function runs on every Firebase sync -- including the ones
+      // caused by your OWN movement writes -- so resetting the view here
+      // was fighting the player turning to look around (every step reset
+      // the look direction back to whatever it was at login). Live
+      // position-following is handled per-frame by updateFirstPersonCamera()
+      // already; the one-time snap-into-first-person only happens once, at
+      // login, in loginAsPC() below.
     }
 
-    function loginAsGM() {
-      myRole = 'gm';
-      myLockedTokenId = null;
-      localStorage.setItem(LOGIN_ROLE_KEY, 'gm');
-      localStorage.removeItem(LOGIN_TOKEN_KEY);
-      hideLoginOverlay();
-      applyRoleRestrictions();
-    }
     function loginAsPC(tokId) {
       myRole = 'pc';
       myLockedTokenId = tokId;
-      localStorage.setItem(LOGIN_ROLE_KEY, 'pc');
-      localStorage.setItem(LOGIN_TOKEN_KEY, tokId);
-      hideLoginOverlay();
+      const tok = latestTokens[tokId];
+      myCharacterId = tok?.characterId || null;
+      myCharacterName = tok?.name || null;
+      myPlayerName = tok?.name || null;
       applyRoleRestrictions();
-      subscribeMyCharacterLevel();
       // One-time snap into first-person, here at login only -- NOT inside
       // applyRoleRestrictions(), which runs on every subsequent sync
       // (including your own movement writes) and would otherwise reset
       // fpYaw/fpPitch back to 0 every time you took a step.
-      const tok = latestTokens[tokId];
       if (tok) { snapCameraToToken(tokId); setFirstPerson(true); }
     }
-    function logout() {
-      myRole = null;
-      myLockedTokenId = null;
-      myPlayerName = null; myCharacterId = null; myCharacterName = null;
-      localStorage.removeItem(LOGIN_ROLE_KEY);
-      localStorage.removeItem(LOGIN_TOKEN_KEY);
-      clearAuthSession();
-      document.getElementById('login-indicator').textContent = '';
-      setFirstPerson(false);
-      viewAsTokenId = '';
-      document.getElementById('rpg-hud').style.display = 'none';
-      refreshCharacterRoster();
-      showLoginForm();
-    }
-    // Resumes the OLDER gm/pc-token localStorage keys from before the name+
-    // character login existed below -- kept so an already-embedded PiP panel
-    // (viewer.html?token=...) or a browser that logged in before this change
-    // shipped doesn't get bounced back to a login screen unexpectedly.
-    function tryAutoLogin() {
-      const savedRole = localStorage.getItem(LOGIN_ROLE_KEY);
-      if (savedRole === 'gm') { loginAsGM(); return true; }
-      if (savedRole === 'pc') {
-        const savedTok = localStorage.getItem(LOGIN_TOKEN_KEY);
-        if (savedTok && latestTokens[savedTok]) { loginAsPC(savedTok); return true; }
-      }
-      return false;
-    }
-    // Finds a live token matching the logged-in character (by characterId,
-    // falling back to matching the token's name against the typed player
-    // name) -- same matching approach as index-layers.html's
-    // myOwnTokenEntry(). Called every sync while a name+character login has
-    // been submitted but no matching token has shown up on the map yet.
-    function tryResolveMyToken() {
-      if (myRole) return true;
-      if (!myPlayerName) return false; // login form hasn't been submitted yet
-      const entry = Object.entries(latestTokens).find(([, t]) =>
-        t.type === 'pc' && (
-          (myCharacterId && t.characterId === myCharacterId) ||
-          (t.name && t.name.toLowerCase() === myPlayerName.toLowerCase())
-        )
-      );
-      if (entry) { loginAsPC(entry[0]); return true; }
-      return false;
-    }
-    document.getElementById('login-gm-link').addEventListener('click', loginAsGM);
-    document.getElementById('login-cancel-link').addEventListener('click', logout);
-    const loginIndicatorEl = document.getElementById('login-indicator');
-    loginIndicatorEl.style.cursor = 'pointer';
-    loginIndicatorEl.title = 'Click to switch character';
-    loginIndicatorEl.addEventListener('click', logout);
-
-    // --- Name + character login -----------------------------------------
-    // Same login system as index-layers.html (js/auth.js), including its
-    // shared localStorage session -- log in once in either view and the
-    // other resumes it automatically on the same browser.
-    let myPlayerName = null, myCharacterId = null, myCharacterName = null;
-    let allRosterChars = []; // [{id, name, campaign}]
-    subscribePassphrase();
-
-    async function refreshCharacterRoster() {
-      const snap = await get(ref(db, "characters/pcs"));
-      const data = snap.val() || {};
-      allRosterChars = Object.entries(data)
-        .filter(([, c]) => c && c.name && c.type !== 'npc' && c.campaign !== '__oracle__')
-        .map(([id, c]) => ({ id, name: c.name, campaign: c.campaign || '' }));
-      const campaignSelect = document.getElementById('login-campaign');
-      const campaigns = [...new Set(allRosterChars.map(c => c.campaign).filter(Boolean))].sort();
-      campaignSelect.innerHTML = '<option value="">— All —</option>' + campaigns.map(c => `<option value="${c}">${c}</option>`).join('');
-      const saved = loadAuthSession();
-      if (saved) {
-        document.getElementById('login-name').value = saved.playerName || '';
-        if (saved.campaign) campaignSelect.value = saved.campaign;
-      }
-      filterCharsByCampaign();
-    }
-    function filterCharsByCampaign() {
-      const camp = document.getElementById('login-campaign').value;
-      const filtered = camp ? allRosterChars.filter(c => c.campaign === camp) : allRosterChars;
-      const charSelect = document.getElementById('login-char');
-      charSelect.innerHTML = '<option value="">— Choose your character —</option>' +
-        filtered.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-      const saved = loadAuthSession();
-      if (saved && saved.characterId && filtered.some(c => c.id === saved.characterId)) charSelect.value = saved.characterId;
-    }
-    document.getElementById('login-campaign').addEventListener('change', filterCharsByCampaign);
-
-    function confirmNameLogin() {
-      const name = document.getElementById('login-name').value.trim();
-      const errorEl = document.getElementById('login-error');
-      if (!name) { errorEl.textContent = 'Please enter your name.'; return; }
-      if (hasPassphraseSet() && !checkPassphrase(document.getElementById('login-pass').value)) {
-        errorEl.textContent = 'Incorrect passphrase.'; return;
-      }
-      errorEl.textContent = '';
-
-      const charId = document.getElementById('login-char').value;
-      const charEntry = allRosterChars.find(c => c.id === charId);
-      myPlayerName = name;
-      myCharacterId = charId || null;
-      myCharacterName = charEntry?.name || null;
-      saveAuthSession(name, charId, myCharacterName, document.getElementById('login-campaign').value);
-
-      if (!tryResolveMyToken()) {
-        document.getElementById('login-waiting-text').textContent = myCharacterName
-          ? `Waiting for ${myCharacterName} to appear on the map…`
-          : `Waiting for a token matching "${name}" to appear on the map…`;
-        showWaitingForToken();
-      }
-    }
-    document.getElementById('login-confirm-btn').addEventListener('click', confirmNameLogin);
-    document.getElementById('login-name').addEventListener('keydown', e => { if (e.key === 'Enter') confirmNameLogin(); });
-    setTimeout(() => { if (hasPassphraseSet()) document.getElementById('login-pass-field').style.display = 'block'; }, 300);
-    refreshCharacterRoster();
-
-    // --- RPG-style HUD: name/level/HP for whichever character you're
-    // logged in as. HP/name come straight off the live token record
-    // (already synced via latestTokens); level lives on the character sheet
-    // record instead, so it needs its own small subscription once we know
-    // which character this token belongs to.
-    let myCharacterLevel = null;
-    let unsubscribeLevel = null;
-    function subscribeMyCharacterLevel() {
-      if (unsubscribeLevel) unsubscribeLevel();
-      myCharacterLevel = null;
-      const charId = latestTokens[myLockedTokenId]?.characterId;
-      if (!charId) { updateRpgHud(); return; }
-      unsubscribeLevel = onValue(ref(db, `characters/pcs/${charId}/level`), snap => {
-        myCharacterLevel = snap.val();
-        updateRpgHud();
-      });
-    }
-    function updateRpgHud() {
-      const hud = document.getElementById('rpg-hud');
-      if (myRole !== 'pc') { hud.style.display = 'none'; return; }
-      const tok = latestTokens[myLockedTokenId];
-      if (!tok) { hud.style.display = 'none'; return; }
-      hud.style.display = 'block';
-      document.getElementById('rpg-hud-name').textContent = tok.name || myCharacterName || 'Adventurer';
-      document.getElementById('rpg-hud-level').textContent = myCharacterLevel ? `Lv ${myCharacterLevel}` : '';
-      const hp = tok.hp ?? 0, maxHp = tok.maxHp || 1;
-      const pct = Math.max(0, Math.min(1, hp / maxHp));
-      document.getElementById('rpg-hud-hp-bar').style.width = `${Math.round(pct * 100)}%`;
-      document.getElementById('rpg-hud-hp-bar').style.background = sHpColor(hp, maxHp);
-      document.getElementById('rpg-hud-hp-text').textContent = `${hp} / ${maxHp} HP`;
-    }
-
-    // --- Simple initiative bar: same RTDB data as js/initiative.js
-    // (session/inCombat, initiative/order, initiative/active), just a
-    // minimal name-pill display here rather than the full rich token strip.
-    // Shows/hides with combat; highlights whoever's turn it is.
-    onValue(ref(db, "session/inCombat"), snap => {
-      document.getElementById('initiative-bar').style.display = snap.val() ? 'flex' : 'none';
-    });
-    onValue(ref(db, "initiative"), snap => {
-      const data = snap.val() || {};
-      const order = data.order || [];
-      const active = data.active || null;
-      document.getElementById('initiative-bar').innerHTML = order.map(entry =>
-        `<span class="init-pill${entry.tokenId === active ? ' active' : ''}">${entry.name}</span>`
-      ).join('');
-    });
-
-    // --- Collapsible player toolbar: Ping / Ruler / Sheet / Dice, the same
-    // four tools index-layers.html's top bar offers, adapted for a
-    // first-person 3D view where "click a map point" isn't the interaction
-    // model. ---------------------------------------------------------------
-    document.getElementById('toolbar-toggle-btn').addEventListener('click', () => {
-      const bar = document.getElementById('player-toolbar');
-      bar.style.display = bar.style.display === 'none' ? 'flex' : 'none';
-    });
-
-    // Ping: no click-a-map-point interaction in first-person, so this pings
-    // your own current position instead -- "look here, at me" rather than
-    // "look at this spot over there."
-    document.getElementById('pingBtn3d').addEventListener('click', () => {
-      const tok = latestTokens[myLockedTokenId];
-      if (!tok) return;
-      sendPing(Math.floor(tok.x), Math.floor(tok.y), myPlayerName || myCharacterName || 'Someone');
-    });
-
-    // Ruler: a 2D top-down drag-to-measure doesn't translate to first-person
-    // either, so this raycasts from the center of the screen (crosshair-
-    // style) and continuously shows the distance to whatever you're facing.
-    // 1 Three.js world unit = 1 grid tile = 5ft everywhere else in this app,
-    // so raycaster hit distance is already in grid units, no conversion.
-    // (state declared earlier, above animate() -- see the comment there)
-    function updateRuler3d() {
-      if (!rulerActive3d) return;
-      raycaster3d.setFromCamera(screenCenter, camera);
-      const hits = raycaster3d.intersectObjects(worldGroup.children, true);
-      const el = document.getElementById('ruler-readout');
-      el.textContent = hits.length ? `${hits[0].distance.toFixed(1)} tiles (${Math.round(hits[0].distance * 5)} ft)` : '—';
-    }
-    document.getElementById('rulerBtn3d').addEventListener('click', () => {
-      rulerActive3d = !rulerActive3d;
-      document.getElementById('rulerBtn3d').classList.toggle('active', rulerActive3d);
-      document.getElementById('ruler-readout').style.display = rulerActive3d ? 'inline' : 'none';
-    });
-
-    // Sheet: sheet.html is its own standalone page (shows the whole party,
-    // not a single-character view driven by a URL param), so this just
-    // opens it in a new tab rather than embedding anything here.
-    document.getElementById('sheetBtn3d').addEventListener('click', () => {
-      window.open('sheet.html', '_blank');
-    });
-
-    // Dice: small popup with one button per die size, reusing rollDie()
-    // (writes to dice/last, visible to everyone including index-layers.html)
-    // and animateDiceResult() (the same shuffle-then-settle animation) --
-    // just a different container element for it.
-    const dicePopup3d = document.getElementById('dice-popup-3d');
-    document.getElementById('diceBtn3d').addEventListener('click', () => {
-      dicePopup3d.classList.toggle('open');
-    });
-    document.querySelectorAll('.dice-die-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const sides = parseInt(btn.dataset.sides, 10);
-        const result = await rollDie(sides, myPlayerName || myCharacterName || 'Someone');
-        animateDiceResult({ sides, result }, document.getElementById('dice-result-3d'));
-      });
-    });
 
     // --- Movement: WASD, relative to which way you're currently facing --
     // same idea as index-layers.html's arrow-key movement, but "forward" is
@@ -1142,13 +468,7 @@
     // PC-only, and only for your own locked token: this is the one place
     // viewer.html writes anything back to Firebase, specifically scoped to
     // "move my own character," not a general editing capability.
-    function segmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
-      const d1 = (x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3);
-      const d2 = (x4 - x3) * (y2 - y3) - (y4 - y3) * (x2 - x3);
-      const d3 = (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1);
-      const d4 = (x2 - x1) * (y4 - y1) - (y2 - y1) * (x4 - x1);
-      return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
-    }
+    // segmentsIntersect now comes from render3d-core.js (see import above).
     function isMoveBlocked(floor, fromX, fromY, toX, toY) {
       const fx = fromX + 0.5, fy = fromY + 0.5, tx = toX + 0.5, ty = toY + 0.5;
       for (const w of latestGeometry.walls || []) {
@@ -1160,6 +480,10 @@
         if (!d.isWindow && d.closed === false) continue; // open doors don't block -- but a window always blocks, regardless of its (forced-true) closed state
         if (segmentsIntersect(fx, fy, tx, ty, d.x1, d.y1, d.x2, d.y2)) return true;
       }
+      // A sudden elevation change (a cliff/ledge, not a gentle slope) blocks
+      // movement the same way a wall does -- see js/elevation.js's
+      // isElevationStepBlocked for the exact threshold.
+      if (isElevationStepBlocked(latestElevation, floor, fromX, fromY, toX, toY)) return true;
       return false;
     }
     // Door/lever proximity checks used to live here for spacebar's facing-
@@ -1313,103 +637,9 @@
     // per-asset work, whereas a voxel model or a plain textured box already
     // give correct size + visual presence for free, using art/tools that
     // already exist. GLB stays reserved for PC tokens only.
-    const propVoxelCache = {}; // propId -> 'loading' | THREE.Group (template, cloned per instance) | 'error'
-    function ensurePropVoxelLoaded(propId) {
-      if (propVoxelCache[propId]) return; // already loading, loaded, or errored
-      propVoxelCache[propId] = 'loading';
-      fetch(`props/${propId}.json`)
-        .then(res => { if (!res.ok) throw new Error('not found'); return res.json(); })
-        .then(data => {
-          const voxelList = data.voxels || [];
-          if (!voxelList.length) { propVoxelCache[propId] = 'error'; return; }
-          // Normalize to the voxels actually used (not the full declared
-          // grid -- a chest painted in a corner of an 8x8x8 grid shouldn't
-          // scale as if it filled the whole thing), so sizing to a prop's
-          // w/h/height is exact, no bounding-box guessing needed like GLBs.
-          let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-          for (const v of voxelList) {
-            minX = Math.min(minX, v.x); maxX = Math.max(maxX, v.x);
-            minY = Math.min(minY, v.y); maxY = Math.max(maxY, v.y);
-            minZ = Math.min(minZ, v.z); maxZ = Math.max(maxZ, v.z);
-          }
-          const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
-          const template = new THREE.Group();
-          const usedX = maxX - minX + 1, usedZ = maxZ - minZ + 1;
-          for (const v of voxelList) {
-            // X/Z are centered around the template's local origin (not
-            // starting at a corner) to match how rebuildProps() positions
-            // the container -- at the CENTER of the prop's footprint, not
-            // a corner. Without this the model rendered shifted by half its
-            // own size, straddling into the neighboring cell instead of
-            // sitting inside its own -- looked like a sizing bug but was
-            // actually a mismatched-pivot bug. Y is NOT centered -- it
-            // should rest on the floor (span 0..height), same convention
-            // the PNG-box fallback already uses.
-            const mesh = new THREE.Mesh(cubeGeo, new THREE.MeshLambertMaterial({ color: v.c || '#c8a84b' }));
-            mesh.position.set(v.x - minX - usedX / 2 + 0.5, v.y - minY + 0.5, v.z - minZ - usedZ / 2 + 0.5);
-            template.add(mesh);
-          }
-          template.userData.usedSize = { x: usedX, y: maxY - minY + 1, z: usedZ };
-          propVoxelCache[propId] = template;
-          rebuildProps();
-        })
-        .catch(() => { propVoxelCache[propId] = 'error'; }); // no voxel model -- fall back to the PNG box below
-    }
-    const propBoxMaterialCache = {}; // propId -> MeshBasicMaterial (mutated in place once the PNG loads, same live-swap pattern as terrain textures)
-    function getPropBoxMaterial(propId) {
-      if (propBoxMaterialCache[propId]) return propBoxMaterialCache[propId];
-      const material = new THREE.MeshBasicMaterial({ color: 0xc8a84b, transparent: true });
-      propBoxMaterialCache[propId] = material;
-      const img = new Image();
-      img.onload = () => { material.map = makeTexture(img); material.color.set(0xffffff); material.needsUpdate = true; };
-      img.onerror = () => { /* keep the flat color -- no png, just a placeholder */ };
-      img.src = `props/${propId}.png`;
-      return material;
-    }
     function rebuildProps() {
-      while (propGroup.children.length) propGroup.remove(propGroup.children[0]);
-      for (const key in latestProps) {
-        const p = latestProps[key];
-        let px, py, floor;
-        if (p.attachedTo && latestTokens[p.attachedTo]) {
-          const tok = latestTokens[p.attachedTo];
-          px = tok.x + (p.offsetX || 0); py = tok.y + (p.offsetY || 0); floor = tok.floor || 0;
-        } else {
-          const parsed = parseTileKey(key);
-          px = parsed.x; py = parsed.y; floor = parsed.floor;
-        }
-        const propId = (p.disguise && p.disguise.propId) || p.propId; // resolvePropId()'s exact logic -- matches what mapeditor's own 2D view shows, disguises included
-        if (!propId) continue;
-        const w = p.w || 1, h = p.h || 1, propHeight = p.height || 1;
-        const cx = px + w / 2, cz = py + h / 2;
-        const baseY = FLOOR_SURFACE_Y + floorY(floor);
-
-        ensurePropVoxelLoaded(propId);
-        const voxelTemplate = propVoxelCache[propId];
-
-        const container = new THREE.Group();
-        container.position.set(cx, baseY, cz);
-        container.rotation.y = -((p.rotation || 0) * Math.PI / 180);
-        container.userData.propKey = key; // lets a raycast hit trace back to this prop, for container interaction
-
-        if (voxelTemplate && voxelTemplate !== 'loading' && voxelTemplate !== 'error') {
-          // Exact fit, per-axis -- these are already unit cubes on a known
-          // grid, so (unlike GLB scaling) no bounding-box estimate is
-          // needed, and non-uniform scaling here doesn't look distorted the
-          // way squashing a real mesh would.
-          const instance = voxelTemplate.clone(true);
-          const used = voxelTemplate.userData.usedSize;
-          instance.scale.set(w / used.x, propHeight / used.y, h / used.z);
-          container.add(instance);
-        } else {
-          const box = new THREE.Mesh(new THREE.BoxGeometry(w, propHeight, h), getPropBoxMaterial(propId));
-          box.position.y = propHeight / 2; // box center up to half its height, so its bottom face sits on the floor
-          container.add(box);
-        }
-        setFloorLayer(container, floor);
-        propGroup.add(container);
-      }
-      console.log(`[props] ${Object.keys(latestProps).length} prop(s)`);
+      const count = renderProps({ propGroup, latestProps, latestTokens, ensurePropVoxelLoaded, propVoxelCache, getPropBoxMaterial, floorY, floorSurfaceY: FLOOR_SURFACE_Y, elevation: latestElevation });
+      console.log(`[props] ${count} prop(s)`);
     }
 
     function rebuildBackground(url, ppi) {
@@ -1490,6 +720,8 @@
       unsubscribe = onValue(ref(db, `maps/${mapName}`), snap => {
         const data = snap.val() || {};
 
+        latestElevation = data.elevation || {};
+
         latestTiles = data.tiles || {};
         rebuildTiles();
 
@@ -1499,7 +731,7 @@
           lights: data.geometry?.lights || [],
         };
         rebuildGeometry();
-        updateSceneLighting(data.geometry);
+        updateSceneLighting(ambientLight, sun, data.geometry);
 
         latestTokens = data.tokens || {};
         rebuildTokens();
@@ -1514,12 +746,22 @@
       });
     }
 
-    // Always follow the GM's active map automatically -- no manual map
-    // input/Connect button anymore (removed along with the old GM-facing
-    // HUD), so there's nothing to override auto-follow with.
-    onValue(ref(db, "session/currentMap"), snap => {
-      connect(snap.val() || "dungeon-1");
-    });
+    // Always follow the GM's active map automatically -- UNLESS a specific
+    // map was requested via ?map=<name> (used by mapeditor-layers.html's own
+    // embedded 3D overview, so the GM sees whatever they're actually
+    // editing, not whatever's currently live for players -- those can
+    // genuinely differ, e.g. prepping next week's map while this week's
+    // is still the one shown in session). No manual map input/Connect
+    // button exists anymore (removed along with the old GM-facing HUD), so
+    // ?map= is the only way to pin this to something other than live-follow.
+    const forcedMapName = new URLSearchParams(window.location.search).get('map');
+    if (forcedMapName) {
+      connect(forcedMapName);
+    } else {
+      onValue(ref(db, "session/currentMap"), snap => {
+        connect(snap.val() || "dungeon-1");
+      });
+    }
   </script>
 </body>
 </html>

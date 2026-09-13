@@ -80,6 +80,32 @@ export function parseDD2VTT(json) {
 }
 
 /**
+ * dd2vtt lumps doors and windows into the same "portals" array with no type
+ * field to tell them apart -- but Dungeondraft consistently exports windows
+ * as closed:false ("open", since a window has no closing mechanism) while
+ * real doors default to closed:true. A genuine MIX of both within one
+ * import (not just all-open or all-closed, which could simply mean "this
+ * map only has doors, all left one way") is itself the signal that windows
+ * are present -- so the open ones get tagged as windows and the closed
+ * ones are trusted as real doors. Mutates and returns the same array;
+ * no-ops (returns {doors, windowCount:0}) if there's no mix to disambiguate.
+ */
+export function tagWindowsFromMixedDoors(doors) {
+  const hasOpen = doors.some(d => d.closed === false);
+  const hasClosed = doors.some(d => d.closed !== false);
+  if (!hasOpen || !hasClosed) return { doors, windowCount: 0 };
+  let windowCount = 0;
+  for (const d of doors) {
+    if (d.closed === false) {
+      d.isWindow = true;
+      d.closed = true; // a window is a fixed pane, not an openable gap -- closed:true is the safe default for any older code path that doesn't yet check isWindow
+      windowCount++;
+    }
+  }
+  return { doors, windowCount };
+}
+
+/**
  * Inverse of parseDD2VTT — packages this module's wall/door/light arrays
  * back into a dd2vtt-shaped object (minus the image, which the caller
  * already has separately and should merge back in before saving to disk).
@@ -476,7 +502,7 @@ export function drawWallsGeometry(ctx, walls, TILE, { zoom, selectedId } = {}) {
 export function drawDoorsGeometry(ctx, doors, TILE, { zoom, selectedId } = {}) {
   ctx.save();
   for (const d of doors) {
-    ctx.strokeStyle = d.id === selectedId ? "#ffcc44" : (d.closed ? "#3a8a3a" : "#8aaa3a");
+    ctx.strokeStyle = d.id === selectedId ? "#ffcc44" : (d.isWindow ? "#5aa8d8" : (d.closed ? "#3a8a3a" : "#8aaa3a"));
     ctx.lineWidth = (d.id === selectedId ? 4 : 3) / (zoom || 1);
     ctx.setLineDash(d.closed ? [] : [6 / (zoom || 1), 4 / (zoom || 1)]);
     ctx.beginPath();
@@ -500,7 +526,7 @@ export function drawDoorsGeometry(ctx, doors, TILE, { zoom, selectedId } = {}) {
 export function drawDoorsWithArt(ctx, doors, TILE, propTextures, { zoom, selectedId, showLockIcons=false } = {}) {
   ctx.save();
   for (const d of doors) {
-    const img = propTextures[d.closed ? "doorclosed" : "door"];
+    const img = propTextures[d.isWindow ? "window" : (d.closed ? "doorclosed" : "door")];
     if (!img) { drawDoorsGeometry(ctx, [d], TILE, { zoom, selectedId }); continue; }
     const cx = (d.x1 + d.x2) / 2 * TILE, cy = (d.y1 + d.y2) / 2 * TILE;
     const angle = Math.atan2(d.y2 - d.y1, d.x2 - d.x1);
@@ -514,7 +540,7 @@ export function drawDoorsWithArt(ctx, doors, TILE, propTextures, { zoom, selecte
       ctx.strokeRect(-len / 2, -TILE * 0.35, len, TILE * 0.7);
     }
     ctx.restore();
-    if (showLockIcons && d.locked) {
+    if (showLockIcons && d.locked && !d.isWindow) {
       ctx.save();
       ctx.font = `${Math.round(TILE * 0.3)}px serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.strokeStyle = "rgba(0,0,0,.6)"; ctx.lineWidth = 3;
@@ -566,8 +592,9 @@ export function addWall(walls, x1, y1, x2, y2) {
   return w;
 }
 
-export function addDoor(doors, x1, y1, x2, y2, { closed = true, freestanding = false } = {}) {
+export function addDoor(doors, x1, y1, x2, y2, { closed = true, freestanding = false, isWindow = false } = {}) {
   const d = { id: genId(), x1, y1, x2, y2, closed, freestanding };
+  if (isWindow) d.isWindow = true; // omitted entirely for ordinary doors, rather than a redundant isWindow:false on every one
   doors.push(d);
   return d;
 }
