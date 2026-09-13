@@ -1,10 +1,16 @@
-// Elevation -- color gradient and flood-fill for per-tile terrain
-// elevation. This is grid-quantized (one numeric height per "floor,x,y"
-// cell, same key convention as tiles/impassable/etc.) rather than a
-// continuous per-vertex height field -- deliberately simpler, matching how
-// this app already models everything else. Building geometry (walls,
-// doors, lights) is untouched by any of this; elevation is a terrain/land
-// concept only.
+// Elevation -- color gradient, flood-fill, and smooth height sampling for
+// per-tile terrain elevation. The DATA is still grid-quantized (one
+// numeric height per "floor,x,y" cell, same key convention as tiles/
+// impassable/etc.) -- deliberately simpler than a dense per-vertex mesh,
+// matching how this app already models everything else, and it's what
+// mapeditor-layers.html's swatch-based painting UI produces. What's
+// smooth is the SAMPLING: a grid vertex's height blends the (up to 4)
+// cells touching it, and any continuous point bilinearly interpolates
+// between its surrounding vertices -- so two adjacent cells at different
+// heights read as a continuous ramp between them, not a stepped cliff,
+// without needing a richer data model or touching the painting UI at all.
+// Building geometry (walls, doors, lights) is untouched by any of this;
+// elevation is a terrain/land concept only.
 //
 // No DOM, no THREE, no Firebase -- pure data and a CSS color string, so
 // this drops into a 2D canvas editor (mapeditor-layers.html) or a 3D
@@ -76,16 +82,43 @@ export function bucketFillElevation(elevation, key, startX, startY, value, maxCe
 // offset to a world-space Y position needs this conversion.
 export const FEET_PER_WORLD_UNIT = 5;
 
+/** Raw painted value for one grid cell, in feet. Unpainted = 0, matching
+ *  the convention used everywhere else in this data model. */
+function cellHeightFeet(elevation, floor, cellX, cellY) {
+  return elevation[`${floor},${cellX},${cellY}`] || 0;
+}
+
 /**
- * Looks up the painted elevation (in feet) for whichever grid cell
- * contains world position (x, y) on a given floor -- floors to the
- * containing cell (blocky/stepped terrain, not smoothly interpolated
- * between cells), matching how the terrain itself renders. Untouched
- * cells are 0, matching the "unpainted = 0" convention used everywhere
- * else in this data model. Takes floor/x/y directly (not a caller-
- * supplied key() closure like bucketFillElevation above) because 3D
- * renderers look up arbitrary (floor, x, y) combinations rather than
- * always querying "the current floor" the way the 2D editor does.
+ * Height (feet) at a GRID VERTEX -- the corner point shared by up to 4
+ * neighboring cells -- computed as the average of whichever of those
+ * cells exist. This is the building block for smooth terrain: a vertex
+ * shared by a 0ft cell and a 20ft cell blends to 10ft, so the mesh built
+ * from these vertices ramps between them instead of stepping. Two cells
+ * that share a corner always compute the identical value for it (same
+ * inputs, same average), which is what makes neighboring terrain quads
+ * line up with no visible seam.
+ * @param {Object<string, number>} elevation - keyed "floor,x,y".
+ * @param {number} floor
+ * @param {number} vx - vertex grid X (the corner shared by cells vx-1 and vx).
+ * @param {number} vy - vertex grid Y (the corner shared by cells vy-1 and vy).
+ * @returns {number} feet
+ */
+export function vertexHeightFeet(elevation, floor, vx, vy) {
+  return (
+    cellHeightFeet(elevation, floor, vx - 1, vy - 1) +
+    cellHeightFeet(elevation, floor, vx, vy - 1) +
+    cellHeightFeet(elevation, floor, vx - 1, vy) +
+    cellHeightFeet(elevation, floor, vx, vy)
+  ) / 4;
+}
+
+/**
+ * Smoothly interpolated elevation (feet) at any continuous world position
+ * (x, y) on a given floor -- bilinear interpolation between the 4 grid
+ * vertices surrounding that point (see vertexHeightFeet). Replaces a
+ * blocky "floor to the containing cell" lookup with a continuous ramp:
+ * walking across a cell boundary between different painted heights now
+ * passes through every value in between, rather than jumping at the edge.
  * @param {Object<string, number>} elevation - keyed "floor,x,y", straight from Firebase's maps/{name}/elevation.
  * @param {number} floor
  * @param {number} x
@@ -93,12 +126,20 @@ export const FEET_PER_WORLD_UNIT = 5;
  * @returns {number} feet
  */
 export function sampleElevationFeet(elevation, floor, x, y) {
-  return elevation[`${floor},${Math.floor(x)},${Math.floor(y)}`] || 0;
+  const x0 = Math.floor(x), y0 = Math.floor(y);
+  const fx = x - x0, fy = y - y0;
+  const h00 = vertexHeightFeet(elevation, floor, x0, y0);
+  const h10 = vertexHeightFeet(elevation, floor, x0 + 1, y0);
+  const h01 = vertexHeightFeet(elevation, floor, x0, y0 + 1);
+  const h11 = vertexHeightFeet(elevation, floor, x0 + 1, y0 + 1);
+  const hTop = h00 * (1 - fx) + h10 * fx;
+  const hBottom = h01 * (1 - fx) + h11 * fx;
+  return hTop * (1 - fy) + hBottom * fy;
 }
 
 /**
- * Same lookup as sampleElevationFeet, converted to Three.js world units --
- * add this directly to a mesh's Y position alongside floorY(floor).
+ * Same smooth sampling as sampleElevationFeet, converted to Three.js world
+ * units -- add this directly to a mesh's Y position alongside floorY(floor).
  * @returns {number} world units
  */
 export function sampleElevationUnits(elevation, floor, x, y) {
@@ -106,12 +147,13 @@ export function sampleElevationUnits(elevation, floor, x, y) {
 }
 
 /**
- * Whether moving between two adjacent cells crosses too steep an
- * elevation change to walk normally -- treated like a wall (blocks
- * movement) rather than a slope you just walk up/down. Defaults to a
- * 10ft step as "too steep" (two 5ft cells' worth of sudden rise/drop, a
- * reasonable cliff/ledge cutoff); pass a different maxStepFeet for a
- * gentler or stricter threshold.
+ * Whether moving between two cells crosses too steep an elevation change
+ * to walk normally -- treated like a wall (blocks movement) rather than a
+ * slope you just walk up/down. Samples at each cell's CENTER (not its
+ * corner), matching where a token/object actually stands within a cell.
+ * Defaults to a 10ft step as "too steep" (two 5ft cells' worth of sudden
+ * rise/drop, a reasonable cliff/ledge cutoff); pass a different
+ * maxStepFeet for a gentler or stricter threshold.
  * @param {Object<string, number>} elevation
  * @param {number} floor
  * @param {number} fromX
@@ -122,7 +164,7 @@ export function sampleElevationUnits(elevation, floor, x, y) {
  * @returns {boolean}
  */
 export function isElevationStepBlocked(elevation, floor, fromX, fromY, toX, toY, maxStepFeet = 10) {
-  const fromH = sampleElevationFeet(elevation, floor, fromX, fromY);
-  const toH = sampleElevationFeet(elevation, floor, toX, toY);
+  const fromH = sampleElevationFeet(elevation, floor, fromX + 0.5, fromY + 0.5);
+  const toH = sampleElevationFeet(elevation, floor, toX + 0.5, toY + 0.5);
   return Math.abs(toH - fromH) > maxStepFeet;
 }

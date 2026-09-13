@@ -1,6 +1,15 @@
-// 3D Terrain Tiles -- renders painted terrain cells as flat planes (no
-// elevation painted there) or solid stepped boxes (elevation painted),
-// tagged per-floor. Extracted from viewer.html's rebuildTiles.
+// 3D Terrain Tiles -- renders painted terrain cells (and elevation-only
+// cells with no terrain painted) as tilted quads whose 4 corners sit at
+// smoothly-blended grid-vertex heights, tagged per-floor. Neighboring
+// cells share the exact same corner-height calculation, so adjacent quads
+// line up with no visible seam -- elevation reads as a continuous ramp
+// between different painted heights, not a stepped cliff. Any cell with
+// elevation also gets "skirt" walls around its edges, extending down to a
+// shared baseline well below any floor's ground level -- without these,
+// raised/lowered terrain has nothing underneath it, leaving a visible gap
+// you can see straight through wherever it doesn't border more painted
+// terrain (most commonly where it meets a flat background image, which
+// this app doesn't deform). Extracted from viewer.html's rebuildTiles.
 //
 // REQUIRES THREE as a global (see render3d-materials.js's header for the
 // full explanation). Imports parseTileKey and layerForFloor from
@@ -9,15 +18,58 @@
 // using this module needs render3d-core.js anyway.
 
 import { parseTileKey, layerForFloor } from "./render3d-core.js";
-import { sampleElevationUnits } from "./elevation.js";
+import { vertexHeightFeet, FEET_PER_WORLD_UNIT } from "./elevation.js";
 
-// World units (10ft) below floorY(floor) that every elevation box's bottom
-// face reaches down to. Elevation is grid-quantized (one flat height per
-// cell, not a continuous mesh), so without a shared baseline, neighboring
-// cells at different heights would look like disconnected floating slabs
-// rather than solid stepped terrain -- extending every box down to the
-// same depth is what makes adjacent steps read as connected ground.
-const ELEVATION_BASELINE_DEPTH = 2;
+// World units below floorY(floor) that every elevated/lowered cell's
+// skirt walls reach down to. Deep enough to sit below a flat background
+// image or a neighboring unpainted (elevation-0) cell in any normal case,
+// so there's no visible gap looking at the edge of raised/lowered terrain
+// from any reasonable camera angle.
+const SKIRT_BASELINE_DEPTH = 3;
+
+/**
+ * Builds one quad (2 triangles) from 4 world-space corners, given in
+ * order around the perimeter (not diagonally) -- e.g. top-left,
+ * top-right, bottom-right, bottom-left. Used for both the tilted top
+ * surface and the vertical skirt walls below.
+ * @param {{x,y,z}} p1
+ * @param {{x,y,z}} p2
+ * @param {{x,y,z}} p3
+ * @param {{x,y,z}} p4
+ * @returns {THREE.BufferGeometry}
+ */
+function quadGeometry(p1, p2, p3, p4) {
+  const positions = new Float32Array([
+    p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z,
+    p1.x, p1.y, p1.z, p3.x, p3.y, p3.z, p4.x, p4.y, p4.z,
+  ]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
+ * Merges several BufferGeometries (all using position-only attributes, as
+ * quadGeometry produces) into one, so a whole cell's top surface + 4
+ * skirt walls become a single mesh/draw call instead of 5.
+ * @param {THREE.BufferGeometry[]} geometries
+ * @returns {THREE.BufferGeometry}
+ */
+function mergeGeometries(geometries) {
+  let totalVerts = 0;
+  for (const g of geometries) totalVerts += g.attributes.position.count;
+  const merged = new Float32Array(totalVerts * 3);
+  let offset = 0;
+  for (const g of geometries) {
+    merged.set(g.attributes.position.array, offset);
+    offset += g.attributes.position.array.length;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(merged, 3));
+  geo.computeVertexNormals();
+  return geo;
+}
 
 /**
  * Rebuilds every painted terrain tile AND every elevation-only cell (no
@@ -28,14 +80,12 @@ const ELEVATION_BASELINE_DEPTH = 2;
  * @param {Object<string, {terrain: string}>} opts.latestTiles - keyed by "floor,x,y" (or legacy "x,y", implicitly floor 0).
  * @param {(terrainId: string) => THREE.Material} opts.getTerrainMaterial - see render3d-materials.js's createTerrainMaterialCache.
  * @param {(floor: number) => number} opts.floorY - see render3d-core.js's createFloorY.
- * @param {number} [opts.terrainTileY] - Y offset above the floor's base, before floorY is added, for unelevated (flat) cells. Defaults to 0.02 (viewer.html's own convention: just above background art, below props/tokens).
- * @param {Object<string, number>} [opts.elevation] - painted elevation in feet, keyed "floor,x,y" (see js/elevation.js). Cells absent here (or the whole param omitted) render as flat planes exactly as before elevation existed -- or nothing at all, if there's no terrain entry either.
+ * @param {number} [opts.terrainTileY] - Y offset above the floor's base, before floorY is added. Defaults to 0.02 (viewer.html's own convention: just above background art, below props/tokens).
+ * @param {Object<string, number>} [opts.elevation] - painted elevation in feet, keyed "floor,x,y" (see js/elevation.js). A cell with no elevation at all (or the whole param omitted) gets all 4 corners at 0 -- a flat quad with no skirts, identical to how tiles rendered before elevation existed.
  * @returns {number} how many cells were rendered (terrain, elevation, or both), in case the caller wants to log/report it.
  */
 export function rebuildTiles({ tileGroup, latestTiles, getTerrainMaterial, floorY, terrainTileY = 0.02, elevation = {} }) {
   while (tileGroup.children.length) tileGroup.remove(tileGroup.children[0]);
-  const planeGeo = new THREE.PlaneGeometry(1, 1);
-  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
   // Elevation is independent of terrain painting -- a GM whose ground
   // comes from a dd2vtt background image (not painted terrain swatches)
@@ -51,37 +101,59 @@ export function rebuildTiles({ tileGroup, latestTiles, getTerrainMaterial, floor
   for (const key of allKeys) {
     const { floor, x, y } = parseTileKey(key);
     const cell = latestTiles[key];
-    const material = getTerrainMaterial(cell ? cell.terrain : '_elevation_default');
-    const h = sampleElevationUnits(elevation, floor, x, y); // world units; 0 for any cell with no elevation painted
-    const baseY = floorY(floor);
 
-    if (Math.abs(h) < 1e-6) {
-      if (!cell) continue; // elevation is 0 here and there's no terrain either -- nothing to draw
-      // No elevation painted here -- render exactly as before elevation
-      // existed, a flat plane. Every map predating this feature (or any
-      // cell simply left at 0) looks completely unchanged.
-      material.side = THREE.DoubleSide;
-      const mesh = new THREE.Mesh(planeGeo, material);
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.set(x + 0.5, terrainTileY + baseY, y + 0.5);
-      mesh.receiveShadow = true;
-      mesh.layers.set(layerForFloor(floor));
-      tileGroup.add(mesh);
-    } else {
-      // Elevation painted -- a solid box whose TOP face is the walkable
-      // surface at the painted height, reaching down to the shared
-      // baseline (see ELEVATION_BASELINE_DEPTH above). Renders even with
-      // no terrain entry at all (a bare elevation-only cell).
-      const topY = baseY + h;
-      const bottomY = Math.min(baseY - ELEVATION_BASELINE_DEPTH, topY - 0.2);
-      const mesh = new THREE.Mesh(boxGeo, material);
-      mesh.scale.set(1, topY - bottomY, 1);
-      mesh.position.set(x + 0.5, (topY + bottomY) / 2, y + 0.5);
-      mesh.receiveShadow = true;
-      mesh.castShadow = true;
-      mesh.layers.set(layerForFloor(floor));
-      tileGroup.add(mesh);
+    // Corner heights (world units), one per grid vertex touching this
+    // cell, blended from the (up to 4) cells sharing each corner -- see
+    // vertexHeightFeet in elevation.js. A cell shared with a neighbor at a
+    // different height computes the IDENTICAL value for that shared
+    // corner on both sides, which is what makes them connect seamlessly.
+    const hTL = vertexHeightFeet(elevation, floor, x, y) / FEET_PER_WORLD_UNIT;
+    const hTR = vertexHeightFeet(elevation, floor, x + 1, y) / FEET_PER_WORLD_UNIT;
+    const hBL = vertexHeightFeet(elevation, floor, x, y + 1) / FEET_PER_WORLD_UNIT;
+    const hBR = vertexHeightFeet(elevation, floor, x + 1, y + 1) / FEET_PER_WORLD_UNIT;
+
+    if (!cell && hTL === 0 && hTR === 0 && hBL === 0 && hBR === 0) continue; // nothing painted here at all
+
+    const material = getTerrainMaterial(cell ? cell.terrain : '_elevation_default');
+    material.side = THREE.DoubleSide;
+
+    // World-space corners of the top surface (baseY already folds in the
+    // floor's own height and the small terrainTileY offset).
+    const baseY = terrainTileY + floorY(floor);
+    const cTL = { x, y: baseY + hTL, z: y };
+    const cTR = { x: x + 1, y: baseY + hTR, z: y };
+    const cBL = { x, y: baseY + hBL, z: y + 1 };
+    const cBR = { x: x + 1, y: baseY + hBR, z: y + 1 };
+
+    const quads = [quadGeometry(cTL, cTR, cBR, cBL)]; // top surface
+
+    // Skirts: unconditional on all 4 edges whenever this cell has any
+    // elevation at all, extending straight down to a shared baseline.
+    // Simpler and more robust than checking each neighbor's own height to
+    // decide whether a skirt is "needed" there -- a flat (elevation-0)
+    // neighbor still needs one (nothing else would fill that gap), and an
+    // unconditional skirt against an elevated neighbor is just briefly
+    // hidden inside connected geometry, not visibly wrong.
+    if (hTL !== 0 || hTR !== 0 || hBL !== 0 || hBR !== 0) {
+      const floorBaseline = floorY(floor) - SKIRT_BASELINE_DEPTH;
+      const bTL = { x: cTL.x, y: floorBaseline, z: cTL.z };
+      const bTR = { x: cTR.x, y: floorBaseline, z: cTR.z };
+      const bBL = { x: cBL.x, y: floorBaseline, z: cBL.z };
+      const bBR = { x: cBR.x, y: floorBaseline, z: cBR.z };
+      quads.push(
+        quadGeometry(cTL, bTL, bTR, cTR), // north edge (y constant, top)
+        quadGeometry(cBL, cBR, bBR, bBL), // south edge (y constant, bottom)
+        quadGeometry(cTL, cBL, bBL, bTL), // west edge (x constant, left)
+        quadGeometry(cTR, bTR, bBR, cBR), // east edge (x constant, right)
+      );
     }
+
+    const geo = quads.length > 1 ? mergeGeometries(quads) : quads[0];
+    const mesh = new THREE.Mesh(geo, material);
+    mesh.receiveShadow = true;
+    mesh.castShadow = true;
+    mesh.layers.set(layerForFloor(floor));
+    tileGroup.add(mesh);
   }
   return allKeys.size;
 }
