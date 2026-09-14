@@ -1985,10 +1985,25 @@
           const lights = lightsToPlannerLights(geom.lights || [], floor).map(l => ({ ...l, position: shiftPt(l.position) }));
           console.log(`[firebase-load] layer "${layerId}" (floor ${floor}): ${lineOfSight.length} wall segment(s), ${portals.length} door(s), ${lights.length} light(s)`);
 
+          // createMapEntity crops the source image to exactly
+          // gridWidth*ppi x gridHeight*ppi pixels before texturing the
+          // mesh -- so ppi has to be the image's REAL pixel density, not a
+          // placeholder. mapLayers pieces don't store a ppi field at all
+          // (only w/h already in grid units), so it has to be derived from
+          // the image's own natural pixel size divided by those grid
+          // dimensions -- the inverse of what the single-background case
+          // does. Getting this wrong crops the wrong pixel rectangle,
+          // which is exactly what was causing the image to not line up
+          // with the grid: the mesh's own dimensions (w x h) were always
+          // correct, but the TEXTURE inside it was cropped to the wrong
+          // size.
+          const layerImg = await loadImageAsync(layer.url);
+          const derivedPpi = layerImg.naturalWidth / layer.w;
+
           const fakeData = {
             resolution: {
               map_size: { x: layer.w, y: layer.h },
-              pixels_per_grid: 70, // not stored per-layer; only affects texture crop math for a real dd2vtt's map_origin, unused here since map_origin is {0,0} below
+              pixels_per_grid: derivedPpi,
               map_origin: { x: 0, y: 0 },
             },
             image: layer.url,
