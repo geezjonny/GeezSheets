@@ -246,8 +246,23 @@
                 <option value="add-wall">Add Wall (Click 2 points)</option>
                 <option value="add-door">Add Door (Click 2 points)</option>
                 <option value="add-light">Add Light (Click floor)</option>
+                <option value="place-token">Place/Move Token (writes to Firebase)</option>
                 <option value="delete">Delete Object</option>
             </select>
+        </div>
+
+        <div class="control-group" id="token-controls" style="display:none">
+            <label for="token-char-select">Character</label>
+            <select id="token-char-select"><option value="__npc__">— Blank NPC —</option></select>
+            <label for="token-name-input">Name</label>
+            <input type="text" id="token-name-input" placeholder="NPC name" />
+            <div class="slider-row">
+                <label>HP</label>
+                <input type="number" id="token-hp-input" value="10" style="width:70px" />
+                <label>Max HP</label>
+                <input type="number" id="token-maxhp-input" value="10" style="width:70px" />
+            </div>
+            <div style="font-size:0.75rem;color:#999;margin-top:4px">Click empty ground to place a new token. Click an existing token, then click a new spot, to move it.</div>
         </div>
 
         <div class="section-header">Performance & Display</div>
@@ -360,6 +375,7 @@
         let mapCounter = 0;
 
         let currentTool = 'move-map';
+        let selectedTokenMarker = null; // "place-token" tool: an existing token marker clicked once, waiting for the next click to say where it moves to
         let drawStartPoint = null;
         let doorsOpen = false;
         let snapToGrid = true;
@@ -1397,6 +1413,9 @@
             const isElevationTool = (currentTool === 'paint-elevation' || currentTool === 'bucket-elevation');
             paintControls.style.display = isElevationTool ? 'block' : 'none';
             sizeGroup.style.display = (currentTool === 'paint-elevation') ? 'block' : 'none';
+            document.getElementById('token-controls').style.display = (currentTool === 'place-token') ? 'block' : 'none';
+            if (currentTool === 'place-token') populateTokenCharacterDropdown();
+            selectedTokenMarker = null; // dropping tool or switching away always clears any in-progress "selected, now click to move" state
 
             if (currentTool !== 'move-map') {
                 transformControls.detach();
@@ -1626,7 +1645,8 @@
       import { db } from "./js/firebase.js";
       import { ref, get, onValue, set } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
       import { rollDie, animateDiceResult } from "./js/dice.js";
-      import { sampleElevationFeet } from "./js/elevation.js";
+      import { sampleElevationFeet, saveElevation, loadElevationOnce } from "./js/elevation.js";
+      import { createTerrainMaterialCache, createTokenMaterialCache } from "./js/render3d-materials.js";
 
       // Inverse of convertCoordLocal -- given a mesh vertex's own local
       // (x,y), recovers the grid-space point it corresponds to. Needed to
@@ -1760,49 +1780,18 @@
         });
       }
 
-      // Token portrait texture cache, same lookup convention as everywhere
-      // else in this app (./tokens/<lowercase_underscored_name>.png),
-      // falling back to a flat PC/NPC color if no art exists.
-      const tokenTextureCache = {};
-      function getTokenTexture(tok) {
-        const lookupName = tok.lookupName || tok.name || tok.characterId || 'token';
-        const cacheKey = lookupName.toLowerCase();
-        if (tokenTextureCache[cacheKey]) return tokenTextureCache[cacheKey];
-        const material = new THREE.MeshStandardMaterial({ color: tok.type === 'pc' ? 0x5a9ad8 : 0xd85a5a, side: THREE.DoubleSide });
-        tokenTextureCache[cacheKey] = material;
-        const img = new Image();
-        img.onload = () => {
-          const tex = new THREE.Texture(img);
-          tex.needsUpdate = true;
-          material.map = tex;
-          material.color.set(0xffffff);
-          material.needsUpdate = true;
-        };
-        img.onerror = () => { /* keep the flat PC/NPC color -- no art for this token */ };
-        img.src = `./tokens/${cacheKey.replace(/\s+/g, '_')}.png`;
-        return material;
-      }
-
-      // Terrain texture cache, same ./textures/<name>.png lookup convention
-      // as everywhere else, falling back to a flat gray if none exists --
-      // matches getTerrainMaterial's own fallback in render3d-materials.js.
-      const terrainTextureCache = {};
-      function getTerrainTexture(terrainId) {
-        if (terrainTextureCache[terrainId]) return terrainTextureCache[terrainId];
-        const material = new THREE.MeshStandardMaterial({ color: 0x888888, side: THREE.DoubleSide });
-        terrainTextureCache[terrainId] = material;
-        const img = new Image();
-        img.onload = () => {
-          const tex = new THREE.Texture(img);
-          tex.needsUpdate = true;
-          material.map = tex;
-          material.color.set(0xffffff);
-          material.needsUpdate = true;
-        };
-        img.onerror = () => { /* keep the flat gray -- no texture for this terrain id */ };
-        img.src = `./textures/${terrainId}.png`;
-        return material;
-      }
+      // Token portrait and terrain textures: reusing the SAME cache
+      // functions render3d-tokens.js/render3d-tiles.js already use in
+      // viewer.html, rather than rewriting the identical lookup-and-cache
+      // logic a second time. Neither function has any Y-up/Z-up or
+      // scene-structure assumption baked in -- they just load an image
+      // into a cached THREE.Material with a fallback color -- so they
+      // drop straight into planner's own Z-up world with zero adaptation.
+      // getTokenMaterial's fallback chain is actually BETTER than what was
+      // here before: it also tries an RTDB-uploaded portrait if no
+      // ./tokens/<name>.png exists, which this file didn't have on its own.
+      const { getTerrainMaterial: getTerrainTexture } = createTerrainMaterialCache({});
+      const { getTokenMaterial: getTokenTexture } = createTokenMaterialCache({ db });
 
       const tileMeshes = {}; // "floor,x,y" -> THREE.Mesh
       // Painted terrain tiles, rendered as small flat quads sitting just
@@ -1829,7 +1818,9 @@
           const localY = (ty + 0.5) - entity.ly;
           const local = convertCoordLocal(localX, localY, entity.gridW, entity.gridH);
           const z = sampleFloorHeightLocal(entity.mapRec.floorMesh, local.x, local.y);
-          const mesh = new THREE.Mesh(geo, getTerrainTexture(cell.terrain));
+          const terrainMat = getTerrainTexture(cell.terrain);
+          terrainMat.side = THREE.DoubleSide; // getTerrainMaterial doesn't set this itself -- render3d-tiles.js sets it at the call site too, since a flat quad needs to be visible from either side depending on camera angle
+          const mesh = new THREE.Mesh(geo, terrainMat);
           mesh.position.set(local.x, local.y, z + 0.01); // just above the ground surface
           entity.mapRec.group.add(mesh);
           tileMeshes[key] = mesh;
@@ -1863,7 +1854,9 @@
             // unlike viewer.html's Y-up convention where this would need
             // a -90 degree rotation to lie down.
             const geo = new THREE.CircleGeometry(0.45 * size, 24);
-            marker = new THREE.Mesh(geo, getTokenTexture(tok));
+            const tokenMat = getTokenTexture(tok);
+            tokenMat.side = THREE.DoubleSide; // getTokenMaterial doesn't set this itself -- same reasoning as the terrain material above
+            marker = new THREE.Mesh(geo, tokenMat);
             tokenMarkers[id] = marker;
           }
           if (marker.parent !== entity.mapRec.group) entity.mapRec.group.add(marker);
@@ -1921,11 +1914,11 @@
       // already uses for this identical image.
       async function loadSingleBackground(mapName, imageSrc) {
         console.log(`[firebase-load] found a single background image (length ${imageSrc.length}); loading...`);
-        const [ppiSnap, geomSnap, tilesSnap, elevSnap] = await Promise.all([
+        const [ppiSnap, geomSnap, tilesSnap, elevationData] = await Promise.all([
           get(ref(db, `maps/${mapName}/backgroundPpi`)),
           get(ref(db, `maps/${mapName}/geometry`)),
           get(ref(db, `maps/${mapName}/tiles`)),
-          get(ref(db, `maps/${mapName}/elevation`)),
+          loadElevationOnce(mapName),
         ]);
         const ppi = ppiSnap.val() || 70;
         const geom = geomSnap.val() || {};
@@ -1947,7 +1940,8 @@
         // shift (lx=ly=0) -- see loadTokens below for how this is used.
         const entity = { mapRec, gridW: fakeData.resolution.map_size.x, gridH: fakeData.resolution.map_size.y, lx: 0, ly: 0, floor: 0 };
         entityByFloor[0] = entity;
-        applyElevationToMesh(entity, elevSnap.val() || {});
+        console.log(`[firebase-load] elevation data fetched: cell count=${Object.keys(elevationData).length}`, elevationData);
+        applyElevationToMesh(entity, elevationData);
         loadTilesForFloor(0, tilesSnap.val() || {});
         loadTokens(mapName);
       }
@@ -1965,14 +1959,14 @@
       async function loadMapLayers(mapName, layers) {
         const entries = Object.entries(layers);
         console.log(`[firebase-load] found ${entries.length} mapLayers piece(s); loading each...`);
-        const [geomSnap, tilesSnap, elevSnap] = await Promise.all([
+        const [geomSnap, tilesSnap, elevation] = await Promise.all([
           get(ref(db, `maps/${mapName}/geometry`)),
           get(ref(db, `maps/${mapName}/tiles`)),
-          get(ref(db, `maps/${mapName}/elevation`)),
+          loadElevationOnce(mapName),
         ]);
         const geom = geomSnap.val() || {};
         const tiles = tilesSnap.val() || {};
-        const elevation = elevSnap.val() || {};
+        console.log(`[firebase-load] elevation data fetched: cell count=${Object.keys(elevation).length}`, elevation);
         for (const [layerId, layer] of entries) {
           if (!layer.url) continue;
           const floor = layer.floor || 0;
@@ -2084,7 +2078,7 @@
               }
             }
           }
-          await set(ref(db, `maps/${mapName}/elevation`), Object.keys(elevation).length ? elevation : null);
+          await saveElevation(mapName, elevation);
           console.log(`[firebase-save] wrote ${cellCount} elevation cell(s) to maps/${mapName}/elevation`, elevation);
           alert(`Saved ${cellCount} elevation cell(s) to Firebase for map "${mapName}".`);
         } catch (err) {
@@ -2095,6 +2089,130 @@
         }
       }
       document.getElementById('save-elevation-btn').addEventListener('click', saveElevationToFirebase);
+
+      // --- Token placement/movement: writes to Firebase, matching
+      // mapeditor-layers.html's own tokens/{id} shape (a simpler subset --
+      // name/type/hp/maxHp/x/y/floor/characterId, no board-NPC linking or
+      // disguises, per explicit scope). Reuses the classic script's own
+      // raycaster/mouse (already set from ITS OWN onPointerDown by the
+      // time this listener runs, since it's registered after and DOM
+      // events fire listeners in registration order) and the same
+      // worldToLocal + convertCoordLocalInverse approach add-wall/add-light
+      // already use for reliable, THREE.js-native coordinate conversion,
+      // rather than re-deriving the transform a third time by hand.
+      async function populateTokenCharacterDropdown() {
+        const sel = document.getElementById('token-char-select');
+        sel.innerHTML = '<option value="__npc__">— Blank NPC —</option>';
+        try {
+          const snap = await get(ref(db, 'characters/pcs'));
+          if (snap.exists()) {
+            const grp = document.createElement('optgroup');
+            grp.label = 'PCs';
+            for (const [id, c] of Object.entries(snap.val())) {
+              const opt = document.createElement('option');
+              opt.value = id;
+              opt.textContent = c.name || id;
+              opt.dataset.hp = c.hp ?? c.combat?.hp_current ?? 10;
+              opt.dataset.maxhp = c.maxHp ?? c.combat?.hp_max ?? 10;
+              grp.appendChild(opt);
+            }
+            sel.appendChild(grp);
+          }
+        } catch (err) {
+          console.error('[place-token] failed to load character list:', err);
+        }
+      }
+      // Module-scoped function declarations don't leak into the global
+      // scope the way classic-script ones do -- setTool (in the classic
+      // script above) calls this unqualified, expecting it to resolve as
+      // a global, so it has to be explicitly exposed here.
+      window.populateTokenCharacterDropdown = populateTokenCharacterDropdown;
+      document.getElementById('token-char-select').addEventListener('change', (e) => {
+        const opt = e.target.selectedOptions[0];
+        if (opt.dataset.hp) {
+          document.getElementById('token-hp-input').value = opt.dataset.hp;
+          document.getElementById('token-maxhp-input').value = opt.dataset.maxhp;
+          document.getElementById('token-name-input').value = opt.textContent;
+        }
+      });
+
+      function findEntityForMapRec(mapRec) {
+        return Object.values(entityByFloor).find(e => e.mapRec === mapRec);
+      }
+
+      // Wrapped in window's own 'load' event (NOT the module script's own
+      // top-level execution) because renderer is only ASSIGNED inside
+      // planner's init(), which is itself wired to window.onload -- this
+      // module script's top-level code runs before that, when renderer is
+      // still undefined (declared, but unassigned). addEventListener here
+      // coexists fine with planner's own `window.onload = init` (a
+      // property assignment and addEventListener are separate listener
+      // registrations, not overwrites of each other), and since the
+      // classic script registers first, init() runs before this fires.
+      window.addEventListener('load', () => {
+        renderer.domElement.addEventListener('pointerdown', async (event) => {
+          if (event.button !== 0 || currentTool !== 'place-token') return;
+          const mapName = document.getElementById('firebase-map-name').value.trim();
+          if (!mapName) { alert('No map name set -- load a map from Firebase first.'); return; }
+
+          // Existing token clicked first -- select it (or re-select a
+          // different one), waiting for the NEXT click to say where it moves.
+          const markerEntries = Object.entries(tokenMarkers);
+          const markerHits = raycaster.intersectObjects(markerEntries.map(([, m]) => m));
+          if (markerHits.length > 0) {
+            const hitMarker = markerHits[0].object;
+            const hitId = markerEntries.find(([, m]) => m === hitMarker)?.[0];
+            selectedTokenMarker = { id: hitId, marker: hitMarker };
+            console.log(`[place-token] selected token "${hitId}" -- click a new spot to move it`);
+            return;
+          }
+
+          // Otherwise: raycast the floor to find where to place/move to.
+          const floors = loadedMaps.map(m => m.floorMesh);
+          const intersects = raycaster.intersectObjects(floors);
+          if (!intersects.length) return;
+          const floorMesh = intersects[0].object;
+          const targetMapGroup = floorMesh.userData.parentMap;
+          const record = loadedMaps.find(m => m.group === targetMapGroup);
+          if (!record) return;
+          const entity = findEntityForMapRec(record);
+          if (!entity) { console.warn('[place-token] clicked map piece has no matching entity info -- cannot compute its absolute grid position.'); return; }
+
+          const localPoint = targetMapGroup.worldToLocal(intersects[0].point.clone());
+          const grid = convertCoordLocalInverse(localPoint.x, localPoint.y, entity.gridW, entity.gridH);
+          const absX = Math.floor(grid.x + entity.lx);
+          const absY = Math.floor(grid.y + entity.ly);
+
+          if (selectedTokenMarker) {
+            // Move the previously-selected token here.
+            const updates = { x: absX, y: absY, floor: entity.floor };
+            await set(ref(db, `maps/${mapName}/tokens/${selectedTokenMarker.id}/x`), absX);
+            await set(ref(db, `maps/${mapName}/tokens/${selectedTokenMarker.id}/y`), absY);
+            await set(ref(db, `maps/${mapName}/tokens/${selectedTokenMarker.id}/floor`), entity.floor);
+            console.log(`[place-token] moved token "${selectedTokenMarker.id}" to (${absX}, ${absY}) floor ${entity.floor}`, updates);
+            selectedTokenMarker = null;
+            return;
+          }
+
+          // Otherwise: place a brand new token here.
+          const charSel = document.getElementById('token-char-select');
+          const opt = charSel.selectedOptions[0];
+          const isPc = opt && opt.value !== '__npc__';
+          const name = document.getElementById('token-name-input').value.trim() || (isPc ? opt.textContent : 'NPC');
+          const hp = parseInt(document.getElementById('token-hp-input').value, 10) || 10;
+          const maxHp = parseInt(document.getElementById('token-maxhp-input').value, 10) || hp;
+
+          const newId = 'tok_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+          const newToken = {
+            x: absX, y: absY, floor: entity.floor,
+            name, hp, maxHp, size: 1,
+            type: isPc ? 'pc' : 'npc',
+            characterId: isPc ? opt.value : '__npc__',
+          };
+          await set(ref(db, `maps/${mapName}/tokens/${newId}`), newToken);
+          console.log(`[place-token] placed new token "${name}" at (${absX}, ${absY}) floor ${entity.floor}`, newToken);
+        });
+      });
 
       document.getElementById('firebase-load-btn').addEventListener('click', loadBackgroundFromFirebase);
     </script>

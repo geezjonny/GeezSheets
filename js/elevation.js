@@ -1,20 +1,52 @@
-// Elevation -- color gradient, flood-fill, and smooth height sampling for
-// per-tile terrain elevation. The DATA is still grid-quantized (one
-// numeric height per "floor,x,y" cell, same key convention as tiles/
-// impassable/etc.) -- deliberately simpler than a dense per-vertex mesh,
-// matching how this app already models everything else, and it's what
-// mapeditor-layers.html's swatch-based painting UI produces. What's
-// smooth is the SAMPLING: a grid vertex's height blends the (up to 4)
-// cells touching it, and any continuous point bilinearly interpolates
-// between its surrounding vertices -- so two adjacent cells at different
-// heights read as a continuous ramp between them, not a stepped cliff,
-// without needing a richer data model or touching the painting UI at all.
-// Building geometry (walls, doors, lights) is untouched by any of this;
-// elevation is a terrain/land concept only.
+// Elevation -- color gradient, flood-fill, smooth height sampling, AND
+// Firebase persistence for per-tile terrain elevation, all in one place so
+// the data model and its storage can't drift apart from each other (the
+// save/load split across map.js and this file is exactly what caused a
+// real bug earlier: reads and writes need to live together). The DATA is
+// still grid-quantized (one numeric height per "floor,x,y" cell, same key
+// convention as tiles/impassable/etc.) -- deliberately simpler than a
+// dense per-vertex mesh, matching how this app already models everything
+// else, and it's what mapeditor-layers.html's swatch-based painting UI
+// produces. What's smooth is the SAMPLING: a grid vertex's height blends
+// the (up to 4) cells touching it, and any continuous point bilinearly
+// interpolates between its surrounding vertices -- so two adjacent cells
+// at different heights read as a continuous ramp between them, not a
+// stepped cliff, without needing a richer data model or touching the
+// painting UI at all. Building geometry (walls, doors, lights) is
+// untouched by any of this; elevation is a terrain/land concept only.
 //
-// No DOM, no THREE, no Firebase -- pure data and a CSS color string, so
-// this drops into a 2D canvas editor (mapeditor-layers.html) or a 3D
-// renderer equally well.
+// No DOM, no THREE -- everything here is pure data, a CSS color string, or
+// a Firebase call, so this drops into a 2D canvas editor
+// (mapeditor-layers.html), a 3D renderer, or planner.html equally well.
+
+import { db } from "./firebase.js";
+import { ref, set, get } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+/**
+ * Writes the full elevation map for one map to Firebase, replacing
+ * whatever was there. Pass an empty object (or one with all-zero/no
+ * entries) to clear it -- same "empty means delete the node" convention
+ * every other save function in this app uses.
+ * @param {string} mapName
+ * @param {Object<string, number>} elevation - keyed "floor,x,y", in feet.
+ */
+export async function saveElevation(mapName, elevation) {
+  await set(ref(db, `maps/${mapName}/elevation`), Object.keys(elevation).length ? elevation : null);
+}
+
+/**
+ * One-shot read of a map's saved elevation (not a live subscription --
+ * callers that want live updates should use onValue themselves). Returns
+ * {} if nothing has ever been saved, never null/undefined, so callers can
+ * pass the result straight into sampleElevationFeet/vertexHeightFeet
+ * without an extra null-check.
+ * @param {string} mapName
+ * @returns {Promise<Object<string, number>>}
+ */
+export async function loadElevationOnce(mapName) {
+  const snap = await get(ref(db, `maps/${mapName}/elevation`));
+  return snap.val() || {};
+}
 
 /**
  * Maps an elevation value (feet, positive = up, negative = down) to a CSS

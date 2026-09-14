@@ -934,14 +934,14 @@ window.addEventListener("keydown", e => {
   if((e.key==="g"||e.key==="G") && !e.target.matches("input,textarea,select,[contenteditable]"))
     toggleGlossarySearch();
 });
-import { saveStamp, savePropsLocal, saveImpassable, saveTiles, saveElevation, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
+import { saveStamp, savePropsLocal, saveImpassable, saveTiles, saveTokenLocal as saveTokenRTDB } from "./js/map.js";
 import { saveTriggerNodes, genNodeId, isNodeActive } from "./js/triggers.js";
 import { openCharSheet, closeSheetPanel, setSheetToastFn, subscribeRestRequest, dmResolveRest, clearRestRequest, grantRest } from "./js/sheet.js";
 import { writePresence, startPresenceHeartbeat, subscribePresence } from "./js/presence.js";
 import { initUndo, pushUndo, undo, redo } from "./js/undo.js";
 import { createSwatchBar, createCustomSwatchList, sanitizeSwatchName } from "./js/swatch-bar.js";
 import { captureClipboard, applyClipboardToData } from "./js/clipboard.js";
-import { getElevationColorCss, bucketFillElevation } from "./js/elevation.js";
+import { getElevationColorCss, bucketFillElevation, saveElevation } from "./js/elevation.js";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const tiles={},tokens={},stamps={},roofs={},props={},impassable={},triggerNodes={},elevation={};

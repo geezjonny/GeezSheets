@@ -5,7 +5,8 @@
 // this file, as long as persisting it just means calling one more
 // saveX(mapName, data) function below.
 
-import { saveTiles, saveElevation } from "./map.js";
+import { saveTiles } from "./map.js";
+import { saveElevation } from "./elevation.js";
 
 const undoStack = [];
 const redoStack = [];

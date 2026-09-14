@@ -40,9 +40,11 @@ export async function saveImpassable(mapName, impassable) {
   await set(ref(db, `maps/${mapName}/impassable`), Object.keys(impassable).length ? impassable : null);
 }
 
-export async function saveElevation(mapName, elevation) {
-  await set(ref(db, `maps/${mapName}/elevation`), Object.keys(elevation).length ? elevation : null);
-}
+// saveElevation moved to elevation.js -- keeping the elevation data model
+// and its persistence together in one file, after the save/load split
+// across this file and elevation.js caused a real bug (a save existed
+// here but nothing ever read it back into a freshly-loaded map). Import
+// it from "./elevation.js" instead.
 
 export async function saveTraps(mapName, traps) {
   await set(ref(db, `maps/${mapName}/traps`), Object.keys(traps).length ? traps : null);
