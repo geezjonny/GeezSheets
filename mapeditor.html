@@ -369,17 +369,13 @@ canvas{display:block;cursor:crosshair}
 </head>
 <body>
 <!-- ── Top bar ── -->
-<div id="topbar">
+<div id="topbar" style="display:none">
+  <!-- Everything that used to live here has moved into the 💾 Map flyout
+       in the bottom Create-bar (ctx-map-actions) or is already hidden by
+       the rule below -- this whole bar is now permanently hidden rather
+       than deleted outright, since its markup/CSS is still referenced
+       and removing it outright risked more breakage than it was worth. -->
   <!-- Map name -->
-  <select id="map-dropdown" class="keep-corner" title="Jump to an existing map" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 6px;max-width:140px;outline:none;">
-    <option value="">Loading maps…</option>
-  </select>
-  <input id="map-name" class="keep-corner" type="text" placeholder="map-name" value="dungeon-1" spellcheck="false" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 8px;width:80px;outline:none">
-  <button id="save-new-map-btn" class="keep-corner" title="Copy what's currently loaded to a new map name" style="height:28px;background:rgba(200,168,75,.1);border:1px solid var(--gold-dim);border-radius:4px;color:var(--gold);font-family:'Cinzel',serif;font-size:10px;padding:0 10px;cursor:pointer;">💾 Save As New Map</button>
-  <button id="new-blank-map-btn" class="keep-corner" title="Create a brand-new empty map and register it in Firebase right away" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 10px;cursor:pointer;">🆕 New Blank Map</button>
-
-  <div class="tb-sep"></div>
-
   <!-- Category tabs -->
   <div class="tb-sep"></div>
 
@@ -564,6 +560,17 @@ canvas{display:block;cursor:crosshair}
        change what's available; nothing here needs editing directly. -->
 </div>
 
+<div id="ctx-map-actions" class="ctx-panel" style="display:none;align-items:center;gap:6px">
+  <span class="opt-label">Map</span>
+  <select id="map-dropdown" title="Jump to an existing map" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 6px;max-width:140px;outline:none;">
+    <option value="">Loading maps…</option>
+  </select>
+  <input id="map-name" type="text" placeholder="map-name" value="dungeon-1" spellcheck="false" style="height:28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:10px;padding:0 8px;width:80px;outline:none">
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="save-new-map-btn" title="Copy what's currently loaded to a new map name" style="border-color:var(--gold-dim);color:var(--gold)">💾 Save As New Map</button>
+  <button class="tb-btn" id="new-blank-map-btn" title="Create a brand-new empty map and register it in Firebase right away">🆕 New Blank Map</button>
+</div>
+
 <!-- Bottom toolbar: Owlbear-style floating pill, Create/VTT modes -->
 <div id="bottom-toolbar">
   <div id="toolbar-mode-tabs">
@@ -586,6 +593,7 @@ canvas{display:block;cursor:crosshair}
     <div class="tbi-sep create-icon"></div>
     <button class="tbi-btn create-icon" title="Import dd2vtt" onclick="showFlyout('ctx-import')">📥</button>
     <button class="tbi-btn create-icon" title="Assign Floor — tag existing content with a 10ft floor level" onclick="setCategory('floor')">🏢</button>
+    <button class="tbi-btn create-icon" title="Map — switch maps, save as new, create blank" onclick="showFlyout('ctx-map-actions')">💾</button>
     <!-- VTT mode -->
     <button class="tbi-btn vtt-icon" title="Tokens" style="display:none" onclick="setCategory('tokens')">⚔</button>
     <button class="tbi-btn vtt-icon" title="Time / Weather" style="display:none" onclick="showFlyout('ctx-time')">🌗</button>
@@ -1402,6 +1410,7 @@ mapInput.addEventListener("change",()=>{
 });
 
 document.getElementById("save-new-map-btn").onclick=async()=>{
+  showFlyout(null);
   const currentName=getMapName();
   const suggested=currentName+"-copy";
   const newName=prompt(`Save the current map ("${currentName}") as a new map. Enter a name:`, suggested);
@@ -1428,6 +1437,7 @@ document.getElementById("save-new-map-btn").onclick=async()=>{
 };
 
 document.getElementById("new-blank-map-btn").onclick=async()=>{
+  showFlyout(null);
   const newName=prompt("Name for the new blank map:");
   if(newName===null)return;
   if(!newName.trim()){toast("No name entered — nothing was created.");return;}

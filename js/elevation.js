@@ -204,7 +204,17 @@ export function sampleElevationUnits(elevation, floor, x, y) {
  * @returns {boolean}
  */
 export function isElevationStepBlocked(elevation, floor, fromX, fromY, toX, toY, maxStepFeet = 10) {
-  const fromH = sampleElevationFeet(elevation, floor, fromX + 0.5, fromY + 0.5);
-  const toH = sampleElevationFeet(elevation, floor, toX + 0.5, toY + 0.5);
+  // cellHeightFeet, NOT sampleElevationFeet -- this needs the exact
+  // painted value of the two cells actually being stepped between, not a
+  // smooth/blended sample. sampleElevationFeet bilinearly interpolates
+  // using vertexHeightFeet, which averages in up to 4 NEIGHBORING cells at
+  // each corner -- so a step's "measured" height depends on unrelated
+  // cells nearby, not just the two cells actually involved. That's what
+  // made a 20ft raw difference block inconsistently depending on
+  // surrounding terrain, while a 30ft difference (harder to blur below
+  // the threshold) blocked reliably. Comparing raw values here fixes that
+  // -- the blocking threshold now measures exactly what was painted.
+  const fromH = cellHeightFeet(elevation, floor, fromX, fromY);
+  const toH = cellHeightFeet(elevation, floor, toX, toY);
   return Math.abs(toH - fromH) > maxStepFeet;
 }
