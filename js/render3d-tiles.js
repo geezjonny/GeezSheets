@@ -3,13 +3,15 @@
 // smoothly-blended grid-vertex heights, tagged per-floor. Neighboring
 // cells share the exact same corner-height calculation, so adjacent quads
 // line up with no visible seam -- elevation reads as a continuous ramp
-// between different painted heights, not a stepped cliff. Any cell with
-// elevation also gets "skirt" walls around its edges, extending down to a
-// shared baseline well below any floor's ground level -- without these,
-// raised/lowered terrain has nothing underneath it, leaving a visible gap
-// you can see straight through wherever it doesn't border more painted
-// terrain (most commonly where it meets a flat background image, which
-// this app doesn't deform). Extracted from viewer.html's rebuildTiles.
+// between different painted heights, not a stepped cliff. Extracted from
+// viewer.html's rebuildTiles.
+//
+// Top-face-only by design: the background/mapLayers image itself is now
+// draped over this same smooth elevation (see viewer.html's
+// buildDrapedImageMesh), so there's no gap beneath a painted tile to hide
+// anymore -- an earlier version of this file added "skirt" walls around
+// elevated cells specifically to hide that gap, which is no longer needed
+// now that the ground underneath is always at the same height already.
 //
 // REQUIRES THREE as a global (see render3d-materials.js's header for the
 // full explanation). Imports parseTileKey and layerForFloor from
@@ -20,18 +22,10 @@
 import { parseTileKey, layerForFloor } from "./render3d-core.js";
 import { vertexHeightFeet, FEET_PER_WORLD_UNIT } from "./elevation.js";
 
-// World units below floorY(floor) that every elevated/lowered cell's
-// skirt walls reach down to. Deep enough to sit below a flat background
-// image or a neighboring unpainted (elevation-0) cell in any normal case,
-// so there's no visible gap looking at the edge of raised/lowered terrain
-// from any reasonable camera angle.
-const SKIRT_BASELINE_DEPTH = 3;
-
 /**
  * Builds one quad (2 triangles) from 4 world-space corners, given in
  * order around the perimeter (not diagonally) -- e.g. top-left,
- * top-right, bottom-right, bottom-left. Used for both the tilted top
- * surface and the vertical skirt walls below.
+ * top-right, bottom-right, bottom-left.
  * @param {{x,y,z}} p1
  * @param {{x,y,z}} p2
  * @param {{x,y,z}} p3
@@ -50,28 +44,6 @@ function quadGeometry(p1, p2, p3, p4) {
 }
 
 /**
- * Merges several BufferGeometries (all using position-only attributes, as
- * quadGeometry produces) into one, so a whole cell's top surface + 4
- * skirt walls become a single mesh/draw call instead of 5.
- * @param {THREE.BufferGeometry[]} geometries
- * @returns {THREE.BufferGeometry}
- */
-function mergeGeometries(geometries) {
-  let totalVerts = 0;
-  for (const g of geometries) totalVerts += g.attributes.position.count;
-  const merged = new Float32Array(totalVerts * 3);
-  let offset = 0;
-  for (const g of geometries) {
-    merged.set(g.attributes.position.array, offset);
-    offset += g.attributes.position.array.length;
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(merged, 3));
-  geo.computeVertexNormals();
-  return geo;
-}
-
-/**
  * Rebuilds every painted terrain tile AND every elevation-only cell (no
  * terrain painted, just a raised/lowered height) into tileGroup, tagged
  * per-floor.
@@ -81,7 +53,7 @@ function mergeGeometries(geometries) {
  * @param {(terrainId: string) => THREE.Material} opts.getTerrainMaterial - see render3d-materials.js's createTerrainMaterialCache.
  * @param {(floor: number) => number} opts.floorY - see render3d-core.js's createFloorY.
  * @param {number} [opts.terrainTileY] - Y offset above the floor's base, before floorY is added. Defaults to 0.02 (viewer.html's own convention: just above background art, below props/tokens).
- * @param {Object<string, number>} [opts.elevation] - painted elevation in feet, keyed "floor,x,y" (see js/elevation.js). A cell with no elevation at all (or the whole param omitted) gets all 4 corners at 0 -- a flat quad with no skirts, identical to how tiles rendered before elevation existed.
+ * @param {Object<string, number>} [opts.elevation] - painted elevation in feet, keyed "floor,x,y" (see js/elevation.js). A cell with no elevation at all (or the whole param omitted) gets all 4 corners at 0 -- a flat quad, identical to how tiles rendered before elevation existed.
  * @returns {number} how many cells were rendered (terrain, elevation, or both), in case the caller wants to log/report it.
  */
 export function rebuildTiles({ tileGroup, latestTiles, getTerrainMaterial, floorY, terrainTileY = 0.02, elevation = {} }) {
@@ -125,30 +97,7 @@ export function rebuildTiles({ tileGroup, latestTiles, getTerrainMaterial, floor
     const cBL = { x, y: baseY + hBL, z: y + 1 };
     const cBR = { x: x + 1, y: baseY + hBR, z: y + 1 };
 
-    const quads = [quadGeometry(cTL, cTR, cBR, cBL)]; // top surface
-
-    // Skirts: unconditional on all 4 edges whenever this cell has any
-    // elevation at all, extending straight down to a shared baseline.
-    // Simpler and more robust than checking each neighbor's own height to
-    // decide whether a skirt is "needed" there -- a flat (elevation-0)
-    // neighbor still needs one (nothing else would fill that gap), and an
-    // unconditional skirt against an elevated neighbor is just briefly
-    // hidden inside connected geometry, not visibly wrong.
-    if (hTL !== 0 || hTR !== 0 || hBL !== 0 || hBR !== 0) {
-      const floorBaseline = floorY(floor) - SKIRT_BASELINE_DEPTH;
-      const bTL = { x: cTL.x, y: floorBaseline, z: cTL.z };
-      const bTR = { x: cTR.x, y: floorBaseline, z: cTR.z };
-      const bBL = { x: cBL.x, y: floorBaseline, z: cBL.z };
-      const bBR = { x: cBR.x, y: floorBaseline, z: cBR.z };
-      quads.push(
-        quadGeometry(cTL, bTL, bTR, cTR), // north edge (y constant, top)
-        quadGeometry(cBL, cBR, bBR, bBL), // south edge (y constant, bottom)
-        quadGeometry(cTL, cBL, bBL, bTL), // west edge (x constant, left)
-        quadGeometry(cTR, bTR, bBR, cBR), // east edge (x constant, right)
-      );
-    }
-
-    const geo = quads.length > 1 ? mergeGeometries(quads) : quads[0];
+    const geo = quadGeometry(cTL, cTR, cBR, cBL);
     const mesh = new THREE.Mesh(geo, material);
     mesh.receiveShadow = true;
     mesh.castShadow = true;

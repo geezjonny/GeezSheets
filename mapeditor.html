@@ -392,9 +392,6 @@ canvas{display:block;cursor:crosshair}
   <button class="tb-btn cat-btn" id="cat-floor"       title="Floor — drag a rectangle to assign existing walls/doors/lights/imported art to a 10ft floor level, for the 3D renderer">🏢 Floor</button>
 
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="gm3d-toggle-btn" title="Free-roaming 3D overview of the live map, side-by-side with the 2D editor -- fly around, no token lock">🧊 3D</button>
-
-  <div class="tb-sep"></div>
 
   <!-- Persistent utilities — always available regardless of category -->
   <button class="tb-btn" id="rulerBtnEd" title="Ruler">📏</button>
@@ -559,6 +556,14 @@ canvas{display:block;cursor:crosshair}
   <span style="font-family:'IM Fell English',serif;font-size:11px;color:var(--dim,#6b5a38);font-style:italic">Coming soon</span>
 </div>
 
+<div id="ctx-sounds" class="ctx-panel" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+  <span class="opt-label">Sound FX</span>
+  <!-- Buttons built dynamically from config/soundfx.json after
+       loadConfig() -- see buildSoundFxButtons() near the bottom of this
+       file. Add/remove entries there (and matching files in /sounds) to
+       change what's available; nothing here needs editing directly. -->
+</div>
+
 <!-- Bottom toolbar: Owlbear-style floating pill, Create/VTT modes -->
 <div id="bottom-toolbar">
   <div id="toolbar-mode-tabs">
@@ -587,6 +592,8 @@ canvas{display:block;cursor:crosshair}
     <button class="tbi-btn vtt-icon" title="Fog" style="display:none" onclick="showFlyout('ctx-fog')">🌫</button>
     <button class="tbi-btn vtt-icon" title="Ping" style="display:none" onclick="document.getElementById('pingBtn').click()">📍</button>
     <button class="tbi-btn vtt-icon" title="Ruler" style="display:none" onclick="document.getElementById('rulerBtnEd').click()">📏</button>
+    <button class="tbi-btn vtt-icon" id="gm3d-toggle-btn" title="Free-roaming 3D overview of the live map, side-by-side with the 2D editor -- fly around, no token lock" style="display:none">🧊</button>
+    <button class="tbi-btn vtt-icon" title="Sound FX — everyone connected hears it" style="display:none" onclick="showFlyout('ctx-sounds')">🎵</button>
     <div class="tbi-sep vtt-icon" style="display:none"></div>
     <button class="tbi-btn vtt-icon" title="Clear" style="display:none" onclick="showFlyout('ctx-clear')">🗑</button>
     <button class="tbi-btn vtt-icon" title="Session controls" style="display:none" onclick="showFlyout('ctx-session')">🔒<span class="tbi-badge" id="session-badge"></span></button>
@@ -907,11 +914,12 @@ import { db }                from "./js/firebase.js";
 const _campaignParams = new URLSearchParams(location.search);
 const CAMPAIGN_ID = _campaignParams.get("campaign") || "default";
 const CAMPAIGN_BASE = `campaigns/${CAMPAIGN_ID}`;
-import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, TILE } from "./js/config.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, getSOUNDFX, TILE } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, tokenTextures, propTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture } from "./js/assets.js";
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser, sendAttackTarget, drawAttackTargets } from "./js/pings.js";
+import { playSoundFx, subscribeSoundFx } from "./js/soundfx.js";
 import { resolvePropId, tokenDisguiseRules } from "./js/disguise.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { sendChat, renderChat } from "./js/chat.js";
@@ -1340,7 +1348,14 @@ function refreshGm3dPanel(){
   const mapName=getMapName();
   if(mapName===gm3dLoadedMap)return; // already showing this map -- avoid an unnecessary reload
   gm3dLoadedMap=mapName;
-  document.getElementById("gm-3d-panel").innerHTML=`<iframe src="viewer.html?map=${encodeURIComponent(mapName)}&_v=${Date.now()}" title="3D overview"></iframe>`;
+  // Switched from viewer.html to planner.html -- its own automatic
+  // session/currentMap-following (added when the manual Load button was
+  // removed) already tracks whatever map THIS app's own subscribeLive()
+  // just set live, so no ?map= override is needed here at all: this app
+  // is the one keeping session/currentMap accurate in the first place.
+  // Free-roaming orbit camera, same as before (no ?token= means
+  // planner.html never locks into a token's first-person view).
+  document.getElementById("gm-3d-panel").innerHTML=`<iframe src="planner.html?_v=${Date.now()}" title="3D overview"></iframe>`;
 }
 document.getElementById("gm3d-toggle-btn").addEventListener("click",()=>{
   gm3dOpen=!gm3dOpen;
@@ -2028,6 +2043,9 @@ function drawPendingImportLayers(){
   }
 }
 
+let importSidebarDismissed=false; // set by the sidebar's own close button; cleared below whenever a NEW pending import appears, since that's genuinely actionable and should show regardless of a prior dismissal -- but a stale confirmed-section record alone shouldn't keep re-forcing the panel open every time this function runs
+function closeImportSidebar(){importSidebarDismissed=true;document.getElementById("import-sidebar").style.display="none";}
+window.closeImportSidebar=closeImportSidebar; // main script is a module -- inline onclick attributes run in global scope and can't see module-scoped functions directly, same reasoning as window.setCategory elsewhere in this file
 function updateImportSidebar(){
   const list=document.getElementById("import-layers-list");
   if(!list)return;
@@ -2035,7 +2053,8 @@ function updateImportSidebar(){
   const hasPending=pendingImportLayers.length>0;
   const hasConfirmed=Object.keys(confirmedMapLayers).length>0;
   if(!hasPending&&!hasConfirmed){document.getElementById("import-sidebar").style.display="none";return;}
-  document.getElementById("import-sidebar").style.display="block";
+  if(hasPending)importSidebarDismissed=false; // a genuinely new/active import in progress always overrides a prior close
+  document.getElementById("import-sidebar").style.display=importSidebarDismissed?"none":"block";
   for(const layer of pendingImportLayers){
     const card=document.createElement("div");
     card.className="import-layer-card"+(layer.id===selectedImportLayerId?" active":"");
@@ -4185,6 +4204,25 @@ window.closeSheetPanelEd=function closeSheetPanelEd(){
     }
   });
 
+  // ── Sound FX buttons (built from config/soundfx.json) ────────────────────
+  // Same fire-and-forget pattern as pings/dice -- click plays it for
+  // everyone connected, including this browser (subscribeSoundFx below
+  // doesn't distinguish sender from listener).
+  const soundsPanel=document.getElementById("ctx-sounds");
+  getSOUNDFX().forEach(({label,file})=>{
+    const btn=document.createElement("button");
+    btn.className="tb-btn";
+    btn.textContent=`🎵 ${label}`;
+    btn.onclick=()=>{playSoundFx(file);showFlyout(null);};
+    soundsPanel?.appendChild(btn);
+  });
+  // This browser also listens for (and plays) sound-fx events -- covers
+  // both the GM's own triggers echoing back and, if this file is ever
+  // opened by more than one person, anyone else's.
+  subscribeSoundFx(file=>{
+    new Audio(`./sounds/${file}`).play().catch(err=>console.warn("[soundfx] playback blocked (needs a user interaction on this page first):",err));
+  });
+
   // ── Night Mode button ─────────────────────────────────────────────────────
   // Time of day picker wired via topbar buttons
   document.querySelectorAll("[data-tod]").forEach(btn=>{
@@ -4870,6 +4908,7 @@ document.getElementById('loot-push').onclick=async()=>{
 <div id="import-sidebar" style="display:none;position:fixed;top:0;right:0;bottom:calc(var(--initiative) + var(--chat-collapsed));width:280px;background:var(--panel);border-left:1px solid var(--border);z-index:25;overflow-y:auto;padding:12px">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
     <h3 style="margin:0;font-family:'Cinzel',serif;font-size:13px;color:var(--gold)">🗺️ Pending Map Sections</h3>
+    <button onclick="closeImportSidebar()" title="Close -- reopens automatically if a new section starts importing" style="background:none;border:none;color:var(--text-dim);font-size:16px;cursor:pointer;line-height:1;padding:2px 6px">✕</button>
   </div>
   <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);margin-bottom:10px">
     Snap to grid:

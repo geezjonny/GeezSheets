@@ -114,9 +114,17 @@ export function bucketFillElevation(elevation, key, startX, startY, value, maxCe
 // offset to a world-space Y position needs this conversion.
 export const FEET_PER_WORLD_UNIT = 5;
 
-/** Raw painted value for one grid cell, in feet. Unpainted = 0, matching
- *  the convention used everywhere else in this data model. */
-function cellHeightFeet(elevation, floor, cellX, cellY) {
+/** Raw painted value for one grid cell, in feet, no averaging or
+ *  interpolation -- exactly what was painted for that cell, exactly what
+ *  saveElevation wrote. Unpainted = 0, matching the convention used
+ *  everywhere else in this data model. Exported for planner.html's own
+ *  use (applying saved data back onto its dense mesh) -- unlike
+ *  viewer.html's simple per-cell quads, planner's mesh is dense enough to
+ *  represent a real sharp edge directly, so re-smoothing it on load would
+ *  destroy an intentional cliff/platform edge that was actually painted
+ *  and saved accurately. sampleElevationFeet's smoothing is the right
+ *  choice for viewer.html specifically; this is the right choice here. */
+export function cellHeightFeet(elevation, floor, cellX, cellY) {
   return elevation[`${floor},${cellX},${cellY}`] || 0;
 }
 

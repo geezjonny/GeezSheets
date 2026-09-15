@@ -473,6 +473,7 @@ import { drawFog } from "./js/fog.js";
 import { computeVisibilityPolygon, activeOccluders, segmentAtPoint, drawDoorsWithArt, pathBlocked, computeReachableTiles, computeRangeTiles, TIME_OF_DAY_PRESETS } from "./js/geometry.js";
 import { isElevationStepBlocked } from "./js/elevation.js";
 import { sendPing, drawPings, drawLasers, startLaser, moveLaser, stopLaser, sendAttackTarget, drawAttackTargets } from "./js/pings.js";
+import { subscribeSoundFx } from "./js/soundfx.js";
 import { resolvePropId, tokenDisguiseRules } from "./js/disguise.js";
 import { drawRuler, findSnapPoint } from "./js/ruler.js";
 import { subscribePassphrase, checkPassphrase, hasPassphraseSet, saveAuthSession, loadAuthSession } from "./js/auth.js";
@@ -1821,6 +1822,12 @@ function evaluateAllNodes(){
   // Subscribe presence pills
   subscribePresence(document.getElementById("presence-row"));
 
+  // GM-triggered sound FX (thunder, door creaks, etc.) -- broadcast via
+  // Firebase, everyone connected hears it. See js/soundfx.js.
+  subscribeSoundFx(file=>{
+    new Audio(`./sounds/${file}`).play().catch(err=>console.warn("[soundfx] playback blocked (needs a user interaction on this page first):",err));
+  });
+
   // Wire glossary tooltips on sheet panel updates
   const sheetViewEl=document.getElementById("sheet-view");
   if(sheetViewEl){new MutationObserver(()=>registerTerms(sheetViewEl)).observe(sheetViewEl,{childList:true,subtree:true});}
@@ -1874,11 +1881,20 @@ function evaluateAllNodes(){
       if(iframeLoaded) return;
       const entry = myOwnTokenEntry();
       if(!entry){ toast("No character token on the map yet -- ask your GM to place one"); return; }
-      const [tokenId] = entry;
+      const [tokenId, tokenData] = entry;
+      // Switched from viewer.html to planner-viewer.html -- the latter's
+      // rendering (elevation properly draped under the background image,
+      // not a separate flat layer) is the one we've actually been
+      // building toward, and it already has the name-based token lookup
+      // this needs (falls back to matching .name if the exact key isn't
+      // found, so a human-readable name works here without needing the
+      // token's own opaque Firebase key).
+      const tokenName = tokenData.name || tokenId;
       // Cache-bust with a timestamp -- plain static-file hosting (no
-      // no-cache headers) can otherwise serve a stale cached viewer.html
-      // from a previous session even after the file on disk changes.
-      iframe.src = `viewer.html?token=${encodeURIComponent(tokenId)}&_v=${Date.now()}`;
+      // no-cache headers) can otherwise serve a stale cached
+      // planner-viewer.html from a previous session even after the file
+      // on disk changes.
+      iframe.src = `planner-viewer.html?token=${encodeURIComponent(tokenName)}&_v=${Date.now()}`;
       iframeLoaded = true;
     }
 

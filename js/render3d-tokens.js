@@ -15,24 +15,11 @@ import { sampleElevationUnits } from "./elevation.js";
 
 const DEFAULT_FLOOR_SURFACE_Y = 0.03; // walls/doors/lights/tokens measure from this, matches render3d-geometry.js's default
 
-/**
- * A token's rough center-of-mass position in world space (grid-cell-center,
- * standing height, elevation-adjusted so it sits on whatever terrain
- * height is actually under its center cell) -- used for camera framing/
- * snapping, not for the token mesh's own pivot (which sits at floor level;
- * see rebuildTokens).
- * @param {{x,y,size?,floor?}} tok
- * @param {(floor: number) => number} floorY
- * @param {number} [floorSurfaceY]
- * @param {Object<string, number>} [elevation] - see js/elevation.js. Omit for the pre-elevation behavior (always 0 offset).
- * @returns {THREE.Vector3}
- */
-export function tokenWorldPos(tok, floorY, floorSurfaceY = DEFAULT_FLOOR_SURFACE_Y, elevation = {}) {
-  const size = tok.size || 1;
-  const cx = tok.x + size / 2, cy = tok.y + size / 2;
-  const groundUnits = sampleElevationUnits(elevation, tok.floor || 0, cx, cy);
-  return new THREE.Vector3(cx, floorSurfaceY + 0.5 + floorY(tok.floor) + groundUnits, cy);
-}
+// Note: tokenWorldPos (a token's center position for camera framing) was
+// removed 2026 -- a project-wide audit found it was never called anywhere;
+// render3d-camera.js's snapCameraToToken had independently reimplemented
+// the identical calculation inline instead of calling it, so the two had
+// quietly diverged into duplicate logic for the same thing.
 
 /**
  * Rebuilds every token into tokenGroup, tagged per-floor. PC tokens try a
