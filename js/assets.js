@@ -3,7 +3,7 @@
 
 import { db } from "./firebase.js";
 import { get, ref } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-import { TEXTURE_PATH, TOKEN_PATH, PROP_PATH } from "./config.js";
+import { TEXTURE_PATH, TOKEN_PATH, PROP_PATH, MATERIAL_PATH } from "./config.js";
 
 // Cache-busting: one value per page load, appended to every asset URL below.
 // Without this, browsers can keep serving an old cached copy of a texture
@@ -14,6 +14,7 @@ const _cacheBust = Date.now();
 export const textures      = {}; // terrain id → HTMLImageElement
 export const tokenTextures = {}; // cacheKey → HTMLImageElement | null
 export const propTextures  = {}; // propId → HTMLImageElement | null
+export const materialTextures = {}; // wall/door material name → HTMLImageElement | null -- same image the 3D views (planner-viewer.html) tile onto walls/doors, used here for index.html's 2D door art
 
 // Generic/blank NPCs all share characterId "__npc__" — cache by lookup name instead
 // so different NPCs (e.g. "goblin" vs "skeleton") don't collide on one shared texture.
@@ -59,4 +60,16 @@ export function tryLoadPropTexture(id) {
     });
   };
   img.src = `${PROP_PATH}${id}.png?v=${_cacheBust}`;
+}
+
+// A static asset (like terrains) -- no Firebase fallback, since these are
+// files the GM adds directly to /assets on the server, not something
+// uploaded through the app at runtime.
+export function tryLoadMaterialTexture(name) {
+  if (!name || materialTextures[name] !== undefined) return;
+  materialTextures[name] = null;
+  const img = new Image();
+  img.onload  = () => { materialTextures[name] = img; };
+  img.onerror = () => { console.warn(`[material] ${MATERIAL_PATH}${name}.png not found`); };
+  img.src = `${MATERIAL_PATH}${name}.png?v=${_cacheBust}`;
 }

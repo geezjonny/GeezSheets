@@ -419,6 +419,130 @@
         const doorMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 });
         const orbGeometry = new THREE.SphereGeometry(0.25, 8, 8);
 
+        // Wall material lookup -- a wall drawn/tagged in mapeditor.html's
+        // Structure > Wall tool can carry a .material name (e.g. "wood").
+        // This looks up ./assets/<name>.png ONCE per name and tiles it
+        // along each wall's own length (repeating roughly once per grid
+        // square) rather than stretching one copy across the whole wall.
+        //
+        // Tiling needs a separate texture.repeat value per wall (a short
+        // wall and a long one sharing "wood" need different repeat
+        // counts), but repeat lives on the texture object, not the
+        // material -- so this caches the loaded IMAGE by name (one
+        // network fetch/decode per material, however many walls use it),
+        // then hands out a per-wall material with its own cloned texture
+        // (clone() copies the already-loaded image by reference -- cheap
+        // -- while still allowing this one instance's own independent
+        // repeat.x).
+        const wallTextureCache = {}; // materialName -> { texture: THREE.Texture|null, pending: [{mesh,lengthUnits}] }
+
+        function tiledWallMaterial(baseTexture, lengthUnits) {
+          const tex = baseTexture.clone();
+          tex.needsUpdate = true; // clones don't inherit the "already uploaded to GPU" flag -- without this the clone renders blank
+          // repeat.y, NOT repeat.x -- BoxGeometry(WALL_THICKNESS, distance, WALL_HEIGHT) puts the wall's length along
+          // the box's local Y axis, and for the two big visible faces (perpendicular to the thin X/thickness axis),
+          // Three.js's default UV mapping puts V on Y and U on Z (WALL_HEIGHT). repeat.x scales U -- the height axis,
+          // not the length -- which is why this was tiling the wrong dimension entirely before.
+          tex.repeat.set(1, Math.max(1, Math.round(lengthUnits))); // rounded to a whole number of repeats so the pattern doesn't cut off mid-tile at the wall's far end; the tradeoff is the tile stretches slightly to fit evenly
+          return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 });
+        }
+
+        function applyWallMaterial(mesh, materialName, lengthUnits) {
+          let state = wallTextureCache[materialName];
+          if (!state) {
+            state = { texture: null, pending: [] };
+            wallTextureCache[materialName] = state;
+            new THREE.TextureLoader().load(
+              `./assets/${materialName}.png`,
+              tex => {
+                tex.colorSpace = THREE.SRGBColorSpace;
+                tex.wrapS = THREE.RepeatWrapping;
+                tex.wrapT = THREE.RepeatWrapping;
+                state.texture = tex;
+                state.pending.forEach(p => { p.mesh.material = tiledWallMaterial(tex, p.lengthUnits); });
+                state.pending = [];
+              },
+              undefined,
+              () => { console.warn(`[wall-material] ./assets/${materialName}.png not found -- leaving affected walls as plain grey`); }
+            );
+          }
+          if (state.texture) mesh.material = tiledWallMaterial(state.texture, lengthUnits);
+          else state.pending.push({ mesh, lengthUnits }); // texture hasn't finished loading yet -- apply once it does, see the .load callback above
+        }
+
+        // Applies each wall's .material (if any) to the mesh createMapEntity
+        // already built for it. Matches by array position: wallsToLineOfSight
+        // filters the same `walls` array by the same floor, in the same
+        // order, and the dd2vtt-parsing path that builds meshes from the
+        // result adds them to wallsGroup in that same order too -- so the
+        // Nth surviving mesh corresponds to the Nth surviving wall here, as
+        // long as both sides skip degenerate (near-zero-length) segments the
+        // same way. This is a lookup added after the fact, not a change to
+        // how the walls are built in the first place.
+        function applyWallMaterials(wallsGroup, walls, floor) {
+          const relevant = walls.filter(w => (w.floor || 0) === floor && Math.hypot(w.x2 - w.x1, w.y2 - w.y1) >= 0.001);
+          const meshes = wallsGroup.children.filter(c => c.userData?.type === 'wall');
+          if (relevant.length !== meshes.length) {
+            console.warn(`[wall-material] wall count mismatch (${relevant.length} source walls vs ${meshes.length} meshes) -- skipping material lookup for this floor to avoid applying materials to the wrong walls`);
+            return;
+          }
+          relevant.forEach((w, i) => { if (w.material) applyWallMaterial(meshes[i], w.material, Math.hypot(w.x2 - w.x1, w.y2 - w.y1)); });
+        }
+
+        // Same approach as applyWallMaterials, same reasoning about
+        // positional matching -- doorsToPortals filters+maps geom.doors in
+        // the same order the dd2vtt-parsing path below consumes
+        // data.portals and adds meshes to doorsGroup.
+        function applyDoorMaterials(doorsGroup, doors, floor) {
+          const relevant = doors.filter(d => (d.floor || 0) === floor && Math.hypot(d.x2 - d.x1, d.y2 - d.y1) >= 0.001);
+          const meshes = doorsGroup.children.filter(c => c.userData?.type === 'door');
+          if (relevant.length !== meshes.length) {
+            console.warn(`[wall-material] door count mismatch (${relevant.length} source doors vs ${meshes.length} meshes) -- skipping material lookup for this floor to avoid applying materials to the wrong doors`);
+            return;
+          }
+          relevant.forEach((d, i) => { if (d.material) applyWallMaterial(meshes[i], d.material, Math.hypot(d.x2 - d.x1, d.y2 - d.y1)); });
+        }
+
+        // Mirrors the x/y transform createMapEntity's own internal
+        // convertCoord applies for our synthetic (Firebase-driven, not a
+        // real dd2vtt file) fakeData -- centers around this entity's own
+        // grid dimensions and, for a multi-layer piece, first shifts by
+        // its (lx,ly) offset into that piece's local space. Needed here
+        // because rebuildWallsAndDoors (below) runs OUTSIDE
+        // createMapEntity, on every live geometry update, not just once
+        // at initial load -- so it can't rely on that internal closure.
+        function convertGeomPoint(entity, pt) {
+          const x = pt.x - entity.lx, y = pt.y - entity.ly;
+          return { x: x - entity.gridW / 2, y: -(y - entity.gridH / 2) };
+        }
+
+        // Clears and rebuilds one entity's walls/doors from the current
+        // geometry snapshot -- called once at initial load AND every time
+        // the live geometry subscription fires afterward, so a wall added,
+        // a door opened, or a material changed while this page is already
+        // open shows up without needing a reload. Old meshes' geometry is
+        // disposed to avoid leaking GPU buffers on every edit; materials
+        // are shared/cached (wallMaterial, doorMaterial, or a cached
+        // texture material) and deliberately left alone.
+        function rebuildWallsAndDoors(entity, geom) {
+          const { wallsGroup, doorsGroup } = entity.mapRec;
+          [...wallsGroup.children].forEach(m => { wallsGroup.remove(m); m.geometry?.dispose(); });
+          [...doorsGroup.children].forEach(m => { doorsGroup.remove(m); m.geometry?.dispose(); });
+
+          (geom.walls || []).filter(w => (w.floor || 0) === entity.floor).forEach(w => {
+            const wall = createWallMesh(convertGeomPoint(entity, { x: w.x1, y: w.y1 }), convertGeomPoint(entity, { x: w.x2, y: w.y2 }), 0);
+            if (wall) wallsGroup.add(wall);
+          });
+          (geom.doors || []).filter(d => (d.floor || 0) === entity.floor).forEach(d => {
+            const door = createDoorMesh(convertGeomPoint(entity, { x: d.x1, y: d.y1 }), convertGeomPoint(entity, { x: d.x2, y: d.y2 }), d.closed !== false, 0);
+            if (door) doorsGroup.add(door);
+          });
+
+          applyWallMaterials(wallsGroup, geom.walls || [], entity.floor);
+          applyDoorMaterials(doorsGroup, geom.doors || [], entity.floor);
+          syncStructuresToTerrain(entity.mapRec); // new/rebuilt meshes start at z=0 -- this snaps them to the actual terrain height, same as any other wall/door
+        }
+
         // Loads an (often huge) base64 map image, decodes it once, and produces:
         //  - a Three.js texture capped at maxDim on its longest side
         //  - a re-encoded, already-downscaled dataURL to keep around for export
@@ -1110,7 +1234,7 @@
             const distance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
             if (distance < 0.001) return null;
 
-            const geometry = new THREE.BoxGeometry(WALL_THICKNESS * 1.2, distance, WALL_HEIGHT);
+            const geometry = new THREE.BoxGeometry(WALL_THICKNESS * 0.6, distance, WALL_HEIGHT); // thinner than a wall (WALL_THICKNESS * 1.0), per explicit request -- was 1.2x (thicker) before this change
             const door = new THREE.Mesh(geometry, doorMaterial);
 
             const midX = (p1.x + p2.x) / 2;
@@ -2095,7 +2219,7 @@
       function loadTilesForFloor(floor, tiles) {
         const entity = entityByFloor[floor];
         if (!entity) { console.warn(`[firebase-load] floor ${floor} has painted tiles but no loaded map piece to anchor them to -- skipping.`); return; }
-        const geo = new THREE.PlaneGeometry(1, 1);
+        const flatGeo = new THREE.PlaneGeometry(1, 1);
         let count = 0;
         for (const [key, cell] of Object.entries(tiles)) {
           const parts = key.split(',').map(Number);
@@ -2107,9 +2231,29 @@
           const local = convertCoordLocal(localX, localY, entity.gridW, entity.gridH);
           const z = sampleFloorHeightLocal(entity.mapRec.floorMesh, local.x, local.y);
           const terrainMat = getTerrainTexture(cell.terrain);
-          terrainMat.side = THREE.DoubleSide; // getTerrainMaterial doesn't set this itself -- render3d-tiles.js sets it at the call site too, since a flat quad needs to be visible from either side depending on camera angle
-          const mesh = new THREE.Mesh(geo, terrainMat);
-          mesh.position.set(local.x, local.y, z + 0.01); // just above the ground surface
+          terrainMat.side = THREE.DoubleSide; // getTerrainMaterial doesn't set this itself -- render3d-tiles.js sets it at the call site too, since a flat quad needs to be visible from either side depending on camera angle; harmless (if slightly redundant) on the boxes below too, since this material is cached/shared by terrain name across both branches
+
+          let mesh;
+          if (Math.abs(z) < 0.01) {
+            // No meaningful elevation here -- flat quad, exactly as before.
+            mesh = new THREE.Mesh(flatGeo, terrainMat);
+            mesh.position.set(local.x, local.y, z + 0.01); // just above the ground surface
+          } else {
+            // A tile with real elevation gets extruded into a box from
+            // ground level (z=0) up (or down, for a sunken/negative tile)
+            // to its own height, with the SAME terrain material on every
+            // face -- top, bottom, and all 4 sides -- so a raised platform
+            // or a pit shows its material on the visible cliff face too,
+            // not just its flat top. Deliberately independent per tile
+            // (doesn't check neighboring cells' elevation) -- where two
+            // adjacent tiles share the same height, their side faces just
+            // sit flush and hidden against each other, which costs a
+            // little overdraw but is otherwise harmless.
+            const boxHeight = Math.abs(z);
+            const boxGeo = new THREE.BoxGeometry(1, 1, boxHeight);
+            mesh = new THREE.Mesh(boxGeo, terrainMat);
+            mesh.position.set(local.x, local.y, z / 2); // centered on its own height -- puts the top at z and the bottom at 0, matching the flat-quad case's "sits at the sampled terrain height" behavior
+          }
           entity.mapRec.group.add(mesh);
           tileMeshes[key] = mesh;
         }
@@ -2135,34 +2279,22 @@
 
           let marker = tokenMarkers[id];
           if (!marker) {
-            // A group holding two visuals for the same token: a flat
-            // circle lying on the ground (unchanged from before) PLUS a
-            // standing paper-mini-style card above it, ported from the
-            // retired viewer.html's own render3d-tokens.js (which only
-            // ever showed one or the other per token -- this app shows
-            // both together on every token, per explicit request).
+            // A standing paper-mini-style card, ported from the retired
+            // viewer.html's own render3d-tokens.js. Two back-to-back
+            // planes (not one double-sided plane) so the art reads
+            // right-way-round from both sides instead of one being a
+            // mirror image.
             //
             // planner's world is Z-up (confirmed by how lights/walls are
             // positioned: X/Y are the map's horizontal plane, Z is
-            // height), so a plain CircleGeometry already lies flat with
-            // no rotation needed for the disc, unlike viewer.html's Y-up
-            // convention where this would need a -90 degree rotation to
-            // lie down.
-            const geo = new THREE.CircleGeometry(0.45 * size, 24);
+            // height). The 180-degree "face the other way" rotation is
+            // applied to each plane in its own default, pre-standing
+            // orientation (rotation.y, its own local "up" axis) -- then
+            // the whole pair is tipped upright together via the outer
+            // group's rotation.x, so the two rotations don't interact or
+            // need Euler-order reasoning about a combined axis.
             const tokenMat = getTokenTexture(tok);
             tokenMat.side = THREE.DoubleSide; // getTokenMaterial doesn't set this itself -- same reasoning as the terrain material above
-            const disc = new THREE.Mesh(geo, tokenMat);
-
-            // Standing card: two back-to-back planes (not one double-sided
-            // plane) so the art reads right-way-round from both sides
-            // instead of one being a mirror image -- same reasoning as
-            // viewer.html's own standee. The 180-degree "face the other
-            // way" rotation is applied to each plane in its own default,
-            // pre-standing orientation (rotation.y, its own local "up"
-            // axis) -- then the whole pair is tipped upright together via
-            // the outer group's rotation.x, so the two rotations don't
-            // interact or need Euler-order reasoning about a combined
-            // axis.
             const cardGeo = new THREE.PlaneGeometry(size, size);
             const front = new THREE.Mesh(cardGeo, tokenMat);
             const back = front.clone();
@@ -2173,11 +2305,11 @@
             standGroup.position.z = size / 2; // lift so the card's bottom edge rests on the ground, not its center
 
             marker = new THREE.Group();
-            marker.add(disc, standGroup);
+            marker.add(standGroup);
             tokenMarkers[id] = marker;
           }
           if (marker.parent !== entity.mapRec.group) entity.mapRec.group.add(marker);
-          marker.position.set(local.x, local.y, z + 0.02); // ground level (+0.02 to clear z-fighting with the terrain) -- the disc sits right here, the standing card's own internal lift lands its bottom edge at this same height
+          marker.position.set(local.x, local.y, z + 0.02); // ground level (+0.02 to clear z-fighting with the terrain) -- the standing card's own internal lift lands its bottom edge at this same height
         }
       }
 
@@ -2233,7 +2365,7 @@
         console.log(`[firebase-load] found a single background image (length ${imageSrc.length}); loading...`);
         const [ppiSnap, geomSnap, tilesSnap, elevationData] = await Promise.all([
           get(ref(db, `maps/${mapName}/backgroundPpi`)),
-          get(ref(db, `maps/${mapName}/geometry`)),
+          get(ref(db, `maps/${mapName}/geometry`)), // one-time -- used here only for the initial LIGHTS build (unaffected by this change); walls/doors get their own live subscription below instead
           get(ref(db, `maps/${mapName}/tiles`)),
           loadElevationOnce(mapName),
         ]);
@@ -2247,11 +2379,11 @@
             map_origin: { x: 0, y: 0 },
           },
           image: imageSrc,
-          line_of_sight: wallsToLineOfSight(geom.walls || [], 0),
-          portals: doorsToPortals(geom.doors || [], 0),
+          line_of_sight: [], // walls now arrive via the live geometry subscription below, not built here
+          portals: [],       // same for doors
           lights: lightsToPlannerLights(geom.lights || [], 0),
         };
-        console.log(`[firebase-load] geometry for floor 0: ${fakeData.line_of_sight.length} wall segment(s), ${fakeData.portals.length} door(s), ${fakeData.lights.length} light(s)`);
+        console.log(`[firebase-load] geometry for floor 0: ${fakeData.lights.length} light(s) (walls/doors handled by the live subscription below)`);
         const mapRec = createMapEntity(fakeData, `${mapName} (Firebase)`, 0);
         // Single background is always floor 0, always anchored with no
         // shift (lx=ly=0) -- see loadTokens below for how this is used.
@@ -2262,6 +2394,16 @@
         loadTilesForFloor(0, tilesSnap.val() || {});
         rebuildTokenMarkers(latestTokensData); // re-render using whatever tokens we already have cached -- entityByFloor[0] didn't exist until just now, so any earlier attempt (from connectLive's own initial loadTokens call, which fires immediately on subscribe) would have skipped every token
         loadTokens(mapName);
+
+        // Live geometry subscription -- fires immediately with the current
+        // data (standard onValue behavior), so this also does the FIRST
+        // build of walls/doors, not just later edits. A wall added, a door
+        // opened/closed, or a material changed while this page is already
+        // open now rebuilds automatically instead of only reflecting
+        // whatever geometry looked like at page load.
+        onValue(ref(db, `maps/${mapName}/geometry`), snap => {
+          rebuildWallsAndDoors(entity, snap.val() || {});
+        });
       }
 
       // Multi-layer case (mapeditor-layers.html's "Add dd2vtt Section" flow) --
@@ -2278,13 +2420,14 @@
         const entries = Object.entries(layers);
         console.log(`[firebase-load] found ${entries.length} mapLayers piece(s); loading each...`);
         const [geomSnap, tilesSnap, elevation] = await Promise.all([
-          get(ref(db, `maps/${mapName}/geometry`)),
+          get(ref(db, `maps/${mapName}/geometry`)), // one-time -- used here only for the initial LIGHTS build (unaffected by this change); walls/doors get their own live subscription below instead
           get(ref(db, `maps/${mapName}/tiles`)),
           loadElevationOnce(mapName),
         ]);
         const geom = geomSnap.val() || {};
         const tiles = tilesSnap.val() || {};
         console.log(`[firebase-load] elevation data fetched: cell count=${Object.keys(elevation).length}`, elevation);
+        const loadedEntities = []; // every floor entity this call creates -- the live geometry subscription below rebuilds walls/doors for ALL of them on each update, since one geometry write can touch more than one floor at once
         for (const [layerId, layer] of entries) {
           if (!layer.url) continue;
           const floor = layer.floor || 0;
@@ -2298,10 +2441,8 @@
           // position in world space -- get this backwards and everything
           // renders offset from where it actually belongs.
           const shiftPt = pt => ({ x: pt.x - lx, y: pt.y - ly });
-          const lineOfSight = wallsToLineOfSight(geom.walls || [], floor).map(poly => poly.map(shiftPt));
-          const portals = doorsToPortals(geom.doors || [], floor).map(p => ({ ...p, bounds: p.bounds.map(shiftPt) }));
           const lights = lightsToPlannerLights(geom.lights || [], floor).map(l => ({ ...l, position: shiftPt(l.position) }));
-          console.log(`[firebase-load] layer "${layerId}" (floor ${floor}): ${lineOfSight.length} wall segment(s), ${portals.length} door(s), ${lights.length} light(s)`);
+          console.log(`[firebase-load] layer "${layerId}" (floor ${floor}): ${lights.length} light(s) (walls/doors handled by the live subscription below)`);
 
           // createMapEntity crops the source image to exactly
           // gridWidth*ppi x gridHeight*ppi pixels before texturing the
@@ -2325,8 +2466,8 @@
               map_origin: { x: 0, y: 0 },
             },
             image: layer.url,
-            line_of_sight: lineOfSight,
-            portals,
+            line_of_sight: [], // walls now arrive via the live geometry subscription below, not built here
+            portals: [],       // same for doors
             lights,
           };
           const mapRec = createMapEntity(fakeData, `${mapName}: ${layerId} (Firebase)`, 0);
@@ -2353,12 +2494,24 @@
             // rather than needing a second, independent calculation.
             mapRec.group.position.set(lx + layer.w / 2, ly + layer.h / 2, 0);
           }
-          entityByFloor[floor] = { mapRec, gridW: layer.w, gridH: layer.h, lx, ly, floor };
-          applyElevationToMesh(entityByFloor[floor], elevation);
+          const entity = { mapRec, gridW: layer.w, gridH: layer.h, lx, ly, floor };
+          entityByFloor[floor] = entity;
+          loadedEntities.push(entity);
+          applyElevationToMesh(entity, elevation);
           loadTilesForFloor(floor, tiles);
           rebuildTokenMarkers(latestTokensData); // re-render using whatever tokens we already have cached -- this floor's entityByFloor entry didn't exist until just now
         }
         loadTokens(mapName);
+
+        // Live geometry subscription -- fires immediately with the current
+        // data (standard onValue behavior), so this also does the FIRST
+        // build of walls/doors for every layer above, not just later
+        // edits. See loadSingleBackground's identical comment for why this
+        // rebuilds rather than only reflecting page-load-time geometry.
+        onValue(ref(db, `maps/${mapName}/geometry`), snap => {
+          const g = snap.val() || {};
+          loadedEntities.forEach(entity => rebuildWallsAndDoors(entity, g));
+        });
       }
 
       function loadImageAsync(src) {

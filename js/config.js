@@ -43,4 +43,5 @@ export const TEXTURE_PATH    = "./textures/";
 export const TOKEN_PATH      = "./tokens/";
 export const PROP_PATH       = "./props/";
 export const SOUNDS_PATH     = "./sounds/";
+export const MATERIAL_PATH   = "./assets/";
 export const BG_SCALE        = 32 / 70; // DA map scale factor

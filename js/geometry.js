@@ -523,21 +523,45 @@ export function drawDoorsGeometry(ctx, doors, TILE, { zoom, selectedId } = {}) {
  *
  * @param {object} propTextures - the shared propTextures cache from assets.js
  */
-export function drawDoorsWithArt(ctx, doors, TILE, propTextures, { zoom, selectedId, showLockIcons=false } = {}) {
+export function drawDoorsWithArt(ctx, doors, TILE, propTextures, materialTextures, { zoom, selectedId, showLockIcons=false } = {}) {
   ctx.save();
   for (const d of doors) {
-    const img = propTextures[d.isWindow ? "window" : (d.closed ? "doorclosed" : "door")];
+    // A door tagged with a material (same tagging mapeditor.html's
+    // Structure > Wall tool now applies to walls) uses that texture
+    // instead of the generic door/doorclosed art -- falls back to the
+    // generic art while the material texture is still loading or if it
+    // 404s, rather than drawing nothing.
+    const img = (d.material && materialTextures[d.material]) || propTextures[d.isWindow ? "window" : (d.closed ? "doorclosed" : "door")];
     if (!img) { drawDoorsGeometry(ctx, [d], TILE, { zoom, selectedId }); continue; }
-    const cx = (d.x1 + d.x2) / 2 * TILE, cy = (d.y1 + d.y2) / 2 * TILE;
-    const angle = Math.atan2(d.y2 - d.y1, d.x2 - d.x1);
     const len = Math.hypot(d.x2 - d.x1, d.y2 - d.y1) * TILE;
+    const wallAngle = Math.atan2(d.y2 - d.y1, d.x2 - d.x1);
+    const cx = (d.x1 + d.x2) / 2 * TILE, cy = (d.y1 + d.y2) / 2 * TILE;
     ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    ctx.drawImage(img, -len / 2, -TILE * 0.35, len, TILE * 0.7);
-    if (d.id === selectedId) {
-      ctx.strokeStyle = "#ffcc44"; ctx.lineWidth = 2 / (zoom || 1);
-      ctx.strokeRect(-len / 2, -TILE * 0.35, len, TILE * 0.7);
+    if (d.closed || d.isWindow) {
+      // Lies flat along the wall line -- windows never swing regardless
+      // of .closed, since isWindow took priority in the original lookup
+      // above too (a window's "closed" state was never about a hinge).
+      ctx.translate(cx, cy);
+      ctx.rotate(wallAngle);
+      ctx.drawImage(img, -len / 2, -TILE * 0.35, len, TILE * 0.7);
+      if (d.id === selectedId) {
+        ctx.strokeStyle = "#ffcc44"; ctx.lineWidth = 2 / (zoom || 1);
+        ctx.strokeRect(-len / 2, -TILE * 0.35, len, TILE * 0.7);
+      }
+    } else {
+      // Swung open: pivot on the (x1,y1) endpoint (the "hinge") instead of
+      // the segment's own midpoint, and rotate 90 degrees from the wall's
+      // own angle so the door now extends out into the adjacent space
+      // instead of lying flush with the wall -- the actual visual
+      // difference between "here's a different flat image for open" and
+      // "the door swung open on its hinge".
+      ctx.translate(d.x1 * TILE, d.y1 * TILE);
+      ctx.rotate(wallAngle + Math.PI / 2);
+      ctx.drawImage(img, 0, -TILE * 0.35, len, TILE * 0.7);
+      if (d.id === selectedId) {
+        ctx.strokeStyle = "#ffcc44"; ctx.lineWidth = 2 / (zoom || 1);
+        ctx.strokeRect(0, -TILE * 0.35, len, TILE * 0.7);
+      }
     }
     ctx.restore();
     if (showLockIcons && d.locked && !d.isWindow) {
