@@ -197,6 +197,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
 
@@ -368,6 +369,7 @@
         const WALL_HEIGHT = 2.0; 
         const WALL_THICKNESS = 0.2;
         const GRID_SIZE = 1.0; 
+        const FLOOR_HEIGHT_UNITS = 2; // vertical spacing between floor numbers -- floor 1 sits this many units above floor 0, floor 2 twice that, etc. Used by both loadSingleBackground's blank-floor fallback and loadMapLayers' real per-floor pieces, so both stack consistently.
         
         let scene, activeCamera, perspectiveCamera, orthoCamera, renderer, orbitControls, transformControls;
         let globalGrid;
@@ -619,6 +621,7 @@
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x0a0a0c);
+            window.scene = scene; // temporary debugging exposure -- lets DevTools console inspect the live scene graph directly; harmless to leave in, doesn't affect rendering or functionality
 
             const aspect = window.innerWidth / window.innerHeight;
             
@@ -1046,7 +1049,9 @@
                 color: 0x888888, // placeholder tint shown briefly until the texture decodes
                 vertexColors: true,
                 roughness: 0.85,
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
+                transparent: true,
+                alphaTest: 0.1, // undrawn areas of a dd2vtt export are alpha=0 with black RGB underneath (confirmed by decoding one directly: RGBA(0,0,0,0)) -- without transparent:true, Three.js ignores alpha entirely and shows that underlying black instead of treating it as empty space. alphaTest discards those pixels outright rather than blending them, avoiding transparency sort-order issues with walls/tokens/other transparent objects on the same floor
             });
             const floorMesh = new THREE.Mesh(floorGeo, floorMat);
 
@@ -1268,6 +1273,7 @@
             const orbMat = new THREE.MeshBasicMaterial({ color: colorHex });
             const orbMesh = new THREE.Mesh(orbGeometry, orbMat);
             orbMesh.position.set(0, 0, 1.2);
+            orbMesh.visible = false; // the light itself still works -- this just hides the little sphere marking where it sits, per explicit request
 
             lightHolder.add(pointLight);
             lightHolder.add(orbMesh);
@@ -2260,6 +2266,9 @@
         console.log(`[firebase-load] floor ${floor}: ${count} painted tile(s) loaded`);
       }
 
+      const gltfLoader = new THREE.GLTFLoader();
+      const pcModelCache = {}; // character name (lowercased) -> loaded THREE.Group, cloned per token so multiple tokens sharing a model don't fight over one instance's transform
+
       function rebuildTokenMarkers(tokens) {
         const seenIds = new Set(Object.keys(tokens));
         // Remove markers for tokens that no longer exist.
@@ -2277,35 +2286,117 @@
           const local = convertCoordLocal(localX, localY, entity.gridW, entity.gridH);
           const z = sampleFloorHeightLocal(entity.mapRec.floorMesh, local.x, local.y);
 
-          let marker = tokenMarkers[id];
-          if (!marker) {
-            // A standing paper-mini-style card, ported from the retired
-            // viewer.html's own render3d-tokens.js. Two back-to-back
-            // planes (not one double-sided plane) so the art reads
-            // right-way-round from both sides instead of one being a
-            // mirror image.
-            //
-            // planner's world is Z-up (confirmed by how lights/walls are
-            // positioned: X/Y are the map's horizontal plane, Z is
-            // height). The 180-degree "face the other way" rotation is
-            // applied to each plane in its own default, pre-standing
-            // orientation (rotation.y, its own local "up" axis) -- then
-            // the whole pair is tipped upright together via the outer
-            // group's rotation.x, so the two rotations don't interact or
-            // need Euler-order reasoning about a combined axis.
-            const tokenMat = getTokenTexture(tok);
-            tokenMat.side = THREE.DoubleSide; // getTokenMaterial doesn't set this itself -- same reasoning as the terrain material above
-            const cardGeo = new THREE.PlaneGeometry(size, size);
-            const front = new THREE.Mesh(cardGeo, tokenMat);
-            const back = front.clone();
-            back.rotation.y = Math.PI;
-            const standGroup = new THREE.Group();
-            standGroup.add(front, back);
-            standGroup.rotation.x = Math.PI / 2; // tip the pair upright -- their own local Y (height) now points along world Z (up)
-            standGroup.position.z = size / 2; // lift so the card's bottom edge rests on the ground, not its center
+          // Is this the token the ?token= URL param is locking the camera
+          // to? Same match rule resolveTokenKeyByName uses (exact key, or
+          // case-insensitive name) -- applied directly here instead of
+          // calling that function, since it looks tokens up BY searching
+          // tokenMarkers/latestTokensData, which would be circular while
+          // we're still in the middle of building this token's own marker.
+          const isSelfToken = !!firstPersonTokenId && (id === firstPersonTokenId || (tok.name || '').toLowerCase() === firstPersonTokenId.toLowerCase());
 
+          let marker = tokenMarkers[id];
+          // Rebuild if type/name/size changed since this marker was built
+          // -- these three determine which visual gets built at all (card
+          // vs. glb, which glb file, what scale), so a marker built once
+          // and left alone forever would go stale the moment any of them
+          // changed on an existing token (this is exactly what re-placing
+          // a token instead of just editing it was masking: a new token
+          // gets a new id, forcing a fresh build; editing the SAME token
+          // id never did, until now).
+          const appearanceKey = `${tok.type}|${tok.name}|${size}`;
+          if (marker && marker.userData.appearanceKey !== appearanceKey) {
+            marker.parent?.remove(marker);
+            delete tokenMarkers[id];
+            marker = null;
+          }
+          if (!marker) {
             marker = new THREE.Group();
-            marker.add(standGroup);
+            marker.userData.appearanceKey = appearanceKey;
+
+            // EXPERIMENTAL, PCs only: load an actual character model
+            // instead of a flat standing card, per explicit request to try
+            // this for just the 5-10 PC tokens. NPCs/monsters keep the
+            // existing card below unchanged.
+            if (tok.type === 'pc' && tok.name) {
+              const cacheKey = tok.name.toLowerCase();
+              const buildFromGltfScene = sourceScene => {
+                const model = sourceScene.clone(true);
+                // Auto-scale to a reasonable height regardless of the
+                // source file's own native units/scale -- measures the
+                // loaded model's actual bounding box and scales uniformly
+                // so its height matches a typical humanoid at this
+                // token's own size (established 5ft-per-world-unit
+                // convention: ~6ft tall person = ~1.2 units, times this
+                // token's size multiplier for larger/smaller creatures).
+                const box = new THREE.Box3().setFromObject(model);
+                const modelHeight = box.max.z - box.min.z || box.max.y - box.min.y || 1; // whichever axis the source model treats as "up" -- most exported humanoid rigs use Y-up even inside a Z-up scene file, so check both
+                const targetHeight = 1.2 * size;
+                const scale = targetHeight / modelHeight;
+                model.scale.setScalar(scale);
+                // If the model's own "up" was Y (the common case for
+                // humanoid exports, even though THIS scene is Z-up).
+                // rotate it to stand upright here instead of lying on its
+                // side -- detected by whichever axis was taller before
+                // scaling.
+                if ((box.max.y - box.min.y) > (box.max.z - box.min.z)) model.rotation.x = Math.PI / 2;
+                // Ground the model at its ACTUAL measured lowest point,
+                // not at whatever the file's own local origin (0,0,0)
+                // happens to be. Many rigged humanoid exports (Mixamo
+                // especially) put the skeleton's root joint at the hip,
+                // not the feet -- trusting that origin as "ground level"
+                // sinks the model into the floor by roughly half its own
+                // height. Re-measuring AFTER scale/rotation are applied
+                // (updateMatrixWorld first, since Box3.setFromObject
+                // reads the object's current world transform) and
+                // shifting by -min.z works regardless of where any given
+                // file's internal root actually sits.
+                model.updateMatrixWorld(true);
+                const groundedBox = new THREE.Box3().setFromObject(model);
+                model.position.z -= groundedBox.min.z;
+                marker.add(model);
+                // Self token: invisible, not translucent -- per explicit
+                // preference, since a player shouldn't see their own
+                // character blocking their own first-person view at all.
+                if (isSelfToken) model.visible = false;
+              };
+              if (pcModelCache[cacheKey]) {
+                buildFromGltfScene(pcModelCache[cacheKey]);
+              } else {
+                gltfLoader.load(
+                  `./tokens/${tok.name}.glb`,
+                  gltf => { pcModelCache[cacheKey] = gltf.scene; buildFromGltfScene(gltf.scene); },
+                  undefined,
+                  err => { console.warn(`[pc-model] ./tokens/${tok.name}.glb failed to load -- this token will show no model at all (experimental path, no card fallback yet):`, err); }
+                );
+              }
+            } else {
+              // Unchanged: standing paper-mini-style card, ported from the
+              // retired viewer.html's own render3d-tokens.js. Two
+              // back-to-back planes (not one double-sided plane) so the
+              // art reads right-way-round from both sides instead of one
+              // being a mirror image.
+              //
+              // planner's world is Z-up (confirmed by how lights/walls are
+              // positioned: X/Y are the map's horizontal plane, Z is
+              // height). The 180-degree "face the other way" rotation is
+              // applied to each plane in its own default, pre-standing
+              // orientation (rotation.y, its own local "up" axis) -- then
+              // the whole pair is tipped upright together via the outer
+              // group's rotation.x, so the two rotations don't interact or
+              // need Euler-order reasoning about a combined axis.
+              const tokenMat = getTokenTexture(tok);
+              tokenMat.side = THREE.DoubleSide; // getTokenMaterial doesn't set this itself -- same reasoning as the terrain material above
+              const cardGeo = new THREE.PlaneGeometry(size, size);
+              const front = new THREE.Mesh(cardGeo, tokenMat);
+              const back = front.clone();
+              back.rotation.y = Math.PI;
+              const standGroup = new THREE.Group();
+              standGroup.add(front, back);
+              standGroup.rotation.x = Math.PI / 2; // tip the pair upright -- their own local Y (height) now points along world Z (up)
+              standGroup.position.z = size / 2; // lift so the card's bottom edge rests on the ground, not its center
+              marker.add(standGroup);
+            }
+
             tokenMarkers[id] = marker;
           }
           if (marker.parent !== entity.mapRec.group) entity.mapRec.group.add(marker);
@@ -2371,6 +2462,7 @@
         ]);
         const ppi = ppiSnap.val() || 70;
         const geom = geomSnap.val() || {};
+        const tiles = tilesSnap.val() || {};
         const img = await loadImageAsync(imageSrc);
         const fakeData = {
           resolution: {
@@ -2389,10 +2481,51 @@
         // shift (lx=ly=0) -- see loadTokens below for how this is used.
         const entity = { mapRec, gridW: fakeData.resolution.map_size.x, gridH: fakeData.resolution.map_size.y, lx: 0, ly: 0, floor: 0 };
         entityByFloor[0] = entity;
+        const loadedEntities = [entity]; // floor 0 plus any blank floors created below -- the live geometry subscription rebuilds walls/doors for ALL of these, not just floor 0
         console.log(`[firebase-load] elevation data fetched: cell count=${Object.keys(elevationData).length}`, elevationData);
         applyElevationToMesh(entity, elevationData);
-        loadTilesForFloor(0, tilesSnap.val() || {});
+        loadTilesForFloor(0, tiles);
         rebuildTokenMarkers(latestTokensData); // re-render using whatever tokens we already have cached -- entityByFloor[0] didn't exist until just now, so any earlier attempt (from connectLive's own initial loadTokens call, which fires immediately on subscribe) would have skipped every token
+
+        // A floor drawn with just the Tiles tool (or walls/doors/lights
+        // placed directly) but no background image or dd2vtt import of
+        // its own has nothing for loadTilesForFloor/rebuildWallsAndDoors
+        // to anchor onto otherwise -- they'd silently skip it entirely
+        // (nothing rendered, only a console warning). Give each such
+        // floor a blank, otherwise-invisible ground plane instead, sized
+        // to match floor 0's own footprint, stacked FLOOR_HEIGHT_UNITS
+        // higher per floor number so upper floors actually sit above
+        // floor 0 in 3D space instead of overlapping it at the same
+        // height.
+        const BLANK_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABpfZFQAAAAABJRU5ErkJggg=="; // verified genuinely transparent (alpha=0) -- the previous string I'd used here decoded to opaque black instead, which was the actual cause of the solid black floor seen in testing
+        const referencedFloors = new Set();
+        (geom.walls || []).forEach(w => referencedFloors.add(w.floor || 0));
+        (geom.doors || []).forEach(d => referencedFloors.add(d.floor || 0));
+        (geom.lights || []).forEach(l => referencedFloors.add(l.floor || 0));
+        Object.keys(tiles).forEach(key => {
+          const parts = key.split(',').map(Number);
+          referencedFloors.add(parts.length >= 3 ? parts[0] : 0);
+        });
+        for (const floor of referencedFloors) {
+          if (entityByFloor[floor]) continue; // floor 0 already exists; skip anything that somehow already has an entity
+          console.log(`[firebase-load] floor ${floor} has geometry/tiles but no background of its own -- creating a blank ground plane, ${floor * FLOOR_HEIGHT_UNITS} unit(s) up`);
+          const blankData = {
+            resolution: { map_size: { x: fakeData.resolution.map_size.x, y: fakeData.resolution.map_size.y }, pixels_per_grid: 70, map_origin: { x: 0, y: 0 } },
+            image: BLANK_PNG,
+            line_of_sight: [],
+            portals: [],
+            lights: lightsToPlannerLights(geom.lights || [], floor),
+          };
+          const blankMapRec = createMapEntity(blankData, `${mapName} floor ${floor} (blank)`, 0);
+          blankMapRec.group.position.z = floor * FLOOR_HEIGHT_UNITS;
+          blankMapRec.floorMesh.visible = false; // hide only the ground plane itself -- walls/doors/tiles/tokens are separate sibling objects in the same group, not children of this mesh, so they stay visible. The BLANK_PNG's own alpha=0 alone wasn't enough: the floor material never sets transparent:true (correctly so, real backgrounds need to stay opaque), so alpha gets ignored for rendering regardless of what's in the texture -- this was rendering as solid black instead of invisible
+          const blankEntity = { mapRec: blankMapRec, gridW: blankData.resolution.map_size.x, gridH: blankData.resolution.map_size.y, lx: 0, ly: 0, floor };
+          entityByFloor[floor] = blankEntity;
+          loadedEntities.push(blankEntity);
+          loadTilesForFloor(floor, tiles);
+          rebuildTokenMarkers(latestTokensData);
+        }
+
         loadTokens(mapName);
 
         // Live geometry subscription -- fires immediately with the current
@@ -2400,9 +2533,12 @@
         // build of walls/doors, not just later edits. A wall added, a door
         // opened/closed, or a material changed while this page is already
         // open now rebuilds automatically instead of only reflecting
-        // whatever geometry looked like at page load.
+        // whatever geometry looked like at page load. Rebuilds every
+        // entity above (floor 0 and any blank floors), since one write can
+        // touch more than one floor at once.
         onValue(ref(db, `maps/${mapName}/geometry`), snap => {
-          rebuildWallsAndDoors(entity, snap.val() || {});
+          const g = snap.val() || {};
+          loadedEntities.forEach(e => rebuildWallsAndDoors(e, g));
         });
       }
 
@@ -2492,7 +2628,7 @@
             // consistent with this piece's own image/walls regardless,
             // since it inherits whatever this offset actually resolves to
             // rather than needing a second, independent calculation.
-            mapRec.group.position.set(lx + layer.w / 2, ly + layer.h / 2, 0);
+            mapRec.group.position.set(lx + layer.w / 2, ly + layer.h / 2, floor * FLOOR_HEIGHT_UNITS); // z: stack by floor number, same convention loadSingleBackground's blank-floor fallback uses -- this was hardcoded to 0 before, meaning every floor rendered at the same height regardless of its own floor number
           }
           const entity = { mapRec, gridW: layer.w, gridH: layer.h, lx, ly, floor };
           entityByFloor[floor] = entity;
