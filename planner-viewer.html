@@ -741,10 +741,53 @@
             orbitControls.update();
         }
 
+        // Shadow budget -- PointLight shadows are the most expensive kind
+        // in Three.js (each needs a full cube-map, 6 render passes per
+        // light per frame, unlike a directional/spot light's single
+        // pass). With enough lights placed on a map, every one casting
+        // shadows at once can overwhelm the GPU and stall rendering
+        // entirely rather than just slowing down gracefully. Capping
+        // shadow-casting to the N lights closest to the camera keeps
+        // shadow quality where it's actually visible (near the viewer)
+        // without the GPU cost scaling with the total number of lights
+        // placed on the map -- distant lights still illuminate normally,
+        // they just stop casting their own shadow.
+        const MAX_SHADOW_CASTING_LIGHTS = 4;
+        let lastShadowBudgetUpdate = 0;
+        const _shadowBudgetScratchVec = new THREE.Vector3(); // reused -- avoids allocating a new Vector3 per light on every update
+        function updateShadowBudget() {
+            if (!renderer.shadowMap.enabled) return; // moot if shadows are off entirely
+            const now = performance.now();
+            if (now - lastShadowBudgetUpdate < 500) return; // throttle -- the sort itself has a cost, no need to redo it every frame
+            lastShadowBudgetUpdate = now;
+
+            const allLights = [];
+            loadedMaps.forEach(m => {
+                m.lightsGroup.children.forEach(holder => {
+                    const pointLight = holder.children.find(c => c.isPointLight);
+                    if (pointLight) allLights.push(pointLight);
+                });
+            });
+            if (allLights.length <= MAX_SHADOW_CASTING_LIGHTS) {
+                // Under budget -- everything can safely cast shadows, no sorting needed
+                allLights.forEach(l => { l.castShadow = true; });
+                return;
+            }
+
+            const camPos = activeCamera.position;
+            const withDist = allLights.map(light => {
+                light.getWorldPosition(_shadowBudgetScratchVec);
+                return { light, distSq: _shadowBudgetScratchVec.distanceToSquared(camPos) };
+            });
+            withDist.sort((a, b) => a.distSq - b.distSq);
+            withDist.forEach((entry, i) => { entry.light.castShadow = i < MAX_SHADOW_CASTING_LIGHTS; });
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             const inFirstPerson = window.updateFirstPersonCamera ? window.updateFirstPersonCamera() : false;
             if (!inFirstPerson) orbitControls.update();
+            updateShadowBudget();
             renderer.render(scene, activeCamera);
         }
 
@@ -2092,20 +2135,49 @@
 
           let marker = tokenMarkers[id];
           if (!marker) {
-            // A flat circle lying in the ground plane -- planner's world is
-            // Z-up (confirmed by how lights/walls are positioned: X/Y are
-            // the map's horizontal plane, Z is height), so a plain
-            // CircleGeometry already lies flat with no rotation needed,
-            // unlike viewer.html's Y-up convention where this would need
-            // a -90 degree rotation to lie down.
+            // A group holding two visuals for the same token: a flat
+            // circle lying on the ground (unchanged from before) PLUS a
+            // standing paper-mini-style card above it, ported from the
+            // retired viewer.html's own render3d-tokens.js (which only
+            // ever showed one or the other per token -- this app shows
+            // both together on every token, per explicit request).
+            //
+            // planner's world is Z-up (confirmed by how lights/walls are
+            // positioned: X/Y are the map's horizontal plane, Z is
+            // height), so a plain CircleGeometry already lies flat with
+            // no rotation needed for the disc, unlike viewer.html's Y-up
+            // convention where this would need a -90 degree rotation to
+            // lie down.
             const geo = new THREE.CircleGeometry(0.45 * size, 24);
             const tokenMat = getTokenTexture(tok);
             tokenMat.side = THREE.DoubleSide; // getTokenMaterial doesn't set this itself -- same reasoning as the terrain material above
-            marker = new THREE.Mesh(geo, tokenMat);
+            const disc = new THREE.Mesh(geo, tokenMat);
+
+            // Standing card: two back-to-back planes (not one double-sided
+            // plane) so the art reads right-way-round from both sides
+            // instead of one being a mirror image -- same reasoning as
+            // viewer.html's own standee. The 180-degree "face the other
+            // way" rotation is applied to each plane in its own default,
+            // pre-standing orientation (rotation.y, its own local "up"
+            // axis) -- then the whole pair is tipped upright together via
+            // the outer group's rotation.x, so the two rotations don't
+            // interact or need Euler-order reasoning about a combined
+            // axis.
+            const cardGeo = new THREE.PlaneGeometry(size, size);
+            const front = new THREE.Mesh(cardGeo, tokenMat);
+            const back = front.clone();
+            back.rotation.y = Math.PI;
+            const standGroup = new THREE.Group();
+            standGroup.add(front, back);
+            standGroup.rotation.x = Math.PI / 2; // tip the pair upright -- their own local Y (height) now points along world Z (up)
+            standGroup.position.z = size / 2; // lift so the card's bottom edge rests on the ground, not its center
+
+            marker = new THREE.Group();
+            marker.add(disc, standGroup);
             tokenMarkers[id] = marker;
           }
           if (marker.parent !== entity.mapRec.group) entity.mapRec.group.add(marker);
-          marker.position.set(local.x, local.y, z + 0.02); // just above the ground surface, like a coin lying on it
+          marker.position.set(local.x, local.y, z + 0.02); // ground level (+0.02 to clear z-fighting with the terrain) -- the disc sits right here, the standing card's own internal lift lands its bottom edge at this same height
         }
       }
 
