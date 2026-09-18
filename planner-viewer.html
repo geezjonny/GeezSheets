@@ -1938,39 +1938,6 @@
         return undefined;
       }
 
-      // Sight range as simple distance fog -- fades to black beyond a
-      // radius, per explicit scope (not the full grayscale-transition
-      // version the 2D views already have in js/geometry.js's
-      // drawDarkvision, which needs a custom post-processing shader; this
-      // reuses THREE's own built-in fog instead, much less work for a
-      // "can't see past X" effect). Reads the SAME characters/pcs
-      // darkvision field that drawDarkvision already uses, in feet,
-      // sometimes nested under .senses.darkvision -- same lookup, same
-      // data, just simpler math applied to it here. No accounting for
-      // actual placed light sources (torches/lanterns) -- explicitly out
-      // of scope for now, so a lit room won't extend visibility beyond
-      // this fixed radius.
-      const DEFAULT_SIGHT_RANGE_FEET = 30; // no-darkvision fallback -- a reasonable "torch-lit dungeon" assumption, since actual light placement isn't factored in yet
-      let hasSetVisionFog = false;
-      async function applyVisionRangeFog(tokenData) {
-        if (hasSetVisionFog) return;
-        hasSetVisionFog = true;
-        let darkvisionFeet = 0;
-        try {
-          if (tokenData.characterId) {
-            const snap = await get(ref(db, `characters/pcs/${tokenData.characterId}`));
-            const c = snap.val() || {};
-            darkvisionFeet = parseInt(c.darkvision || c.senses?.darkvision || 0, 10) || 0;
-          }
-        } catch (err) {
-          console.warn('[vision] failed to fetch character darkvision:', err);
-        }
-        const sightFeet = darkvisionFeet > 0 ? darkvisionFeet : DEFAULT_SIGHT_RANGE_FEET;
-        const sightUnits = sightFeet / 5; // established 5ft-per-world-unit convention
-        scene.fog = new THREE.Fog(0x000000, sightUnits * 0.3, sightUnits); // near=30% of range, for a gradual fade rather than an abrupt cutoff
-        console.log(`[vision] sight range set to ${sightFeet}ft (${darkvisionFeet > 0 ? 'darkvision' : 'default -- no darkvision listed on this character'})`);
-      }
-
       let hasLoggedFpDiagnostics = false; // one-shot -- this would otherwise log every single frame
       function updateFirstPersonCamera() {
         if (!firstPersonTokenId) return false;
@@ -1993,8 +1960,6 @@
           hasLoggedFpDiagnostics = true;
           console.log(`[first-person] found token "${firstPersonTokenId}" -> resolved key "${resolvedKey}" -- camera should now be locked to it.`);
         }
-        applyVisionRangeFog(latestTokensData[resolvedKey] || {});
-
         if (orbitControls.enabled) orbitControls.enabled = false; // only needs to happen once, but checking first avoids fighting the user if they'd somehow re-enabled it
         if (activeCamera !== perspectiveCamera) activeCamera = perspectiveCamera; // first-person view never makes sense orthographic -- guards against the (hidden but still wired) camera-toggle button leaving this in the wrong mode
 
