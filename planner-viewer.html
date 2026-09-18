@@ -269,7 +269,7 @@
         <div class="section-header">Performance & Display</div>
         <div class="control-group">
             <label class="checkbox-label">
-                <input type="checkbox" id="grid-toggle-checkbox" checked />
+                <input type="checkbox" id="grid-toggle-checkbox" />
                 Show World Grid
             </label>
         </div>
@@ -691,6 +691,7 @@
 
             globalGrid = new THREE.GridHelper(200, 200, 0x4da6ff, 0x222222);
             globalGrid.rotation.x = Math.PI / 2;
+            globalGrid.visible = false; // immersion-breaking in this viewer -- kept in code (not deleted) in case a future GM-facing overview mode wants it back
             scene.add(globalGrid);
 
             const ambient = new THREE.AmbientLight(0xffffff, 0.4);
