@@ -1763,14 +1763,14 @@ document.getElementById("clearBtn").onclick=(e)=>{e.stopPropagation();const r=do
 clearDropdown.addEventListener("click",e=>e.stopPropagation());
 async function clearSection(section){
   const mapName=mapInput.value.trim()||"dungeon-1";
-  const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",tiles:"Clear all tiles (and any painted elevation)?",roofs:"Clear all roofs?",geometry:"Clear all structure (walls/lights/doors/portals)?",all:"Clear EVERYTHING?"};
+  const confirm_msg={bg:"Clear background image?",tokens:"Clear all tokens?",props:"Clear all props?",tiles:"Clear all tiles (and any painted elevation)?",roofs:"Clear all roofs?",geometry:"Clear all structure (walls/lights/doors/portals/impassable)?",all:"Clear EVERYTHING?"};
   if(!confirm(confirm_msg[section]))return;
   if(section==="tiles"||section==="all")pushUndo();
   if(section==="bg"||section==="all"){bgImage=null;bgUrl="";bgPpi=70;await set(ref(db,`maps/${mapName}/background`),null);await set(ref(db,`maps/${mapName}/backgroundPpi`),null);for(const k in confirmedMapLayers)delete confirmedMapLayers[k];await set(ref(db,`maps/${mapName}/mapLayers`),null);}
   if(section==="tokens"||section==="all"){for(const k in tokens)delete tokens[k];await set(ref(db,`maps/${mapName}/tokens`),null);}
   if(section==="props"||section==="all"){for(const k in props)delete props[k];await set(ref(db,`maps/${mapName}/props`),null);for(const k in stamps)delete stamps[k];await set(ref(db,`maps/${mapName}/stamps`),null);}
   if(section==="tiles"||section==="all"){for(const k in tiles)delete tiles[k];await set(ref(db,`maps/${mapName}/tiles`),null);for(const k in elevation)delete elevation[k];await set(ref(db,`maps/${mapName}/elevation`),null);}
-  if(section==="geometry"||section==="all"){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];await set(ref(db,`maps/${mapName}/geometry`),null);for(const k in triggerNodes)delete triggerNodes[k];await set(ref(db,`maps/${mapName}/triggerNodes`),null);}
+  if(section==="geometry"||section==="all"){geometry.walls.length=0;geometry.lights.length=0;geometry.doors=[];await set(ref(db,`maps/${mapName}/geometry`),null);for(const k in triggerNodes)delete triggerNodes[k];await set(ref(db,`maps/${mapName}/triggerNodes`),null);for(const k in impassable)delete impassable[k];await saveImpassable(mapName,impassable);}
   if(section==="roofs"||section==="all"){for(const k in roofs)delete roofs[k];await set(ref(db,`maps/${mapName}/roofs`),null);}
   clearDropdown.classList.remove("open");toast(`${section==="all"?"Everything":section} cleared`);
 }
