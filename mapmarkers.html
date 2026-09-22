@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Map Markers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya:wght@600;800&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E4E7E1; --surface:#F5F6F2; --sunk:#EDEFEA; --ink:#1E2A2F; --muted:#5C696D; --line:#CBD1C8;
+  --accent:#5A3D94; --accent-ink:#fff; --danger:#A33A2E;
+  --serif:"Alegreya",Georgia,serif; --sans:"Alegreya Sans","Trebuchet MS",system-ui,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14191C;--surface:#1D2529;--sunk:#182024;--ink:#E4E9E5;--muted:#95A2A5;--line:#313D40;--accent:#A68BE3;--accent-ink:#14191C;--danger:#E27A6C;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14191C;--surface:#1D2529;--sunk:#182024;--ink:#E4E9E5;--muted:#95A2A5;--line:#313D40;--accent:#A68BE3;--accent-ink:#14191C;--danger:#E27A6C;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.4 var(--sans);display:flex;flex-direction:column}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.7rem 1rem;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{font:800 1.3rem/1 var(--serif);display:flex;align-items:center;gap:.45rem;margin-right:.5rem}
+.brand svg{width:1.3rem;height:1.3rem;color:var(--accent)}
+.btn{background:none;border:1px solid var(--line);border-radius:8px;padding:.35rem .75rem;display:inline-flex;align-items:center;gap:.35rem}
+.btn:hover{border-color:var(--muted)}
+.btn.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.btn:disabled{opacity:.45;cursor:default}
+.spacer{flex:1}
+.hint{color:var(--muted);font-size:.88rem}
+
+main{flex:1;display:grid;grid-template-columns:290px minmax(0,1fr);min-height:0}
+aside{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+aside h2{font:600 .9rem var(--sans);color:var(--muted);margin:0;padding:.8rem 1rem .4rem}
+.list{flex:1;overflow:auto;padding:0 .5rem .5rem}
+.item{display:flex;align-items:center;gap:.55rem;width:100%;text-align:left;background:none;border:0;border-radius:8px;padding:.45rem .5rem}
+.item:hover{background:var(--sunk)}
+.item[aria-current="true"]{background:var(--ink);color:var(--surface)}
+.dot{width:.75rem;height:.75rem;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+.item .k{margin-left:auto;font-size:.78rem;opacity:.65}
+.none{color:var(--muted);font-size:.92rem;padding:.3rem .5rem}
+.editor{border-top:1px solid var(--line);padding:.8rem 1rem 1rem;display:grid;gap:.55rem}
+.editor label{display:grid;gap:.2rem;font-size:.84rem;color:var(--muted)}
+.editor input,.editor select,.editor textarea{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:.4rem .55rem;color:var(--ink)}
+.editor input.nm{font:600 1.1rem var(--serif)}
+.editor textarea{min-height:90px;resize:vertical}
+.editor .row{display:flex;gap:.5rem;align-items:center}
+.del{color:var(--danger)}
+.field{display:flex;gap:.35rem;align-items:stretch}
+.field input{flex:1;min-width:0}
+.dice{background:var(--bg);border:1px solid var(--line);border-radius:7px;width:2.3rem;display:grid;place-items:center;color:var(--accent);flex-shrink:0}
+.dice:hover:not(:disabled){border-color:var(--accent)}
+.dice:disabled{opacity:.4;cursor:default}
+.dice svg{width:1.1rem;height:1.1rem}
+.rollall{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:.5rem .8rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:.4rem}
+.rollall:disabled{opacity:.45;cursor:default}
+.rollall svg{width:1.1rem;height:1.1rem}
+.status{font-size:.85rem;color:var(--muted);max-width:22ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nolists{font-size:.84rem;color:var(--muted);margin:0}
+.bhead{display:flex;align-items:center;gap:.4rem;font-size:.84rem;color:var(--muted)}
+.bhead .dice{width:2rem;height:2rem;margin-left:auto}
+.blist{display:flex;flex-direction:column;gap:.2rem;max-height:32vh;overflow:auto}
+.bld{display:flex;align-items:center;gap:.4rem;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:.3rem .35rem .3rem .55rem;font-size:.92rem}
+.bld .bt{flex:1;min-width:0}
+.bld .bn{display:block;font:600 1rem var(--serif)}
+.bld .bk{display:block;font-size:.78rem;color:var(--muted)}
+.bld.core{border-left:3px solid var(--accent)}
+.bld button{background:none;border:0;color:var(--muted);width:1.8rem;height:1.8rem;border-radius:6px;display:grid;place-items:center;flex-shrink:0}
+.bld button:hover{color:var(--ink);background:var(--sunk)}
+.bld button svg{width:1rem;height:1rem}
+.ll{font-size:.82rem;color:var(--muted);margin:-.2rem 0 0}
+.item.unexp{color:var(--muted);font-style:italic}
+.item.unexp .dot{background:transparent!important;border:2px solid var(--line);box-shadow:none}
+.bld .bo{display:block;font-size:.78rem;color:var(--muted);font-style:italic}
+.leader{display:flex;align-items:center;gap:.4rem;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:.35rem .35rem .35rem .6rem;font-size:.92rem}
+.leader span{flex:1;min-width:0}
+.leader small{display:block;font-size:.78rem;color:var(--muted)}
+.leader .dice{width:2rem;height:2rem}
+.badd{margin-top:.35rem;width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:.35rem .5rem;color:var(--ink)}
+.typecol{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3rem}
+.typecol select,.typecol input{width:100%}
+.showunexp{margin:.3rem .5rem .6rem;width:calc(100% - 1rem);justify-content:center}
+.unexphint{font-size:.88rem;color:var(--muted);margin:0}
+.boardbox{border-top:1px solid var(--line);padding:.6rem 1rem .7rem;max-height:32vh;overflow:auto;font-size:.9rem}
+.boardbox h3{font:600 .9rem var(--sans);color:var(--muted);margin:0 0 .35rem;display:flex;gap:.4rem;align-items:center}
+.boardbox h3 .linkb{margin-left:auto;font-size:.8rem}
+.bplace{display:flex;align-items:center;gap:.45rem;width:100%;text-align:left;background:none;border:1px dashed var(--line);border-radius:7px;padding:.35rem .5rem;margin:.2rem 0}
+.bplace:hover{border-color:var(--accent)}
+.bplace.on{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.chip{display:inline-block;font-size:.72rem;font-weight:700;padding:.05rem .4rem;border-radius:999px;color:#fff;vertical-align:1px}
+.bd{border:1px solid var(--line);border-left:3px solid #c9a04e;border-radius:8px;padding:.55rem .65rem;background:var(--bg);display:grid;gap:.35rem}
+.bd .bdh{display:flex;align-items:center;gap:.4rem;font:600 1rem var(--serif)}
+.bd .bdh .linkb{margin-left:auto;font:.8rem var(--sans)}
+.bd .bdn{white-space:pre-wrap;font-size:.9rem;max-height:9rem;overflow:auto}
+.bd .bdc{display:grid;gap:.15rem;font-size:.88rem}
+.bd .bdc button{background:none;border:0;padding:0;text-align:left;color:var(--ink);font:inherit}
+.bd .bdc button.onmap{color:var(--accent);text-decoration:underline}
+.bd .role{color:var(--muted);font-size:.82rem}
+.bd a{color:var(--accent);font-size:.85rem;word-break:break-all}
+.bdlink{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:.35rem .5rem;color:var(--ink)}
+.dupbar{margin:0 1rem .5rem;padding:.45rem .6rem;border-radius:8px;background:var(--sunk);font-size:.86rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.dupbar button{margin-left:auto}
+.shiftall{border-color:var(--accent);color:var(--accent);font-weight:700;text-align:left}
+.azpanel .nudge{border:1px dashed var(--line);border-radius:9px;padding:.5rem .6rem;margin:.5rem 0}
+.azpanel .nudge.on{border-color:var(--accent);border-style:solid}
+.coords{position:absolute;left:.8rem;bottom:calc(.8rem + env(safe-area-inset-bottom,0px));background:rgba(20,25,28,.78);color:#fff;font:600 13px/1 var(--sans);padding:.35rem .6rem;border-radius:6px;pointer-events:none;font-variant-numeric:tabular-nums}
+.azpanel{position:absolute;left:.8rem;top:.8rem;width:min(360px,calc(100% - 1.6rem));max-height:calc(100% - 1.6rem);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.25);padding:.8rem .9rem;z-index:4;font-size:.93rem}
+.az-h{display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem}
+.az-h b{font:800 1.15rem var(--serif);flex:1}
+.az-h button{background:none;border:0;color:var(--muted);font-size:1.1rem}
+.azpanel p{margin:.35rem 0;color:var(--muted)}
+.azpanel p.ok{color:var(--ink)}
+.azpanel p.bad{color:var(--danger)}
+.azpt{border:1px solid var(--line);border-radius:9px;padding:.5rem .55rem;margin:.45rem 0;display:grid;gap:.35rem}
+.azpt.active{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.azpt .pickb{justify-self:start}
+.azrow{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap}
+.azrow input{width:5.2rem;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.25rem .4rem}
+.azrow select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.2rem .3rem}
+.azrow span{font-size:.82rem;color:var(--muted);min-width:1.8rem}
+.azopts{display:grid;gap:.45rem;margin:.5rem 0}
+.azopts label{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
+.azopts select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:.25rem .35rem}
+.azgo{width:100%;margin-top:.4rem}
+.linkb{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;font:inherit}
+.azlayer{position:absolute;left:0;top:0;pointer-events:none}
+.azd{position:absolute;width:0;height:0}
+.azd::after{content:"";position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#E0483E;border:2px solid #fff;transform:scale(var(--inv,1));box-shadow:0 1px 2px rgba(0,0,0,.5)}
+.azd.mk::after{background:#2E6FA8;border-radius:2px;transform:scale(var(--inv,1)) rotate(45deg)}
+.azd.skip::after{opacity:.35}
+.azx{position:absolute;width:0;height:0}
+.azx svg{position:absolute;left:-16px;top:-16px;width:32px;height:32px;transform:scale(var(--inv,1));overflow:visible}
+
+.viewport{position:relative;overflow:hidden;background:repeating-conic-gradient(var(--sunk) 0 25%,var(--bg) 0 50%) 0 0/28px 28px;touch-action:none;cursor:grab}
+.viewport.panning{cursor:grabbing}
+.viewport.adding{cursor:crosshair}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.stage img{display:block;user-select:none;-webkit-user-drag:none;pointer-events:none;image-rendering:auto;box-shadow:0 6px 30px rgba(0,0,0,.25)}
+.marker{position:absolute;width:0;height:0}
+.mk{position:absolute;left:0;top:0;transform:scale(var(--inv,1));transform-origin:0 0}
+.pin{position:absolute;left:-14px;top:-38px;width:28px;height:38px;cursor:pointer;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45))}
+.marker.sel .pin{filter:drop-shadow(0 0 0 #fff) drop-shadow(0 0 4px var(--accent)) drop-shadow(0 2px 2px rgba(0,0,0,.45));transform:scale(1.18);transform-origin:14px 38px}
+.lbl{position:absolute;top:4px;left:0;transform:translateX(-50%);white-space:nowrap;font:700 13px/1.2 var(--sans);color:#fff;background:rgba(20,25,28,.78);padding:.12rem .45rem;border-radius:5px;pointer-events:none;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.viewport.hide-labels .lbl{display:none}
+.empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:2rem}
+.empty .box{border:2px dashed var(--line);border-radius:16px;padding:2.5rem 2rem;background:var(--surface);max-width:430px}
+.empty strong{display:block;font:800 1.5rem var(--serif);margin-bottom:.4rem}
+.empty p{color:var(--muted);margin:.2rem 0 1rem}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:.55rem 1.1rem;font-weight:700;cursor:pointer;display:inline-block}
+.zoom{position:absolute;right:.8rem;bottom:calc(.8rem + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:.3rem}
+.zoom button{width:2.3rem;height:2.3rem;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-size:1.15rem;line-height:1}
+.drop-on::after{content:"Drop the map image to load it";position:absolute;inset:0;display:grid;place-items:center;background:rgba(20,25,28,.55);color:#fff;font:800 1.5rem var(--serif);z-index:5}
+.toast{position:fixed;left:50%;bottom:calc(1.2rem + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(160%);background:var(--ink);color:var(--surface);padding:.45rem 1rem;border-radius:999px;transition:transform .25s;z-index:20;font-size:.92rem}
+.toast.on{transform:translateX(-50%) translateY(0)}
+
+@media (max-width:760px){
+  main{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}
+  aside{order:2;border-right:0;border-top:1px solid var(--line);max-height:42vh}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/></svg>Map Markers</div>
+  <label class="btn"><span id="loadTxt">Load map</span><input type="file" id="fileIn" accept="image/png,image/jpeg,image/webp" hidden></label>
+  <label class="btn" title="Your lists: the spreadsheet or dnd_lists.json"><span id="listsTxt">Load lists</span><input type="file" id="listsIn" accept=".xlsx,.xls,.ods,.json" hidden></label>
+  <span class="status" id="listsStatus">No lists loaded</span>
+  <button class="btn" id="addBtn" disabled title="Shortcut: A">＋ Add markers</button>
+  <button class="btn" id="fitBtn" disabled title="Shortcut: F">Fit map</button>
+  <button class="btn" id="lblBtn" disabled title="Show or hide marker names">Labels on</button>
+  <button class="btn" id="autoBtn" title="Roll a POI type, type and name for every new marker">Auto-roll new: on</button>
+  <div class="spacer"></div>
+  <button class="btn" id="exportBtn" disabled title="Save map, markers and lists as one JSON file">Export JSON</button>
+  <label class="btn" title="Load places from an Azgaar's Fantasy Map Generator JSON export">Import Azgaar<input type="file" id="azIn" accept=".json,application/json" hidden></label>
+  <label class="btn" title="Open a JSON file: a Map Markers export, or a Thread Board export">Import JSON<input type="file" id="importIn" accept=".json,application/json" hidden></label>
+  <span class="hint" id="hint">Drag to pan, scroll to zoom</span>
+</header>
+<main>
+  <aside>
+    <h2 id="listHead">Markers</h2>
+    <div class="dupbar" id="dupBar" hidden></div>
+    <div class="list" id="list"></div>
+    <div class="boardbox" id="boardBox" hidden></div>
+    <div class="editor" id="editor" hidden>
+      <button class="rollall" id="eRollAll" title="Roll the POI type, then its type, then a name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg> Roll everything</button>
+      <p class="unexphint" id="unexpHint" hidden>Unexplored. Your players haven't been here yet. Roll it when they need it.</p>
+      <p class="nolists" id="noLists">Load your lists spreadsheet to roll markers.</p>
+      <label>Name<span class="field"><input class="nm" id="eName" autocomplete="off"><button class="dice" id="eRollName" title="Roll a new name for this category" aria-label="Roll name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button></span></label>
+      <label>POI type<span class="field"><select id="eKind" style="flex:1"></select><button class="dice" id="eRollCat" title="Roll a new POI type (rolls type and name too)" aria-label="Roll POI type"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button></span></label>
+      <label>Type<span class="field"><span class="typecol"><select id="eTypeSel" aria-label="Choose a type"></select><input id="eType" autocomplete="off" placeholder="Type your own" hidden></span><button class="dice" id="eRollType" title="Roll a new type within this POI type" aria-label="Roll type"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button></span></label>
+      <label>Dominant race<span class="field"><select id="eRace" style="flex:1" aria-label="Dominant race"></select><button class="dice" id="eRollRace" title="Roll a dominant race (also rolls new people)" aria-label="Roll race"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button></span></label>
+      <div class="leader" id="eLeaderWrap" hidden><span id="eLeader"></span><button class="dice" id="eRollLeader" title="Roll a new leader" aria-label="Roll leader"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button></div>
+      <p class="ll" id="eLL" hidden></p>
+      <button class="btn shiftall" id="eShiftAll" hidden></button>
+      <div id="bWrap" hidden>
+        <div class="bhead">Buildings <span id="bCount"></span><button class="dice" id="eRollB" title="Roll this settlement's buildings again" aria-label="Roll buildings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button></div>
+        <div class="blist" id="bList"></div>
+        <select class="badd" id="bAdd" aria-label="Add a building"></select>
+      </div>
+      <div id="bdWrap" hidden></div>
+      <label>Notes<textarea id="eNotes" placeholder="Anything you want to remember about this place"></textarea></label>
+      <div class="row"><button class="btn" id="eCenter">Centre on map</button><div class="spacer"></div><button class="btn" id="eClear" title="Forget the name, type, buildings and notes, but keep the marker">Clear details</button><button class="btn del" id="eDel">Delete</button></div>
+    </div>
+  </aside>
+  <div class="viewport" id="vp">
+    <div class="stage" id="stage"><img id="img" alt="Loaded map"><div class="azlayer" id="azLayer"></div></div>
+    <div class="empty" id="empty"><div class="box"><strong>Load a map to begin</strong><p>Choose a PNG exported from Azgaar's Fantasy Map Generator, or any map image. You can also drop it here, or drop a JSON you exported earlier.</p><label class="primary">Choose image<input type="file" class="fileIn2" accept="image/png,image/jpeg,image/webp" hidden></label></div></div>
+    <div class="azpanel" id="azPanel" hidden><div class="az-h"><b>Import from Azgaar</b><button id="azClose" aria-label="Close">✕</button></div><div id="azBody"></div></div>
+    <div class="coords" id="coords" hidden></div>
+    <div class="zoom" id="zoomBox" hidden><button id="zIn" aria-label="Zoom in">+</button><button id="zOut" aria-label="Zoom out">−</button></div>
+  </div>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const KINDS=[
+  ["marker","Marker","#5A3D94"],["settlement","Settlement","#2F7D4F"],["site","Site","#8A5A2B"],
+  ["wilderness","Wilderness","#4E8A2E"],["route","Route","#B8862B"],["mobile","Mobile Community","#2E6FA8"],
+  ["planar","Planar","#A33AA0"],["bigbad","Big Bad","#B3261E"],["poi","Point of interest","#39474D"]];
+const kindColor=k=>(KINDS.find(x=>x[0]===k)||KINDS[0])[2];
+const kindName=k=>(KINDS.find(x=>x[0]===k)||KINDS[0])[1];
+const $=s=>document.querySelector(s);
+const vp=$("#vp"), stage=$("#stage"), img=$("#img");
+let S={markers:[],imgName:"",view:null}, imgBlob=null, iw=0, ih=0;
+let view={s:1,x:0,y:0}, selId=null, adding=false, labels=true;
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let toastT; function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2000); }
+$("#eKind").innerHTML=KINDS.map(([v,n])=>`<option value="${v}">${n}</option>`).join("");
+
+/* ---------- storage (IndexedDB: image + markers) ---------- */
+let dbP=null;
+function db(){ if(!dbP) dbP=new Promise((res,rej)=>{ try{ const r=indexedDB.open("map-markers",1); r.onupgradeneeded=()=>r.result.createObjectStore("kv"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);}catch(e){rej(e)} }); return dbP; }
+async function put(k,v){ try{ const d=await db(); await new Promise((res,rej)=>{ const t=d.transaction("kv","readwrite"); t.objectStore("kv").put(v,k); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }catch(e){} }
+async function get(k){ try{ const d=await db(); return await new Promise((res,rej)=>{ const r=d.transaction("kv").objectStore("kv").get(k); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }catch(e){ return undefined; } }
+let saveT; function save(){ clearTimeout(saveT); saveT=setTimeout(()=>{ S.view=view; put("state",JSON.parse(JSON.stringify(S))); },300); }
+
+/* ---------- loading the image ---------- */
+async function loadFile(file){
+  if(!file||!file.type.startsWith("image/")){ toast("That isn't an image file"); return; }
+  const had=S.markers.length;
+  if(had && !confirm(`Load a new map? Your ${had} marker${had>1?"s":""} will be cleared.`)) return;
+  imgBlob=file; S={markers:[],imgName:file.name,view:null,calib:null}; selId=null; if(AZ) closeAz();
+  await showImage(file,true);
+  put("image",file); save(); toast(`Loaded ${file.name}`);
+}
+function showImage(blob,fit){
+  return new Promise(res=>{
+    const url=URL.createObjectURL(blob);
+    img.onload=()=>{ iw=img.naturalWidth; ih=img.naturalHeight; img.width=iw; img.height=ih;
+      $("#empty").hidden=true; $("#zoomBox").hidden=false; ["#addBtn","#fitBtn","#lblBtn","#exportBtn"].forEach(s=>$(s).disabled=false);
+      $("#loadTxt").textContent="Change map";
+      if(fit||!S.view) fitView(); else { view=S.view; apply(); }
+      render(); res(); };
+    img.onerror=()=>{ toast("Couldn't open that image"); res(); };
+    img.src=url;
+  });
+}
+$("#fileIn").addEventListener("change",e=>{ loadFile(e.target.files[0]); e.target.value=""; });
+document.addEventListener("change",e=>{ if(e.target.classList.contains("fileIn2")){ loadFile(e.target.files[0]); e.target.value=""; } });
+let dragN=0; const isFile=e=>[...(e.dataTransfer?.types||[])].includes("Files");
+window.addEventListener("dragenter",e=>{ if(isFile(e)){ dragN++; vp.classList.add("drop-on"); } });
+window.addEventListener("dragleave",e=>{ if(isFile(e)&&--dragN<=0){ dragN=0; vp.classList.remove("drop-on"); } });
+window.addEventListener("dragover",e=>{ if(isFile(e)) e.preventDefault(); });
+window.addEventListener("drop",e=>{ if(!isFile(e)) return; e.preventDefault(); dragN=0; vp.classList.remove("drop-on"); const f=e.dataTransfer.files[0]; if(f&&/\.(xlsx|xls|ods)$/i.test(f.name)) loadLists(f); else if(f&&/\.json$/i.test(f.name)) openJSON(f); else loadFile(f); });
+
+/* ---------- view: pan & zoom ---------- */
+function apply(){ stage.style.transform=`translate(${view.x}px,${view.y}px) scale(${view.s})`; stage.style.setProperty("--inv",1/view.s); }
+function fitView(){ const r=vp.getBoundingClientRect(); const s=Math.min(r.width/iw,r.height/ih)*0.95; view={s,x:(r.width-iw*s)/2,y:(r.height-ih*s)/2}; apply(); save(); }
+function minS(){ const r=vp.getBoundingClientRect(); return Math.min(r.width/iw,r.height/ih)*0.3; }
+function zoomAt(cx,cy,f){ const ns=Math.min(12,Math.max(minS(),view.s*f)); const k=ns/view.s; view.x=cx-(cx-view.x)*k; view.y=cy-(cy-view.y)*k; view.s=ns; apply(); save(); }
+const toImg=(cx,cy)=>{ const r=vp.getBoundingClientRect(); return {x:(cx-r.left-view.x)/view.s, y:(cy-r.top-view.y)/view.s}; };
+vp.addEventListener("wheel",e=>{ if(!iw) return; e.preventDefault(); const r=vp.getBoundingClientRect(); zoomAt(e.clientX-r.left,e.clientY-r.top,Math.exp(-e.deltaY*0.0015)); },{passive:false});
+$("#zIn").onclick=()=>{ const r=vp.getBoundingClientRect(); zoomAt(r.width/2,r.height/2,1.35); };
+$("#zOut").onclick=()=>{ const r=vp.getBoundingClientRect(); zoomAt(r.width/2,r.height/2,1/1.35); };
+$("#fitBtn").onclick=fitView;
+
+/* ---------- pointer: pan, pinch, place, drag markers ---------- */
+const ptrs=new Map(); let gesture=null;
+vp.addEventListener("pointerdown",e=>{
+  if(!iw||e.target.closest(".zoom,.azpanel")) return;
+  vp.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2){ const [a,b]=[...ptrs.values()]; gesture={type:"pinch",d:Math.hypot(a.x-b.x,a.y-b.y),mx:(a.x+b.x)/2,my:(a.y+b.y)/2}; return; }
+  const m=e.target.closest(".marker");
+  if(m&&placingBoard){ linkBoardTo(m.dataset.id,placingBoard); return; }
+  if(m){ select(m.dataset.id); const mk=S.markers.find(x=>x.id===m.dataset.id); gesture={type:"marker",mk,sx:e.clientX,sy:e.clientY,ox:mk.x,oy:mk.y,moved:false}; return; }
+  gesture={type:"pan",sx:e.clientX,sy:e.clientY,vx:view.x,vy:view.y,moved:false};
+});
+vp.addEventListener("pointermove",e=>{
+  if(!ptrs.has(e.pointerId)||!gesture) return; ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(gesture.type==="pinch"&&ptrs.size===2){ const [a,b]=[...ptrs.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y), mx=(a.x+b.x)/2, my=(a.y+b.y)/2, r=vp.getBoundingClientRect();
+    view.x+=mx-gesture.mx; view.y+=my-gesture.my; zoomAt(mx-r.left,my-r.top,d/gesture.d); gesture.d=d; gesture.mx=mx; gesture.my=my; return; }
+  const dx=e.clientX-gesture.sx, dy=e.clientY-gesture.sy;
+  if(Math.hypot(dx,dy)>4) gesture.moved=true;
+  if(gesture.type==="pan"&&gesture.moved){ vp.classList.add("panning"); view.x=gesture.vx+dx; view.y=gesture.vy+dy; apply(); }
+  if(gesture.type==="marker"&&gesture.moved){ const mk=gesture.mk; mk.x=clamp(gesture.ox+dx/view.s,0,iw); mk.y=clamp(gesture.oy+dy/view.s,0,ih); placeEl(mk); }
+});
+function endPtr(e){
+  if(!ptrs.has(e.pointerId)) return; ptrs.delete(e.pointerId); vp.classList.remove("panning");
+  if(!gesture) return;
+  if(gesture.type==="pinch"){ if(ptrs.size===0) gesture=null; save(); return; }
+  if(gesture.type==="pan"){ if(!gesture.moved){ if(placingBoard) placeBoardAt(toImg(e.clientX,e.clientY)); else if(AZ&&AZ.nudge) azNudgeTap(toImg(e.clientX,e.clientY)); else if(AZ&&AZ.pick) setCalibPoint(toImg(e.clientX,e.clientY)); else if(adding) addMarker(toImg(e.clientX,e.clientY)); else select(null); } else save(); }
+  if(gesture.type==="marker"&&gesture.moved){ const mk=gesture.mk; if(mk.az&&(!lastDrag||lastDrag.id!==mk.id)) lastDrag={id:mk.id,ox:gesture.ox,oy:gesture.oy}; save(); render(); }
+  gesture=null;
+}
+vp.addEventListener("pointerup",endPtr); vp.addEventListener("pointercancel",endPtr);
+vp.addEventListener("dblclick",e=>{ if(!iw||AZ||e.target.closest(".marker,.zoom,.azpanel")) return; addMarker(toImg(e.clientX,e.clientY)); });
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+/* ---------- markers ---------- */
+function addMarker(p){
+  if(p.x<0||p.y<0||p.x>iw||p.y>ih){ toast("Place markers on the map"); return; }
+  const n=S.markers.length+1;
+  const mk={id:"m"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),x:p.x,y:p.y,name:"Marker "+n,kind:"marker",notes:""};
+  S.markers.push(mk); selId=mk.id;
+  if(LISTS&&autoRoll){ rollAll(mk); save(); render(); flash(mk); return; }
+  save(); render();
+  const nm=$("#eName"); nm.focus(); nm.select();
+}
+function placeEl(mk){ const el=stage.querySelector(`.marker[data-id="${mk.id}"]`); if(el){ el.style.left=mk.x+"px"; el.style.top=mk.y+"px"; } }
+function pinSVG(c,hollow){ return hollow?`<svg class="pin" viewBox="0 0 28 38" style="opacity:.85"><path d="M14 37C14 37 2 22.5 2 13.5a12 12 0 0 1 24 0C26 22.5 14 37 14 37z" fill="#fff" stroke="${c}" stroke-width="3"/><circle cx="14" cy="13.5" r="3.5" fill="${c}"/></svg>`
+  :`<svg class="pin" viewBox="0 0 28 38"><path d="M14 37C14 37 2 22.5 2 13.5a12 12 0 0 1 24 0C26 22.5 14 37 14 37z" fill="${c}" stroke="#fff" stroke-width="2"/><circle cx="14" cy="13.5" r="4.5" fill="#fff"/></svg>`; }
+const explored=mk=>!!String(mk.name||"").trim();
+let showUnexp=false;
+function render(){
+  stage.querySelectorAll(".marker").forEach(el=>el.remove());
+  for(const mk of S.markers){
+    const el=document.createElement("div"); el.className="marker"+(mk.id===selId?" sel":""); el.dataset.id=mk.id;
+    el.style.left=mk.x+"px"; el.style.top=mk.y+"px";
+    el.innerHTML=`<div class="mk">${pinSVG(kindColor(mk.kind),!explored(mk))}${explored(mk)?`<span class="lbl">${mk.boardId?"📌 ":""}${esc(mk.name)}</span>`:""}</div>`;
+    stage.appendChild(el);
+  }
+  const L=$("#list");
+  $("#listHead").textContent=S.markers.length?`Markers (${S.markers.filter(explored).length} explored)`:"Markers";
+  const ex=S.markers.filter(explored), un=S.markers.filter(m=>!explored(m));
+  const itemHTML=mk=>explored(mk)?`<button class="item" data-id="${mk.id}" aria-current="${mk.id===selId}"><span class="dot" style="background:${kindColor(mk.kind)}"></span>${esc(mk.name)}<span class="k">${esc([mk.type||kindName(mk.kind),mk.race?cap1(mk.race):""].filter(Boolean).join(" · "))}</span></button>`
+    :`<button class="item unexp" data-id="${mk.id}" aria-current="${mk.id===selId}"><span class="dot"></span>Unexplored ${esc(kindName(mk.kind).toLowerCase())}</button>`;
+  const selUn=un.find(m=>m.id===selId);
+  L.innerHTML=S.markers.length?ex.map(itemHTML).join("")+(un.length?`<button class="btn showunexp" id="toggleUnexp">${showUnexp?"Hide":"Show"} ${un.length} unexplored</button>`+(showUnexp?un.map(itemHTML).join(""):selUn?itemHTML(selUn):""):"")
+    :`<p class="none">${iw?"Turn on Add markers and click the map, or double-click anywhere.":"Load a map first."}</p>`;
+  const dups=dupMarkers(), db=$("#dupBar");
+  db.hidden=!dups.length;
+  if(dups.length) db.innerHTML=`<span>${dups.length} marker${dups.length===1?" shares":"s share"} a name with another.</span>${LISTS&&dups.some(canRename)?`<button class="btn" id="fixDups">Reroll duplicates</button>`:""}`;
+  renderBoardBox();
+  const selMk=S.markers.find(x=>x.id===selId);
+  $("#unexpHint").hidden=!(selMk&&!explored(selMk));
+  $("#eRollAll").lastChild.textContent=selMk&&!explored(selMk)?" Roll this place":" Roll everything";
+  $("#eName").placeholder=selMk&&!explored(selMk)?"Unexplored":"";
+  const on=!!LISTS; ["#eRollAll","#eRollName","#eRollCat","#eRollType"].forEach(s=>$(s).disabled=!on); $("#noLists").hidden=on;
+  const mk=S.markers.find(x=>x.id===selId), ed=$("#editor");
+  ed.hidden=!mk;
+  if(mk){ const sa=$("#eShiftAll"), others=S.markers.filter(m=>m.az&&m.id!==mk.id).length;
+    if(lastDrag&&lastDrag.id===mk.id&&mk.az&&others){ const dx=mk.x-lastDrag.ox, dy=mk.y-lastDrag.oy; sa.hidden=false; sa.textContent=`Move the other ${others} imported places the same way (${shiftDesc(dx,dy)})`; } else sa.hidden=true;
+    const hasLL=calibOK(S.calib); $("#eLL").hidden=!hasLL; if(hasLL){ const q=imgToLL(mk.x,mk.y); $("#eLL").textContent=fmtLL(q.lat,q.lon); }
+    const bl=mk.buildings||[]; $("#bWrap").hidden=!(bl.length||(LISTS&&(hasBuildings(mk.type)||mk.kind==="settlement"))); renderBuildingAdd(mk);
+    $("#bCount").textContent=bl.length?`(${bl.length})`:""; $("#eRollB").disabled=!(LISTS&&hasBuildings(mk.type));
+    $("#bList").innerHTML=bl.length?bl.map((b,i)=>`<div class="bld${b.core?" core":""}" title="${b.core?"Essential for this type":"Rolled extra"}"><span class="bt">${b.name?`<span class="bn">${esc(b.name)}</span><span class="bk">${esc(b.kind)}</span>`:`<span class="bn">${esc(b.kind)}</span>`}</span>${b.owner?`<span class="bo">run by ${esc(b.owner.name)}${b.owner.race?`, ${esc(b.owner.race)}`:""}</span>`:""}${b.name!=null&&LISTS?`<button data-b="owner" data-i="${i}" title="Roll a new owner" aria-label="Roll owner">👤</button><button data-b="name" data-i="${i}" title="Roll a new shop name" aria-label="Roll shop name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg></button>`:""}<button data-b="del" data-i="${i}" title="Remove" aria-label="Remove building">✕</button></div>`).join(""):`<p class="nolists">No buildings yet. Roll them with the dice.</p>`;
+    if(document.activeElement!==$("#eName")) $("#eName").value=mk.name; $("#eKind").value=mk.kind; renderTypeField(mk); renderBoardSection(mk);
+    const rsel=$("#eRace"), races=(LISTS&&LISTS.RACES)||[];
+    rsel.innerHTML=`<option value="">${races.length?"Mixed / not set":"Load lists to choose"}</option>`+races.map(r=>`<option value="${esc(r)}"${r===mk.race?" selected":""}>${esc(cap1(r))}</option>`).join("")+(mk.race&&!races.includes(mk.race)?`<option selected>${esc(mk.race)}</option>`:"");
+    $("#eRollRace").disabled=!races.length;
+    const lw=$("#eLeaderWrap"); lw.hidden=!(mk.kind==="settlement"&&(mk.leader||LISTS)&&explored(mk));
+    $("#eLeader").innerHTML=mk.leader?`<small>Leader</small>${esc(mk.leader.name)}${mk.leader.race?`, ${esc(mk.leader.race)}`:""}`:`<small>Leader</small>None yet. Roll one.`;
+    $("#eRollLeader").disabled=!LISTS; if(document.activeElement!==$("#eNotes")) $("#eNotes").value=mk.notes; }
+}
+function select(id){ if(id!==selId) customType=false; selId=id; render(); }
+function center(mk){ const r=vp.getBoundingClientRect(); view.x=r.width/2-mk.x*view.s; view.y=r.height/2-mk.y*view.s; apply(); save(); }
+$("#list").addEventListener("click",e=>{ if(e.target.id==="toggleUnexp"){ showUnexp=!showUnexp; render(); return; } const b=e.target.closest("[data-id]"); if(!b) return; select(b.dataset.id); center(S.markers.find(x=>x.id===b.dataset.id)); });
+const cur=()=>S.markers.find(x=>x.id===selId);
+$("#eName").addEventListener("input",e=>{ const mk=cur(); if(!mk) return; mk.name=e.target.value; const l=stage.querySelector(`.marker[data-id="${mk.id}"] .lbl`); if(l) l.textContent=mk.name; const it=$("#list").querySelector(`[data-id="${mk.id}"]`); if(it) it.childNodes[1].textContent=mk.name; save(); });
+$("#eName").addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); });
+$("#eName").addEventListener("blur",()=>render());
+$("#eKind").addEventListener("change",e=>{ const mk=cur(); if(!mk) return; mk.kind=e.target.value; mk.category=LISTS?catForKind(mk.kind):null;
+  const list=typeList(mk); if(mk.type&&list&&!list.includes(mk.type)){ mk.type=""; mk.buildings=[]; }   // old type doesn't belong to the new POI type
+  save(); render(); });
+let customType=false;
+function typeList(mk){ if(!LISTS) return null; const cat=mk.category||catForKind(mk.kind); return cat?LISTS[keyOf(cat)+"_TYPES"]||null:null; }
+function renderTypeField(mk){
+  const sel=$("#eTypeSel"), inp=$("#eType"), list=typeList(mk);
+  if(!list){ sel.hidden=true; inp.hidden=false; inp.placeholder="e.g. Outpost, Crypt, Mountain Pass"; if(document.activeElement!==inp) inp.value=mk.type||""; return; }
+  const custom=mk.type&&!list.includes(mk.type);
+  sel.hidden=false;
+  sel.innerHTML=`<option value="">${mk.type?"(none)":"Choose a type…"}</option>`+list.map(t=>`<option${t===mk.type?" selected":""}>${esc(t)}</option>`).join("")
+    +(custom?`<option value="${esc(mk.type)}" selected>${esc(mk.type)} (your own)</option>`:"")+`<option value="__custom">Type your own…</option>`;
+  if(!mk.type) sel.value="";
+  inp.hidden=!customType; inp.placeholder="Type your own"; if(document.activeElement!==inp) inp.value=customType?(mk.type||""):"";
+}
+function applyType(mk,t){ mk.type=t; if(t&&LISTS){ rollBuildings(mk); if(!mk.leader) rollLeader(mk); if(mk.azInfo&&mk.azInfo.src==="burg") addFlagBuildings(mk,mk.azInfo); } else if(!t) mk.buildings=[]; }
+$("#eTypeSel").addEventListener("change",e=>{ const mk=cur(); if(!mk) return; const v=e.target.value;
+  if(v==="__custom"){ customType=true; renderTypeField(mk); const i=$("#eType"); i.value=""; i.focus(); return; }
+  customType=false; applyType(mk,v); save(); render(); flash(mk); });
+$("#eType").addEventListener("input",e=>{ const mk=cur(); if(!mk) return; mk.type=e.target.value; save(); });
+$("#eType").addEventListener("change",e=>{ const mk=cur(); if(!mk) return; customType=false; applyType(mk,e.target.value.trim()); save(); render(); });
+function renderBuildingAdd(mk){
+  const s=$("#bAdd"); if(!LISTS){ s.hidden=true; return; } s.hidden=false;
+  const k=keyOf(mk.type||""), usual=[...new Set([...(LISTS[k+"_ESSENTIALS"]||[]),...(LISTS[k+"_EXTRAS"]||[])])];
+  const shops=(LISTS.SHOPS||[]).filter(x=>!usual.includes(x)), other=(LISTS.SETTLEMENT_FEATURES||[]).filter(x=>!usual.includes(x)&&!shops.includes(x));
+  const og=(label,items)=>items.length?`<optgroup label="${esc(label)}">${items.map(x=>`<option>${esc(x)}</option>`).join("")}</optgroup>`:"";
+  s.innerHTML=`<option value="">＋ Add a building…</option>`+og(mk.type?`Usual for a ${mk.type}`:"Usual",usual)+og("Shops",shops)+og("Other",other);
+}
+$("#bAdd").addEventListener("change",e=>{ const mk=cur(), v=e.target.value; if(!mk||!v) return; mk.buildings=mk.buildings||[]; const nb={kind:v,name:shopName(v),core:false}; if(nb.name) nb.owner=npcFor(mk); mk.buildings.push(nb); save(); render(); });
+$("#eNotes").addEventListener("input",e=>{ const mk=cur(); if(!mk) return; mk.notes=e.target.value; save(); });
+$("#eCenter").onclick=()=>{ const mk=cur(); if(mk) center(mk); };
+function delSel(){ const mk=cur(); if(!mk) return; S.markers=S.markers.filter(x=>x.id!==mk.id); selId=null; save(); render(); toast(`Deleted ${mk.name||"marker"}`); }
+$("#eDel").onclick=delSel;
+$("#eClear").onclick=()=>{ const mk=cur(); if(!mk) return; if(explored(mk)&&!confirm(`Clear everything about ${mk.name}? The marker stays; its name, type, buildings and notes are forgotten.`)) return;
+  mk.name=""; mk.type=""; mk.buildings=[]; mk.notes=""; mk.race=null; mk.leader=null; if(!mk.azInfo){ mk.kind=mk.kind||"marker"; } save(); render(); toast("Cleared. It's unexplored again."); };
+
+/* ---------- lists from the xlsx ---------- */
+let LISTS=null, autoRoll=true;
+async function loadLists(file){
+  if(!file) return;
+  try{
+    let sheets;   // [{name, columns:{HEADER:[row-aligned values]}}]
+    if(/\.json$/i.test(file.name)){
+      const d=JSON.parse(await file.text());
+      if(!d||d.format!=="table-roller-lists"||!Array.isArray(d.sheets)){ toast("That JSON isn't a lists file"); return; }
+      sheets=d.sheets;
+    } else {
+      if(typeof XLSX==="undefined"){ toast("The spreadsheet reader didn't load. Check your connection and reload."); return; }
+      const wb=XLSX.read(new Uint8Array(await file.arrayBuffer()),{type:"array"}); sheets=[];
+      for(const sn of wb.SheetNames){
+        const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:"",raw:false}), columns={};
+        (rows[0]||[]).forEach((h,i)=>{ const name=String(h).trim(); if(name) columns[name]=rows.slice(1).map(r=>String(r[i]??"").trim()); });
+        sheets.push({name:sn,columns});
+      }
+    }
+    applyLists(sheets,file.name);
+  }catch(err){ toast("Couldn't read that file: "+err.message); }
+}
+function applyLists(sheets,fname){
+  const out={}, raw={};
+  for(const sh of sheets){
+    if(/^(parts|formulas)$/i.test(String(sh.name).trim())) continue;
+    for(const [h,col] of Object.entries(sh.columns||{})){ const name=String(h).trim().replace(/\s+/g,"_"); if(!name||out[name]) continue;
+      const aligned=(col||[]).map(v=>String(v??"").trim().replace(/_/g," ")), vals=aligned.filter(Boolean);
+      if(vals.length){ out[name]=vals; raw[name]=aligned; } }
+  }
+  if(!out.POI_TYPES){ toast("Those lists have no POI_TYPES column"); return; }
+  const counts={};   // row-linked building counts, e.g. SETTLEMENT_TYPES + SETTLEMENT_EXTRA_BUILDINGS
+  for(const n of Object.keys(raw)){ const m=n.match(/^(.*)_TYPES$/); if(!m||!raw[m[1]+"_EXTRA_BUILDINGS"]) continue;
+    raw[n].forEach((t,i)=>{ const c=raw[m[1]+"_EXTRA_BUILDINGS"][i]; if(t&&c) counts[t]=c; }); }
+  out.__COUNTS=counts;
+  const rs={}; if(raw.RACES&&raw.RACE_NAME_STYLE) raw.RACES.forEach((r,i)=>{ const s=raw.RACE_NAME_STYLE[i]; if(r&&s) rs[r]=s.toUpperCase().replace(/\s+/g,"_"); });
+  out.__RACE_STYLE=rs;
+  LISTS=out; listsName=fname; put("lists",{name:fname,lists:out}); showListsStatus(fname); render();
+  const cats=out.POI_TYPES.map(keyOf).filter(k=>!out[k+"_TYPES"]);
+  toast(cats.length?`Loaded, but missing a _TYPES column for: ${cats.join(", ")}`:`Loaded ${Object.keys(out).length-1} lists from ${fname}`);
+}
+function showListsStatus(name){ $("#listsStatus").textContent=name?`${name}, ${Object.keys(LISTS).length} lists`:"No lists loaded"; $("#listsTxt").textContent=name?"Reload lists":"Load lists"; }
+$("#listsIn").addEventListener("change",e=>{ loadLists(e.target.files[0]); e.target.value=""; });
+$("#autoBtn").onclick=()=>{ autoRoll=!autoRoll; $("#autoBtn").textContent=`Auto-roll new: ${autoRoll?"on":"off"}`; };
+
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const keyOf=cat=>String(cat).trim().toUpperCase().replace(/[^A-Z0-9]+/g,"_").replace(/^_|_$/g,"");
+const CAT_KIND={SETTLEMENT:"settlement",SITE:"site",WILDERNESS:"wilderness",ROUTE:"route",MOBILE_COMMUNITY:"mobile",PLANAR:"planar"};
+const kindForCat=cat=>CAT_KIND[keyOf(cat)]||"poi";
+const catForKind=kind=>(LISTS.POI_TYPES||[]).find(p=>CAT_KIND[keyOf(p)]===kind)||null;
+function rollCategory(){ return pick(LISTS.POI_TYPES); }
+function rollType(cat){ const t=LISTS[keyOf(cat)+"_TYPES"]; if(!t){ toast(`No ${keyOf(cat)}_TYPES column in your lists`); return ""; } return pick(t); }
+const cap1=s=>String(s||"").replace(/^./,c=>c.toUpperCase());
+function rollRace(){ return (LISTS&&LISTS.RACES)?pick(LISTS.RACES):null; }
+function cultureOf(race){ return race&&LISTS&&LISTS.__RACE_STYLE?LISTS.__RACE_STYLE[race]||null:null; }
+function npcFor(mk,share=0.75){   // mostly the dominant race, with some others mixed in
+  const race=(mk.race&&Math.random()<share)?mk.race:(rollRace()||mk.race), cul=cultureOf(race);
+  const firsts=cul?[...(LISTS[cul+"_MALE"]||[]),...(LISTS[cul+"_FEMALE"]||[])]:[], lasts=cul?LISTS[cul+"_SURNAMES"]||[]:[];
+  const f=firsts.length?firsts:[...(LISTS.FIRST_NAMES_MALE||[]),...(LISTS.FIRST_NAMES_FEMALE||[])], l=lasts.length?lasts:(LISTS.SURNAMES||[]);
+  if(!f.length) return null; return {name:(pick(f)+" "+(l.length?pick(l):"")).trim(), race:race||""};
+}
+function rollLeader(mk){ mk.leader=(mk.kind==="settlement"&&LISTS)?npcFor(mk,0.9):null; }
+function rollPeople(mk){ rollLeader(mk); for(const b of mk.buildings||[]) if(b.name) b.owner=npcFor(mk); }
+function usedNames(exceptId){ return new Set(S.markers.filter(m=>m.id!==exceptId).map(m=>String(m.name||"").trim().toLowerCase())); }
+function rollName(cat,exceptId,culture){
+  const k=keyOf(cat), cp=culture&&LISTS[culture+"_"+k+"_PREFIXES"], cs=culture&&LISTS[culture+"_"+k+"_SUFFIXES"];   // race-specific names when the culture has them
+  const a=(cp&&cs)?cp:LISTS[k+"_PREFIXES"]||LISTS[k+"_ADJECTIVES"], b=(cp&&cs)?cs:LISTS[k+"_SUFFIXES"]||LISTS[k+"_NOUNS"];
+  if(!a||!b){ toast(`No naming columns for ${k} (needs ${k}_PREFIXES + ${k}_SUFFIXES, or _ADJECTIVES + _NOUNS)`); return null; }
+  const stem=s=>s.replace(/^the\s+/i,"").toLowerCase().slice(0,5);
+  const once=()=>{ let x=pick(a), y=pick(b), tries=0;
+    while(stem(x)===stem(y)&&tries++<8){ x=pick(a); y=pick(b); }   // avoid "The Tangled Tangle"
+    if(/^[a-z]/.test(y)) return x+y;                 // lowercase suffix joins on: Oak + dale = Oakdale
+    const n=x+" "+y; return /^the\s/i.test(n)?n:"The "+n; };      // otherwise: The Whispering Vault
+  const used=usedNames(exceptId); let n=once(), t=0;
+  while(used.has(n.toLowerCase())&&t++<40) n=once();              // no two markers share a name
+  return n;
+}
+function fuzzyList(val,suffix){   // "Tavern / Inn" + "_NOUNS" -> TAVERN_NOUNS
+  const words=val.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean), stem=w=>w.slice(0,5); let best=null,bs=0,bc=0;
+  for(const n of Object.keys(LISTS)){ if(!n.endsWith(suffix)) continue; const pre=n.slice(0,-suffix.length).toLowerCase().split("_").filter(Boolean); if(!pre.length) continue;
+    const c=pre.filter(p=>words.some(w=>stem(w)===stem(p))).length, s=c/pre.length; if(s>bs||(s===bs&&c>bc)){best=n;bs=s;bc=c;} }
+  return bs>0?LISTS[best]:null;
+}
+function shopName(kind){ if(!(LISTS.SHOPS||[]).includes(kind)) return null; const a=fuzzyList(kind,"_ADJECTIVES"), b=fuzzyList(kind,"_NOUNS"); return a&&b?pick(a)+" "+pick(b):null; }
+function parseCount(s){ const m=String(s||"").match(/(\d+)\s*(?:-|–|to)\s*(\d+)/); if(m){ const a=+m[1],b=+m[2]; return a+Math.floor(Math.random()*(Math.abs(b-a)+1))*(b>=a?1:-1); } const n=parseInt(s,10); return isNaN(n)?2:n; }
+function hasBuildings(type){ const k=keyOf(type||""); return !!(k&&(LISTS[k+"_ESSENTIALS"]||LISTS[k+"_EXTRAS"])); }
+function rollBuildings(mk){
+  if(!hasBuildings(mk.type)){ mk.buildings=[]; return; }
+  const k=keyOf(mk.type), ess=LISTS[k+"_ESSENTIALS"]||[], pool=(LISTS[k+"_EXTRAS"]||[]).filter(b=>!ess.includes(b));
+  const n=Math.min(pool.length,Math.max(0,parseCount((LISTS.__COUNTS||{})[mk.type])));
+  const extras=[]; for(let i=0;i<n;i++) extras.push(pool.splice(Math.floor(Math.random()*pool.length),1)[0]);
+  mk.buildings=[...ess.map(b=>({kind:b,name:shopName(b),core:true})),...extras.map(b=>({kind:b,name:shopName(b),core:false}))];
+  for(const b of mk.buildings) if(b.name) b.owner=npcFor(mk);
+}
+function ensureCat(mk){ if(!mk.category||!LISTS.POI_TYPES.includes(mk.category)){ mk.category=catForKind(mk.kind)||rollCategory(); mk.kind=kindForCat(mk.category); } return mk.category; }
+function rollFresh(mk){ mk.category=rollCategory(); mk.kind=kindForCat(mk.category); mk.type=rollType(mk.category); mk.race=rollRace(); const n=rollName(mk.category,mk.id,cultureOf(mk.race)); if(n) mk.name=n; rollBuildings(mk); rollLeader(mk); }
+function rollAll(mk){ if(mk.azInfo) rollFromMap(mk); else rollFresh(mk); }   // places from Azgaar keep what the map says they are
+function rollFromMap(mk){
+  const a=mk.azInfo;
+  if(a.src==="burg"){
+    mk.kind="settlement"; mk.category=catForKind("settlement")||"Settlement"; mk.type=settlementTypeFor(a); mk.race=rollRace();
+    const n=rollName(mk.category,mk.id,cultureOf(mk.race)); if(n) mk.name=n; rollBuildings(mk); addFlagBuildings(mk,a); rollLeader(mk);
+    if(!mk.notes) mk.notes=[`Population about ${Number(a.pop||0).toLocaleString()}`,a.capital?`capital of ${a.state||"its state"}`:(a.state?`in ${a.state}`:""),a.culture?`culture: ${a.culture}`:""].filter(Boolean).join(", ")+".";
+  } else {
+    const map=AZ_MARKERS[a.type]; mk.kind=map?map[0]:"poi";
+    const cat=map?catForKind(map[0]):null, types=cat?LISTS[keyOf(cat)+"_TYPES"]||[]:[]; mk.category=cat;
+    mk.type=map&&map[1]&&(!cat||types.includes(map[1]))?map[1]:(cat?rollType(cat):pretty(a.type));
+    mk.race=rollRace(); const n=cat?rollName(cat,mk.id,cultureOf(mk.race)):null; mk.name=n||a.azName||pretty(a.type); rollBuildings(mk); rollLeader(mk);
+  }
+}
+function flash(mk){ const el=stage.querySelector(`.marker[data-id="${mk.id}"] .mk`); if(el) el.animate([{transform:"scale(calc(var(--inv,1)*1.5))"},{transform:"scale(var(--inv,1))"}],{duration:300,easing:"ease-out"}); }
+function doRoll(fn){ const mk=cur(); if(!mk||!LISTS) return; fn(mk); save(); render(); flash(mk); }
+$("#eRollAll").onclick=()=>doRoll(rollAll);
+$("#eRollCat").onclick=()=>doRoll(rollFresh);
+$("#eRollType").onclick=()=>doRoll(mk=>{ mk.type=rollType(ensureCat(mk)); rollBuildings(mk); });
+$("#eRollB").onclick=()=>doRoll(rollBuildings);
+$("#bList").addEventListener("click",e=>{ const b=e.target.closest("[data-b]"); const mk=cur(); if(!b||!mk) return; const i=+b.dataset.i;
+  if(b.dataset.b==="name"){ mk.buildings[i].name=shopName(mk.buildings[i].kind); } else if(b.dataset.b==="owner"){ mk.buildings[i].owner=npcFor(mk); } else mk.buildings.splice(i,1); save(); render(); });
+$("#eRollName").onclick=()=>doRoll(mk=>{ const n=rollName(ensureCat(mk),mk.id,cultureOf(mk.race)); if(n) mk.name=n; });
+$("#eRollRace").onclick=()=>doRoll(mk=>{ mk.race=rollRace(); rollPeople(mk); });
+$("#eRollLeader").onclick=()=>doRoll(rollLeader);
+$("#eRace").addEventListener("change",e=>{ const mk=cur(); if(!mk) return; mk.race=e.target.value||null; rollPeople(mk); save(); render(); flash(mk); });
+
+/* ---------- export / import ---------- */
+let listsName="";
+const downloadsP=(window.claude&&typeof window.claude.use==="function")?window.claude.use("downloads").catch(()=>null):Promise.resolve(null);
+const blobToDataURL=b=>new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(b); });
+function dataURLToBlob(u){ const [head,b64]=u.split(","); const mime=(head.match(/data:([^;]+)/)||[])[1]||"image/png"; const bin=atob(b64); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return new Blob([a],{type:mime}); }
+async function exportJSON(){
+  if(!imgBlob){ toast("Load a map first"); return; }
+  const btn=$("#exportBtn"); btn.disabled=true; btn.textContent="Preparing…";
+  try{
+    const data={format:"map-markers",version:1,exported:new Date().toISOString(),
+      map:{name:S.imgName,width:iw,height:ih,image:await blobToDataURL(imgBlob)},
+      view, calib:S.calib||null, azOffset:S.azOffset||null, board:S.board||null, markers:S.markers, lists:LISTS?{name:listsName,columns:LISTS}:null};
+    const base=(S.imgName||"map").replace(/\.[^.]+$/,"").replace(/[^\w\- ]+/g,"").trim()||"map";
+    const filename=`${base}-markers.json`, blob=new Blob([JSON.stringify(data)],{type:"application/json"});
+    const dl=await downloadsP;
+    if(dl){
+      try{ await dl.save({filename,data:blob}); toast(`Saved ${filename}`); }
+      catch(err){ const c=err&&err.code; toast(c==="declined"?"Export cancelled":c==="rate_limited"?"A save prompt is already open":"Couldn't save the file here"); }
+    } else {
+      const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(a.href),5000); toast(`Saved ${filename}`);
+    }
+  }catch(err){ toast("Export failed: "+err.message); }
+  btn.disabled=false; btn.textContent="Export JSON";
+}
+async function importJSON(file,pre){
+  if(!file) return;
+  let d=pre; if(!d){ try{ d=JSON.parse(await file.text()); }catch(e){ toast("That file isn't valid JSON"); return; } }
+  if(d&&d.info&&d.pack&&d.mapCoordinates){ startAzgaar(d); return; }
+  if(d&&d.format==="table-roller-lists"&&Array.isArray(d.sheets)){ applyLists(d.sheets,file.name); return; }
+  if(d&&d.format==="thread-board"&&d.nodes!==undefined){ importBoard(d,file.name); return; }
+  if(d.format!=="map-markers"||!d.map||!d.map.image||!Array.isArray(d.markers)){ toast("That JSON wasn't exported from Map Markers"); return; }
+  if(S.markers.length&&!confirm(`Replace the current map and its ${S.markers.length} marker${S.markers.length>1?"s":""} with ${file.name}?`)) return;
+  try{
+    imgBlob=dataURLToBlob(d.map.image);
+    S={markers:d.markers,imgName:d.map.name||"map.png",view:d.view||null,calib:d.calib||null,azOffset:d.azOffset||null,board:d.board||null}; selId=null; lastDrag=null;
+    if(d.lists&&d.lists.columns){ LISTS=d.lists.columns; listsName=d.lists.name||"imported lists"; put("lists",{name:listsName,lists:LISTS}); showListsStatus(listsName); }
+    await showImage(imgBlob,!d.view);
+    put("image",imgBlob); save(); render();
+    toast(`Imported ${S.markers.length} marker${S.markers.length===1?"":"s"} from ${file.name}`);
+  }catch(err){ toast("Couldn't import: "+err.message); }
+}
+$("#exportBtn").onclick=exportJSON;
+$("#importIn").addEventListener("change",e=>{ importJSON(e.target.files[0]); e.target.value=""; });
+
+/* ---------- Thread Board ---------- */
+let placingBoard=null;   // bubble id waiting to be placed on (or linked to) the map
+const normName=s=>String(s||"").trim().toLowerCase();
+const roleText=r=>String(r||"related").replace(/_/g," ");
+function bNodes(){ return (S.board&&S.board.nodes)||{}; }
+function bTag(tag){ const d=(S.board&&S.board.tagDefs||{})[tag]; return {label:d?d.label:(tag||"Untagged"),color:d?d.color:"#8a8f86"}; }
+function placeTags(){ const defs=(S.board&&S.board.tagDefs)||{}, keys=new Set(["place"]);
+  for(const [k,d] of Object.entries(defs)) if(/location/i.test(d.plural||"")||/place|location/i.test(d.label||"")) keys.add(k); return keys; }
+function boardPlaces(){ const t=placeTags(); return Object.entries(bNodes()).filter(([,n])=>n&&t.has(n.tag)); }
+const markerFor=id=>S.markers.find(m=>m.boardId===id);
+function importBoard(d,fname){
+  S.board={campaign:d.campaign||"default",exported:d.exported||null,tagDefs:d.tagDefs||{},nodes:d.nodes||{},edges:d.edges||{}};
+  let linked=0;
+  for(const [id,n] of boardPlaces()){ if(markerFor(id)||!normName(n.name)) continue;
+    const mk=S.markers.find(m=>!m.boardId&&normName(m.name)===normName(n.name)); if(mk){ mk.boardId=id; linked++; } }
+  const places=boardPlaces().length, onMap=boardPlaces().filter(([id])=>markerFor(id)).length;
+  save(); render();
+  toast(`Loaded the "${S.board.campaign}" board: ${places} place${places===1?"":"s"}, ${onMap} on the map${linked?` (${linked} matched by name)`:""}`);
+}
+function startPlacing(id){ placingBoard=placingBoard===id?null:id; setAdding(false); render();
+  if(placingBoard) $("#hint").textContent=`Click the map to place ${bNodes()[id].name}, or click a marker to link it. Esc to cancel.`; }
+function placeBoardAt(p){
+  const id=placingBoard, n=bNodes()[id]; placingBoard=null; setAdding(false);
+  if(!n) return; if(p.x<0||p.y<0||p.x>iw||p.y>ih){ toast("Place it on the map"); render(); return; }
+  const mk={id:"m"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),x:p.x,y:p.y,name:n.name||"Board place",kind:"poi",notes:"",buildings:[],boardId:id};
+  S.markers.push(mk); selId=mk.id; save(); render(); toast(`Placed ${mk.name}. Set its POI type in the panel.`);
+}
+function linkBoardTo(markerId,id){
+  placingBoard=null; setAdding(false); const mk=S.markers.find(m=>m.id===markerId), n=bNodes()[id]; if(!mk||!n){ render(); return; }
+  const prev=markerFor(id); if(prev&&prev!==mk) prev.boardId=null;
+  mk.boardId=id; if(!explored(mk)) mk.name=n.name||mk.name; selId=mk.id; save(); render(); toast(`Linked ${mk.name||"marker"} to ${n.name}`);
+}
+function renderBoardBox(){
+  const box=$("#boardBox"); if(!S.board){ box.hidden=true; return; } box.hidden=false;
+  const places=boardPlaces(), off=places.filter(([id])=>!markerFor(id));
+  box.innerHTML=`<h3>📌 ${esc(S.board.campaign)} board <span>· ${places.length-off.length}/${places.length} places on map</span><button class="linkb" id="boardForget" title="Stop using this board file">Remove</button></h3>`
+    +(off.length?`<p class="unexphint">Not on the map yet. Click one, then click the map (or a marker to link it):</p>`+off.map(([id,n])=>`<button class="bplace${placingBoard===id?" on":""}" data-bplace="${id}"><span class="chip" style="background:${bTag(n.tag).color}">${esc(bTag(n.tag).label)}</span>${esc(n.name||"Unnamed")}</button>`).join("")
+      :`<p class="unexphint">Every place on the board is on the map.</p>`);
+}
+$("#boardBox").addEventListener("click",e=>{ const b=e.target.closest("[data-bplace]"); if(b){ startPlacing(b.dataset.bplace); return; }
+  if(e.target.id==="boardForget"){ if(!confirm("Remove the board data from this map? Links on markers are cleared too; the board itself isn't touched.")) return;
+    S.board=null; placingBoard=null; for(const m of S.markers) delete m.boardId; save(); render(); } });
+function renderBoardSection(mk){
+  const w=$("#bdWrap"); if(!S.board){ w.hidden=true; return; } w.hidden=false;
+  const nodes=bNodes(), n=mk.boardId?nodes[mk.boardId]:null;
+  if(!mk.boardId){
+    const places=boardPlaces().filter(([id])=>!markerFor(id)), others=Object.entries(nodes).filter(([id,x])=>x&&!placeTags().has(x.tag)&&!markerFor(id));
+    const og=(label,items)=>items.length?`<optgroup label="${esc(label)}">${items.map(([id,x])=>`<option value="${id}">${esc(x.name||"Unnamed")}</option>`).join("")}</optgroup>`:"";
+    w.innerHTML=`<select class="bdlink" id="bdLink" aria-label="Link to a board bubble"><option value="">📌 Link to a board bubble…</option>${og("Places",places)}${og("Other bubbles",others)}</select>`; return;
+  }
+  if(!n){ w.innerHTML=`<div class="bd"><div class="bdh">📌 Board bubble missing<button class="linkb" id="bdUnlink">Unlink</button></div><p class="unexphint">It was linked to a bubble that isn't in the latest board file.</p></div>`; return; }
+  const t=bTag(n.tag), conns=[];
+  for(const e of Object.values(S.board.edges||{})){ if(!e) continue;
+    const incoming=e.to===mk.boardId, outgoing=e.from===mk.boardId; if(!incoming&&!outgoing) continue;
+    const oid=incoming?e.from:e.to, o=nodes[oid]; if(!o) continue;
+    conns.push({oid,o,incoming,role:e.role}); }
+  conns.sort((a,b)=>(bTag(a.o.tag).label).localeCompare(bTag(b.o.tag).label)||String(a.o.name).localeCompare(String(b.o.name)));
+  const connHTML=conns.map(c=>{ const ct=bTag(c.o.tag), onMap=markerFor(c.oid);
+    const who=`<button${onMap?` class="onmap" data-goto="${onMap.id}" title="Show on map"`:""}>${esc(c.o.name||"Unnamed")}</button>`;
+    return `<div><span class="chip" style="background:${ct.color}">${esc(ct.label)}</span> ${c.incoming?`${who} <span class="role">· ${esc(roleText(c.role))}</span>`:`<span class="role">${esc(roleText(c.role))} →</span> ${who}`}</div>`; }).join("");
+  const BOARD_SITE="https://geezjonny.github.io/GeezSheets/";   // board attachments are often relative to the GeezSheets site
+  const abs=u=>{ try{ return new URL(u,BOARD_SITE).href; }catch(_){ return ""; } };
+  const links=Object.values(n.attachments||{}).map(a=>a&&a.path?{url:abs(a.path),label:a.filename||a.path}:null).filter(Boolean);
+  if(n.mapUrl) links.unshift({url:abs(n.mapUrl),label:"🗺 Map"});
+  const atts=links.filter(l=>/^https?:/.test(l.url)).map(l=>`<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join("");
+  w.innerHTML=`<div class="bd" style="border-left-color:${t.color}">
+    <div class="bdh">📌 <span class="chip" style="background:${t.color}">${esc(t.label)}</span>${esc(n.name||"Unnamed")}<button class="linkb" id="bdUnlink">Unlink</button></div>
+    ${n.notes?`<div class="bdn">${esc(n.notes)}</div>`:`<p class="unexphint">No notes on the board.</p>`}
+    ${conns.length?`<div class="bdc">${connHTML}</div>`:""}${atts?`<div class="bdc">${atts}</div>`:""}</div>`;
+}
+$("#bdWrap").addEventListener("change",e=>{ if(e.target.id!=="bdLink"||!e.target.value) return; const mk=cur(); if(mk) linkBoardTo(mk.id,e.target.value); });
+$("#bdWrap").addEventListener("click",e=>{ const mk=cur(); if(!mk) return;
+  if(e.target.id==="bdUnlink"){ delete mk.boardId; save(); render(); return; }
+  const g=e.target.closest("[data-goto]"); if(g){ const t=S.markers.find(m=>m.id===g.dataset.goto); if(t){ select(t.id); center(t); } } });
+
+/* ---------- duplicate names ---------- */
+function dupMarkers(){ const seen=new Set(), out=[]; for(const m of S.markers){ const k=String(m.name||"").trim().toLowerCase(); if(!k) continue; if(seen.has(k)) out.push(m); else seen.add(k); } return out; }
+function canRename(m){ if(!LISTS||!m.category) return false; const k=keyOf(m.category); return !!((LISTS[k+"_PREFIXES"]||LISTS[k+"_ADJECTIVES"])&&(LISTS[k+"_SUFFIXES"]||LISTS[k+"_NOUNS"])); }
+$("#dupBar").addEventListener("click",e=>{ if(e.target.id!=="fixDups") return; let n=0;
+  for(const m of dupMarkers()){ if(!canRename(m)) continue; const old=m.name, nn=rollName(m.category,m.id); if(nn){ m.name=nn; n++; } }
+  save(); render(); toast(n?`Renamed ${n} marker${n===1?"":"s"}; the first of each name was kept`:"Couldn't rename those (no naming lists for their type)"); });
+
+/* ---------- lining up imported places ---------- */
+let lastDrag=null;   // {id, ox, oy}: where an imported marker started before you dragged it
+function azOff(){ return S.azOffset||{dx:0,dy:0}; }
+function shiftDesc(dx,dy){ const r=v=>Math.round(Math.abs(v)); const p=[]; if(r(dx)) p.push(`${r(dx)} px ${dx>0?"right":"left"}`); if(r(dy)) p.push(`${r(dy)} px ${dy>0?"down":"up"}`); return p.join(", ")||"no change"; }
+$("#eShiftAll").onclick=()=>{ const mk=cur(); if(!mk||!lastDrag||lastDrag.id!==mk.id) return;
+  const dx=mk.x-lastDrag.ox, dy=mk.y-lastDrag.oy; let n=0;
+  for(const m of S.markers){ if(!m.az||m.id===mk.id) continue; m.x=clamp(m.x+dx,0,iw); m.y=clamp(m.y+dy,0,ih); n++; }
+  const o=azOff(); S.azOffset={dx:o.dx+dx,dy:o.dy+dy}; lastDrag=null; save(); render();
+  toast(`Moved ${n} imported places ${shiftDesc(dx,dy)}. Future Azgaar imports will use the same shift.`); };
+
+/* ---------- latitude / longitude ---------- */
+const fmtLL=(lat,lon)=>`${Math.abs(lat).toFixed(2)}°${lat<0?"S":"N"}, ${Math.abs(lon).toFixed(2)}°${lon<0?"W":"E"}`;
+function calibOK(c){ return !!(c&&c.a&&c.b&&[c.a.x,c.a.y,c.a.lat,c.a.lon,c.b.x,c.b.y,c.b.lat,c.b.lon].every(Number.isFinite)&&Math.abs(c.b.lon-c.a.lon)>1e-6&&Math.abs(c.b.lat-c.a.lat)>1e-6); }
+function axes(c){ return {ax:(c.b.x-c.a.x)/(c.b.lon-c.a.lon), ay:(c.b.y-c.a.y)/(c.b.lat-c.a.lat)}; }
+function llToImg(lat,lon,c=S.calib){ const {ax,ay}=axes(c); return {x:c.a.x+(lon-c.a.lon)*ax, y:c.a.y+(lat-c.a.lat)*ay}; }
+function imgToLL(x,y,c=S.calib){ const {ax,ay}=axes(c); return {lat:c.a.lat+(y-c.a.y)/ay, lon:c.a.lon+(x-c.a.x)/ax}; }
+vp.addEventListener("pointermove",e=>{ const el=$("#coords"); if(!iw||!calibOK(S.calib)){ el.hidden=true; return; } const p=toImg(e.clientX,e.clientY);
+  if(p.x<0||p.y<0||p.x>iw||p.y>ih){ el.hidden=true; return; } const q=imgToLL(p.x,p.y); el.textContent=fmtLL(q.lat,q.lon); el.hidden=false; });
+vp.addEventListener("pointerleave",()=>{ $("#coords").hidden=true; });
+
+/* ---------- Azgaar import ---------- */
+let AZ=null;   // {d, step, pick, form, points}
+async function openJSON(file){ let d; try{ d=JSON.parse(await file.text()); }catch(e){ toast("That file isn't valid JSON"); return; }
+  if(d&&d.format==="thread-board"&&d.nodes!==undefined) importBoard(d,file.name);
+  else if(d&&d.format==="table-roller-lists"&&Array.isArray(d.sheets)) applyLists(d.sheets,file.name);
+  else if(d&&d.info&&d.pack&&d.mapCoordinates) startAzgaar(d); else importJSON(file,d); }
+$("#azIn").addEventListener("change",e=>{ const f=e.target.files[0]; e.target.value=""; if(f) openJSON(f); });
+function startAzgaar(d){
+  if(!iw){ toast("Load your map PNG first, then import the Azgaar data"); return; }
+  const c=d.mapCoordinates, W=d.info.width, H=d.info.height, set=d.settings||{};
+  const rate=(+set.populationRate||1000)*(+set.urbanization||1);
+  const toLL=(x,y)=>({lat:c.latN-y/H*c.latT, lon:c.lonW+x/W*c.lonT});
+  const states=d.pack.states||[], cultures=d.pack.cultures||[];
+  const points=[];
+  for(const b of d.pack.burgs||[]){ if(!b||!b.name||b.removed) continue; points.push({src:"burg",id:"b"+b.i,b,...toLL(b.x,b.y),pop:Math.round((b.population||0)*rate),state:(states[b.state]||{}).name,culture:(cultures[b.culture]||{}).name}); }
+  for(const m of d.pack.markers||[]){ if(!m||m.removed) continue; points.push({src:"marker",id:"m"+m.i,m,...toLL(m.x,m.y)}); }
+  const s=c.latN<0?"S":"N";
+  AZ={d,points,W,H,lonT:c.lonT,latT:c.latT,step:calibOK(S.calib)?"options":"calib",pick:null,
+      form:{a:{x:null,y:null,lat:"",ns:s,lon:"",ew:"E"},b:{x:null,y:null,lat:"",ns:s,lon:"",ew:"E"}}};
+  setAdding(false); select(null); $("#azPanel").hidden=false; renderAz();
+}
+function closeAz(){ AZ=null; $("#azPanel").hidden=true; $("#azLayer").innerHTML=""; }
+$("#azClose").onclick=closeAz;
+function formCalib(){ const f=AZ.form, g=p=>({x:p.x,y:p.y,lat:(p.ns==="S"?-1:1)*parseFloat(p.lat),lon:(p.ew==="W"?-1:1)*parseFloat(p.lon)}); return {a:g(f.a),b:g(f.b)}; }
+function setCalibPoint(p){ const k=AZ.pick; AZ.form[k].x=p.x; AZ.form[k].y=p.y; AZ.pick=(k==="a"&&AZ.form.b.x==null)?"b":null; renderAz(); }
+function inImage(pt){ const q=llToImg(pt.lat,pt.lon), o=azOff(); pt.ix=q.x+o.dx; pt.iy=q.y+o.dy; return q.x>=0&&q.y>=0&&q.x<=iw&&q.y<=ih; }
+function sizeOK(pt,size){ if(pt.src!=="burg") return true; const g=pt.b.group||""; if(size==="town") return g!=="village"; if(size==="city") return /city|capital|fort/.test(g)||pt.b.capital; return true; }
+function azSelection(){ const inc=AZ.points.filter(inImage), size=($("#azSize")||{}).value||"all", mk=($("#azMk")||{checked:true}).checked;
+  const have=new Set(S.markers.map(m=>m.az).filter(Boolean));
+  return {inc, pick:inc.filter(p=>!have.has(p.id)&&(p.src==="burg"?sizeOK(p,size):mk))}; }
+const xhair=(x,y,l)=>`<i class="azx" style="left:${x}px;top:${y}px"><svg viewBox="-16 -16 32 32"><circle r="9" fill="none" stroke="#fff" stroke-width="4"/><circle r="9" fill="none" stroke="#5A3D94" stroke-width="2"/><path d="M0-15V-4M0 4V15M-15 0H-4M4 0H15" stroke="#5A3D94" stroke-width="2"/><text x="11" y="-10" font-size="11" font-weight="700" fill="#5A3D94" stroke="#fff" stroke-width="3" paint-order="stroke">${l}</text></svg></i>`;
+function renderAzLayer(){
+  const L=$("#azLayer"); if(!AZ){ L.innerHTML=""; return; } let html="";
+  if(AZ.step==="options"&&calibOK(S.calib)){ const {pick}=azSelection(), ok=new Set(pick.map(p=>p.id));
+    for(const p of AZ.points){ if(!inImage(p)) continue; html+=`<i class="azd${p.src==="marker"?" mk":""}${ok.has(p.id)?"":" skip"}" style="left:${p.ix}px;top:${p.iy}px"></i>`; } }
+  if(AZ.step==="calib") for(const k of ["a","b"]){ const f=AZ.form[k]; if(f.x!=null) html+=xhair(f.x,f.y,k.toUpperCase()); }
+  L.innerHTML=html;
+}
+function renderAz(){
+  const B=$("#azBody"); const f=AZ.form;
+  if(AZ.step==="calib"){
+    const pt=k=>{ const p=f[k]; return `<div class="azpt${AZ.pick===k?" active":""}">
+      <button class="btn pickb" data-pick="${k}">${p.x==null?`Point ${k.toUpperCase()}: click to place`:`Point ${k.toUpperCase()} placed: move it`}</button>
+      <div class="azrow"><span>Lat</span><input data-f="${k}.lat" type="number" step="any" min="0" max="90" value="${p.lat}" placeholder="32"><select data-f="${k}.ns"><option${p.ns==="N"?" selected":""}>N</option><option${p.ns==="S"?" selected":""}>S</option></select>
+      <span>Lon</span><input data-f="${k}.lon" type="number" step="any" min="0" max="180" value="${p.lon}" placeholder="8"><select data-f="${k}.ew"><option${p.ew==="E"?" selected":""}>E</option><option${p.ew==="W"?" selected":""}>W</option></select></div></div>`; };
+    B.innerHTML=`<p>First, line the map up using its latitude/longitude grid. Pick two gridline crossings far apart, like one near the top-left and one near the bottom-right. Zoom in to place them exactly.</p>
+      ${pt("a")}${pt("b")}<p id="azMsg"></p><button class="primary azgo" id="azCheck">Check alignment</button>`;
+    azValidate();
+  } else {
+    const n=AZ.points.length, {inc}=azSelection();
+    const burgs=inc.filter(p=>p.src==="burg").length, mks=inc.length-burgs;
+    B.innerHTML=`<p class="ok">Aligned. ${burgs} settlements and ${mks} Azgaar markers fall inside this image (out of ${n} on the whole map).</p>
+      <p>Red dots are settlements, blue diamonds are Azgaar's markers. They should sit on the town squares and icons. If they're off, <button class="linkb" id="azRecal">recalibrate</button>.</p>
+      <div class="nudge${AZ.nudge?" on":""}">${AZ.nudge==="pick"?`<b>Click one red dot</b> whose town square you can see clearly.`:AZ.nudge==="place"?`<b>Now click the town square</b> that dot belongs to.`:
+        `Dots a little off their town squares? <button class="linkb" id="azNudge">Line them up</button>${(azOff().dx||azOff().dy)?`<br>Current shift: ${shiftDesc(azOff().dx,azOff().dy)}. <button class="linkb" id="azNudgeReset">Reset</button>`:""}`}</div>
+      <div class="azopts">
+        <label>Settlements <select id="azSize"><option value="all">All sizes</option><option value="town">Towns and bigger</option><option value="city">Cities and capitals only</option></select></label>
+        <label><input type="checkbox" id="azMk" checked> Azgaar's markers (dungeons, ruins, inns…)</label>
+        <label>Import places as <select id="azNames"><option value="blank">Unexplored (roll later)</option><option value="roll">Rolled now, our names</option><option value="keep">Rolled now, Azgaar's names</option></select></label>
+      </div>
+      ${LISTS?"":`<p class="bad">Load your lists spreadsheet first if you want types, names and buildings rolled.</p>`}
+      <button class="primary azgo" id="azGo"></button>`;
+    if(AZ.opts){ if(AZ.opts.size) $("#azSize").value=AZ.opts.size; if(AZ.opts.mk!=null) $("#azMk").checked=AZ.opts.mk; if(AZ.opts.names) $("#azNames").value=AZ.opts.names; }
+    azCount();
+  }
+  renderAzLayer();
+}
+function azValidate(){
+  const m=$("#azMsg"), btn=$("#azCheck"); if(!m) return; const f=AZ.form;
+  const placed=f.a.x!=null&&f.b.x!=null, nums=["a","b"].every(k=>f[k].lat!==""&&f[k].lon!==""&&isFinite(f[k].lat)&&isFinite(f[k].lon));
+  let msg="", ok=false, cls="";
+  if(!placed) msg=AZ.pick?`Click the map to place point ${AZ.pick.toUpperCase()}.`:"Place both points on the map.";
+  else if(!nums) msg="Type the latitude and longitude of each point.";
+  else { const c=formCalib();
+    if(!calibOK(c)) { msg="The two points need different latitudes and different longitudes."; cls="bad"; }
+    else { const {ax,ay}=axes(c), expected=(AZ.W/AZ.lonT)/(AZ.H/AZ.latT), ratio=Math.abs(ax)/Math.abs(ay)/expected;
+      if(ax<=0||ay>=0){ msg="Those directions look flipped. Check N/S and E/W, and that A and B match what you typed."; cls="bad"; }
+      else if(Math.abs(ratio-1)>0.06){ msg=`The grid spacing doesn't match (off by ${Math.round(Math.abs(ratio-1)*100)}%). Double-check the numbers and where you clicked.`; cls="bad"; }
+      else { msg="Looks right. Check the alignment to see Azgaar's places on your map."; ok=true; cls="ok"; } } }
+  m.textContent=msg; m.className=cls; btn.disabled=!ok;
+}
+function keepOpts(){ AZ.opts={size:($("#azSize")||{}).value,mk:($("#azMk")||{}).checked,names:($("#azNames")||{}).value}; }
+function azNudgeTap(p){
+  if(AZ.nudge==="pick"){ const {inc}=azSelection(); let best=null,bd=1e9;
+    for(const q of inc){ const d=Math.hypot(q.ix-p.x,q.iy-p.y); if(d<bd){bd=d;best=q;} }
+    if(!best||bd*view.s>24){ toast("Click right on a red dot"); return; }
+    AZ.nudgeFrom={x:best.ix,y:best.iy}; AZ.nudge="place"; keepOpts(); renderAz(); return; }
+  const dx=p.x-AZ.nudgeFrom.x, dy=p.y-AZ.nudgeFrom.y, o=azOff();
+  S.azOffset={dx:o.dx+dx,dy:o.dy+dy}; AZ.nudge=null; save(); keepOpts(); renderAz(); toast(`Shifted all dots ${shiftDesc(dx,dy)}`);
+}
+function azCount(){ const {pick}=azSelection(), b=pick.filter(p=>p.src==="burg").length, mk=pick.length-b, g=$("#azGo");
+  g.textContent=pick.length?`Import ${b} settlement${b===1?"":"s"}${mk?` and ${mk} marker${mk===1?"":"s"}`:""}`:"Nothing new to import"; g.disabled=!pick.length; renderAzLayer(); }
+$("#azBody").addEventListener("click",e=>{
+  const pk=e.target.closest("[data-pick]"); if(pk){ AZ.pick=pk.dataset.pick; renderAz(); return; }
+  if(e.target.id==="azCheck"){ S.calib=formCalib(); save(); AZ.step="options"; renderAz(); render(); return; }
+  if(e.target.id==="azRecal"){ const c=S.calib, t=p=>({x:p.x,y:p.y,lat:String(Math.abs(p.lat)),ns:p.lat<0?"S":"N",lon:String(Math.abs(p.lon)),ew:p.lon<0?"W":"E"});
+    if(calibOK(c)) AZ.form={a:t(c.a),b:t(c.b)}; AZ.step="calib"; AZ.pick=null; renderAz(); return; }
+  if(e.target.id==="azNudge"){ AZ.nudge="pick"; keepOpts(); renderAz(); return; }
+  if(e.target.id==="azNudgeReset"){ S.azOffset={dx:0,dy:0}; save(); keepOpts(); renderAz(); return; }
+  if(e.target.id==="azGo") azImport();
+});
+$("#azBody").addEventListener("input",e=>{ const k=e.target.dataset.f; if(!k) return; const [p,f]=k.split("."); AZ.form[p][f]=e.target.value; azValidate(); });
+$("#azBody").addEventListener("change",e=>{ const k=e.target.dataset.f; if(k){ const [p,f]=k.split("."); AZ.form[p][f]=e.target.value; azValidate(); } else if(AZ.step==="options") azCount(); });
+
+const AZ_MARKERS={ // Azgaar marker type -> [marker kind, preferred type]
+  dungeons:["site","Dungeon"],ruins:["site","Ruin"],necropolises:["site","Crypt"],statues:["site","Landmark"],lighthouses:["site","Abandoned Lighthouse"],
+  battlefields:["site",null],libraries:["site",null],mines:["settlement","Mining Settlement"],volcanoes:["wilderness","Volcanic Field"],
+  "hot-springs":["wilderness","Hot Springs"],"water-sources":["wilderness",null],"sacred-forests":["wilderness","Ancient Forest"],
+  "sacred-pineries":["wilderness","Ancient Forest"],"sacred-mountains":["wilderness","Mountain Peak"],bridges:["route","Bridge"],canoes:["route","Ferry"],
+  migration:["mobile","Migrating Tribe"],circuses:["mobile","Travelling Circus"]};
+const pretty=s=>String(s).replace(/[-_]+/g," ").replace(/^./,c=>c.toUpperCase()).replace(/s$/,"");
+function settlementTypeFor(a){ const pop=a.pop||0, g=a.group||"", has=t=>(LISTS&&(LISTS.SETTLEMENT_TYPES||[]).includes(t))?t:null;
+  let t=g==="fort"?"Fortress":(a.port&&pop>=1000&&pop<15000)?"Port Town":pop<1000?"Hamlet":pop<5000?"Village":pop<15000?"Town":pop<50000?"City":"Metropolis";
+  return LISTS?(has(t)||rollType(catForKind("settlement")||"Settlement")):t; }
+function addFlagBuildings(mk,a){ for(const [f,re,n] of FLAG_BUILDINGS) if(a[f]&&!mk.buildings.some(x=>re.test(x.kind))) mk.buildings.push({kind:n,name:null,core:true}); }
+function azInfoFor(pt){ if(pt.src==="burg"){ const b=pt.b; return {src:"burg",pop:pt.pop,group:b.group||"",port:!!b.port,capital:!!b.capital,citadel:!!b.citadel,walls:!!b.walls,temple:!!b.temple,plaza:!!b.plaza,market:!!b.market,state:pt.state||null,culture:pt.culture||null,azName:b.name}; }
+  return {src:"marker",type:pt.m.type,azName:pt.m.name||null}; }
+const FLAG_BUILDINGS=[["temple",/temple|shrine|cathedral|chapel|prayer/i,"Temple"],["walls",/wall/i,"Walls & Gatehouse"],["citadel",/castle|keep|citadel|palace|fortress/i,"Castle / Keep"],
+  ["port",/dock|harbo/i,"Docks / Harbor"],["plaza",/square|plaza|green/i,"Town Square"],["market",/market|bazaar/i,"Market Square"]];
+function azImport(){
+  const {pick}=azSelection(), mode=$("#azNames").value; let nb=0,nm=0;
+  for(const pt of pick){
+    const a=azInfoFor(pt), map=pt.src==="marker"?AZ_MARKERS[pt.m.type]:null;
+    const mk={id:"m"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),x:pt.ix,y:pt.iy,az:pt.id,azInfo:a,name:"",type:"",notes:"",buildings:[],
+      kind:pt.src==="burg"?"settlement":(map?map[0]:"poi")};
+    mk.category=LISTS?catForKind(mk.kind):null;
+    S.markers.push(mk); pt.src==="burg"?nb++:nm++;
+    if(mode==="blank") continue;
+    if(LISTS) rollFromMap(mk); else { mk.name=a.azName||""; mk.type=pt.src==="burg"?settlementTypeFor(a):(map&&map[1])||pretty(a.type); }
+    if(mode==="keep"&&a.azName) mk.name=a.azName;
+    if(pt.src==="marker"&&pt.m.note&&!mk.notes) mk.notes=pt.m.note;
+  }
+  closeAz(); save(); render(); fitView();
+  toast(`Imported ${nb} settlement${nb===1?"":"s"}${nm?` and ${nm} marker${nm===1?"":"s"}`:""}${mode==="blank"?" as unexplored":""}`);
+}
+
+/* ---------- toolbar + keys ---------- */
+function setAdding(on){ adding=on; $("#addBtn").classList.toggle("on",on); vp.classList.toggle("adding",on); $("#hint").textContent=on?"Click the map to drop a marker. Esc to stop.":"Drag to pan, scroll to zoom, double-click to add"; }
+$("#addBtn").onclick=()=>setAdding(!adding);
+$("#lblBtn").onclick=()=>{ labels=!labels; vp.classList.toggle("hide-labels",!labels); $("#lblBtn").textContent=labels?"Labels on":"Labels off"; };
+document.addEventListener("keydown",e=>{
+  if(e.target.closest("input,textarea,select")) return;
+  if(!iw) return;
+  if(e.key==="a"||e.key==="A") setAdding(!adding);
+  else if(e.key==="Escape"&&placingBoard){ placingBoard=null; setAdding(false); render(); }
+  else if(e.key==="Escape"){ if(AZ&&(AZ.nudge||AZ.pick)){ AZ.nudge=null; AZ.pick=null; keepOpts(); renderAz(); return; } setAdding(false); select(null); }
+  else if(e.key==="f"||e.key==="F") fitView();
+  else if((e.key==="r"||e.key==="R")&&selId&&LISTS) doRoll(rollAll);
+  else if((e.key==="Delete"||e.key==="Backspace")&&selId){ e.preventDefault(); delSel(); }
+});
+window.addEventListener("resize",()=>{ if(iw) apply(); });
+
+/* ---------- restore last session ---------- */
+(async()=>{
+  const [blob,state,saved]=await Promise.all([get("image"),get("state"),get("lists")]);
+  if(saved&&saved.lists){ LISTS=saved.lists; listsName=saved.name||""; showListsStatus(saved.name); }
+  if(blob){ if(state) S={markers:[],...state}; imgBlob=blob; await showImage(blob,false); }
+  setAdding(false); render();
+})();
+</script>
+</body>
+</html>

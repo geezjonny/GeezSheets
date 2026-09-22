@@ -638,6 +638,7 @@
     <span class="zoom-pct" id="zoom-pct">100%</span>
     <button id="btn-zoom-in">＋</button>
   </div>
+  <button id="btn-export" title="Save this board as a file you can import into Map Markers">⇩ Export for map</button>
   <button id="btn-reset" title="Wipe this campaign's board (nodes, edges, tags) and start over">🗑 Reset board</button>
 </div>
 
@@ -1859,19 +1860,6 @@ function applyTransform(){
 document.getElementById('btn-zoom-in').addEventListener('click', () => { scale = Math.min(2, scale+0.1); applyTransform(); });
 
 document.getElementById('btn-reset').addEventListener('click', async () => {
-  const typed = prompt(`This wipes every bubble, link, and custom tag in the "${campaignId}" campaign. This cannot be undone.\n\nType the campaign name (${campaignId}) to confirm:`);
-  if(typed !== campaignId){
-    if(typed !== null) alert('Name didn\'t match — nothing was deleted.');
-    return;
-  }
-  await Promise.all([ remove(nodesRef), remove(edgesRef), remove(tagDefsRef) ]);
-  selectedId = null; selectedIds.clear();
-  closeInspector();
-  toast_ok();
-  function toast_ok(){ alert('Board wiped. Reload the page to reseed default tags, or start adding bubbles fresh.'); }
-});
-
-document.getElementById('btn-reset').addEventListener('click', async () => {
   const typed = prompt(
     `This permanently deletes every bubble, connection, and custom tag in the "${campaignId}" campaign.\n\n` +
     `Type the campaign name (${campaignId}) to confirm:`
@@ -1889,6 +1877,29 @@ document.getElementById('btn-reset').addEventListener('click', async () => {
   closeInspector();
   // tagDefs onValue listener will reseed DEFAULT_TAGS automatically since the path is now empty
   alert('Board reset. Default tags will reseed automatically.');
+});
+
+/* ---------------- export for Map Markers ---------------- */
+// Snapshot of this campaign's live board state (already synced from Firebase into
+// nodes/edges/tagDefs above), saved as a file Map Markers can import.
+document.getElementById('btn-export').addEventListener('click', () => {
+  const data = {
+    format: 'thread-board',
+    version: 1,
+    campaign: campaignId,
+    exported: new Date().toISOString(),
+    tagDefs,
+    nodes,
+    edges,
+  };
+  const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `thread-board-${campaignId}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });
 document.getElementById('btn-zoom-out').addEventListener('click', () => { scale = Math.max(0.3, scale-0.1); applyTransform(); });
 
