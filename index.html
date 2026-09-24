@@ -465,7 +465,7 @@ canvas{display:block;width:100%;height:100%}
 import { ref, onValue, set, push, remove, update, get }
   from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 import { db }                from "./js/firebase.js";
-import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getDICE, TILE } from "./js/config.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getDICE, TILE, ENABLE_3D } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, propTextures, materialTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture, tryLoadMaterialTexture } from "./js/assets.js";
 import { drawToken, tokenAtTile } from "./js/tokens.js";
@@ -1876,6 +1876,9 @@ function evaluateAllNodes(){
     const header = document.getElementById("pip3d-header");
     const iframe = document.getElementById("pip3d-iframe");
     const resizeHandle = document.getElementById("pip3d-resize-handle");
+    // 3D disabled (see ENABLE_3D in js/config.js) -- remove the button and
+    // panel so planner-viewer.html is never loaded.
+    if(!ENABLE_3D){ toggleBtn?.remove(); panel?.remove(); return; }
     let iframeLoaded = false;
 
     function ensureIframeLoaded(){

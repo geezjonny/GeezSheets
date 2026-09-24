@@ -1,6 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Disabled until the new 3D system replaces this page. Stops the parser
+         before any script (three.js, Firebase, the page module) loads, so
+         opening this URL directly can't read or write anything. Delete this
+         block to re-enable (and set ENABLE_3D = true in js/config.js). -->
+    <script>
+      window.stop();
+      document.documentElement.innerHTML = '<body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#111;color:#bbb;font:16px Segoe UI,sans-serif">This 3D view is disabled for now.</body>';
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Multi-DD2VTT 3D Planner - Optimized & Light</title>

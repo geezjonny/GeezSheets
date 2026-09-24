@@ -924,7 +924,7 @@ import { db }                from "./js/firebase.js";
 const _campaignParams = new URLSearchParams(location.search);
 const CAMPAIGN_ID = _campaignParams.get("campaign") || "default";
 const CAMPAIGN_BASE = `campaigns/${CAMPAIGN_ID}`;
-import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, getSOUNDFX, TILE } from "./js/config.js";
+import { loadConfig, getTERRAINS, getCONDITIONS, getPROPS, getSTAMPS, getSIZES, getDICE, getSOUNDFX, TILE, ENABLE_3D } from "./js/config.js";
 import { camera, toWorld, toScreen, worldToTile, applyZoom, fitCamera } from "./js/camera.js";
 import { textures, tokenTextures, propTextures, materialTextures, loadTerrainTextures, tryLoadTokenTexture, tryLoadPropTexture, tryLoadMaterialTexture } from "./js/assets.js";
 import { drawToken, tokenAtTile, applyCondition, deleteToken as deleteTokenRTDB } from "./js/tokens.js";
@@ -1367,7 +1367,9 @@ function refreshGm3dPanel(){
   // planner.html never locks into a token's first-person view).
   document.getElementById("gm-3d-panel").innerHTML=`<iframe src="planner.html?_v=${Date.now()}" title="3D overview"></iframe>`;
 }
-document.getElementById("gm3d-toggle-btn").addEventListener("click",()=>{
+// 3D disabled (see ENABLE_3D in js/config.js) -- remove the button so planner.html is never loaded.
+if(!ENABLE_3D) document.getElementById("gm3d-toggle-btn")?.remove();
+else document.getElementById("gm3d-toggle-btn").addEventListener("click",()=>{
   gm3dOpen=!gm3dOpen;
   document.getElementById("gm3d-toggle-btn").classList.toggle("active",gm3dOpen);
   document.documentElement.style.setProperty("--gm3d-width",gm3dOpen?"480px":"0px");

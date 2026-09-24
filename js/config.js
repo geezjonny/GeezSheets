@@ -45,3 +45,8 @@ export const PROP_PATH       = "./props/";
 export const SOUNDS_PATH     = "./sounds/";
 export const MATERIAL_PATH   = "./assets/";
 export const BG_SCALE        = 32 / 70; // DA map scale factor
+
+// 3D views (planner.html / planner-viewer.html) are disabled until the new
+// 3D system replaces them. Flip to true to bring back the GM 3D panel in
+// mapeditor.html and the player 3D picture-in-picture in index.html.
+export const ENABLE_3D = false;
