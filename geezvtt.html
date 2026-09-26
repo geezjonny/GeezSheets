@@ -68,6 +68,9 @@
 <style>
   #toolRail .mode-btn, #toolRail > button { padding: .55rem !important; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
   #toolRail .mode-btn i, #toolRail > button i { font-size: 1rem !important; }
+  /* tooltips sit to the right of the rail ("left-18" isn't a real Tailwind size, so they had no position) */
+  #toolRail > button { position: relative; }
+  #toolRail > button > span { left: calc(100% + 12px) !important; right: auto !important; top: 50% !important; transform: translateY(-50%); z-index: 60 !important; }
 </style>
 </head>
 <body class="h-full flex flex-col font-sans overflow-hidden select-none bg-slate-950 text-slate-100">
