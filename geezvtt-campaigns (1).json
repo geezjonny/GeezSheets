@@ -1,0 +1,1967 @@
+{
+  "version": "5.0",
+  "settings": {
+    "vttUrl": "vtt.html",
+    "fog": "off"
+  },
+  "things": {
+    "npc_esmeralda__disney": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 637,
+        "y": 323
+      },
+      "id": "npc_esmeralda__disney",
+      "type": "npc",
+      "name": "Esmeralda",
+      "traits": {
+        "role": "PC · Human · Bard 3",
+        "faction": "Dungeons & Disney",
+        "hp": 22,
+        "ac": 14,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__disney"
+    },
+    "npc_jasmine__disney": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 349,
+        "y": 324
+      },
+      "id": "npc_jasmine__disney",
+      "type": "npc",
+      "name": "Jasmine",
+      "traits": {
+        "role": "PC · Human · Ranger 3",
+        "faction": "Dungeons & Disney",
+        "hp": 30,
+        "ac": 16,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__disney"
+    },
+    "npc_kristoff__disney": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 633,
+        "y": 175
+      },
+      "id": "npc_kristoff__disney",
+      "type": "npc",
+      "name": "Kristoff",
+      "traits": {
+        "role": "PC · Human · Fighter 3",
+        "faction": "Dungeons & Disney",
+        "hp": 30,
+        "ac": 18,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__disney"
+    },
+    "npc_wendydarling__disney": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 348,
+        "y": 174
+      },
+      "id": "npc_wendydarling__disney",
+      "type": "npc",
+      "name": "Wendy Darling",
+      "traits": {
+        "role": "PC · Human · Cleric 3",
+        "faction": "Dungeons & Disney",
+        "hp": 27,
+        "ac": 18,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__disney"
+    },
+    "npc_ashara__daddies": {
+      "properties": [],
+      "notes": "Blood already collected by the cult. Related to Maelis (a clone with severed tie during the conflict era) — NOT related to Zersayth. Origin at Sanctus Alarus.",
+      "board": {
+        "x": 2211,
+        "y": 263
+      },
+      "id": "npc_ashara__daddies",
+      "type": "npc",
+      "name": "Ashara",
+      "traits": {
+        "role": "PC · Fire Genasi · Cleric 5",
+        "faction": "Dungeons & Daddies",
+        "hp": 39,
+        "ac": 18,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_esmeralda__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": null,
+      "id": "npc_esmeralda__daddies",
+      "type": "npc",
+      "name": "Esmeralda",
+      "traits": {
+        "role": "PC · Human · Bard 3",
+        "faction": "Dungeons & Disney",
+        "hp": 22,
+        "ac": 14,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_jasmine__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": null,
+      "id": "npc_jasmine__daddies",
+      "type": "npc",
+      "name": "Jasmine",
+      "traits": {
+        "role": "PC · Human · Ranger 3",
+        "faction": "Dungeons & Disney",
+        "hp": 30,
+        "ac": 16,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_kairon__daddies": {
+      "properties": [],
+      "notes": "Blood already collected by the cult. Descent tied to Zersayth's origin line. Parents (Kairon's Dad/Mom) both died at Sanctus Alarus, killed by Maelis.",
+      "board": {
+        "x": 2211,
+        "y": 687
+      },
+      "id": "npc_kairon__daddies",
+      "type": "npc",
+      "name": "Kairon",
+      "traits": {
+        "role": "PC · Dragonborn · Druid 4",
+        "faction": "Dungeons & Daddies",
+        "hp": 30,
+        "ac": 16,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_kristoff__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": null,
+      "id": "npc_kristoff__daddies",
+      "type": "npc",
+      "name": "Kristoff",
+      "traits": {
+        "role": "PC · Human · Fighter 3",
+        "faction": "Dungeons & Disney",
+        "hp": 30,
+        "ac": 18,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_lark__daddies": {
+      "properties": [],
+      "notes": "Descendant of Celastris and Zalrin Golderth; can channel the Heartroot Trees.",
+      "board": {
+        "x": 2211,
+        "y": 526
+      },
+      "id": "npc_lark__daddies",
+      "type": "npc",
+      "name": "Lark",
+      "traits": {
+        "role": "PC · Halfling · Bard 5",
+        "faction": "Dungeons & Daddies",
+        "hp": 33,
+        "ac": 14,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_liora__daddies": {
+      "properties": [],
+      "notes": "Blood already collected by the cult. Daughter of Lian'del — confirmed parent-child sacrifice.",
+      "board": {
+        "x": 2211,
+        "y": 385
+      },
+      "id": "npc_liora__daddies",
+      "type": "npc",
+      "name": "Liora",
+      "traits": {
+        "role": "PC · Wood Elf · Ranger 5",
+        "faction": "Dungeons & Daddies",
+        "hp": 44,
+        "ac": 16,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_rurik__daddies": {
+      "properties": [],
+      "notes": "Descendant of Ormaelin Flintfury; can channel the Crystal Obelisk.",
+      "board": {
+        "x": 1183,
+        "y": 526
+      },
+      "id": "npc_rurik__daddies",
+      "type": "npc",
+      "name": "Rurik",
+      "traits": {
+        "role": "PC · Dwarf · Bard 5",
+        "faction": "Dungeons & Daddies",
+        "hp": 35,
+        "ac": 14,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_seris__daddies": {
+      "properties": [],
+      "notes": "Blood already collected by the cult. Related to Cyris the Deathslayer. Romantically involved with Ka'el Ashfang, who doesn't yet know of her bloodline tie.",
+      "board": {
+        "x": 1183,
+        "y": 263
+      },
+      "id": "npc_seris__daddies",
+      "type": "npc",
+      "name": "Seris",
+      "traits": {
+        "role": "PC · Human · Fighter 5",
+        "faction": "Dungeons & Daddies",
+        "hp": 50,
+        "ac": 18,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_wendydarling__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": null,
+      "id": "npc_wendydarling__daddies",
+      "type": "npc",
+      "name": "Wendy Darling",
+      "traits": {
+        "role": "PC · Human · Cleric 3",
+        "faction": "Dungeons & Disney",
+        "hp": 27,
+        "ac": 18,
+        "status": "Alive",
+        "avatar": "",
+        "pc": true,
+        "generic": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_npc1782923584504__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": null,
+      "id": "npc_npc1782923584504__daddies",
+      "type": "npc",
+      "name": "Deer",
+      "traits": {
+        "role": "Medium beast",
+        "faction": "",
+        "hp": 4,
+        "ac": 13,
+        "status": "Alive",
+        "avatar": "",
+        "pc": false,
+        "generic": true
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_npc1782923594325__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": null,
+      "id": "npc_npc1782923594325__daddies",
+      "type": "npc",
+      "name": "Darkmantle",
+      "traits": {
+        "role": "Small monstrosity",
+        "faction": "",
+        "hp": 22,
+        "ac": 11,
+        "status": "Alive",
+        "avatar": "",
+        "pc": false,
+        "generic": true
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_test__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": null,
+      "id": "npc_test__daddies",
+      "type": "npc",
+      "name": "Test",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": 0,
+        "ac": 10,
+        "status": "Alive",
+        "avatar": "",
+        "pc": false,
+        "generic": true
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmntvjsspy2__daddies": {
+      "properties": [],
+      "notes": "Current king of Sanctus Alarus. Descendant of Aeris Bloom. Owns/controls Varina. Commands three generals: Ka'el Ashfang, Maelis, Sszaryth. Believes he is destined for godhood by completing The Great Undoing — must collect the remaining artifacts (Ring of Desire, Crystal of Healing, Seed of Life, Song of Clouds) plus the bloodlines of all seven original participants (six PCs + already-collected NPCs).",
+      "board": {
+        "x": 1183,
+        "y": 385
+      },
+      "id": "npc_nmrmntvjsspy2__daddies",
+      "type": "npc",
+      "name": "Alaris Bloom",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmnvpi621fn__daddies": {
+      "properties": [],
+      "notes": "Ancient necromancer, general under Alaris Bloom. Rebuilt herself over centuries; believes this era offers an unprecedented opportunity. Created Ashara as a clone with a severed tie during the conflict era. Killed Kairon's parents.",
+      "board": {
+        "x": 871,
+        "y": 264
+      },
+      "id": "npc_nmrmnvpi621fn__daddies",
+      "type": "npc",
+      "name": "Maelis",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmnvzt2jjtn__daddies": {
+      "properties": [],
+      "notes": "General under Alaris Bloom — pale blue drow illusion master. Secretly desires Alaris's power rather than serving him loyally. Uses sensory/identity illusions on cultists, sometimes appearing as Alaris. 'Trust must overcome perception' theme. Currently holding Ka'el Ashfang captive.",
+      "board": {
+        "x": 871,
+        "y": 527
+      },
+      "id": "npc_nmrmnvzt2jjtn__daddies",
+      "type": "npc",
+      "name": "Sszaryth",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "location_nmrmobtea7rpb__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 430,
+        "y": 272
+      },
+      "id": "location_nmrmobtea7rpb__daddies",
+      "type": "location",
+      "name": "bloom-castlegrounds",
+      "traits": {
+        "category": "battlemap",
+        "dd2vtt": "sanctus_entrance_04.dd2vtt"
+      },
+      "campaign": "world__daddies"
+    },
+    "location_nmrmoc9yh2tfw__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 430,
+        "y": 390
+      },
+      "id": "location_nmrmoc9yh2tfw__daddies",
+      "type": "location",
+      "name": "bloom-castleinterior",
+      "traits": {
+        "category": "battlemap",
+        "dd2vtt": "palace_grounds_01.dd2vtt"
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmow9d7qmum__daddies": {
+      "properties": [],
+      "notes": "General under Alaris Bloom. Good-hearted but misguided. Currently captured by Sszaryth. Romantically involved with Seris (previously with Seraphine Stillborn); doesn't yet know Seris's bloodline tie to Cyris.",
+      "board": {
+        "x": 871,
+        "y": 386
+      },
+      "id": "npc_nmrmow9d7qmum__daddies",
+      "type": "npc",
+      "name": "Ka'el Ashfang",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrmp0rqe2zgd__daddies": {
+      "properties": [],
+      "notes": "Occurred at Azurite Pointe during the Crystal Faire. NOT connected to the fog or the Crystal Obelisk's destruction — a separate incident. Heroes defended the town successfully before the army's arrival/evacuation.",
+      "board": {
+        "x": 693,
+        "y": 127
+      },
+      "id": "note_nmrmp0rqe2zgd__daddies",
+      "type": "note",
+      "name": "Zombie Attack",
+      "traits": {
+        "tag": "Event",
+        "color": "#c4bedb"
+      },
+      "campaign": "world__daddies"
+    },
+    "location_nmrmp1be8glla__daddies": {
+      "properties": [
+        {
+          "key": "Attachment",
+          "value": "azurite_pointe.dd2vtt"
+        },
+        {
+          "key": "pc-known",
+          "value": "true"
+        }
+      ],
+      "notes": "Site of the Crystal Faire and the Zombie Attack. The Crystal Obelisk here was destroyed by army explosives during the evacuation to Sanctus Alarus — not by zombies or the fog. No obelisk remains at this location.",
+      "board": {
+        "x": 430,
+        "y": 127
+      },
+      "id": "location_nmrmp1be8glla__daddies",
+      "type": "location",
+      "name": "Azurite Pointe",
+      "traits": {
+        "category": "settlement",
+        "color": "#2b974b",
+        "childMap": "map_location_nmrmp1be8glla__daddies"
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmp2az4ujv1__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 2470,
+        "y": 687
+      },
+      "id": "npc_nmrmp2az4ujv1__daddies",
+      "type": "npc",
+      "name": "Kairon's Dad",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmp2htomkdg__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 2470,
+        "y": 807
+      },
+      "id": "npc_nmrmp2htomkdg__daddies",
+      "type": "npc",
+      "name": "Kairon's Mom",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrmp4rf6o5sh__daddies": {
+      "properties": [],
+      "notes": "Was meant to be a saving act, gone awry — Cyris the Deathslayer (Aeris's bodyguard) accidentally added his own blood while intervening in a conflict during the ritual's execution, corrupting it.\n\nThe 7 were to sacrifice their deepest loves.",
+      "board": {
+        "x": 1675,
+        "y": 385
+      },
+      "id": "note_nmrmp4rf6o5sh__daddies",
+      "type": "note",
+      "name": "The Great Undoing",
+      "traits": {
+        "tag": "Event",
+        "color": "#c4bedb"
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmpc0ysqc35__daddies": {
+      "properties": [],
+      "notes": "King of War - Human. Sacrificed the Ring of Desire (still uncollected/missing). Ancestor of current king Alaris Bloom.",
+      "board": {
+        "x": 1416,
+        "y": 384
+      },
+      "id": "npc_nmrmpc0ysqc35__daddies",
+      "type": "npc",
+      "name": "Aeris Bloom",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmpcvv80mo5__daddies": {
+      "properties": [],
+      "notes": "King of Time - Elf",
+      "board": {
+        "x": 1962,
+        "y": 385
+      },
+      "id": "npc_nmrmpcvv80mo5__daddies",
+      "type": "npc",
+      "name": "Lian'del",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmph770ga3n__daddies": {
+      "properties": [],
+      "notes": "Queen of Life - Dryad. Sacrificed the Seed of Life (still uncollected/missing). Deliberately cultivated the Heartroot Trees with the dryads in anticipation of sabotage (GM Truth — hide from players).",
+      "board": {
+        "x": 1962,
+        "y": 526
+      },
+      "id": "npc_nmrmph770ga3n__daddies",
+      "type": "npc",
+      "name": "Celastris",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmpil4b8zzh__daddies": {
+      "properties": [],
+      "notes": "Queen of the Earth - Dwarf. Sacrificed the Crystal of Healing (NOT yet introduced into the campaign — distinct from the Crystal Obelisk). Deliberately built the Obelisks with the dwarves in anticipation of sabotage (GM Truth — hide from players).",
+      "board": {
+        "x": 1416,
+        "y": 526
+      },
+      "id": "npc_nmrmpil4b8zzh__daddies",
+      "type": "npc",
+      "name": "Ormaelin Flintfury",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmpkd7275im__daddies": {
+      "properties": [],
+      "notes": "King of the Sky - Illithid Dragon. Sacrificed the Song of Clouds, leaving travel to the Far Realm permanently open. Romantically linked to Varina. No direct connection to Sszaryth, Alaris, Maelis, or Ashara.",
+      "board": {
+        "x": 1682,
+        "y": 263
+      },
+      "id": "npc_nmrmpkd7275im__daddies",
+      "type": "npc",
+      "name": "Zersayth, the Voiceless",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrmpm9ovw6qo__daddies": {
+      "properties": [],
+      "notes": "Protection from Void. Cultivated by the dryads — deliberately built in anticipation of sabotage (GM Truth — hide from players).",
+      "board": {
+        "x": 1962,
+        "y": 807
+      },
+      "id": "note_nmrmpm9ovw6qo__daddies",
+      "type": "note",
+      "name": "Heartroot Trees",
+      "traits": {
+        "tag": "Object",
+        "color": "#aecbd8"
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrmpmnilcq9j__daddies": {
+      "properties": [],
+      "notes": "Protection from Null. Created by the dwarves — deliberately built in anticipation of sabotage (GM Truth — hide from players). Destroyed by army explosives during the evacuation from Azurite Pointe to Sanctus Alarus — not by zombies or the fog.",
+      "board": {
+        "x": 1416,
+        "y": 807
+      },
+      "id": "note_nmrmpmnilcq9j__daddies",
+      "type": "note",
+      "name": "Crystal Obelisk",
+      "traits": {
+        "tag": "Object",
+        "color": "#aecbd8"
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrmpo5znh3yh__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1710,
+        "y": 687
+      },
+      "id": "note_nmrmpo5znh3yh__daddies",
+      "type": "note",
+      "name": "Calamity Fog",
+      "traits": {
+        "tag": "Object",
+        "color": "#aecbd8"
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrmpohkxfrji__daddies": {
+      "properties": [],
+      "notes": "drains magic",
+      "board": {
+        "x": 1416,
+        "y": 687
+      },
+      "id": "note_nmrmpohkxfrji__daddies",
+      "type": "note",
+      "name": "Null Fog",
+      "traits": {
+        "tag": "Object",
+        "color": "#aecbd8"
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrmporhv4oga__daddies": {
+      "properties": [],
+      "notes": "drains life",
+      "board": {
+        "x": 1962,
+        "y": 687
+      },
+      "id": "note_nmrmporhv4oga__daddies",
+      "type": "note",
+      "name": "Void Fog",
+      "traits": {
+        "tag": "Object",
+        "color": "#aecbd8"
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmpsjzlagoe__daddies": {
+      "properties": [],
+      "notes": "Lich Queen. Sacrificed blood of/for Zersayth, romantically linked to him during the ritual. Now owned/controlled by Alaris Bloom (modern era) — was under Aeris Bloom's household during the original ritual conflict.",
+      "board": {
+        "x": 1962,
+        "y": 264
+      },
+      "id": "npc_nmrmpsjzlagoe__daddies",
+      "type": "npc",
+      "name": "Varina",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrmpu97nl5bl__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 871,
+        "y": 688
+      },
+      "id": "npc_nmrmpu97nl5bl__daddies",
+      "type": "npc",
+      "name": "Seraphine Stillborn",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "location_nmrmpvoc548yc__daddies": {
+      "properties": [
+        {
+          "key": "pc-known",
+          "value": "true"
+        }
+      ],
+      "notes": "Fallen keystone port",
+      "board": {
+        "x": 430,
+        "y": 558
+      },
+      "id": "location_nmrmpvoc548yc__daddies",
+      "type": "location",
+      "name": "Sunfall Keep",
+      "traits": {
+        "category": "settlement",
+        "color": "#826635",
+        "childMap": "map_location_nmrmpvoc548yc__daddies"
+      },
+      "campaign": "world__daddies"
+    },
+    "location_nmrmpzcdr1pkx__daddies": {
+      "properties": [
+        {
+          "key": "pc-known",
+          "value": "true"
+        }
+      ],
+      "notes": "",
+      "board": {
+        "x": 1710,
+        "y": 807
+      },
+      "id": "location_nmrmpzcdr1pkx__daddies",
+      "type": "location",
+      "name": "Sanctus Alarus",
+      "traits": {
+        "category": "settlement",
+        "color": "#449fe4",
+        "childMap": "map_location_nmrmpzcdr1pkx__daddies"
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrn1bmfejqjd__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 430,
+        "y": 0
+      },
+      "id": "note_nmrn1bmfejqjd__daddies",
+      "type": "note",
+      "name": "Daddies",
+      "traits": {
+        "tag": "Campaign",
+        "color": "#d2bedb"
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrx1r2a3ga8r__daddies": {
+      "properties": [],
+      "notes": "Met Celastris in the deep forest",
+      "board": {
+        "x": 2470,
+        "y": 526
+      },
+      "id": "npc_nmrx1r2a3ga8r__daddies",
+      "type": "npc",
+      "name": "Zalrin Golderth",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrx1u9njgdm6__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 2470,
+        "y": 385
+      },
+      "id": "npc_nmrx1u9njgdm6__daddies",
+      "type": "npc",
+      "name": "Faedove Windstep",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmrx24e2kzurb__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1416,
+        "y": 263
+      },
+      "id": "npc_nmrx24e2kzurb__daddies",
+      "type": "npc",
+      "name": "Cyris the Deathslayer",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "note_nmrx2hwrmr27k__daddies": {
+      "properties": [],
+      "notes": "Blood of Liora - Lian'del\nBlood of Zersayth - Varina\nRing of Desire - Aeris (still uncollected/missing)\nCrystal of Healing - Ormaelin (NOT yet introduced into the campaign)\nSeed of Life - Celastris (still uncollected/missing)\nAccidental participant - Cyris (added his own blood while protecting Aeris)\nSong of Clouds - Zersayth (still uncollected/missing)\n",
+      "board": {
+        "x": 1675,
+        "y": 526
+      },
+      "id": "note_nmrx2hwrmr27k__daddies",
+      "type": "note",
+      "name": "Required Sacrifice",
+      "traits": {
+        "tag": "Object",
+        "color": "#aecbd8"
+      },
+      "campaign": "world__daddies"
+    },
+    "location_nmsfae1ot5jvh__daddies": {
+      "properties": [],
+      "notes": "origin of Zersayth and the fog",
+      "board": {
+        "x": 1694,
+        "y": 127
+      },
+      "id": "location_nmsfae1ot5jvh__daddies",
+      "type": "location",
+      "name": "Far Realms",
+      "traits": {
+        "category": "site"
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmu7ul0y421gh__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1098,
+        "y": 807
+      },
+      "id": "npc_nmu7ul0y421gh__daddies",
+      "type": "npc",
+      "name": "Gayric",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmu7ulcuoujh0__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1098,
+        "y": 898
+      },
+      "id": "npc_nmu7ulcuoujh0__daddies",
+      "type": "npc",
+      "name": "CJ",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "location_nmu7un54ged91__daddies": {
+      "properties": [
+        {
+          "key": "pc-known",
+          "value": "true"
+        }
+      ],
+      "notes": "",
+      "board": {
+        "x": 1098,
+        "y": 703
+      },
+      "id": "location_nmu7un54ged91__daddies",
+      "type": "location",
+      "name": "Tharun's Anvil",
+      "traits": {
+        "category": "settlement",
+        "dd2vtt": "tharunsanvil.dd2vtt",
+        "color": "#c7c5c2"
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmu7v2esjntb8__daddies": {
+      "properties": [],
+      "notes": "great helm of sikh\n1st king",
+      "board": {
+        "x": 839,
+        "y": 1224
+      },
+      "id": "npc_nmu7v2esjntb8__daddies",
+      "type": "npc",
+      "name": "V",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_nmu7v4uwo1gyl__daddies": {
+      "properties": [],
+      "notes": "Helm of Spinning",
+      "board": {
+        "x": 843,
+        "y": 1111
+      },
+      "id": "npc_nmu7v4uwo1gyl__daddies",
+      "type": "npc",
+      "name": "Ditrik the Great",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "pc": false
+      },
+      "campaign": "world__daddies"
+    },
+    "npc_tok_jg__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": null,
+      "id": "npc_tok_jg__daddies",
+      "type": "npc",
+      "name": "JG",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": "",
+        "generic": true
+      },
+      "campaign": "world__daddies"
+    },
+    "location_bm_azuritepointe_9__daddies": {
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 200,
+        "y": 120
+      },
+      "id": "location_bm_azuritepointe_9__daddies",
+      "type": "location",
+      "name": "AzuritePointe",
+      "traits": {
+        "category": "battlemap",
+        "dd2vtt": "azuritepointe.dd2vtt"
+      },
+      "campaign": "world__daddies"
+    },
+    "location_mufq5lphzhrk__daddies": {
+      "id": "location_mufq5lphzhrk__daddies",
+      "type": "location",
+      "name": "Sanctus Marketplace",
+      "traits": {
+        "category": "battlemap",
+        "dd2vtt": "market_district_03.dd2vtt"
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1705,
+        "y": 881
+      },
+      "campaign": "world__daddies"
+    },
+    "location_mufqm4s8htjh__daddies": {
+      "id": "location_mufqm4s8htjh__daddies",
+      "type": "location",
+      "name": "Sanctus Forest Road",
+      "traits": {
+        "category": "battlemap",
+        "dd2vtt": "forest_road.dd2vtt"
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1700,
+        "y": 960
+      },
+      "campaign": "world__daddies"
+    },
+    "location_mufquz6t2nrt__daddies": {
+      "id": "location_mufquz6t2nrt__daddies",
+      "type": "location",
+      "name": "Azurite Pointe",
+      "traits": {
+        "category": "battlemap",
+        "dd2vtt": "azurite_pointe.dd2vtt"
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 204,
+        "y": 190
+      },
+      "campaign": "world__daddies"
+    },
+    "location_muftikj586jl": {
+      "id": "location_muftikj586jl",
+      "type": "location",
+      "name": "Misty Oaks",
+      "traits": {
+        "category": "settlement",
+        "color": "#7fb950"
+      },
+      "properties": [
+        {
+          "key": "pc-visited",
+          "value": "true"
+        }
+      ],
+      "notes": "",
+      "board": {
+        "x": -230,
+        "y": 283
+      },
+      "campaign": "world__disney"
+    },
+    "location_muftj82xvg58": {
+      "id": "location_muftj82xvg58",
+      "type": "location",
+      "name": "Stone Cross",
+      "traits": {
+        "category": "settlement",
+        "color": "#9a9489"
+      },
+      "properties": [
+        {
+          "key": "pc-visited",
+          "value": "true"
+        }
+      ],
+      "notes": "",
+      "board": {
+        "x": -235,
+        "y": 492
+      },
+      "campaign": "world__disney"
+    },
+    "location_muftjb35lyo5": {
+      "id": "location_muftjb35lyo5",
+      "type": "location",
+      "name": "The Aselian Vale",
+      "traits": {
+        "category": "settlement",
+        "color": "#babc57"
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1173,
+        "y": 289
+      },
+      "campaign": "world__disney"
+    },
+    "location_mufts4ka5esh": {
+      "id": "location_mufts4ka5esh",
+      "type": "location",
+      "name": "Anchorfall",
+      "traits": {
+        "category": "settlement",
+        "color": "#5a575c",
+        "childMap": "map_location_mufts4ka5esh"
+      },
+      "properties": [
+        {
+          "key": "pc-visited",
+          "value": "true"
+        }
+      ],
+      "notes": "",
+      "board": {
+        "x": -237,
+        "y": 106
+      },
+      "campaign": "world__disney"
+    },
+    "npc_mufu35drfptw": {
+      "id": "npc_mufu35drfptw",
+      "type": "npc",
+      "name": "Old Man Shade (Hades)",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": ""
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 176,
+        "y": 633
+      },
+      "campaign": "world__disney"
+    },
+    "location_mufu5txx0sm7": {
+      "id": "location_mufu5txx0sm7",
+      "type": "location",
+      "name": "Avernus",
+      "traits": {
+        "category": "site",
+        "color": "#950e0e"
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 171,
+        "y": 549
+      },
+      "campaign": "world__disney"
+    },
+    "npc_mufub53yqr84": {
+      "id": "npc_mufub53yqr84",
+      "type": "npc",
+      "name": "Prince Caldren of Aselia",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": ""
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1173,
+        "y": 401
+      },
+      "campaign": "world__disney"
+    },
+    "npc_mufug956grht": {
+      "id": "npc_mufug956grht",
+      "type": "npc",
+      "name": "Ya'nir of Many Faces",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": ""
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1178,
+        "y": 552
+      },
+      "campaign": "world__disney"
+    },
+    "npc_mufuionsow0x": {
+      "id": "npc_mufuionsow0x",
+      "type": "npc",
+      "name": "Surilla the Cunning",
+      "traits": {
+        "role": "",
+        "faction": "",
+        "hp": "",
+        "ac": "",
+        "status": "Alive",
+        "avatar": ""
+      },
+      "properties": [],
+      "notes": "",
+      "board": {
+        "x": 1176,
+        "y": 691
+      },
+      "campaign": "world__disney"
+    }
+  },
+  "links": {
+    "link_manual-kael-captured__daddies": {
+      "id": "link_manual-kael-captured__daddies",
+      "from": "npc_nmrmow9d7qmum__daddies",
+      "to": "npc_nmrmnvzt2jjtn__daddies",
+      "label": "captured by"
+    },
+    "link_nmrmp1nd6kyad__daddies": {
+      "id": "link_nmrmp1nd6kyad__daddies",
+      "from": "note_nmrmp0rqe2zgd__daddies",
+      "to": "location_nmrmp1be8glla__daddies",
+      "label": "event location"
+    },
+    "link_nmrmp338uv35x__daddies": {
+      "id": "link_nmrmp338uv35x__daddies",
+      "from": "npc_nmrmp2htomkdg__daddies",
+      "to": "npc_nmrmnvpi621fn__daddies",
+      "label": "killed by"
+    },
+    "link_nmrmp390sxfaw__daddies": {
+      "id": "link_nmrmp390sxfaw__daddies",
+      "from": "npc_nmrmp2az4ujv1__daddies",
+      "to": "npc_nmrmnvpi621fn__daddies",
+      "label": "killed by"
+    },
+    "link_nmrmp3p5y0z14__daddies": {
+      "id": "link_nmrmp3p5y0z14__daddies",
+      "from": "npc_nmrmp2az4ujv1__daddies",
+      "to": "npc_kairon__daddies",
+      "label": "related"
+    },
+    "link_nmrmp3s9uo35r__daddies": {
+      "id": "link_nmrmp3s9uo35r__daddies",
+      "from": "npc_nmrmp2htomkdg__daddies",
+      "to": "npc_kairon__daddies",
+      "label": "related"
+    },
+    "link_nmrmp47fqptjm__daddies": {
+      "id": "link_nmrmp47fqptjm__daddies",
+      "from": "npc_ashara__daddies",
+      "to": "npc_nmrmnvpi621fn__daddies",
+      "label": "related"
+    },
+    "link_nmrmpdw4ilpp7__daddies": {
+      "id": "link_nmrmpdw4ilpp7__daddies",
+      "from": "npc_nmrmntvjsspy2__daddies",
+      "to": "npc_nmrmpc0ysqc35__daddies",
+      "label": "related"
+    },
+    "link_nmrmpfx3a95r2__daddies": {
+      "id": "link_nmrmpfx3a95r2__daddies",
+      "from": "npc_nmrmpc0ysqc35__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "participant in"
+    },
+    "link_nmrmpg0xc2sjg__daddies": {
+      "id": "link_nmrmpg0xc2sjg__daddies",
+      "from": "npc_nmrmpcvv80mo5__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "participant in"
+    },
+    "link_nmrmphcz84g16__daddies": {
+      "id": "link_nmrmphcz84g16__daddies",
+      "from": "npc_nmrmph770ga3n__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "participant in"
+    },
+    "link_nmrmpirt95pyj__daddies": {
+      "id": "link_nmrmpirt95pyj__daddies",
+      "from": "npc_nmrmpil4b8zzh__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "participant in"
+    },
+    "link_nmrmpkijv5cdj__daddies": {
+      "id": "link_nmrmpkijv5cdj__daddies",
+      "from": "npc_nmrmpkd7275im__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "participant in"
+    },
+    "link_nmrmpnl7kg1f5__daddies": {
+      "id": "link_nmrmpnl7kg1f5__daddies",
+      "from": "note_nmrmpm9ovw6qo__daddies",
+      "to": "npc_nmrmph770ga3n__daddies",
+      "label": "created by"
+    },
+    "link_nmrmpnqc3f006__daddies": {
+      "id": "link_nmrmpnqc3f006__daddies",
+      "from": "note_nmrmpmnilcq9j__daddies",
+      "to": "npc_nmrmpil4b8zzh__daddies",
+      "label": "created by"
+    },
+    "link_nmrmpoc7pgpge__daddies": {
+      "id": "link_nmrmpoc7pgpge__daddies",
+      "from": "note_nmrmp4rf6o5sh__daddies",
+      "to": "note_nmrmpo5znh3yh__daddies",
+      "label": "caused by"
+    },
+    "link_nmrmpokdb1fkf__daddies": {
+      "id": "link_nmrmpokdb1fkf__daddies",
+      "from": "note_nmrmpo5znh3yh__daddies",
+      "to": "note_nmrmpohkxfrji__daddies",
+      "label": "caused by"
+    },
+    "link_nmrmpoz8pqu25__daddies": {
+      "id": "link_nmrmpoz8pqu25__daddies",
+      "from": "note_nmrmporhv4oga__daddies",
+      "to": "note_nmrmpo5znh3yh__daddies",
+      "label": "caused by"
+    },
+    "link_nmrmppccplw4z__daddies": {
+      "id": "link_nmrmppccplw4z__daddies",
+      "from": "note_nmrmpm9ovw6qo__daddies",
+      "to": "note_nmrmporhv4oga__daddies",
+      "label": "protection from"
+    },
+    "link_nmrmppj3nah9x__daddies": {
+      "id": "link_nmrmppj3nah9x__daddies",
+      "from": "note_nmrmpmnilcq9j__daddies",
+      "to": "note_nmrmpohkxfrji__daddies",
+      "label": "protection from"
+    },
+    "link_nmrmptrepcyaf__daddies": {
+      "id": "link_nmrmptrepcyaf__daddies",
+      "from": "npc_nmrmow9d7qmum__daddies",
+      "to": "npc_seris__daddies",
+      "label": "romance current"
+    },
+    "link_nmrmpunglwji3__daddies": {
+      "id": "link_nmrmpunglwji3__daddies",
+      "from": "npc_nmrmow9d7qmum__daddies",
+      "to": "npc_nmrmpu97nl5bl__daddies",
+      "label": "romance past"
+    },
+    "link_nmrmpxp0t699y__daddies": {
+      "id": "link_nmrmpxp0t699y__daddies",
+      "from": "npc_rurik__daddies",
+      "to": "note_nmrmpmnilcq9j__daddies",
+      "label": "can channel"
+    },
+    "link_nmrmpxwd9lmvf__daddies": {
+      "id": "link_nmrmpxwd9lmvf__daddies",
+      "from": "npc_lark__daddies",
+      "to": "note_nmrmpm9ovw6qo__daddies",
+      "label": "can channel"
+    },
+    "link_nmrmq0gln5nei__daddies": {
+      "id": "link_nmrmq0gln5nei__daddies",
+      "from": "npc_ashara__daddies",
+      "to": "location_nmrmpzcdr1pkx__daddies",
+      "label": "origin"
+    },
+    "link_nmrmq1w6ta60n__daddies": {
+      "id": "link_nmrmq1w6ta60n__daddies",
+      "from": "npc_liora__daddies",
+      "to": "npc_nmrmpcvv80mo5__daddies",
+      "label": "related"
+    },
+    "link_nmrmq4g3d55x5__daddies": {
+      "id": "link_nmrmq4g3d55x5__daddies",
+      "from": "npc_liora__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "participant in"
+    },
+    "link_nmrnz4hrk9xs4__daddies": {
+      "id": "link_nmrnz4hrk9xs4__daddies",
+      "from": "npc_nmrmp2az4ujv1__daddies",
+      "to": "location_nmrmpzcdr1pkx__daddies",
+      "label": "died here"
+    },
+    "link_nmrnz4l08te7q__daddies": {
+      "id": "link_nmrnz4l08te7q__daddies",
+      "from": "npc_nmrmp2htomkdg__daddies",
+      "to": "location_nmrmpzcdr1pkx__daddies",
+      "label": "died here"
+    },
+    "link_nmrx1flhj41bu__daddies": {
+      "id": "link_nmrx1flhj41bu__daddies",
+      "from": "npc_rurik__daddies",
+      "to": "npc_nmrmpil4b8zzh__daddies",
+      "label": "descendant of"
+    },
+    "link_nmrx1s3zx313v__daddies": {
+      "id": "link_nmrx1s3zx313v__daddies",
+      "from": "npc_nmrx1r2a3ga8r__daddies",
+      "to": "npc_nmrmph770ga3n__daddies",
+      "label": "spouse of"
+    },
+    "link_nmrx1scwjp6yr__daddies": {
+      "id": "link_nmrx1scwjp6yr__daddies",
+      "from": "npc_lark__daddies",
+      "to": "npc_nmrx1r2a3ga8r__daddies",
+      "label": "descendant of"
+    },
+    "link_nmrx1shq9y8xt__daddies": {
+      "id": "link_nmrx1shq9y8xt__daddies",
+      "from": "npc_lark__daddies",
+      "to": "npc_nmrmph770ga3n__daddies",
+      "label": "descendant of"
+    },
+    "link_nmrx1ufnxdn23__daddies": {
+      "id": "link_nmrx1ufnxdn23__daddies",
+      "from": "npc_nmrx1u9njgdm6__daddies",
+      "to": "npc_liora__daddies",
+      "label": "related"
+    },
+    "link_nmrx1un8bd5l4__daddies": {
+      "id": "link_nmrx1un8bd5l4__daddies",
+      "from": "npc_nmrx1u9njgdm6__daddies",
+      "to": "npc_nmrmpcvv80mo5__daddies",
+      "label": "spouse"
+    },
+    "link_nmrx24z0urezi__daddies": {
+      "id": "link_nmrx24z0urezi__daddies",
+      "from": "npc_seris__daddies",
+      "to": "npc_nmrx24e2kzurb__daddies",
+      "label": "related"
+    },
+    "link_nmrx27k70qiah__daddies": {
+      "id": "link_nmrx27k70qiah__daddies",
+      "from": "npc_nmrx24e2kzurb__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "participant in"
+    },
+    "link_nmrx27o3ecit7__daddies": {
+      "id": "link_nmrx27o3ecit7__daddies",
+      "from": "npc_nmrmpsjzlagoe__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "participant in"
+    },
+    "link_nmrx28xfmatyc__daddies": {
+      "id": "link_nmrx28xfmatyc__daddies",
+      "from": "npc_nmrx24e2kzurb__daddies",
+      "to": "npc_nmrmpc0ysqc35__daddies",
+      "label": "ally of"
+    },
+    "link_nmrx2a3hhrvej__daddies": {
+      "id": "link_nmrx2a3hhrvej__daddies",
+      "from": "npc_nmrmpkd7275im__daddies",
+      "to": "npc_kairon__daddies",
+      "label": "descendant of"
+    },
+    "link_nmrx2b81ssv6v__daddies": {
+      "id": "link_nmrx2b81ssv6v__daddies",
+      "from": "npc_nmrmpsjzlagoe__daddies",
+      "to": "npc_nmrmpkd7275im__daddies",
+      "label": "love"
+    },
+    "link_nmrx2cie6shwd__daddies": {
+      "id": "link_nmrx2cie6shwd__daddies",
+      "from": "npc_nmrmow9d7qmum__daddies",
+      "to": "npc_nmrmntvjsspy2__daddies",
+      "label": "general of"
+    },
+    "link_nmrx2cr5svrkx__daddies": {
+      "id": "link_nmrx2cr5svrkx__daddies",
+      "from": "npc_nmrmnvpi621fn__daddies",
+      "to": "npc_nmrmntvjsspy2__daddies",
+      "label": "general of"
+    },
+    "link_nmrx2dcyw3v66__daddies": {
+      "id": "link_nmrx2dcyw3v66__daddies",
+      "from": "npc_nmrmnvzt2jjtn__daddies",
+      "to": "npc_nmrmntvjsspy2__daddies",
+      "label": "general of"
+    },
+    "link_nmrx2i44a4c7t__daddies": {
+      "id": "link_nmrx2i44a4c7t__daddies",
+      "from": "note_nmrx2hwrmr27k__daddies",
+      "to": "note_nmrmp4rf6o5sh__daddies",
+      "label": "requirement"
+    },
+    "link_nmrx2oqlpv8ln__daddies": {
+      "id": "link_nmrx2oqlpv8ln__daddies",
+      "from": "npc_nmrmpsjzlagoe__daddies",
+      "to": "npc_nmrmnvpi621fn__daddies",
+      "label": "descendant of"
+    },
+    "link_nmrx2qfx1duqq__daddies": {
+      "id": "link_nmrx2qfx1duqq__daddies",
+      "from": "npc_nmrmp2htomkdg__daddies",
+      "to": "npc_nmrmpkd7275im__daddies",
+      "label": "related"
+    },
+    "link_nmrx2qkfn0caj__daddies": {
+      "id": "link_nmrx2qkfn0caj__daddies",
+      "from": "npc_nmrmp2az4ujv1__daddies",
+      "to": "npc_nmrmpkd7275im__daddies",
+      "label": "related"
+    },
+    "link_nmrx2rfz98vsm__daddies": {
+      "id": "link_nmrx2rfz98vsm__daddies",
+      "from": "npc_nmrx24e2kzurb__daddies",
+      "to": "npc_nmrmpkd7275im__daddies",
+      "label": "enemy of"
+    },
+    "link_nmsfaeezr2k1s__daddies": {
+      "id": "link_nmsfaeezr2k1s__daddies",
+      "from": "npc_nmrmpkd7275im__daddies",
+      "to": "location_nmsfae1ot5jvh__daddies",
+      "label": "from"
+    },
+    "link_nmu7x9nws47pb__daddies": {
+      "id": "link_nmu7x9nws47pb__daddies",
+      "from": "npc_nmu7ul0y421gh__daddies",
+      "to": "location_nmu7un54ged91__daddies",
+      "label": "current location"
+    },
+    "link_nmu7x9puc673q__daddies": {
+      "id": "link_nmu7x9puc673q__daddies",
+      "from": "npc_nmu7ulcuoujh0__daddies",
+      "to": "location_nmu7un54ged91__daddies",
+      "label": "current location"
+    },
+    "link_nmu7xad1sjh44__daddies": {
+      "id": "link_nmu7xad1sjh44__daddies",
+      "from": "npc_nmu7v2esjntb8__daddies",
+      "to": "location_nmu7un54ged91__daddies",
+      "label": "origin"
+    },
+    "link_nmu7xaf7w05n0__daddies": {
+      "id": "link_nmu7xaf7w05n0__daddies",
+      "from": "npc_nmu7v4uwo1gyl__daddies",
+      "to": "location_nmu7un54ged91__daddies",
+      "label": "origin"
+    },
+    "link_mapof_location_bm_azuritepointe_9__daddies": {
+      "id": "link_mapof_location_bm_azuritepointe_9__daddies",
+      "from": "location_bm_azuritepointe_9__daddies",
+      "to": "location_nmrmp1be8glla__daddies",
+      "label": "map of"
+    },
+    "link_mufu6qcmkzxo": {
+      "id": "link_mufu6qcmkzxo",
+      "from": "npc_mufu35drfptw",
+      "to": "location_mufu5txx0sm7",
+      "label": "own half of"
+    }
+  },
+  "maps": {
+    "world__disney": {
+      "id": "world__disney",
+      "name": "Disney",
+      "image": "Dave 2026-09-24-10-28.png",
+      "pins": {
+        "location_muftikj586jl": {
+          "x": 0.72685,
+          "y": 0.68131
+        },
+        "location_muftj82xvg58": {
+          "x": 0.73596,
+          "y": 0.75128
+        },
+        "location_muftjb35lyo5": {
+          "x": 0.68099,
+          "y": 0.86272
+        },
+        "location_mufts4ka5esh": {
+          "x": 0.69307,
+          "y": 0.6946
+        },
+        "location_mufu5txx0sm7": {
+          "x": 0.71292,
+          "y": 1.10391
+        }
+      },
+      "tiles": {},
+      "gridSize": 64,
+      "parentMap": null,
+      "parentThing": null,
+      "roads": {
+        "road_muftz2xdfan7": {
+          "id": "road_muftz2xdfan7",
+          "from": "location_muftikj586jl",
+          "to": "location_muftj82xvg58",
+          "noise": 0.51,
+          "seed": 405008789,
+          "type": "road",
+          "title": "Misty Oaks – Stone Cross",
+          "properties": [],
+          "notes": ""
+        },
+        "road_muftzi5j2emv": {
+          "id": "road_muftzi5j2emv",
+          "from": "location_muftikj586jl",
+          "to": "location_mufts4ka5esh",
+          "noise": 0.4,
+          "seed": 819718183,
+          "type": "road",
+          "title": "Misty Oaks – Anchorfall",
+          "properties": [],
+          "notes": ""
+        },
+        "road_mufu01suu34k": {
+          "id": "road_mufu01suu34k",
+          "from": "location_muftjb35lyo5",
+          "to": "location_muftj82xvg58",
+          "noise": 0.51,
+          "seed": 531277877,
+          "type": "road",
+          "title": "The Aselian Vale – Stone Cross",
+          "properties": [],
+          "notes": "",
+          "via": [
+            {
+              "x": 0.71475,
+              "y": 0.84247
+            }
+          ]
+        },
+        "road_mufu02ygy9sp": {
+          "id": "road_mufu02ygy9sp",
+          "from": "location_mufts4ka5esh",
+          "to": "location_muftjb35lyo5",
+          "noise": 0.69,
+          "seed": 536399963,
+          "type": "road",
+          "title": "Anchorfall – The Aselian Vale",
+          "properties": [],
+          "notes": "",
+          "via": [
+            {
+              "x": 0.67442,
+              "y": 0.77858
+            }
+          ]
+        }
+      }
+    },
+    "world__daddies": {
+      "id": "world__daddies",
+      "name": "Daddies",
+      "image": "Auteia 2026-09-23-21-15.png",
+      "pins": {
+        "location_nmrmp1be8glla__daddies": {
+          "x": 0.64541,
+          "y": 0.29196
+        },
+        "location_nmrmpzcdr1pkx__daddies": {
+          "x": 0.63413,
+          "y": 0.03659
+        },
+        "location_nmrmpvoc548yc__daddies": {
+          "x": 0.60849,
+          "y": 0.19547
+        },
+        "location_nmu7un54ged91__daddies": {
+          "x": 0.90048,
+          "y": 0.33473
+        }
+      },
+      "tiles": {},
+      "gridSize": 64,
+      "parentMap": null,
+      "parentThing": null,
+      "roads": {
+        "road_mufqwkgi4vd3__daddies": {
+          "id": "road_mufqwkgi4vd3__daddies",
+          "from": "location_nmrmp1be8glla__daddies",
+          "to": "location_nmrmpvoc548yc__daddies",
+          "noise": 0.84,
+          "seed": 956381964,
+          "type": "road",
+          "title": "Azurite Pointe – Sunfall Keep",
+          "properties": [
+            {
+              "key": "pc-visited",
+              "value": "true"
+            }
+          ],
+          "notes": "",
+          "via": [
+            {
+              "x": 0.65633,
+              "y": 0.26595
+            },
+            {
+              "x": 0.63136,
+              "y": 0.20559
+            }
+          ]
+        },
+        "road_mufqxj4u7dxk__daddies": {
+          "id": "road_mufqxj4u7dxk__daddies",
+          "from": "location_nmrmpvoc548yc__daddies",
+          "to": "location_nmrmpzcdr1pkx__daddies",
+          "noise": 0.59,
+          "seed": 653736342,
+          "type": "road",
+          "title": "Sunfall Keep – Sanctus Alarus",
+          "properties": [
+            {
+              "key": "pc-visited",
+              "value": "true"
+            }
+          ],
+          "notes": "",
+          "via": [
+            {
+              "x": 0.61176,
+              "y": 0.15096
+            },
+            {
+              "x": 0.60573,
+              "y": 0.09032
+            }
+          ]
+        }
+      }
+    },
+    "map_location_nmrmpzcdr1pkx__daddies": {
+      "id": "map_location_nmrmpzcdr1pkx__daddies",
+      "name": "Sanctus Alarus",
+      "image": "ChatGPT Image Sep 24, 2026, 09_05_16 AM.png",
+      "pins": {
+        "location_nmrmobtea7rpb__daddies": {
+          "x": 0.17358,
+          "y": 0.71113
+        },
+        "location_mufq5lphzhrk__daddies": {
+          "x": 0.62719,
+          "y": 0.27486
+        },
+        "location_nmrmoc9yh2tfw__daddies": {
+          "x": 0.24296,
+          "y": 0.26819
+        },
+        "location_mufqm4s8htjh__daddies": {
+          "x": 0.00647,
+          "y": 0.70797
+        }
+      },
+      "tiles": {},
+      "gridSize": 40,
+      "parentMap": "world__daddies",
+      "parentThing": "location_nmrmpzcdr1pkx__daddies",
+      "roads": {}
+    },
+    "map_location_nmrmp1be8glla__daddies": {
+      "id": "map_location_nmrmp1be8glla__daddies",
+      "name": "Azurite Pointe",
+      "image": "ChatGPT Image Sep 24, 2026, 09_25_53 AM.png",
+      "pins": {
+        "location_mufquz6t2nrt__daddies": {
+          "x": 0.5249,
+          "y": 0.30865
+        }
+      },
+      "tiles": {},
+      "gridSize": 40,
+      "parentMap": "world__daddies",
+      "parentThing": "location_nmrmp1be8glla__daddies",
+      "roads": {}
+    },
+    "map_location_nmrmpvoc548yc__daddies": {
+      "id": "map_location_nmrmpvoc548yc__daddies",
+      "name": "Sunfall Keep",
+      "image": "ChatGPT Image Sep 24, 2026, 09_32_40 AM.png",
+      "pins": {},
+      "tiles": {},
+      "roads": {},
+      "gridSize": 40,
+      "parentMap": "world__daddies",
+      "parentThing": "location_nmrmpvoc548yc__daddies"
+    },
+    "map_location_mufts4ka5esh": {
+      "id": "map_location_mufts4ka5esh",
+      "name": "Anchorfall",
+      "image": "ChatGPT Image Sep 24, 2026, 10_55_03 AM.png",
+      "pins": {},
+      "tiles": {},
+      "roads": {},
+      "gridSize": 40,
+      "parentMap": "world__disney",
+      "parentThing": "location_mufts4ka5esh"
+    }
+  },
+  "battles": {
+    "location_nmrmobtea7rpb__daddies": {
+      "tokens": {
+        "npc_ashara__daddies": {
+          "x": 0.51639,
+          "y": 0.43443
+        },
+        "npc_lark__daddies": {
+          "x": 0.48361,
+          "y": 0.43443
+        },
+        "npc_liora__daddies": {
+          "x": 0.5,
+          "y": 0.41803
+        },
+        "npc_seris__daddies": {
+          "x": 0.51639,
+          "y": 0.40164
+        },
+        "npc_rurik__daddies": {
+          "x": 0.48361,
+          "y": 0.40164
+        }
+      }
+    },
+    "location_nmu7un54ged91__daddies": {
+      "tokens": {}
+    },
+    "location_bm_azuritepointe_9__daddies": {
+      "tokens": {
+        "npc_tok_jg__daddies": {
+          "x": 0.35,
+          "y": 0.30833
+        }
+      }
+    },
+    "location_mufq5lphzhrk__daddies": {
+      "tokens": {}
+    },
+    "location_nmrmoc9yh2tfw__daddies": {
+      "tokens": {
+        "npc_nmrmntvjsspy2__daddies": {
+          "x": 0.5,
+          "y": 0.18852
+        },
+        "npc_nmrmnvpi621fn__daddies": {
+          "x": 0.45082,
+          "y": 0.22131
+        },
+        "npc_nmrmnvzt2jjtn__daddies": {
+          "x": 0.54918,
+          "y": 0.22131
+        }
+      }
+    },
+    "location_mufqm4s8htjh__daddies": {
+      "tokens": {}
+    },
+    "location_mufquz6t2nrt__daddies": {
+      "tokens": {}
+    }
+  },
+  "view": {
+    "level": "DM_BOARD",
+    "worldId": "world__disney",
+    "locationMapId": "map_location_mufts4ka5esh",
+    "battleId": null
+  }
+}
