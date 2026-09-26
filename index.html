@@ -198,6 +198,10 @@
                 <i class="fa-solid fa-eye-low-vision text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Fog for players on this map</span>
             </button>
+            <button id="railMarkerSize" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-circle-dot text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Marker size</span>
+            </button>
             <div id="railDivider2" class="w-7 h-px bg-slate-700 my-0.5"></div>
 
             <button id="modeWall" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
@@ -1397,7 +1401,7 @@
                 const u = (px - sc * g.pw) / g.pw, v = (py - sr * g.ph) / g.ph;
                 const x = s.x + g.pw / 2 + (u - 0.5) * g.pw * s.sx, y = s.y + g.ph / 2 + (v - 0.5) * g.ph * s.sy;
                 mirrorHits.push({ id, x, y });
-                const r = Math.max(9, ui.size.w / 160);
+                const r = Math.max(9, ui.size.w / 160) * markerK(map);
                 markerCtx.save();
                 markerCtx.shadowColor = '#d946ef'; markerCtx.shadowBlur = r * 1.6;
                 markerCtx.beginPath(); markerCtx.arc(x, y, r, 0, Math.PI * 2);
@@ -2014,6 +2018,10 @@
             return best;
         }
 
+        // Marker size per map (maps.markerScale); smaller images want smaller markers
+        const MARKER_SIZES = [0.4, 0.65, 1, 1.5];
+        const MARKER_SIZE_NAMES = { 0.4: 'small', 0.65: 'medium', 1: 'large', 1.5: 'extra large' };
+        const markerK = (map) => (map && map.markerScale) || 0.65;
         function drawMarkers(map) {
             markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
             drawRoads(map);
@@ -2022,7 +2030,7 @@
                 const chain = dmChain();
                 const hereId = chain.find(i => map.pins[i]);
                 if (hereId) {
-                    const p = pinPx(map.pins[hereId]), r = Math.max(22, ui.size.w / 55);
+                    const p = pinPx(map.pins[hereId]), r = Math.max(22, ui.size.w / 55) * markerK(map);
                     markerCtx.save();
                     markerCtx.shadowColor = '#f43f5e'; markerCtx.shadowBlur = r;
                     markerCtx.strokeStyle = '#f43f5e'; markerCtx.lineWidth = Math.max(3, r / 6);
@@ -2040,39 +2048,40 @@
                 const p = pinPx(pin);
                 const cat = catOf(t);
                 const sel = ui.selection?.type === 'thing' && ui.selection.id === id;
+                const k = markerK(map);
                 markerCtx.save();
                 if (sel) {
                     markerCtx.beginPath();
-                    markerCtx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+                    markerCtx.arc(p.x, p.y, 20 * k, 0, Math.PI * 2);
                     markerCtx.fillStyle = 'rgba(245, 158, 11, 0.35)';
                     markerCtx.fill();
                 }
                 markerCtx.beginPath();
-                if (cat === 'battlemap') markerCtx.rect(p.x - 11, p.y - 11, 22, 22);
-                else if (cat === 'site') { markerCtx.moveTo(p.x, p.y - 14); markerCtx.lineTo(p.x + 14, p.y); markerCtx.lineTo(p.x, p.y + 14); markerCtx.lineTo(p.x - 14, p.y); markerCtx.closePath(); }
-                else markerCtx.arc(p.x, p.y, 13, 0, Math.PI * 2);
+                if (cat === 'battlemap') markerCtx.rect(p.x - 11 * k, p.y - 11 * k, 22 * k, 22 * k);
+                else if (cat === 'site') { markerCtx.moveTo(p.x, p.y - 14 * k); markerCtx.lineTo(p.x + 14 * k, p.y); markerCtx.lineTo(p.x, p.y + 14 * k); markerCtx.lineTo(p.x - 14 * k, p.y); markerCtx.closePath(); }
+                else markerCtx.arc(p.x, p.y, 13 * k, 0, Math.PI * 2);
                 markerCtx.fillStyle = locColor(t);
                 markerCtx.fill();
                 markerCtx.strokeStyle = '#0f172a';
-                markerCtx.lineWidth = 2.5;
+                markerCtx.lineWidth = Math.max(1, 2.5 * k);
                 markerCtx.stroke();
 
                 const hasInside = (t.traits?.childMap && db.maps[t.traits.childMap]) || t.traits?.dd2vtt;
                 if (hasInside) {
                     markerCtx.beginPath();
-                    markerCtx.arc(p.x, p.y, 17, 0, Math.PI * 2);
-                    markerCtx.setLineDash([3, 3]);
+                    markerCtx.arc(p.x, p.y, 17 * k, 0, Math.PI * 2);
+                    markerCtx.setLineDash([3 * k, 3 * k]);
                     markerCtx.strokeStyle = '#ffffff';
-                    markerCtx.lineWidth = 1.5;
+                    markerCtx.lineWidth = Math.max(0.75, 1.5 * k);
                     markerCtx.stroke();
                     markerCtx.setLineDash([]);
                 }
-                markerCtx.font = (cat === 'site' ? 'italic 600 ' : 'bold ') + '12px Inter, sans-serif';
+                markerCtx.font = (cat === 'site' ? 'italic 600 ' : 'bold ') + Math.max(7, Math.round(12 * k)) + 'px Inter, sans-serif';
                 markerCtx.fillStyle = '#ffffff';
                 markerCtx.shadowColor = 'rgba(0,0,0,0.9)';
-                markerCtx.shadowBlur = 4;
+                markerCtx.shadowBlur = 4 * k;
                 markerCtx.textAlign = 'center';
-                markerCtx.fillText(t.name || 'Unnamed', p.x, p.y + 30);
+                markerCtx.fillText(t.name || 'Unnamed', p.x, p.y + 30 * k);
                 markerCtx.restore();
             }
         }
@@ -4760,6 +4769,13 @@
         ['sessionMenu', 'moreMenu'].forEach(id => $(id).addEventListener('click', (e) => { if (e.target.closest('button') && !e.target.closest('label')) setTimeout(() => closeMenus(), 0); }));
 
         $('railUpload').onclick = () => $('mapUpload').click();
+        $('railMarkerSize').onclick = () => {
+            const m = currentMap(); if (!m) return;
+            const i = MARKER_SIZES.indexOf(markerK(m));
+            m.markerScale = MARKER_SIZES[(i + 1) % MARKER_SIZES.length];
+            save(); drawMarkers(m); updateToolRail();
+            showStatus(`Markers on this map: ${MARKER_SIZE_NAMES[m.markerScale]}`);
+        };
         $('railFog').onclick = () => { $('fogBtn').click(); updateToolRail(); };
         $('railMapFog').onclick = () => { $('mapFogBtn').click(); updateToolRail(); };
         // ---- The tool rail only shows what fits the current view ----
@@ -4775,6 +4791,8 @@
             show('railUpload', !PLAYER && isMap && !!currentMap() && !currentMap()?.shift);
             show('railFog', !PLAYER && isMap); show('railMapFog', !PLAYER && isMap && !!currentMap());
             show('railDivider2', !PLAYER && isMap);
+            show('railMarkerSize', !PLAYER && isMap && !!currentMap());
+            const rs = $('railMarkerSize'); if (rs && currentMap()) { const tip = rs.querySelector('span'); if (tip) tip.textContent = `Marker size: ${MARKER_SIZE_NAMES[markerK(currentMap())] || 'custom'} (click to change)`; }
             const fm = typeof fogMode === 'function' ? fogMode() : 'off';
             const rf = $('railFog'); if (rf) { rf.classList.toggle('text-amber-400', fm !== 'off'); const tip = rf.querySelector('span'); if (tip) tip.textContent = FOG_LABEL[fm] + ' (click to change)'; }
             const rm = $('railMapFog'), mp = currentMap(); if (rm && mp && isMap) { const tip = rm.querySelector('span'); if (tip) tip.textContent = MAP_FOG_LABEL[mp.playerFog || 'auto'] + (mp.playerFog ? '' : (mapFogOn(mp) ? ' (fogged)' : ' (clear)')); rm.classList.toggle('text-amber-400', !!mp.playerFog); }
