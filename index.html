@@ -692,7 +692,7 @@
         //  saved separately under PARTY_KEY, so it never overwrites the DM's data.
         // ---------------------------------------------------------------------
         // ── Who is the DM? ───────────────────────────────────────────────────
-        // Open the page as  geezvtt.html?gm=jonny  to get the DM screen. This browser then
+        // Open the page with  ?gm=jonny  (e.g. index.html?gm=jonny) to get the DM screen. This browser then
         // remembers it, so the plain address works for you afterwards. Everyone else (and
         // ?player, which the "Open player view" button uses) gets the player screen.
         // Change the word here if the link ever leaks.
@@ -1699,7 +1699,7 @@
                 if (!bt.traits?.dd2vtt) { clearCanvases(); showEmpty(`${bt.name} has no dd2vtt yet`, 'Select its marker on the location map and attach a dd2vtt file.', false); return; }
                 const scene = await loadDd2vtt(bt.traits.dd2vtt);
                 if (seq !== renderSeq) return;
-                if (!scene) { clearCanvases(); showEmpty(`Can't find ${bt.traits.dd2vtt}`, PLAYER ? 'Ask the DM to put a copy of this file in the maps folder next to the page.' : 'Attach it again from the battle map marker, or put a copy in a maps folder next to geezvtt.html (needs the local server).', false); return; }
+                if (!scene) { clearCanvases(); showEmpty(`Can't find ${bt.traits.dd2vtt}`, PLAYER ? 'Ask the DM to put a copy of this file in the battlemap/ folder.' : 'Put a copy in the battlemap/ folder next to this page (same file name), or attach it again from the battle map card.', false); return; }
                 if (ui.size.w !== scene.w || ui.size.h !== scene.h) setCanvasSize(scene.w, scene.h);
                 mapCtx.drawImage(scene.img, 0, 0);
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
@@ -1730,7 +1730,7 @@
                 clearCanvases();
                 ui.loaded = false;
                 showEmpty(map.image ? `Can't find ${map.image}` : `No image for ${mapLabel(map)}`,
-                    PLAYER ? 'Ask the DM to put a copy of this image in the maps folder next to the page.' : map.image ? 'Pick the file again, or put a copy in a maps folder next to geezvtt.html so the player view can load it too.' : 'Upload the map image to start placing markers.', !PLAYER);
+                    PLAYER ? `Ask the DM to put a copy of this image in the ${mapKind(map)}/ folder.` : map.image ? `Put a copy in the ${mapKind(map)}/ folder next to this page (same file name) so everyone can load it, or pick the file again.` : 'Upload the map image to start placing markers.', !PLAYER);
                 return;
             }
             if (ui.size.w !== img.width || ui.size.h !== img.height) setCanvasSize(img.width, img.height);
