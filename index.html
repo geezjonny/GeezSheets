@@ -692,15 +692,12 @@
         //  saved separately under PARTY_KEY, so it never overwrites the DM's data.
         // ---------------------------------------------------------------------
         // ── Who is the DM? ───────────────────────────────────────────────────
-        // Open the page with  ?gm=jonny  (e.g. index.html?gm=jonny) to get the DM screen. This browser then
-        // remembers it, so the plain address works for you afterwards. Everyone else (and
-        // ?player, which the "Open player view" button uses) gets the player screen.
-        // Change the word here if the link ever leaks.
+        // The plain address is always the player view. Add  ?gm=jonny  for the DM view
+        // (every time; nothing is remembered). Change the word here if the link ever leaks.
         const GM_KEY = 'jonny';
         const QS = new URLSearchParams(location.search);
-        if (QS.get('gm') === GM_KEY || QS.has('gm' + GM_KEY)) localStorage.setItem('geezvtt.gmKey', GM_KEY);
-        if (QS.get('gm') === 'off') localStorage.removeItem('geezvtt.gmKey');
-        const PLAYER = QS.has('player') || localStorage.getItem('geezvtt.gmKey') !== GM_KEY;
+        localStorage.removeItem('geezvtt.gmKey');   // older versions remembered the key; forget it
+        const PLAYER = QS.has('player') || !(QS.get('gm') === GM_KEY || QS.has('gm' + GM_KEY));
         // Which campaign the player tab shows (?player&campaign=<world id>)
         let PCAMP = PLAYER ? (new URLSearchParams(location.search).get('campaign') || (!USE_FB ? loadLocal()?.view?.worldId : null) || 'world') : null;
         const PARTY_KEY = `geezvtt.party.${PCAMP}.v1`;
