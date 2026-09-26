@@ -1178,6 +1178,8 @@
         }
 
         const dd2vttCache = new Map();  // file name -> { img, walls, doors, lights, ppg, w, h }
+        // Only returns a battle map that's already been opened (no loading, no parsing)
+        const dd2vttLoaded = (name) => { const v = dd2vttCache.get(name); return v && typeof v.then !== 'function' ? v : null; };
         async function loadDd2vtt(name) {
             if (!name) return null;
             if (dd2vttCache.has(name)) return dd2vttCache.get(name);
@@ -2712,7 +2714,7 @@
                         <h3 class="font-cinzel font-bold text-sm text-amber-200 leading-tight truncate">${esc(t.name)}</h3>
                     </div>
                     <div class="text-[10px] text-slate-400">${CATEGORY[catOf(t)].label}${where ? ' · ' + esc([db.maps[db.view.worldId]?.name || 'Campaign', ...locationChain(t.id).map(c => db.things[c].name)].join(' › ')) : ' · not on a map'}</div>
-                    ${placeMapName(t) ? `<div data-thumb class="mt-2 h-24 rounded-lg bg-slate-950 bg-cover bg-center border border-slate-800 flex items-center justify-center text-[10px] text-slate-600">map</div>` : ''}
+                    ${placeMapName(t) ? `<div class="mt-2 flex items-center gap-1.5 text-[10px] text-slate-400"><i class="fa-solid ${catOf(t) === 'battlemap' ? 'fa-dungeon text-indigo-300' : 'fa-map text-emerald-300'}"></i><span class="truncate">${esc(placeMapName(t))}</span><span class="text-slate-600 ml-auto shrink-0">double-click to open</span></div>` : ''}
                     ${cardNotes(t) ? `<div class="text-xs text-slate-300 line-clamp-2 mt-2">${esc(cardNotes(t))}</div>` : ''}`;
                 card.className = `absolute w-56 bg-slate-900 border-2 ${st.ring} rounded-xl p-3 shadow-2xl cursor-grab select-none`;
             } else if (t.type === 'event') {
@@ -2740,7 +2742,7 @@
             card.style.left = t.board.x + 'px';
             card.style.top = t.board.y + 'px';
             const thumb = card.querySelector('[data-thumb]');
-            if (thumb) placeThumb(t).then(src => { if (src) { thumb.style.backgroundImage = `url("${src}")`; thumb.textContent = ''; } });
+
             dragElement(card, {
                 onMove: (x, y) => { card.style.left = x + 'px'; card.style.top = y + 'px'; drawStrings(); },
                 onEnd: (x, y) => { t.board = { x: Math.round(x), y: Math.round(y) }; save(); },
@@ -3253,7 +3255,7 @@
         }
         async function placeThumb(t) {
             try {
-                if (catOf(t) === 'battlemap') { const sc = t.traits?.dd2vtt && await loadDd2vtt(t.traits.dd2vtt); return sc?.img?.src || null; }
+                if (catOf(t) === 'battlemap') { const sc = t.traits?.dd2vtt && dd2vttLoaded(t.traits.dd2vtt); return sc?.img?.src || null; }   // never parse a dd2vtt just for a preview
                 const m = t.traits?.childMap && db.maps[t.traits.childMap];
                 const img = m?.image && await loadImage(m.image, mapKind(m));
                 return img?.src || null;
