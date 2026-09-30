@@ -1,0 +1,382 @@
+{
+  "default": "general",
+  "coinValue": "1 sp",
+  "rarityPrice": {
+    "Common": [
+      500,
+      1000
+    ],
+    "Uncommon": [
+      1000,
+      5000
+    ],
+    "Rare": [
+      5000,
+      50000
+    ],
+    "Very Rare": [
+      50000,
+      500000
+    ],
+    "Legendary": [
+      500000,
+      2000000
+    ]
+  },
+  "types": {
+    "blacksmith": {
+      "label": "Blacksmith",
+      "match": [
+        "smith",
+        "forge",
+        "armor",
+        "armour",
+        "weapon"
+      ],
+      "stock": [
+        {
+          "category": "weapon",
+          "count": [
+            5,
+            9
+          ],
+          "qty": [
+            1,
+            3
+          ]
+        },
+        {
+          "category": "armor",
+          "count": [
+            2,
+            4
+          ],
+          "qty": [
+            1,
+            2
+          ]
+        },
+        {
+          "gear": "ammunition",
+          "count": [
+            1,
+            2
+          ],
+          "qty": [
+            2,
+            5
+          ]
+        }
+      ],
+      "magic": {
+        "chance": 0.15,
+        "categories": [
+          "weapon",
+          "armor"
+        ],
+        "rarity": [
+          "Uncommon"
+        ],
+        "count": [
+          1,
+          1
+        ]
+      },
+      "markup": [
+        1,
+        1.25
+      ],
+      "buyRate": 0.5,
+      "buys": [
+        "weapon",
+        "armor",
+        "ammunition"
+      ],
+      "gold": [
+        1500,
+        5000
+      ]
+    },
+    "general": {
+      "label": "General Store",
+      "match": [
+        "general",
+        "store",
+        "market",
+        "trader"
+      ],
+      "stock": [
+        {
+          "gear": "standard-gear",
+          "count": [
+            8,
+            14
+          ],
+          "qty": [
+            1,
+            6
+          ],
+          "maxPrice": 500
+        },
+        {
+          "gear": "kits",
+          "count": [
+            1,
+            2
+          ],
+          "qty": [
+            1,
+            2
+          ]
+        },
+        {
+          "category": "tools",
+          "count": [
+            1,
+            3
+          ],
+          "qty": [
+            1,
+            1
+          ]
+        },
+        {
+          "gear": "equipment-packs",
+          "count": [
+            0,
+            2
+          ],
+          "qty": [
+            1,
+            2
+          ]
+        }
+      ],
+      "markup": [
+        0.95,
+        1.2
+      ],
+      "buyRate": 0.5,
+      "buys": [
+        "*"
+      ],
+      "gold": [
+        800,
+        3000
+      ]
+    },
+    "apothecary": {
+      "label": "Apothecary",
+      "match": [
+        "apothecary",
+        "alchemist",
+        "herb",
+        "potion",
+        "temple",
+        "healer"
+      ],
+      "stock": [
+        {
+          "names": [
+            "Antitoxin (vial)",
+            "Healer's Kit",
+            "Herbalism Kit",
+            "Acid (vial)",
+            "Alchemist's fire (flask)",
+            "Perfume (vial)",
+            "Oil (flask)"
+          ],
+          "count": [
+            3,
+            5
+          ],
+          "qty": [
+            1,
+            4
+          ]
+        }
+      ],
+      "magic": {
+        "chance": 1,
+        "categories": [
+          "potion"
+        ],
+        "rarity": [
+          "Common",
+          "Uncommon"
+        ],
+        "count": [
+          1,
+          3
+        ]
+      },
+      "markup": [
+        1.05,
+        1.3
+      ],
+      "buyRate": 0.45,
+      "buys": [
+        "potion",
+        "adventuring-gear"
+      ],
+      "gold": [
+        1000,
+        4000
+      ]
+    },
+    "tavern": {
+      "label": "Tavern",
+      "match": [
+        "tavern",
+        "inn",
+        "pub",
+        "alehouse"
+      ],
+      "stock": [
+        {
+          "names": [
+            "Rations (1 day)"
+          ],
+          "count": [
+            1,
+            1
+          ],
+          "qty": [
+            5,
+            12
+          ]
+        }
+      ],
+      "extras": [
+        {
+          "name": "Ale (mug)",
+          "cost": 1,
+          "qty": [
+            20,
+            40
+          ]
+        },
+        {
+          "name": "Wine (pitcher)",
+          "cost": 2,
+          "qty": [
+            5,
+            12
+          ]
+        },
+        {
+          "name": "Hot meal",
+          "cost": 3,
+          "qty": [
+            10,
+            20
+          ]
+        },
+        {
+          "name": "Room for the night",
+          "cost": 5,
+          "qty": [
+            2,
+            6
+          ]
+        },
+        {
+          "name": "Local gossip over a drink",
+          "cost": 1,
+          "qty": [
+            3,
+            6
+          ],
+          "chance": 0.6
+        }
+      ],
+      "markup": [
+        1,
+        1.15
+      ],
+      "buyRate": 0.3,
+      "buys": [],
+      "gold": [
+        300,
+        1200
+      ]
+    },
+    "arcane": {
+      "label": "Arcane Curios",
+      "match": [
+        "arcane",
+        "magic",
+        "wizard",
+        "curio",
+        "library"
+      ],
+      "stock": [
+        {
+          "gear": "arcane-foci",
+          "count": [
+            1,
+            3
+          ],
+          "qty": [
+            1,
+            2
+          ]
+        },
+        {
+          "names": [
+            "Component pouch",
+            "Spellbook",
+            "Ink (1 ounce bottle)",
+            "Ink pen",
+            "Paper (one sheet)",
+            "Parchment (one sheet)"
+          ],
+          "count": [
+            2,
+            4
+          ],
+          "qty": [
+            1,
+            5
+          ]
+        }
+      ],
+      "magic": {
+        "chance": 0.9,
+        "categories": [
+          "scroll",
+          "potion",
+          "wondrous-items",
+          "ring",
+          "wand"
+        ],
+        "rarity": [
+          "Common",
+          "Uncommon"
+        ],
+        "count": [
+          1,
+          3
+        ]
+      },
+      "markup": [
+        1.1,
+        1.4
+      ],
+      "buyRate": 0.5,
+      "buys": [
+        "scroll",
+        "potion",
+        "wondrous-items",
+        "ring",
+        "wand",
+        "staff",
+        "rod"
+      ],
+      "gold": [
+        3000,
+        12000
+      ]
+    }
+  }
+}

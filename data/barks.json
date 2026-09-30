@@ -1,0 +1,184 @@
+{
+  "roleOnly": [
+    "zombie"
+  ],
+  "roleWeights": {
+    "shopkeeper": {
+      "rumor": 3,
+      "role": 1,
+      "event": 0,
+      "landmark": 0,
+      "person": 0,
+      "faction": 0,
+      "place": 0
+    }
+  },
+  "weights": {
+    "rumor": 1.8,
+    "event": 1.6,
+    "danger": 5,
+    "landmark": 1.5,
+    "person": 1,
+    "faction": 1,
+    "place": 0.8,
+    "role": 1.2
+  },
+  "templates": {
+    "landmark": [
+      "The {landmark} in town is {odd} today. {hedge}",
+      "Have you been by the {landmark}? {landmark_talk}",
+      "My {relative} swears the {landmark} {odd_verb} last night."
+    ],
+    "event": [
+      "Did you hear? {event}. {reaction}",
+      "Word is: {event}. {consequence}",
+      "Big news around {home}: {event}. {reaction}"
+    ],
+    "person": [
+      "Have you seen {person} lately? {person_talk}",
+      "{person}, the {person_role}? {person_talk}"
+    ],
+    "faction": [
+      "The {faction} have been {faction_act}. {hedge}"
+    ],
+    "rumor": [
+      "{rumor_intro} {rumor}.",
+      "Between you and me, {rumor}."
+    ],
+    "place": [
+      "{home} {place_mood}.",
+      "Welcome to {home}, stranger. {place_tip}"
+    ],
+    "shopping": [
+      "Just picked up {bought} from {seller}. {deal}",
+      "Look what I got at {seller}'s: {bought}! {deal}"
+    ],
+    "danger": [
+      "{panic} There's a {threat} by the {landmark}!",
+      "{panic} {threat}! Run!",
+      "Stay back from that {threat}!"
+    ]
+  },
+  "fragments": {
+    "odd": [
+      "humming unusually",
+      "colder than it should be",
+      "glowing faintly",
+      "awfully quiet",
+      "drawing a crowd"
+    ],
+    "odd_verb": [
+      "hummed",
+      "glowed",
+      "whispered",
+      "moved",
+      "went dark"
+    ],
+    "hedge": [
+      "It could be my imagination.",
+      "Probably nothing.",
+      "Don't tell anyone I said so.",
+      "Mark my words.",
+      "Or maybe I need more sleep."
+    ],
+    "landmark_talk": [
+      "Gives me the shivers.",
+      "Folks have been leaving offerings.",
+      "Something's not right about it."
+    ],
+    "relative": [
+      "cousin",
+      "neighbour",
+      "aunt",
+      "brother",
+      "old friend"
+    ],
+    "reaction": [
+      "Unbelievable.",
+      "Can't say I'm surprised.",
+      "Times are hard.",
+      "What next?"
+    ],
+    "consequence": [
+      "Nobody can afford a decent meal now.",
+      "The taverns are half empty.",
+      "Everyone's on edge.",
+      "My shop's barely scraping by."
+    ],
+    "person_talk": [
+      "Something's off with them.",
+      "Owes me money, that one.",
+      "Looked worried, they did.",
+      "Good sort, mostly."
+    ],
+    "faction_act": [
+      "awfully quiet",
+      "buying up everything",
+      "recruiting",
+      "meeting in secret"
+    ],
+    "rumor_intro": [
+      "I heard",
+      "People are saying",
+      "Rumour has it",
+      "A little bird told me"
+    ],
+    "doubt": [
+      "At least, that's what they say.",
+      "Not that I believe it.",
+      "Though who knows."
+    ],
+    "place_mood": [
+      "isn't what it used to be",
+      "has been busy lately",
+      "is quiet this time of year",
+      "could use a few more guards"
+    ],
+    "place_tip": [
+      "Mind your purse.",
+      "Try the stew at the inn.",
+      "Stay off the docks after dark."
+    ],
+    "deal": [
+      "A steal!",
+      "Cost me a fortune.",
+      "Don't tell my spouse.",
+      "Fair price, I suppose."
+    ],
+    "silent": [
+      "*nods*",
+      "*ignores you*",
+      "Hm.",
+      "*shrugs*",
+      "*keeps walking*"
+    ],
+    "panic": [
+      "Help!",
+      "Gods above!",
+      "Guards! Guards!",
+      "Run!"
+    ]
+  },
+  "roles": {
+    "guard": [
+      "Move along.",
+      "Keep the peace in {home}, and we'll get along fine.",
+      "Seen anything suspicious near the {landmark}?"
+    ],
+    "shopkeeper": [
+      "Best prices in {home}, I promise you.",
+      "Buying or browsing?",
+      "Just got some fine {ware} in, if you're interested.",
+      "Take a look — {ware}, going cheap today."
+    ],
+    "zombie": [
+      "Hnnnghh...",
+      "*groans*",
+      "Brrrraaaains..."
+    ],
+    "bandit": [
+      "Nice purse you've got there.",
+      "Keep walking, friend."
+    ]
+  }
+}

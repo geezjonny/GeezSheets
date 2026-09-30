@@ -703,10 +703,7 @@
         localStorage.removeItem('geezvtt.gmKey');   // older versions remembered the key; forget it
         const PLAYER = QS.has('player') || !(QS.get('gm') === GM_KEY || QS.has('gm' + GM_KEY));
         // Which campaign the player tab shows (?player&campaign=<world id>)
-        // Player campaign: the link's ?campaign=, else the one this browser picked last time, else the DM's local one.
-        const PCAMP_LAST_KEY = 'geezvtt.player.lastCampaign';
-        const pickedCampaign = () => new URLSearchParams(location.search).get('campaign') || localStorage.getItem(PCAMP_LAST_KEY) || null;
-        let PCAMP = PLAYER ? (pickedCampaign() || (!USE_FB ? loadLocal()?.view?.worldId : null) || 'world') : null;
+        let PCAMP = PLAYER ? (new URLSearchParams(location.search).get('campaign') || (!USE_FB ? loadLocal()?.view?.worldId : null) || 'world') : null;
         const PARTY_KEY = `geezvtt.party.${PCAMP}.v1`;
         const PVIEW_KEY = `geezvtt.player.${PCAMP}.view`;
         const PNAME_KEY = `geezvtt.player.${PCAMP}.name`;
@@ -1583,7 +1580,6 @@
             updateBreadcrumbs();
             refreshInspector();
             updateDirectories();
-            if (window.TownVTT) TownVTT.onLevel(level);   // town life: pause and save when leaving the battle map
         }
 
         $('navDmBoard').onclick = () => setLevel('DM_BOARD');
@@ -1681,7 +1677,6 @@
             tokensLayer.style.width = w + 'px';
             tokensLayer.style.height = h + 'px';
             ui.size = { w, h };
-            if (window.TownVTT) TownVTT.resize(w, h);   // town life overlay
         }
 
         let renderSeq = 0;
@@ -1716,7 +1711,6 @@
                 ui.vision = vis;
                 drawVision(scene, vis);
                 renderTokens(bt.id, scene);
-                if (window.TownVTT) TownVTT.onScene(scene, bt.id);   // town life: build / update the sim for this battle map
                 ui.loaded = true;
                 if (newView && !cam().fitted) fitView(); else applyTransform();
                 return;
@@ -2206,7 +2200,6 @@
                 const tints = conds.filter(c => c !== 'prone');
                 const size = baseSize * tokenSize(n);
                 const el = document.createElement('div');
-                el.dataset.tokenId = npcId;   // town life: lets WASD walking move this element directly
                 const sel = ui.selection?.type === 'thing' && ui.selection.id === npcId;
                 el.className = `absolute rounded-full border-2 ${sel ? 'border-amber-400' : mine ? 'border-emerald-400' : 'border-indigo-400'} bg-slate-900 shadow-2xl ${canMove ? 'cursor-grab' : 'cursor-pointer'} flex items-center justify-center`;
                 if (turnThing === npcId) el.style.boxShadow = '0 0 0 4px #f59e0b, 0 0 24px 6px rgba(245,158,11,.7)';
@@ -2391,7 +2384,6 @@
                 Live.on(livePath('presence'), (v) => { presence = v || {}; renderPresence(); }),
                 Live.on(livePath('handouts'), (v) => onHandouts(v || {}))
             ];
-            if (window.TownVTT && TownVTT.resubscribe) TownVTT.resubscribe();   // town life: follow campaign switches
         }
 
         // Every move goes through the live channel so the other screens see it at once;
@@ -4532,13 +4524,6 @@
         const campaignName = () => db.maps[db.view.worldId]?.name || 'Campaign';
         function renderCampaignSelect() {
             const sel = $('campaignSelect');
-            if (PLAYER) {
-                const worlds = worldsIn(campaignSource()).sort((a, b) => a.name.localeCompare(b.name));
-                sel.innerHTML = worlds.map(w => `<option value="${esc(w.id)}"${w.id === PCAMP ? ' selected' : ''}>${esc(w.name)}</option>`).join('');
-                sel.classList.toggle('hidden', worlds.length < 2);   // only worth showing with more than one campaign
-                document.title = `${campaignName()} · Party`;
-                return;
-            }
             sel.innerHTML = worldsIn(db).sort((a, b) => a.name.localeCompare(b.name))
                 .map(w => `<option value="${esc(w.id)}"${w.id === db.view.worldId ? ' selected' : ''}>${esc(w.name)}</option>`).join('')
                 + '<option disabled>──────────</option><option value="__new">+ New campaign…</option><option value="__rename">Rename this campaign…</option>';
@@ -4553,25 +4538,9 @@
             renderCampaignSelect();
             setLevel(db.view.level);
             subscribeLive();
-            announceCampaign();
             showStatus(`Switched to ${campaignName()}`);
         }
-        // One shared spot (outside the per-campaign live channels) saying which campaign the DM is running.
-        function announceCampaign() {
-            if (PLAYER) return;
-            Live.set('live/_dmCampaign', { id: db.view.worldId, name: campaignName(), at: Date.now() });
-        }
-        // Players switch campaign by reloading on it, so every per-campaign setting (party board,
-        // character choice, view) comes along cleanly. The choice is remembered for next time.
-        function switchPlayerCampaign(id) {
-            if (!id || id === PCAMP) return;
-            try { localStorage.setItem(PCAMP_LAST_KEY, id); } catch {}
-            const q = new URLSearchParams(location.search);
-            q.set('campaign', id);
-            location.search = q.toString();
-        }
         $('campaignSelect').addEventListener('change', (e) => {
-            if (PLAYER) { switchPlayerCampaign(e.target.value); return; }
             const v = e.target.value;
             if (v === '__new') {
                 const name = prompt('Name of the new campaign (its world map):', 'New campaign');
@@ -4595,7 +4564,7 @@
         renderCampaignSelect();
         if (migratedNote) setTimeout(() => showStatus(migratedNote), 500);
         if (PLAYER) {
-            renderCampaignSelect();
+            $('campaignSelect').classList.add('hidden');
             ['modeMarker', 'modeTile', 'modeRoad', 'addNpcQuickBtn', 'fogBtn', 'createNewNpcBtn', 'uploadMapBtn', 'exportJsonBtn', 'openPlayerViewBtn', 'dicePrivateWrap', 'shareLocBtn', 'mapFogBtn', 'lockMoveBtn', 'lockPingBtn', 'pullBtn', 'sessionDmOnly', 'moreMenuWrap']
                 .forEach(id => { const el = $(id); if (el) { el.classList.add('hidden'); el.style.display = 'none'; } });
             $('importJsonInput').closest('label')?.classList.add('hidden');
@@ -5042,12 +5011,11 @@
                 };
                 FbRemote.on('campaign', (val) => {
                     remoteCampaign = normalize(val || {});
-                    const askedFor = pickedCampaign();
+                    const askedFor = new URLSearchParams(location.search).get('campaign');
                     if (!askedFor || !remoteCampaign.maps[askedFor]) {
                         const first = worldsIn(remoteCampaign)[0]?.id;
                         if (first && first !== PCAMP) { PCAMP = first; watchParty(); subscribeLive(); }
                     }
-                    renderCampaignSelect();   // the player's campaign list comes from here
                     if (!partyUnsub) watchParty();
                     db = projectForPlayers(db.view);
                     rerenderAll();
@@ -5064,38 +5032,6 @@
         $('fogLabel').textContent = FOG_LABEL[fogMode()];
         
         setLevel(db.view.level || 'DM_BOARD');
-        announceCampaign();
-        if (PLAYER) {
-            // Its own little banner, so the DM's "share location" banner keeps its own button.
-            const nudge = document.createElement('div');
-            nudge.className = 'hidden fixed top-28 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2.5 rounded-xl border border-amber-500/60 bg-slate-950/95 shadow-2xl text-sm text-amber-100';
-            nudge.style.zIndex = 64;
-            nudge.innerHTML = '<i class="fa-solid fa-dice-d20 text-amber-400"></i><span id="campNudgeText"></span><button id="campNudgeGo" class="px-3 py-1 rounded-lg bg-amber-700 hover:bg-amber-600 text-white text-xs font-semibold">Switch</button><button id="campNudgeClose" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>';
-            document.body.appendChild(nudge);
-            nudge.querySelector('#campNudgeClose').onclick = () => nudge.classList.add('hidden');
-            Live.on('live/_dmCampaign', (v) => {
-                if (!v || !v.id || v.id === PCAMP || (Date.now() - (v.at || 0)) > 12 * 3600e3) { nudge.classList.add('hidden'); return; }
-                nudge.querySelector('#campNudgeText').textContent = `The DM is running ${v.name || 'another campaign'}`;
-                nudge.querySelector('#campNudgeGo').onclick = () => switchPlayerCampaign(v.id);
-                nudge.classList.remove('hidden');
-            });
-        }
     </script>
-
-    <!-- Town life: the free-roam sim on the open battle map. Plain scripts, loaded in this order. -->
-    <script src="js/town-geometry.js"></script>
-    <script src="js/town-navgrid.js"></script>
-    <script src="js/town-routegraph.js"></script>
-    <script src="js/town-roles.js"></script>
-    <script src="js/town-rules.js"></script>
-    <script src="js/town-srd.js"></script>
-    <script src="js/town-barks.js"></script>
-    <script src="js/town-shops.js"></script>
-    <script src="js/town-actions.js"></script>
-    <script src="js/town-combat.js"></script>
-    <script src="js/town-tactics.js"></script>
-    <script src="js/town-sim.js"></script>
-    <script src="js/town-vtt.js"></script>
-    <script>if (window.TownVTT) { TownVTT.onLevel(db.view.level); if (db.view.level === 'VTT') renderView(); }</script>
 </body>
 </html>
