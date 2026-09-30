@@ -921,6 +921,8 @@
             c.view = { ...b.view, ...(o.view || {}) };
             for (const k of ['things', 'links', 'maps', 'battles']) if (!c[k] || typeof c[k] !== 'object') c[k] = {};
             for (const m of Object.values(c.maps)) { m.pins ||= {}; m.tiles ||= {}; m.roads ||= {}; m.gridSize ||= 40; }
+            // Firebase drops empty objects, so a battle map with town data but no tokens comes back without "tokens"
+            for (const b of Object.values(c.battles)) if (b && typeof b === 'object') b.tokens ||= {};
             let roots = worldsIn(c);
             if (!roots.length) { c.maps.world = newMap('world', 'World', null, null, 64); roots = [c.maps.world]; }
             // Realm cards: the campaign's main world and each extra realm get a card (older saves are converted)
@@ -1048,7 +1050,7 @@
                 delete m.pins[id];
                 for (const [rid, r] of Object.entries(m.roads || {})) if (r.from === id || r.to === id) delete m.roads[rid];
             }
-            for (const b of Object.values(db.battles)) delete b.tokens[id];
+            for (const b of Object.values(db.battles)) if (b && b.tokens) delete b.tokens[id];
             delete db.battles[id];
             delete db.things[id];
             if (db.view.battleId === id) db.view.battleId = null;
@@ -3641,7 +3643,7 @@
 
             const battle = db.things[db.view.battleId];
             const onBattle = battle && db.battles[battle.id]?.tokens[t.id];
-            const onAny = Object.entries(db.battles).filter(([, b]) => b.tokens[t.id]).map(([bid]) => db.things[bid]?.name).filter(Boolean);
+            const onAny = Object.entries(db.battles).filter(([, b]) => b && b.tokens && b.tokens[t.id]).map(([bid]) => db.things[bid]?.name).filter(Boolean);
             $('vttTokenStatusBadge').textContent = onAny.length ? `On ${onAny.join(', ')}` : 'Unplaced';
             const btn = $('deployVttTokenBtn');
             btn.disabled = !battle;

@@ -35,7 +35,9 @@
     bubbles: [], lastBark: new Map(), barkT: 0, trade: null,
   };
   S.sim = null;
-  const townOf = (bid) => { const b = (db.battles[bid] ||= { tokens: {} }); return (b.town ||= { zones: [], routes: [], npcs: [] }); };
+  // Firebase drops empty objects, so make sure every battle keeps a tokens object (the app assumes one).
+  const fixBattles = () => { for (const b of Object.values(db.battles || {})) if (b && typeof b === 'object') b.tokens ||= {}; };
+  const townOf = (bid) => { const b = (db.battles[bid] ||= { tokens: {} }); b.tokens ||= {}; return (b.town ||= { zones: [], routes: [], npcs: [] }); };
   const parseTags = (s) => String(s || '').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -68,6 +70,7 @@
   }
 
   function onScene(scene, bid) {
+    fixBattles();
     if (bid !== S.bid) {
       persist();
       S.bid = bid; S.scene = scene; S.sel = null; S.drawPts = []; S.running = false;
