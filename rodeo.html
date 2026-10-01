@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PocketRodeo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { colors: { darkbg: '#0f172a', darkpanel: '#1e293b', darkborder: '#334155' } } } };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    #canvas-container { cursor: default; touch-action: none; }
+    #canvas-container.panning { cursor: grabbing !important; }
+    #canvas-container.tool-ruler, #canvas-container.tool-draw, #canvas-container.tool-fog,
+    #canvas-container.tool-calibrate, #canvas-container.tool-ping { cursor: crosshair; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    .radial-menu { transform: translate(-50%, -50%); }
+    .radial-menu button { pointer-events: auto; }
+    .glass-panel { background: rgba(30, 41, 59, 0.88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    .tool-btn.active-tool { background: rgba(51,65,85,0.85); color: #34d399; }
+    .gm-only { }
+    body.player .gm-only { display: none !important; }
+    .toast { animation: toastIn .2s ease-out; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    input, select, textarea { user-select: text; -webkit-user-select: text; }
+  </style>
+</head>
+<body class="bg-darkbg text-slate-100 h-full w-full flex flex-col relative select-none">
+
+  <!-- Header -->
+  <header class="h-12 glass-panel border-b border-slate-700/50 flex items-center justify-between px-3 z-20 shrink-0 gap-2">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="flex items-center gap-2 shrink-0">
+        <i class="fa-solid fa-chess-board text-emerald-400 text-xl"></i>
+        <span class="font-bold tracking-wide text-lg bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent hidden sm:inline">PocketRodeo</span>
+      </div>
+      <select id="sel-map" class="gm-only bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-md px-2 py-1 max-w-[220px]" title="Pick a map. Everyone moves to it.">
+        <option value="">— pick a map —</option>
+      </select>
+      <span id="map-title" class="text-xs text-slate-300 truncate"></span>
+      <span id="badge-local" class="hidden text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0" title="Players can't see a map loaded from your computer. Put it in battlemap/ to share it.">Local preview</span>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 text-xs">
+      <div class="bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700 text-slate-300 flex items-center gap-1.5">
+        <i class="fa-solid fa-border-all text-emerald-400"></i>
+        <span><span id="status-grid-size">50px</span> = <span id="status-scale">5ft</span></span>
+      </div>
+      <button id="btn-toggle-viewmode" class="gm-only bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded-md border border-slate-700 text-slate-200 transition flex items-center gap-1.5">
+        <i id="icon-viewmode" class="fa-solid fa-eye text-indigo-400"></i>
+        <span id="text-viewmode">GM View</span>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-1.5 shrink-0">
+      <label class="gm-only bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer" title="Open a .dd2vtt or image from your computer (only you see it)">
+        <i class="fa-solid fa-file-circle-plus"></i><span class="hidden lg:inline">Open file</span>
+        <input type="file" id="file-import-dd2vtt" accept=".dd2vtt,.df2vtt,.uvtt,.json,image/*" class="hidden">
+      </label>
+      <button id="btn-dice-modal" class="bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+        <i class="fa-solid fa-dice-d20 text-sm"></i><span class="hidden sm:inline">Dice</span>
+      </button>
+      <button id="btn-settings-toggle" class="gm-only p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition" title="Grid settings"><i class="fa-solid fa-sliders"></i></button>
+      <div class="gm-only h-4 w-[1px] bg-slate-700 mx-1"></div>
+      <button id="btn-export-session" class="gm-only p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition" title="Export this map's state (JSON)"><i class="fa-solid fa-file-export"></i></button>
+      <label class="gm-only p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition cursor-pointer" title="Import map state (JSON) onto this map">
+        <i class="fa-solid fa-file-import"></i><input type="file" id="file-import" accept=".json" class="hidden">
+      </label>
+      <button id="btn-reset-session" class="gm-only p-2 hover:bg-red-900/40 rounded-lg text-red-400 hover:text-red-300 transition" title="Clear tokens, drawings and fog on this map"><i class="fa-solid fa-trash-arrow-up"></i></button>
+      <button id="btn-me" class="ml-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-md border border-slate-700 text-xs flex items-center gap-1.5" title="Who you are">
+        <span id="dot-conn" class="w-2 h-2 rounded-full bg-slate-500"></span>
+        <span id="lbl-me">…</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="relative flex-1 w-full h-full overflow-hidden flex">
+    <!-- Tool palette -->
+    <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+      <div class="glass-panel p-1.5 rounded-xl shadow-2xl flex flex-col gap-1 border border-slate-700/60">
+        <button data-tool="select" class="tool-btn active-tool p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Move tokens / drag map (V)"><i class="fa-solid fa-arrow-pointer text-base"></i></button>
+        <button data-tool="pan" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Pan (H, or hold Space)"><i class="fa-solid fa-hand text-base"></i></button>
+        <button data-tool="ruler" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Measure (R)"><i class="fa-solid fa-ruler-combined text-base"></i></button>
+        <button data-tool="ping" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Ping (P, or Alt-click)"><i class="fa-solid fa-location-crosshairs text-base"></i></button>
+        <button data-tool="draw" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Draw (D)"><i class="fa-solid fa-pen-nib text-base"></i></button>
+        <button data-tool="fog" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Fog of war (F)"><i class="fa-solid fa-cloud text-base"></i></button>
+        <button data-tool="portals" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Doors"><i class="fa-solid fa-door-open text-base"></i></button>
+        <button data-tool="calibrate" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Calibrate grid"><i class="fa-solid fa-compass-drafting text-base"></i></button>
+      </div>
+      <div class="glass-panel p-1.5 rounded-xl shadow-2xl flex flex-col gap-1 border border-slate-700/60 text-center">
+        <button id="btn-zoom-in" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition" title="Zoom in (+)"><i class="fa-solid fa-plus text-xs"></i></button>
+        <span id="lbl-zoom-level" class="text-[10px] font-mono text-slate-400 py-0.5">100%</span>
+        <button id="btn-zoom-out" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition" title="Zoom out (-)"><i class="fa-solid fa-minus text-xs"></i></button>
+        <button id="btn-zoom-reset" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-400 hover:text-slate-200 transition" title="Fit map (0)"><i class="fa-solid fa-arrows-to-dot text-xs"></i></button>
+      </div>
+    </div>
+
+    <!-- Tool sub-panels -->
+    <div id="subpanel-container" class="absolute top-4 left-20 z-10 hidden">
+      <div id="subpanel-ruler" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <span class="text-xs text-slate-400 font-semibold">Diagonals:</span>
+        <select id="sel-ruler-mode" class="bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded p-1">
+          <option value="5e">5e (every square 5ft)</option>
+          <option value="5105">5-10-5 variant</option>
+          <option value="euclid">Straight line</option>
+        </select>
+      </div>
+      <div id="subpanel-draw" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <input type="color" id="draw-color" value="#ef4444" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent" title="Colour">
+        <div class="flex items-center gap-1.5">
+          <input type="range" id="draw-size" min="2" max="30" value="4" class="w-20 accent-emerald-500">
+          <span id="draw-size-val" class="text-xs font-mono text-slate-300 w-5">4</span>
+        </div>
+        <div class="flex items-center gap-1 border-l border-slate-700 pl-2">
+          <button data-draw-mode="brush" class="draw-mode-btn p-1.5 rounded bg-slate-700 text-emerald-400 text-xs" title="Freehand"><i class="fa-solid fa-paint-brush"></i></button>
+          <button data-draw-mode="rect" class="draw-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs" title="Rectangle"><i class="fa-regular fa-square"></i></button>
+          <button data-draw-mode="circle" class="draw-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs" title="Circle"><i class="fa-regular fa-circle"></i></button>
+          <button data-draw-mode="arrow" class="draw-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs" title="Arrow"><i class="fa-solid fa-long-arrow-right"></i></button>
+          <button data-draw-mode="erase" class="draw-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs" title="Eraser (click a drawing)"><i class="fa-solid fa-eraser"></i></button>
+        </div>
+        <button id="btn-clear-drawings" class="text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-700/50 transition">Clear</button>
+      </div>
+      <div id="subpanel-fog" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <button id="btn-fog-toggle" class="text-xs px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 transition flex items-center gap-1">
+          <i id="icon-fog-toggle" class="fa-solid fa-toggle-off text-slate-400"></i><span id="txt-fog-toggle">Fog off</span>
+        </button>
+        <div class="flex items-center gap-1 border-l border-slate-700 pl-2">
+          <button data-fog-mode="reveal-rect" class="fog-mode-btn p-1.5 rounded bg-slate-700 text-emerald-400 text-xs"><i class="fa-solid fa-vector-square"></i> Reveal box</button>
+          <button data-fog-mode="reveal-circle" class="fog-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs"><i class="fa-regular fa-circle-dot"></i> Reveal circle</button>
+          <button data-fog-mode="hide-rect" class="fog-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs"><i class="fa-solid fa-eye-slash"></i> Shroud</button>
+        </div>
+        <div class="flex items-center gap-1 border-l border-slate-700 pl-2">
+          <button id="btn-fog-reveal-all" class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">Clear fog</button>
+          <button id="btn-fog-reset-all" class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">Full fog</button>
+        </div>
+      </div>
+      <div id="subpanel-calibrate" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <span class="text-xs text-amber-300 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> Drag a box over one grid square</span>
+        <button id="btn-apply-calibration" class="text-xs px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition">Set grid size</button>
+        <button id="btn-reset-grid" class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">Use file's grid</button>
+      </div>
+      <div id="subpanel-portals" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <span id="txt-portal-count" class="text-xs text-emerald-400 font-semibold">0 doors</span>
+        <button id="btn-open-all-doors" class="text-xs px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600">Open all</button>
+        <button id="btn-close-all-doors" class="text-xs px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600">Close all</button>
+      </div>
+    </div>
+
+    <!-- Right sidebar (GM) -->
+    <button id="btn-sidebar" class="gm-only absolute top-4 right-4 z-20 glass-panel p-2 rounded-lg text-slate-300 hover:text-white hidden" title="Show tokens"><i class="fa-solid fa-users"></i></button>
+    <div id="right-sidebar" class="gm-only absolute top-4 right-4 bottom-4 w-72 glass-panel rounded-2xl shadow-2xl border border-slate-700/60 z-10 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700/60 bg-slate-800/50">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-users-viewfinder text-emerald-400"></i><span class="font-semibold text-sm">Tokens</span></div>
+        <button id="btn-sidebar-close" class="text-slate-400 hover:text-white" title="Hide"><i class="fa-solid fa-angles-right"></i></button>
+      </div>
+      <div class="flex border-b border-slate-700/60 bg-slate-900/30 text-xs font-medium">
+        <button id="tab-btn-tokens" class="flex-1 py-2 text-center text-emerald-400 border-b-2 border-emerald-400 font-bold">Library</button>
+        <button id="tab-btn-layers" class="flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent">Layers</button>
+      </div>
+      <div id="tab-content-tokens" class="flex-1 overflow-y-auto p-3 space-y-4">
+        <div class="flex gap-2">
+          <input id="inp-token-search" type="text" placeholder="Search…" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+          <select id="sel-campaign" class="bg-slate-900 border border-slate-700 rounded-lg px-1 py-1.5 text-xs max-w-[110px]"><option value="">All campaigns</option></select>
+        </div>
+        <p class="text-[10px] text-slate-500 -mt-2">Click to drop at the centre of the view, or drag onto the map.</p>
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">Party <span id="count-pcs" class="normal-case font-normal text-slate-500"></span></h4>
+          <div class="grid grid-cols-3 gap-2" id="list-pcs"></div>
+        </div>
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">NPCs <span id="count-npcs" class="normal-case font-normal text-slate-500"></span></h4>
+          <div class="grid grid-cols-3 gap-2" id="list-npcs"></div>
+        </div>
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Generic</h4>
+          <div class="grid grid-cols-3 gap-2" id="list-generic"></div>
+        </div>
+        <label class="w-full flex items-center justify-center gap-2 py-2 px-3 border-2 border-dashed border-slate-600 hover:border-emerald-500 rounded-xl cursor-pointer bg-slate-800/40 hover:bg-slate-800 transition text-xs text-slate-300">
+          <i class="fa-solid fa-cloud-arrow-up text-emerald-400"></i><span>Token from image</span>
+          <input type="file" id="file-upload" accept="image/*" class="hidden">
+        </label>
+      </div>
+      <div id="tab-content-layers" class="flex-1 overflow-y-auto p-3 space-y-3 hidden">
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-chess-knight text-emerald-400"></i>Tokens</span><input type="checkbox" data-layer="tokens" checked class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-pen-nib text-pink-400"></i>Drawings</span><input type="checkbox" data-layer="drawings" checked class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-shield-halved text-red-400"></i>Walls (GM only)</span><input type="checkbox" data-layer="walls" class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-door-open text-amber-400"></i>Doors (GM only)</span><input type="checkbox" data-layer="portals" checked class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-lightbulb text-yellow-300"></i>Light glow</span><input type="checkbox" data-layer="lights" class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-map text-indigo-400"></i>Map image</span><input type="checkbox" data-layer="map" checked class="accent-emerald-500"></label>
+        <p class="text-[10px] text-slate-500">Layers only change your own screen.</p>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div id="canvas-container" class="w-full h-full relative overflow-hidden bg-slate-950 tool-select">
+      <canvas id="vtt-canvas" class="block w-full h-full"></canvas>
+      <div id="empty-msg" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div class="glass-panel rounded-xl px-5 py-3 text-sm text-slate-300" id="empty-msg-text">Connecting…</div>
+      </div>
+    </div>
+
+    <!-- Token radial menu -->
+    <div id="radial-menu" class="radial-menu fixed hidden z-30 pointer-events-none">
+      <div class="relative w-40 h-40">
+        <div class="absolute left-1/2 -translate-x-1/2 -bottom-7 px-2 py-0.5 rounded bg-slate-900/90 border border-slate-600 text-[11px] whitespace-nowrap"><span id="radial-token-name"></span> <span id="radial-token-hp" class="text-emerald-300 font-mono"></span></div>
+        <button id="radial-btn-delete" class="gm-only absolute top-0 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg" title="Delete (Del)"><i class="fa-solid fa-trash text-xs"></i></button>
+        <button id="radial-btn-rotate" class="absolute top-1/2 right-0 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 flex items-center justify-center shadow-lg" title="Rotate 45°"><i class="fa-solid fa-rotate-right text-xs"></i></button>
+        <button id="radial-btn-hp" class="absolute bottom-0 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-lg" title="HP"><i class="fa-solid fa-heart text-xs"></i></button>
+        <button id="radial-btn-status" class="absolute top-1/2 left-0 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-indigo-400 flex items-center justify-center shadow-lg" title="Status ring colour"><i class="fa-solid fa-certificate text-xs"></i></button>
+        <button id="radial-btn-lock" class="gm-only absolute top-2 left-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-400 flex items-center justify-center shadow-lg" title="Lock position"><i id="radial-lock-icon" class="fa-solid fa-lock-open text-xs"></i></button>
+        <button id="radial-btn-flip" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 flex items-center justify-center shadow-lg" title="Flip"><i class="fa-solid fa-arrows-left-right text-xs"></i></button>
+        <button id="radial-btn-hide" class="gm-only absolute bottom-2 left-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sky-300 flex items-center justify-center shadow-lg" title="Hide from players"><i id="radial-hide-icon" class="fa-solid fa-eye text-xs"></i></button>
+        <button id="radial-btn-size" class="gm-only absolute bottom-2 right-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 flex items-center justify-center shadow-lg text-[10px] font-bold" title="Size in squares"><span id="radial-size-lbl">1</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="modal-settings" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-700">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-border-all text-emerald-400"></i> Grid for this map</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="space-y-4 py-4">
+        <div class="flex items-center justify-between"><span class="text-xs font-medium text-slate-300">Show grid</span><input type="checkbox" id="chk-grid-show" checked class="w-4 h-4 accent-emerald-500"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Cell size (px)</label><input type="number" id="inp-grid-size" value="50" min="10" max="400" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"></div>
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">One square is</label><input type="text" id="inp-grid-scale" value="5ft" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Offset X</label><input type="number" id="inp-grid-ox" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"></div>
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Offset Y</label><input type="number" id="inp-grid-oy" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Line colour</label><input type="color" id="inp-grid-color" value="#000000" class="w-full h-8 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer"></div>
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Opacity</label><input type="range" id="inp-grid-opacity" min="0" max="1" step="0.05" value="0.3" class="w-full accent-emerald-500 mt-2"></div>
+        </div>
+        <div class="flex items-center justify-between"><span class="text-xs font-medium text-slate-300">Snap tokens to grid</span><input type="checkbox" id="chk-grid-snap" checked class="w-4 h-4 accent-emerald-500"></div>
+      </div>
+      <div class="pt-4 border-t border-slate-700 flex justify-end">
+        <button id="btn-apply-settings" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2 rounded-xl font-medium transition">Apply for everyone</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dice -->
+  <div id="modal-dice" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-lg rounded-2xl border border-slate-700/80 p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-dice-d20 text-indigo-400 text-lg"></i> Dice</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="py-4 flex-1 flex flex-col gap-3 overflow-y-auto">
+        <div class="h-20 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-center">
+          <div id="dice-box" class="text-4xl text-emerald-400 font-extrabold tracking-widest flex items-center gap-3">
+            <i class="fa-solid fa-dice text-slate-600 text-4xl"></i><span class="text-slate-400 text-sm font-normal tracking-normal">Pick a die</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-2">
+          <button data-dice="d4" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d4</button>
+          <button data-dice="d6" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d6</button>
+          <button data-dice="d8" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d8</button>
+          <button data-dice="d10" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d10</button>
+          <button data-dice="d12" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d12</button>
+          <button data-dice="d20" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-emerald-400">d20</button>
+          <button data-dice="d100" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d100</button>
+          <div class="grid grid-cols-2 gap-1">
+            <button data-dice="adv" class="btn-roll-die bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-[10px]" title="2d20, keep highest">Adv</button>
+            <button data-dice="dis" class="btn-roll-die bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold text-[10px]" title="2d20, keep lowest">Dis</button>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <input id="inp-dice-mod" type="number" value="0" class="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs" title="Modifier added to button rolls">
+          <input id="inp-dice-expr" type="text" placeholder="e.g. 2d6+3, 1d20+5" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+          <button id="btn-roll-expr" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 rounded-lg font-semibold">Roll</button>
+        </div>
+        <label class="gm-only flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" id="chk-dice-private" class="accent-emerald-500"> GM roll (only you see it)</label>
+        <div class="flex-1 min-h-[100px] bg-slate-900/60 rounded-xl border border-slate-800 p-3 flex flex-col">
+          <div class="text-xs font-semibold text-slate-400 mb-2">Table rolls</div>
+          <div id="dice-log-list" class="flex-1 overflow-y-auto space-y-1.5 font-mono text-xs"><div class="text-slate-500 italic text-center py-2">No rolls yet.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Who are you (players) -->
+  <div id="modal-me" class="modal fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <h3 class="font-bold text-base mb-1">Who are you playing?</h3>
+      <p class="text-xs text-slate-400 mb-4">You can move the token that belongs to your character.</p>
+      <div id="me-pc-list" class="grid grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto mb-4"></div>
+      <div class="flex gap-2">
+        <input id="inp-me-name" type="text" placeholder="Or just a name…" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs">
+        <button id="btn-me-name" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 rounded-lg">Watch</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none"></div>
+
+  <script type="module" src="js/rodeo-app.js"></script>
+</body>
+</html>
