@@ -1,6 +1,6 @@
-// PocketRodeo — a small self-hosted Owlbear-style VTT on the GeezSheets Firebase.
+// GeezVTT — a small self-hosted Owlbear-style VTT on the GeezSheets Firebase.
 // GM:      rodeo.html?gm=jonny     Player: rodeo.html
-import { db, R, ref, onValue, set, update, remove, push, query, limitToLast, onDisconnect } from "./rodeo-firebase.js";
+import { db, R, ref, get, onValue, set, update, remove, push, query, limitToLast, onDisconnect } from "./rodeo-firebase.js";
 
 // ───────────────────────── Setup ─────────────────────────
 const GM_KEY = "jonny";
@@ -79,6 +79,10 @@ function loadFirst(key, srcs) {
 function tokenSrcs(t) {
   const s = [];
   if (t.img) s.push(t.img);
+  if (t.kind === "prop") {
+    if (t.name) { s.push(`props/${encodeURIComponent(t.name)}.png`); if (t.name !== t.name.toLowerCase()) s.push(`props/${encodeURIComponent(t.name.toLowerCase())}.png`); }
+    return s;
+  }
   if (t.avatar) s.push(t.avatar);
   if (t.name) {
     s.push(`tokens/${encodeURIComponent(t.name)}.png`);
@@ -194,11 +198,36 @@ function drawDrawings() {
 const cellPx = () => state.grid.size || 50;
 const tokPx = (t) => (Number(t.cells) || 1) * cellPx();
 const visibleTokens = () => Object.values(state.tokens).filter((t) => t && (isGMView() || !t.hidden))
-  .sort((a, b) => (Number(b.cells) || 1) - (Number(a.cells) || 1) || String(a.id).localeCompare(String(b.id)));
+  .sort((a, b) => (a.kind === "prop" ? 0 : 1) - (b.kind === "prop" ? 0 : 1) || (Number(b.cells) || 1) - (Number(a.cells) || 1) || String(a.id).localeCompare(String(b.id)));
 
 const STATUS = ["", "#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#a855f7"];
+const RARITY = { uncommon: "#22c55e", rare: "#3b82f6", "very rare": "#a855f7", legendary: "#f97316", artifact: "#ef4444" };
+function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function drawProp(t) {
+  const s = tokPx(t), cx = t.x + s / 2, cy = t.y + s / 2, pad = s * 0.08;
+  ctx.save();
+  if (t.hidden) ctx.globalAlpha = 0.45;
+  ctx.translate(cx, cy); ctx.rotate(((t.rotation || 0) * Math.PI) / 180); if (t.flipped) ctx.scale(-1, 1);
+  const img = tokenImage(t);
+  if (img) {
+    const k = Math.min((s - pad * 2) / img.width, (s - pad * 2) / img.height);
+    ctx.drawImage(img, -img.width * k / 2, -img.height * k / 2, img.width * k, img.height * k);
+  } else {
+    roundRect(-s / 2 + pad, -s / 2 + pad, s - pad * 2, s - pad * 2, s * 0.18);
+    ctx.fillStyle = "rgba(15,23,42,0.82)"; ctx.fill();
+    ctx.strokeStyle = RARITY[String(t.rarity || "").toLowerCase()] || "rgba(148,163,184,0.8)"; ctx.lineWidth = Math.max(1.5, s * 0.04); ctx.stroke();
+    ctx.font = `${s * 0.52}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(t.icon || "📦", 0, s * 0.04);
+  }
+  ctx.restore();
+  if (t.id === state.selectedTokenId) {
+    ctx.save(); ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2.5 / state.zoom; ctx.setLineDash([6 / state.zoom, 4 / state.zoom]);
+    roundRect(t.x - 4 / state.zoom, t.y - 4 / state.zoom, s + 8 / state.zoom, s + 8 / state.zoom, s * 0.2); ctx.stroke(); ctx.restore();
+  }
+}
 function drawTokens() {
   for (const t of visibleTokens()) {
+    if (t.kind === "prop") { drawProp(t); continue; }
     const s = tokPx(t), cx = t.x + s / 2, cy = t.y + s / 2;
     ctx.save();
     if (t.hidden) ctx.globalAlpha = 0.45;
@@ -380,7 +409,7 @@ function fitView() {
 function canControl(t) {
   if (!t) return false;
   if (IS_GM) return true;
-  if (!me) return false;
+  if (t.kind === "prop" || !me) return false;
   if (me.pcId && t.pcId === me.pcId) return true;
   return !!me.name && !t.npcId && String(t.name || "").toLowerCase() === me.name.toLowerCase();
 }
@@ -487,7 +516,7 @@ async function openMap(file, opts = {}) {
     $("txt-portal-count").textContent = `${state.portals.length} door${state.portals.length === 1 ? "" : "s"}`;
     const name = String(file).split("/").pop().replace(MAP_EXT, "");
     $("map-title").textContent = IS_GM ? "" : name;
-    document.title = `${name} · PocketRodeo`;
+    document.title = `${name} · GeezVTT`;
     $("badge-local").classList.toggle("hidden", !state.local);
     if (IS_GM && !state.local) $("sel-map").value = file;
     setEmpty(null);
@@ -502,7 +531,7 @@ function clearMap() {
   mapUnsubs.forEach((u) => u()); mapUnsubs = [];
   Object.assign(state, { mapFile: null, mapKey: null, local: false, walls: [], portals: [], lights: [], tokens: {}, drawings: {}, fog: { enabled: false, shapes: {} }, doorState: {} });
   state.map = { image: null, width: 1600, height: 1200 };
-  $("map-title").textContent = ""; $("badge-local").classList.add("hidden"); document.title = "PocketRodeo";
+  $("map-title").textContent = ""; $("badge-local").classList.add("hidden"); document.title = "GeezVTT";
   setEmpty(IS_GM ? "Pick a map at the top left — everyone moves to it." : "Waiting for the DM to pick a map…");
   requestRender();
 }
@@ -668,7 +697,11 @@ function selectToken(id) {
   if (!id) $("radial-menu").classList.add("hidden");
   requestRender();
 }
-function showRadial() { if (state.tokens[state.selectedTokenId]) { $("radial-menu").classList.remove("hidden"); refreshRadial(); } }
+function showRadial() {
+  const t = state.tokens[state.selectedTokenId]; if (!t) return;
+  $("radial-menu").classList.remove("hidden");
+  refreshRadial(); positionRadial(t); requestRender();
+}
 function refreshRadial() {
   const t = state.tokens[state.selectedTokenId]; if (!t) return;
   $("radial-token-name").textContent = t.name || "";
@@ -676,8 +709,13 @@ function refreshRadial() {
   $("radial-lock-icon").className = `fa-solid ${t.locked ? "fa-lock" : "fa-lock-open"} text-xs`;
   $("radial-hide-icon").className = `fa-solid ${t.hidden ? "fa-eye-slash" : "fa-eye"} text-xs`;
   $("radial-size-lbl").textContent = t.cells || 1;
-  const own = canControl(t);
-  ["radial-btn-rotate", "radial-btn-hp", "radial-btn-status", "radial-btn-flip"].forEach((b) => $(b).classList.toggle("hidden", !own));
+  const own = canControl(t), prop = t.kind === "prop";
+  ["radial-btn-rotate", "radial-btn-flip"].forEach((b) => $(b).classList.toggle("hidden", !own));
+  ["radial-btn-hp", "radial-btn-status"].forEach((b) => $(b).classList.toggle("hidden", !own || prop));
+  $("radial-btn-give").classList.toggle("hidden", !(IS_GM && prop));
+  $("radial-btn-sheet").classList.toggle("hidden", !sheetIdFor(t));
+  $("radial-desc").textContent = prop ? (t.desc || "") : "";
+  $("radial-desc").classList.toggle("hidden", !(prop && t.desc));
 }
 function positionRadial(t) {
   const m = $("radial-menu"); if (m.classList.contains("hidden")) return;
@@ -696,7 +734,50 @@ function patchToken(id, patch) {
 }
 function deleteToken(id) { if (!IS_GM || !state.tokens[id]) return; delete state.tokens[id]; selectToken(null); remove(mapRef("tokens/" + id)); }
 
+// Which characters/pcs record a token's sheet lives in (PCs, and NPCs saved through GeezSheets)
+function sheetIdFor(t) {
+  if (!t || t.kind === "prop") return null;
+  if (t.pcId) return t.pcId;
+  if (IS_GM && t.npcId && pcsData[t.npcId]) return t.npcId;
+  return null;
+}
+function openSheet(id, name) {
+  const url = `sheet.html?char=${encodeURIComponent(id)}${IS_GM ? "&gm=" + GM_KEY : ""}`;
+  $("sheet-frame").src = url + "&embed=1";
+  $("sheet-panel-tab").href = url;
+  $("sheet-panel-title").textContent = name || "Sheet";
+  $("sheet-panel").classList.add("open");
+}
+const closeSheet = () => { $("sheet-panel").classList.remove("open"); };
+
+// Give a prop to a PC: same stacking rules as the sheet's GM "Give item"
+async function giveToPc(pcId, prop) {
+  const invRef = ref(db, `characters/pcs/${pcId}/inventory`);
+  const inv = (await get(invRef)).val() || {};
+  const hit = Object.entries(inv).find(([, it]) => it && String(it.name || "").toLowerCase() === String(prop.name).toLowerCase());
+  if (hit) await update(ref(db, `characters/pcs/${pcId}/inventory/${hit[0]}`), { qty: (Number(hit[1].qty ?? 1) || 1) + 1 });
+  else {
+    const item = { name: prop.name, qty: 1, given_by: "GM", given_at: Date.now() };
+    if (prop.desc) item.desc = prop.desc;
+    await push(invRef, item);
+  }
+}
+
 function wireRadial() {
+  $("radial-btn-sheet").onclick = () => { const t = selTok(), id = sheetIdFor(t); if (id) openSheet(id, t.name); };
+  $("radial-btn-give").onclick = async () => {
+    const t = selTok(); if (!t || t.kind !== "prop") return;
+    const pcs = pcList(); if (!pcs.length) return toast("No PCs in Firebase");
+    const ans = prompt(`Give ${t.name} to:\n${pcs.map((p, i) => `${i + 1}. ${p.name}`).join("\n")}\n\nType a number (or several: 1,3)`, "");
+    if (!ans) return;
+    const picks = [...new Set(ans.split(/[\s,]+/).map((n) => pcs[Number(n) - 1]).filter(Boolean))];
+    if (!picks.length) return toast("No one picked");
+    try {
+      for (const p of picks) await giveToPc(p.pcId, t);
+      deleteToken(t.id);
+      toast(`🎒 Gave <b>${esc(t.name)}</b> to ${esc(picks.map((p) => p.name).join(", "))}`);
+    } catch (e) { toast(`Give failed: ${esc(e.message)}`, "error"); }
+  };
   $("radial-btn-delete").onclick = () => deleteToken(state.selectedTokenId);
   $("radial-btn-rotate").onclick = () => { const t = selTok(); if (t) patchToken(t.id, { rotation: ((t.rotation || 0) + 45) % 360 }); };
   $("radial-btn-flip").onclick = () => { const t = selTok(); if (t) patchToken(t.id, { flipped: !t.flipped }); };
@@ -1024,14 +1105,35 @@ function wireUI() {
   $("btn-sidebar-close").onclick = () => { $("right-sidebar").classList.add("hidden"); $("btn-sidebar").classList.remove("hidden"); };
   $("btn-sidebar").onclick = () => { $("right-sidebar").classList.remove("hidden"); $("btn-sidebar").classList.add("hidden"); };
   const tab = (which) => {
-    const tk = which === "tokens";
-    $("tab-content-tokens").classList.toggle("hidden", !tk); $("tab-content-layers").classList.toggle("hidden", tk);
-    for (const [id, on] of [["tab-btn-tokens", tk], ["tab-btn-layers", !tk]]) {
+    for (const name of ["tokens", "props", "layers"]) {
+      const on = name === which, id = `tab-btn-${name}`;
+      $(`tab-content-${name}`).classList.toggle("hidden", !on);
       $(id).classList.toggle("text-emerald-400", on); $(id).classList.toggle("border-emerald-400", on); $(id).classList.toggle("font-bold", on);
       $(id).classList.toggle("text-slate-400", !on); $(id).classList.toggle("border-transparent", !on);
     }
+    if (which === "props") loadPropData();
   };
-  $("tab-btn-tokens").onclick = () => tab("tokens"); $("tab-btn-layers").onclick = () => tab("layers");
+  document.querySelectorAll(".side-tab").forEach((b) => (b.onclick = () => tab(b.dataset.tab)));
+
+  // props
+  $("inp-prop-search").oninput = refreshProps;
+  $("sel-prop-cat").onchange = refreshProps;
+  $("tab-content-props").addEventListener("click", (e) => { const c = e.target.closest(".prop-card"); if (c) spawnProp(propEntries[+c.dataset.idx]); });
+  $("tab-content-props").addEventListener("dragstart", (e) => { const c = e.target.closest(".prop-card"); if (c) e.dataTransfer.setData("text/geez-prop", c.dataset.idx); });
+
+  // sheet panel
+  $("sheet-panel-close").onclick = closeSheet;
+
+  // mind messages
+  $("btn-mind").onclick = openMindModal;
+  document.querySelectorAll(".mind-style-btn").forEach((b) => b.addEventListener("click", () => {
+    const prevFrom = document.querySelector(".mind-style-btn.on")?.dataset.from;
+    document.querySelectorAll(".mind-style-btn").forEach((x) => x.classList.toggle("on", x === b));
+    if (!$("inp-mind-from").value.trim() || $("inp-mind-from").value === prevFrom) $("inp-mind-from").value = b.dataset.from;
+  }));
+  $("btn-mind-preview").onclick = () => { const m = mindDraft(); if (m) showMind(m); };
+  $("btn-mind-send").onclick = sendMind;
+  $("mind-overlay").addEventListener("click", hideMind);
   document.querySelectorAll("[data-layer]").forEach((c) => { c.checked = state.layers[c.dataset.layer]; c.onchange = () => { state.layers[c.dataset.layer] = c.checked; requestRender(); }; });
 
   // library
@@ -1096,12 +1198,14 @@ function wireUI() {
     if (e.target.matches("input, textarea, select")) return;
     if (e.code === "Space") { spaceHeld = true; e.preventDefault(); return; }
     const k = e.key.toLowerCase();
-    const map = { v: "select", h: "pan", r: "ruler", p: "ping", d: "draw", f: "fog" };
+    const MOVE = { w: [0, -1], arrowup: [0, -1], s: [0, 1], arrowdown: [0, 1], a: [-1, 0], arrowleft: [-1, 0], d: [1, 0], arrowright: [1, 0] };
+    if (MOVE[k] && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); stepToken(...MOVE[k]); return; }
+    const map = { v: "select", h: "pan", r: "ruler", p: "ping", b: "draw", f: "fog" };
     if (map[k] && !e.ctrlKey && !e.metaKey) setTool(map[k]);
     else if (k === "+" || k === "=") zoomAt(1.25);
     else if (k === "-") zoomAt(0.8);
     else if (k === "0") fitView();
-    else if (k === "escape") { selectToken(null); cancelAction(); document.querySelectorAll(".modal:not(#modal-me)").forEach((m) => closeModal(m.id)); }
+    else if (k === "escape") { selectToken(null); cancelAction(); closeSheet(); hideMind(); document.querySelectorAll(".modal:not(#modal-me)").forEach((m) => closeModal(m.id)); }
     else if ((k === "delete" || k === "backspace") && state.selectedTokenId) deleteToken(state.selectedTokenId);
   });
   window.addEventListener("keyup", (e) => { if (e.code === "Space") spaceHeld = false; });
@@ -1116,10 +1220,29 @@ function wireUI() {
   canvas.addEventListener("dragover", (e) => e.preventDefault());
   canvas.addEventListener("drop", (e) => {
     e.preventDefault();
+    const pidx = e.dataTransfer.getData("text/geez-prop");
+    if (pidx !== "") { if (IS_GM) spawnProp(propEntries[+pidx], screenToWorld(e.clientX, e.clientY)); return; }
     const idx = e.dataTransfer.getData("text/rodeo-token");
     if (idx !== "") { if (IS_GM) spawnToken(libEntries[+idx], screenToWorld(e.clientX, e.clientY)); return; }
     const f = e.dataTransfer.files[0]; if (f && IS_GM) openLocalFile(f);
   });
+}
+
+// WASD / arrow keys: the selected token if you can move it, otherwise (players) your own token
+function stepToken(dx, dy) {
+  let t = state.tokens[state.selectedTokenId];
+  if (!t || !canMove(t)) {
+    if (IS_GM) return;
+    const mine = Object.values(state.tokens).filter((x) => x && x.kind !== "prop" && canMove(x));
+    t = mine.find((x) => me?.pcId && x.pcId === me.pcId) || mine[0];
+  }
+  if (!t) return;
+  const g = cellPx(), s = tokPx(t);
+  let x = t.x + dx * g, y = t.y + dy * g;
+  if (state.grid.snap) ({ x, y } = snapToken(t, x, y));
+  x = Math.max(-s / 2, Math.min(state.map.width - s / 2, x));
+  y = Math.max(-s / 2, Math.min(state.map.height - s / 2, y));
+  patchToken(t.id, { x: r1(x), y: r1(y) });
 }
 
 async function openLocalFile(f) {
@@ -1133,6 +1256,160 @@ async function openLocalFile(f) {
     await openMap(f.name, { parsed, local: true });
     toast(`Opened ${esc(f.name)} on your screen only. Put it in battlemap/ to show players.`);
   } catch (e) { toast(`Couldn't open ${esc(f.name)}: ${esc(e.message)}`, "error"); }
+}
+
+// ───────────────────────── Props (items from /data) ─────────────────────────
+const SCENERY = [
+  ["Chest", "🧰"], ["Barrel", "🛢️"], ["Crate", "📦"], ["Campfire", "🔥"], ["Candle", "🕯️"], ["Trap", "⚠️"], ["Statue", "🗿"], ["Altar", "🛐"],
+  ["Bones", "💀"], ["Gold pile", "💰"], ["Lever", "🕹️"], ["Bookshelf", "📚"], ["Tree", "🌲"], ["Boulder", "🪨"], ["Door", "🚪"], ["Ladder", "🪜"],
+  ["Portal", "🌀"], ["Web", "🕸️"], ["Mushrooms", "🍄"], ["Corpse", "⚰️"], ["Sign", "🪧"], ["Key", "🗝️"], ["Map", "🗺️"], ["Note", "✉️"],
+].map(([name, icon]) => ({ name, icon, cat: "scenery", cells: 1 }));
+let propData = null, propEntries = [];
+function propIcon(item) {
+  const c = String(item.equipment_category?.name || item.gear_category?.name || "").toLowerCase(), n = item.name.toLowerCase(), both = c + " " + n;
+  if (/potion|elixir|philter|oil of/.test(n)) return "🧪";
+  if (/^ring|ring of/.test(n) || c === "ring") return "💍";
+  if (/scroll/.test(both)) return "📜";
+  if (/wand/.test(both)) return "🪄";
+  if (/staff/.test(both)) return "🦯";
+  if (/\brod\b/.test(both)) return "🔱";
+  if (/shield/.test(n)) return "🛡️";
+  if (/armor|mail|plate|breastplate/.test(both)) return "🥋";
+  if (/arrow|bolt|ammunition|\bbow\b|crossbow|longbow|shortbow/.test(both)) return "🏹";
+  if (/axe/.test(n)) return "🪓";
+  if (/hammer|mace|maul|club|flail/.test(n)) return "🔨";
+  if (/dagger|knife/.test(n)) return "🔪";
+  if (/weapon|sword|scimitar|rapier|spear|trident|halberd|glaive|pike|lance|whip/.test(both)) return "⚔️";
+  if (/amulet|necklace|periapt|medallion|talisman|scarab/.test(n)) return "📿";
+  if (/cloak|robe|cape/.test(n)) return "🧥";
+  if (/boots|slippers/.test(n)) return "🥾";
+  if (/gloves|gauntlet|bracers/.test(n)) return "🧤";
+  if (/helm|hat|circlet|crown|headband/.test(n)) return "👑";
+  if (/book|tome|manual|spellbook/.test(n)) return "📕";
+  if (/gem|stone|crystal|orb/.test(n)) return "💎";
+  if (/bag|pack|sack|pouch|haversack/.test(n)) return "👜";
+  if (/rope|chain/.test(n)) return "⛓️";
+  if (/torch|lamp|lantern|candle/.test(n)) return "🕯️";
+  if (/horn|flute|lute|drum|instrument|bagpipes|lyre/.test(both)) return "🎺";
+  if (/tool|kit|supplies/.test(both)) return "🔧";
+  if (/mount|vehicle|saddle|horse|cart|wagon|boat|ship/.test(both)) return "🐴";
+  if (/food|ration|ale|wine/.test(n)) return "🍖";
+  if (item.rarity) return "✨";
+  return "🎒";
+}
+function propCat(item) {
+  const c = String(item.equipment_category?.name || "").toLowerCase(), n = item.name.toLowerCase();
+  if (/potion/.test(n) || c === "potion") return "potion";
+  if (item.rarity && String(item.rarity.name || "").toLowerCase() !== "varies" || /wondrous|ring|rod|staff|wand|scroll/.test(c)) return "magic";
+  if (/weapon|ammunition/.test(c)) return "weapon";
+  if (/armor/.test(c)) return "armor";
+  return "gear";
+}
+function descOf(item) {
+  const d = Array.isArray(item.desc) ? item.desc : item.desc ? [item.desc] : [];
+  const lines = d.filter((x) => !/^(wondrous item|weapon|armor|ring|rod|staff|wand|potion|scroll)\b.*\)?$/i.test(String(x).trim()) || d.length === 1);
+  const txt = lines.join(" ").replace(/\s+/g, " ").trim();
+  return txt.length > 280 ? txt.slice(0, 277) + "…" : txt;
+}
+async function loadPropData() {
+  if (propData) return refreshProps();
+  propData = [];
+  $("props-more").textContent = "Loading items from data/…";
+  const grab = (f) => fetch(f, { cache: "force-cache" }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  const [equip, magic] = await Promise.all([grab("data/equipment.json"), grab("data/magic_items.json")]);
+  const seen = new Set();
+  for (const it of [...equip, ...magic]) {
+    if (!it?.name || seen.has(it.name.toLowerCase())) continue; seen.add(it.name.toLowerCase());
+    propData.push({ name: it.name, icon: propIcon(it), cat: propCat(it), rarity: it.rarity?.name && it.rarity.name !== "Varies" ? it.rarity.name : "", desc: descOf(it), cells: 1 });
+  }
+  propData.sort((a, b) => a.name.localeCompare(b.name));
+  refreshProps();
+}
+function refreshProps() {
+  const q = $("inp-prop-search").value.trim().toLowerCase(), cat = $("sel-prop-cat").value;
+  const pool = [...SCENERY, ...(propData || [])].filter((p) => (!cat || p.cat === cat) && (!q || p.name.toLowerCase().includes(q)));
+  const LIMIT = 60;
+  propEntries = pool.slice(0, LIMIT);
+  $("list-props").innerHTML = propEntries.map((p, i) => `<div class="prop-card flex flex-col items-center bg-slate-800/60 border p-2 rounded-xl cursor-pointer hover:border-emerald-500 hover:bg-slate-800 transition" style="border-color:${RARITY[String(p.rarity || "").toLowerCase()] || "rgba(51,65,85,.6)"}" draggable="true" data-idx="${i}" title="${esc(p.name)}${p.rarity ? " · " + esc(p.rarity) : ""}${p.desc ? "\n" + esc(p.desc) : ""}">
+      <div class="w-10 h-10 rounded-lg bg-slate-900/80 flex items-center justify-center text-2xl">${p.icon}</div>
+      <span class="text-[10px] text-slate-300 font-medium mt-1 truncate w-full text-center">${esc(p.name)}</span></div>`).join("") || `<span class="col-span-3 text-[11px] text-slate-500">No match</span>`;
+  $("props-more").textContent = !propData?.length && propData ? "No item files found in data/ — only scenery is listed." : pool.length > LIMIT ? `Showing ${LIMIT} of ${pool.length} — search to narrow it down.` : "";
+}
+function spawnProp(p, at) {
+  if (!p) return;
+  if (!state.mapKey) return toast("Open a map first");
+  const cells = Number(p.cells) || 1, s = cells * cellPx();
+  const rc = canvas.getBoundingClientRect();
+  const c = at || screenToWorld(rc.left + viewW() / 2, rc.top + viewH() / 2);
+  const pos = snapToken({ cells }, c.x - s / 2, c.y - s / 2);
+  const id = newId("p");
+  const tok = { id, kind: "prop", name: p.name, icon: p.icon || "📦", x: r1(pos.x), y: r1(pos.y), cells, rotation: 0, flipped: false, locked: false, hidden: false };
+  if (p.rarity) tok.rarity = p.rarity;
+  if (p.desc) tok.desc = p.desc;
+  state.tokens[id] = tok; requestRender();
+  set(mapRef("tokens/" + id), tok);
+}
+
+// ───────────────────────── Mind messages (telepathy overlay) ─────────────────────────
+let mindStyle = "psionic", mindQueue = [], mindShowing = false, mindTimer = null;
+function openMindModal() {
+  const pcs = pcList();
+  $("mind-targets").innerHTML = `<label class="flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 cursor-pointer"><input type="checkbox" id="mind-all" checked class="accent-purple-500"> Everyone</label>` +
+    pcs.map((p) => `<label class="flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 cursor-pointer"><input type="checkbox" class="mind-pc accent-purple-500" value="${esc(p.pcId)}"> ${esc(p.name)}</label>`).join("");
+  $("mind-all").onchange = (e) => { if (e.target.checked) document.querySelectorAll(".mind-pc").forEach((c) => (c.checked = false)); };
+  document.querySelectorAll(".mind-pc").forEach((c) => (c.onchange = () => { $("mind-all").checked = ![...document.querySelectorAll(".mind-pc")].some((x) => x.checked); }));
+  openModal("modal-mind"); setTimeout(() => $("inp-mind-text").focus(), 50);
+}
+function mindDraft() {
+  const text = $("inp-mind-text").value.trim();
+  if (!text) { toast("Write the message first"); return null; }
+  return { text, from: $("inp-mind-from").value.trim(), style: document.querySelector(".mind-style-btn.on")?.dataset.style || "psionic" };
+}
+function sendMind() {
+  const m = mindDraft(); if (!m) return;
+  const picks = [...document.querySelectorAll(".mind-pc:checked")].map((c) => c.value);
+  const to = picks.length ? Object.fromEntries(picks.map((id) => [id, true])) : null;
+  push(R("messages"), { ...m, to, t: Date.now() });
+  const names = picks.length ? pcList().filter((p) => picks.includes(p.pcId)).map((p) => p.name).join(", ") : "everyone";
+  toast(`🧠 Sent to ${esc(names)}`);
+  $("inp-mind-text").value = ""; closeModal("modal-mind");
+}
+function showMind(m) {
+  if (mindShowing) { mindQueue.push(m); return; }
+  mindShowing = true;
+  const ov = $("mind-overlay");
+  ov.dataset.style = m.style || "psionic";
+  $("mind-from").textContent = m.from || "";
+  // letters fade in one by one; words stay together so lines wrap cleanly
+  const words = String(m.text).split(/(\s+)/); let i = 0;
+  $("mind-text").innerHTML = words.map((w) => /^\s+$/.test(w) ? w : `<span style="display:inline-block;opacity:1;filter:none;animation:none">${[...w].map((ch) => `<span style="animation-delay:${(i++ * 0.035).toFixed(3)}s">${esc(ch)}</span>`).join("")}</span>`).join("");
+  ov.classList.remove("out"); ov.classList.add("show");
+  clearTimeout(mindTimer);
+  mindTimer = setTimeout(hideMind, Math.min(25000, 5000 + String(m.text).length * 90));
+}
+function hideMind() {
+  const ov = $("mind-overlay");
+  if (!mindShowing) return;
+  clearTimeout(mindTimer);
+  ov.classList.add("out");
+  setTimeout(() => {
+    ov.classList.remove("show", "out"); mindShowing = false;
+    const next = mindQueue.shift(); if (next) showMind(next);
+  }, 650);
+}
+function watchMind() {
+  let seen = null;
+  onValue(query(R("messages"), limitToLast(10)), (snap) => {
+    const v = snap.val() || {};
+    const keys = Object.keys(v).sort();
+    if (seen) for (const k of keys) {
+      if (seen.has(k)) continue;
+      const m = v[k];
+      const forMe = IS_GM || !m.to || (me?.pcId && m.to[me.pcId]);
+      if (forMe && !IS_GM) showMind(m);
+    }
+    seen = new Set(keys);
+  });
 }
 
 // ───────────────────────── Player identity ─────────────────────────
@@ -1218,9 +1495,9 @@ function boot() {
     $("dot-conn").className = `w-2 h-2 rounded-full ${on ? "bg-emerald-400" : "bg-red-500"}`;
     $("dot-conn").title = on ? "Connected" : "Not connected to Firebase";
   });
-  watchCharacters(); watchSession(); watchPings(); watchRulers(); watchDice();
+  watchCharacters(); watchSession(); watchPings(); watchRulers(); watchDice(); watchMind();
   if (IS_GM) { fillMapSelect(); refreshLibrary(); }
   else if (!me) { refreshMePicker(); openModal("modal-me"); }
-  window.__rodeo = { state, livePings, spawnToken, openMap, gmGoTo, pcList, npcList, get me() { return me; } };
+  window.__rodeo = { state, livePings, spawnToken, spawnProp, showMind, openMap, gmGoTo, pcList, npcList, get me() { return me; } };
 }
 boot();

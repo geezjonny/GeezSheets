@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Party · PocketRodeo</title>
+<title>Party · GeezVTT</title>
 <style>
 :root{
-  /* PocketRodeo palette (slate + emerald) */
+  /* GeezVTT palette (slate + emerald) */
   --bg:#0f172a;--panel:rgba(30,41,59,.88);--panel2:#1e293b;--border:#334155;
   --gold:#34d399;--gold-dim:#059669;--text:#e2e8f0;--dim:#94a3b8;
   --red:#ef4444;--green:#22c55e;--warn:#f59e0b;
@@ -167,6 +167,14 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var
 .inv-rarity-very.rare{border-color:rgba(192,132,252,.3);background:rgba(192,132,252,.03)}
 .inv-rarity-legendary{border-color:rgba(251,146,60,.3);background:rgba(251,146,60,.03)}
 
+/* ── Single-character / embedded view (opened from the VTT) ── */
+body.single .cards-wrap{justify-content:center}
+body.embed .header{display:none}
+body.embed .cards-wrap{padding:10px}
+body.embed .card{width:100%}
+body.embed,body.embed html{background:transparent}
+body.embed .state-screen{min-height:60vh}
+
 /* ── GM inventory tools ── */
 .btn{height:30px;padding:0 12px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;font-family:var(--font);border:1px solid var(--border);background:#1e293b;color:var(--text);display:inline-flex;align-items:center;gap:6px}
 .btn:hover{background:#334155}
@@ -237,7 +245,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var
 <body>
 
 <div class="header">
-  <div class="brand">♞ PocketRodeo</div>
+  <div class="brand">♞ GeezVTT</div>
   <span style="font-size:12px;color:var(--dim)">Party</span>
   <div class="sep"></div>
   <select id="campaignSelect" class="campaign-select"><option value="">All campaigns</option></select>
@@ -282,7 +290,12 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var
 import { db, ref, get, set, update, remove, push, onValue } from "./js/rodeo-firebase.js";
 const $   = id => document.getElementById(id);
 const GM_KEY = "jonny";
-const IS_GM  = new URLSearchParams(location.search).get("gm") === GM_KEY;
+const PARAMS = new URLSearchParams(location.search);
+const IS_GM  = PARAMS.get("gm") === GM_KEY;
+const ONLY   = PARAMS.get("char");          // sheet.html?char=<id> shows just that character
+const EMBED  = PARAMS.has("embed");         // inside the VTT's sheet panel
+if (ONLY) document.body.classList.add("single");
+if (EMBED) document.body.classList.add("embed");
 function toast(html) {
   const el = document.createElement("div"); el.className = "toast"; el.innerHTML = html;
   $("toasts").appendChild(el); setTimeout(() => el.remove(), 4000);
@@ -836,13 +849,18 @@ async function loadParty() {
     $('loadingScreen').style.display='none';
     if(!snap.exists()){$('errorMsg').textContent='No player characters found.';$('errorScreen').style.display='flex';return;}
     allPcs = Object.entries(snap.val())
-      .map(([id,c]) => c ? {...c, id} : null)
-      .filter(c => c && c.name && c.campaign !== '__oracle__' && c.type !== 'npc' && c.record_type !== 'npc')
+      .map(([id,c]) => c ? {...c, id, name: c.name || c.identity?.name || c.basic?.name || ''} : null)
+      .filter(c => c && c.name && (ONLY ? c.id === ONLY : (c.campaign !== '__oracle__' && c.type !== 'npc' && c.record_type !== 'npc')))
       .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    if (ONLY) {
+      if (!allPcs.length) { $('errorMsg').textContent='That character sheet was not found.'; $('errorScreen').style.display='flex'; return; }
+      $('campaignSelect').style.display='none';
+      document.title = `${allPcs[0].name} · GeezVTT`;
+    }
     const campaigns = [...new Set(allPcs.map(c=>c.campaign||'').filter(c=>c&&c!=='__oracle__'))].sort();
     const sel = $('campaignSelect');
     campaigns.forEach(camp=>{const opt=document.createElement('option');opt.value=camp;opt.textContent=camp;sel.appendChild(opt);});
-    if(campaigns.length===1) sel.value=campaigns[0];
+    if(campaigns.length===1 || ONLY) sel.value = ONLY ? '' : campaigns[0];
     sel.addEventListener('change',()=>renderCards(sel.value));
     $('cardsWrap').style.display='flex';
     if (IS_GM) { $('gmBadge').style.display=''; $('giveBtn').style.display=''; }

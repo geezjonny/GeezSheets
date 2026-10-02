@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PocketRodeo</title>
+  <title>GeezVTT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = { darkMode: 'class', theme: { extend: { colors: { darkbg: '#0f172a', darkpanel: '#1e293b', darkborder: '#334155' } } } };
@@ -28,6 +28,36 @@
     .toast { animation: toastIn .2s ease-out; }
     @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
     input, select, textarea { user-select: text; -webkit-user-select: text; }
+
+    /* ── Mind message overlay ── */
+    #mind-overlay { --c1: 168,85,247; --c2: 240,171,252; position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center;
+      background: radial-gradient(circle at center, rgba(var(--c1),.38) 0%, rgba(2,6,23,.9) 65%); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+      cursor: pointer; overflow: hidden; animation: mindIn .6s ease-out; }
+    #mind-overlay.show { display: flex; }
+    #mind-overlay.out { animation: mindOut .7s ease-in forwards; }
+    #mind-overlay[data-style="sending"] { --c1: 14,165,233;  --c2: 165,243,252; }
+    #mind-overlay[data-style="divine"]  { --c1: 234,179,8;   --c2: 254,240,138; }
+    #mind-overlay[data-style="dream"]   { --c1: 99,102,241;  --c2: 199,210,254; }
+    #mind-overlay[data-style="dread"]   { --c1: 220,38,38;   --c2: 254,202,202; }
+    .mind-ring { position: absolute; left: 50%; top: 50%; width: 40vmin; height: 40vmin; border-radius: 50%; border: 2px solid rgba(var(--c2),.5);
+      transform: translate(-50%,-50%) scale(.2); opacity: 0; animation: mindRipple 4.5s ease-out infinite; box-shadow: 0 0 40px rgba(var(--c1),.6), inset 0 0 40px rgba(var(--c1),.4); }
+    .mind-ring:nth-child(2) { animation-delay: 1.5s; } .mind-ring:nth-child(3) { animation-delay: 3s; }
+    .mind-box { position: relative; max-width: min(820px, 88vw); text-align: center; padding: 24px; animation: mindDrift 6s ease-in-out infinite; }
+    .mind-from { font: 600 12px/1 system-ui, sans-serif; letter-spacing: .35em; text-transform: uppercase; color: rgba(var(--c2),.75); margin-bottom: 22px; }
+    .mind-text { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: clamp(1.4rem, 3.4vw, 2.6rem); line-height: 1.35; color: rgb(var(--c2));
+      text-shadow: 0 0 12px rgba(var(--c1),.9), 0 0 32px rgba(var(--c1),.6); white-space: pre-wrap; }
+    .mind-text span { opacity: 0; filter: blur(8px); display: inline-block; animation: mindLetter .5s ease-out forwards; white-space: pre; }
+    .mind-hint { margin-top: 28px; font: 11px system-ui, sans-serif; color: rgba(var(--c2),.45); }
+    @keyframes mindIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes mindOut { to { opacity: 0; filter: blur(6px); } }
+    @keyframes mindRipple { 0% { transform: translate(-50%,-50%) scale(.2); opacity: .9; } 100% { transform: translate(-50%,-50%) scale(3.2); opacity: 0; } }
+    @keyframes mindLetter { to { opacity: 1; filter: blur(0); } }
+    @keyframes mindDrift { 0%,100% { transform: translateY(0) skewX(0deg); } 50% { transform: translateY(-6px) skewX(-1deg); } }
+    .mind-style-btn.on { border-color: #a855f7; background: rgba(168,85,247,.18); color: #f0abfc; }
+
+    /* ── Character sheet panel ── */
+    #sheet-panel { transform: translateX(105%); transition: transform .25s ease; }
+    #sheet-panel.open { transform: none; }
   </style>
 </head>
 <body class="bg-darkbg text-slate-100 h-full w-full flex flex-col relative select-none">
@@ -37,7 +67,7 @@
     <div class="flex items-center gap-3 min-w-0">
       <div class="flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-chess-board text-emerald-400 text-xl"></i>
-        <span class="font-bold tracking-wide text-lg bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent hidden sm:inline">PocketRodeo</span>
+        <span class="font-bold tracking-wide text-lg bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent hidden sm:inline">GeezVTT</span>
       </div>
       <select id="sel-map" class="gm-only bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-md px-2 py-1 max-w-[220px]" title="Pick a map. Everyone moves to it.">
         <option value="">— pick a map —</option>
@@ -62,6 +92,9 @@
         <i class="fa-solid fa-file-circle-plus"></i><span class="hidden lg:inline">Open file</span>
         <input type="file" id="file-import-dd2vtt" accept=".dd2vtt,.df2vtt,.uvtt,.json,image/*" class="hidden">
       </label>
+      <button id="btn-mind" class="gm-only bg-purple-700 hover:bg-purple-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="Send a telepathic message">
+        <i class="fa-solid fa-brain text-sm"></i><span class="hidden sm:inline">Mind</span>
+      </button>
       <button id="btn-dice-modal" class="bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
         <i class="fa-solid fa-dice-d20 text-sm"></i><span class="hidden sm:inline">Dice</span>
       </button>
@@ -87,7 +120,7 @@
         <button data-tool="pan" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Pan (H, or hold Space)"><i class="fa-solid fa-hand text-base"></i></button>
         <button data-tool="ruler" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Measure (R)"><i class="fa-solid fa-ruler-combined text-base"></i></button>
         <button data-tool="ping" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Ping (P, or Alt-click)"><i class="fa-solid fa-location-crosshairs text-base"></i></button>
-        <button data-tool="draw" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Draw (D)"><i class="fa-solid fa-pen-nib text-base"></i></button>
+        <button data-tool="draw" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Draw (B)"><i class="fa-solid fa-pen-nib text-base"></i></button>
         <button data-tool="fog" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Fog of war (F)"><i class="fa-solid fa-cloud text-base"></i></button>
         <button data-tool="portals" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Doors"><i class="fa-solid fa-door-open text-base"></i></button>
         <button data-tool="calibrate" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Calibrate grid"><i class="fa-solid fa-compass-drafting text-base"></i></button>
@@ -159,8 +192,9 @@
         <button id="btn-sidebar-close" class="text-slate-400 hover:text-white" title="Hide"><i class="fa-solid fa-angles-right"></i></button>
       </div>
       <div class="flex border-b border-slate-700/60 bg-slate-900/30 text-xs font-medium">
-        <button id="tab-btn-tokens" class="flex-1 py-2 text-center text-emerald-400 border-b-2 border-emerald-400 font-bold">Library</button>
-        <button id="tab-btn-layers" class="flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent">Layers</button>
+        <button id="tab-btn-tokens" data-tab="tokens" class="side-tab flex-1 py-2 text-center text-emerald-400 border-b-2 border-emerald-400 font-bold">Tokens</button>
+        <button id="tab-btn-props" data-tab="props" class="side-tab flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent">Props</button>
+        <button id="tab-btn-layers" data-tab="layers" class="side-tab flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent">Layers</button>
       </div>
       <div id="tab-content-tokens" class="flex-1 overflow-y-auto p-3 space-y-4">
         <div class="flex gap-2">
@@ -185,6 +219,18 @@
           <input type="file" id="file-upload" accept="image/*" class="hidden">
         </label>
       </div>
+      <div id="tab-content-props" class="flex-1 overflow-y-auto p-3 space-y-4 hidden">
+        <div class="flex gap-2">
+          <input id="inp-prop-search" type="text" placeholder="Search items…" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+          <select id="sel-prop-cat" class="bg-slate-900 border border-slate-700 rounded-lg px-1 py-1.5 text-xs max-w-[110px]">
+            <option value="">All</option><option value="scenery">Scenery</option><option value="weapon">Weapons</option><option value="armor">Armor</option>
+            <option value="potion">Potions</option><option value="magic">Magic items</option><option value="gear">Gear &amp; tools</option>
+          </select>
+        </div>
+        <p class="text-[10px] text-slate-500 -mt-2">Click to drop, or drag onto the map. Click a placed item → 🎒 to give it to a player.</p>
+        <div id="list-props" class="grid grid-cols-3 gap-2"></div>
+        <p id="props-more" class="text-[10px] text-slate-500"></p>
+      </div>
       <div id="tab-content-layers" class="flex-1 overflow-y-auto p-3 space-y-3 hidden">
         <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-chess-knight text-emerald-400"></i>Tokens</span><input type="checkbox" data-layer="tokens" checked class="accent-emerald-500"></label>
         <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-pen-nib text-pink-400"></i>Drawings</span><input type="checkbox" data-layer="drawings" checked class="accent-emerald-500"></label>
@@ -207,9 +253,14 @@
     <!-- Token radial menu -->
     <div id="radial-menu" class="radial-menu fixed hidden z-30 pointer-events-none">
       <div class="relative w-40 h-40">
-        <div class="absolute left-1/2 -translate-x-1/2 -bottom-7 px-2 py-0.5 rounded bg-slate-900/90 border border-slate-600 text-[11px] whitespace-nowrap"><span id="radial-token-name"></span> <span id="radial-token-hp" class="text-emerald-300 font-mono"></span></div>
+        <div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex flex-col items-center gap-1">
+          <div class="px-2 py-0.5 rounded bg-slate-900/90 border border-slate-600 text-[11px] whitespace-nowrap flex items-center gap-1.5"><span id="radial-token-name"></span> <span id="radial-token-hp" class="text-emerald-300 font-mono"></span>
+            <button id="radial-btn-sheet" class="hidden px-1.5 py-0.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-[10px]" title="Open character sheet"><i class="fa-solid fa-scroll"></i> Sheet</button></div>
+          <div id="radial-desc" class="hidden w-56 px-2 py-1.5 rounded-lg bg-slate-900/95 border border-slate-600 text-[10px] text-slate-300 leading-snug whitespace-normal"></div>
+        </div>
         <button id="radial-btn-delete" class="gm-only absolute top-0 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg" title="Delete (Del)"><i class="fa-solid fa-trash text-xs"></i></button>
         <button id="radial-btn-rotate" class="absolute top-1/2 right-0 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 flex items-center justify-center shadow-lg" title="Rotate 45°"><i class="fa-solid fa-rotate-right text-xs"></i></button>
+        <button id="radial-btn-give" class="gm-only hidden absolute bottom-0 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center shadow-lg" title="Give to a player (adds to their inventory)"><i class="fa-solid fa-sack-dollar text-xs"></i></button>
         <button id="radial-btn-hp" class="absolute bottom-0 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-lg" title="HP"><i class="fa-solid fa-heart text-xs"></i></button>
         <button id="radial-btn-status" class="absolute top-1/2 left-0 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-indigo-400 flex items-center justify-center shadow-lg" title="Status ring colour"><i class="fa-solid fa-certificate text-xs"></i></button>
         <button id="radial-btn-lock" class="gm-only absolute top-2 left-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-400 flex items-center justify-center shadow-lg" title="Lock position"><i id="radial-lock-icon" class="fa-solid fa-lock-open text-xs"></i></button>
@@ -300,6 +351,50 @@
         <button id="btn-me-name" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 rounded-lg">Watch</button>
       </div>
     </div>
+  </div>
+
+  <!-- Mind message (GM) -->
+  <div id="modal-mind" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-lg rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700 mb-4">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-brain text-purple-400"></i> Send a message into their minds</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="grid grid-cols-5 gap-2 mb-3" id="mind-styles">
+        <button data-style="psionic" data-from="A voice in your mind" class="mind-style-btn on border border-slate-700 rounded-lg py-2 text-xs">🧠<br>Psionic</button>
+        <button data-style="sending" data-from="Sending" class="mind-style-btn border border-slate-700 rounded-lg py-2 text-xs">✉️<br>Sending</button>
+        <button data-style="divine" data-from="Your god" class="mind-style-btn border border-slate-700 rounded-lg py-2 text-xs">✨<br>Divine</button>
+        <button data-style="dream" data-from="A dream" class="mind-style-btn border border-slate-700 rounded-lg py-2 text-xs">🌙<br>Dream</button>
+        <button data-style="dread" data-from="Something ancient" class="mind-style-btn border border-slate-700 rounded-lg py-2 text-xs">👁️<br>Dread</button>
+      </div>
+      <label class="block text-xs font-semibold text-slate-400 mb-1">From</label>
+      <input id="inp-mind-from" type="text" value="A voice in your mind" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm mb-3" placeholder="e.g. Illithid, Your patron">
+      <label class="block text-xs font-semibold text-slate-400 mb-1">Message</label>
+      <textarea id="inp-mind-text" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3" placeholder="We see you, little one."></textarea>
+      <label class="block text-xs font-semibold text-slate-400 mb-1">Who hears it</label>
+      <div id="mind-targets" class="flex flex-wrap gap-1.5 mb-4 text-xs"></div>
+      <div class="flex justify-end gap-2">
+        <button id="btn-mind-preview" class="text-xs px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Preview</button>
+        <button id="btn-mind-send" class="text-xs px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mind-overlay">
+    <div class="mind-ring"></div><div class="mind-ring"></div><div class="mind-ring"></div>
+    <div class="mind-box"><div class="mind-from" id="mind-from"></div><div class="mind-text" id="mind-text"></div><div class="mind-hint">click anywhere to let it fade</div></div>
+  </div>
+
+  <!-- Character sheet panel -->
+  <div id="sheet-panel" class="fixed top-12 right-0 bottom-0 w-[360px] max-w-full z-30 glass-panel border-l border-slate-700 flex flex-col shadow-2xl">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-slate-700/60 text-xs">
+      <span class="font-semibold flex items-center gap-2"><i class="fa-solid fa-scroll text-emerald-400"></i><span id="sheet-panel-title">Sheet</span></span>
+      <span class="flex items-center gap-3">
+        <a id="sheet-panel-tab" target="_blank" class="text-slate-400 hover:text-white" title="Open in a new tab"><i class="fa-solid fa-up-right-from-square"></i></a>
+        <button id="sheet-panel-close" class="text-slate-400 hover:text-white" title="Close (Esc)"><i class="fa-solid fa-xmark text-base"></i></button>
+      </span>
+    </div>
+    <iframe id="sheet-frame" class="flex-1 w-full border-0 bg-transparent" title="Character sheet"></iframe>
   </div>
 
   <div id="toasts" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none"></div>
