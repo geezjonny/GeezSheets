@@ -82,6 +82,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var
 /* ── Conditions ── */
 .conditions-row{display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px;border-bottom:1px solid var(--border)}
 .conditions-row:empty{display:none}
+.rested-pill{font-family:var(--font);font-size:.62rem;font-weight:700;padding:2px 9px;border-radius:999px;background:rgba(99,102,241,.15);border:1px solid rgba(129,140,248,.4);color:#c7d2fe;margin-top:6px;display:inline-block}
 .cond-pill{font-family:var(--font);font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
 
 /* ── Card footer / expand buttons ── */
@@ -589,6 +590,7 @@ function buildCard(char) {
       <div class="char-name">${esc(char.name||'Unnamed')}</div>
       <div class="char-sub">${esc(subLine)}</div>
       ${char.combat_role?`<div class="char-role-badge">${esc(char.combat_role)}</div>`:''}
+      <div><span class="rested-pill" id="rested-${char.id}" style="display:none" title="+1d4 to each roll in GeezVTT until used up"></span></div>
       <div class="hp-row">
         <div class="hp-label">HP</div>
         <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${hpColor(hpCur,hpMax)}"></div></div>
@@ -829,6 +831,16 @@ function watchInventory(charId) {
   });
 }
 
+// ── Well rested pill (granted by the GM's long rest in the VTT) ──────────────
+function watchBuffs(charId) {
+  onValue(ref(db, `characters/pcs/${charId}/buffs/well_rested`), snap => {
+    const el = $(`rested-${charId}`); if (!el) return;
+    const n = Number(snap.val()?.rolls_left) || 0;
+    el.style.display = n ? '' : 'none';
+    el.textContent = `🌙 Well rested · +1d4 on next ${n} roll${n === 1 ? '' : 's'}`;
+  });
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 let allPcs = [];
 
@@ -839,7 +851,7 @@ function renderCards(campaign) {
     wrap.innerHTML='<div style="color:var(--dim);font-family:var(--font);font-size:.8rem;padding:40px 20px">No characters for this campaign.</div>';
     return;
   }
-  for(const pc of filtered){wrap.appendChild(buildCard(pc));watchCharacter(pc.id);watchInventory(pc.id);}
+  for(const pc of filtered){wrap.appendChild(buildCard(pc));watchCharacter(pc.id);watchInventory(pc.id);watchBuffs(pc.id);}
 }
 
 async function loadParty() {

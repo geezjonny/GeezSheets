@@ -55,7 +55,43 @@
     @keyframes mindDrift { 0%,100% { transform: translateY(0) skewX(0deg); } 50% { transform: translateY(-6px) skewX(-1deg); } }
     .mind-style-btn.on { border-color: #a855f7; background: rgba(168,85,247,.18); color: #f0abfc; }
 
-    /* ── Character sheet panel ── */
+    /* ── Dice tray (shared, physical-ish dice) ── */
+    #free-tray { position: fixed; left: 0; right: 0; top: 48px; bottom: 0; z-index: 45; pointer-events: none; overflow: hidden; }
+    .die { position: absolute; width: var(--ds, 52px); height: var(--ds, 52px); margin: calc(var(--ds, 52px) / -2) 0 0 calc(var(--ds, 52px) / -2); will-change: transform; filter: drop-shadow(0 6px 6px rgba(0,0,0,.55)); }
+    .die svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .die-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 800 calc(var(--ds, 52px) * .36) / 1 system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+    .die.d4 .die-num { padding-top: 18%; }
+    .die.settled .die-num { animation: diePop .35s ease-out; }
+    .die.drop { opacity: .35; }
+    .die.crit svg polygon { stroke: #fde047; stroke-width: 6; } .die.fumble svg polygon { stroke: #f87171; stroke-width: 6; }
+    @keyframes diePop { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
+    .tray-label { position: absolute; transform: translate(-50%, 0); padding: 3px 9px; border-radius: 999px; background: rgba(15,23,42,.92); border: 1px solid rgba(255,255,255,.18);
+      font: 600 12px system-ui, sans-serif; color: #e2e8f0; white-space: nowrap; box-shadow: 0 6px 14px rgba(0,0,0,.5); animation: labelIn .3s ease-out; }
+    .tray-label b { font-size: 15px; color: #fff; margin-left: 4px; }
+    .tray-label small { color: #94a3b8; font-weight: 500; margin-left: 4px; }
+    .tray-fade { transition: opacity .8s ease; opacity: 0 !important; }
+    @keyframes labelIn { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+    /* ── Roll call screen ── */
+    #rc-overlay { position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column; align-items: center; padding: 18px 16px 16px;
+      background: radial-gradient(ellipse at 50% 35%, rgba(30,41,59,.92), rgba(2,6,23,.97) 70%); backdrop-filter: blur(4px); animation: mindIn .4s ease-out; overflow-y: auto; }
+    #rc-overlay.show { display: flex; }
+    .rc-kicker { font: 600 11px system-ui, sans-serif; letter-spacing: .35em; text-transform: uppercase; color: #94a3b8; }
+    .rc-title { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(1.7rem, 4vw, 3rem); color: #f4d58d; text-shadow: 0 0 18px rgba(244,213,141,.35); letter-spacing: .04em; text-align: center; margin: 4px 0 2px; }
+    .rc-dc { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px; border: 1px solid rgba(244,213,141,.45); color: #f4d58d; font: 700 13px system-ui, sans-serif; background: rgba(244,213,141,.08); }
+    .rc-main { display: flex; gap: 16px; width: min(1100px, 100%); margin-top: 14px; flex: 1; min-height: 0; flex-wrap: wrap; }
+    #rc-tray { position: relative; flex: 1 1 520px; min-height: 320px; overflow: hidden; }   /* dice roll straight over the screen */
+    .rc-side { flex: 0 1 300px; display: flex; flex-direction: column; gap: 10px; min-width: 260px; }
+    .rc-card { background: rgba(30,41,59,.85); border: 1px solid #334155; border-radius: 16px; padding: 12px; }
+    .rc-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; margin-bottom: 5px; font-size: 13px; }
+    .rc-row .tot { margin-left: auto; font: 800 18px system-ui, sans-serif; }
+    .rc-row.wait .tot { font-size: 11px; font-weight: 500; color: #64748b; }
+    .rc-chip { padding: 4px 9px; border-radius: 999px; border: 1px solid #334155; background: #0f172a; font-size: 11px; cursor: pointer; }
+    .rc-chip.on { border-color: #f4d58d; color: #f4d58d; background: rgba(244,213,141,.1); }
+    #rc-roll { width: 100%; padding: 14px; border-radius: 14px; font: 800 18px Georgia, serif; letter-spacing: .12em; color: #1c1206;
+      background: linear-gradient(180deg, #f8dfa0, #d9a94a); box-shadow: 0 10px 25px -8px rgba(217,169,74,.6); border: 1px solid #f8dfa0; }
+    #rc-roll:hover { filter: brightness(1.08); } #rc-roll:disabled { filter: grayscale(.8) brightness(.6); }
+    #rc-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 44; }
     #sheet-panel { transform: translateX(105%); transition: transform .25s ease; }
     #sheet-panel.open { transform: none; }
   </style>
@@ -92,6 +128,12 @@
         <i class="fa-solid fa-file-circle-plus"></i><span class="hidden lg:inline">Open file</span>
         <input type="file" id="file-import-dd2vtt" accept=".dd2vtt,.df2vtt,.uvtt,.json,image/*" class="hidden">
       </label>
+      <button id="btn-call" class="gm-only bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="Call for a roll (initiative, save, check)">
+        <i class="fa-solid fa-bullhorn text-sm"></i><span class="hidden sm:inline">Call roll</span>
+      </button>
+      <button id="btn-rest" class="gm-only bg-indigo-700 hover:bg-indigo-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="Long rest: grant Well Rested">
+        <i class="fa-solid fa-moon text-sm"></i><span class="hidden sm:inline">Rest</span>
+      </button>
       <button id="btn-mind" class="gm-only bg-purple-700 hover:bg-purple-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="Send a telepathic message">
         <i class="fa-solid fa-brain text-sm"></i><span class="hidden sm:inline">Mind</span>
       </button>
@@ -108,6 +150,7 @@
       <button id="btn-me" class="ml-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-md border border-slate-700 text-xs flex items-center gap-1.5" title="Who you are">
         <span id="dot-conn" class="w-2 h-2 rounded-full bg-slate-500"></span>
         <span id="lbl-me">…</span>
+        <span id="badge-rested" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-200 border border-indigo-400/40" title="Well rested: +1d4 on your next rolls"></span>
       </button>
     </div>
   </header>
@@ -255,6 +298,7 @@
       <div class="relative w-40 h-40">
         <div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex flex-col items-center gap-1">
           <div class="px-2 py-0.5 rounded bg-slate-900/90 border border-slate-600 text-[11px] whitespace-nowrap flex items-center gap-1.5"><span id="radial-token-name"></span> <span id="radial-token-hp" class="text-emerald-300 font-mono"></span>
+            <button id="radial-btn-loot" class="hidden px-1.5 py-0.5 rounded bg-amber-600 hover:bg-amber-500 text-white text-[10px]" title="Look inside"><i class="fa-solid fa-box-open"></i> <span id="radial-loot-lbl">Loot</span></button>
             <button id="radial-btn-sheet" class="hidden px-1.5 py-0.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-[10px]" title="Open character sheet"><i class="fa-solid fa-scroll"></i> Sheet</button></div>
           <div id="radial-desc" class="hidden w-56 px-2 py-1.5 rounded-lg bg-slate-900/95 border border-slate-600 text-[10px] text-slate-300 leading-snug whitespace-normal"></div>
         </div>
@@ -380,9 +424,94 @@
     </div>
   </div>
 
+  <!-- Long rest (GM) -->
+  <div id="modal-rest" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700 mb-4">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-moon text-indigo-300"></i> Long rest</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <p class="text-xs text-slate-400 mb-3"><b class="text-indigo-200">Well rested:</b> the next <input id="inp-rest-rolls" type="number" min="1" max="50" value="10" class="w-12 bg-slate-900 border border-slate-700 rounded px-1 text-xs text-slate-100"> dice rolls each get <b>+1d4</b>.</p>
+      <div id="rest-targets" class="flex flex-wrap gap-1.5 mb-3 text-xs"></div>
+      <label class="flex items-center gap-2 text-xs text-slate-300 mb-4"><input type="checkbox" id="chk-rest-restore" class="accent-indigo-500"> Also restore HP to max and refill spell slots</label>
+      <div class="flex justify-between gap-2">
+        <button id="btn-rest-clear" class="text-xs px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Remove Well Rested</button>
+        <button id="btn-rest-grant" class="text-xs px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Grant Well Rested</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Call for a roll (GM) -->
+  <div id="modal-call" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700 mb-4">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-bullhorn text-amber-400"></i> Call for a roll</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="grid grid-cols-4 gap-1.5 mb-3" id="call-kinds">
+        <button data-kind="init" class="rc-chip on">Initiative</button>
+        <button data-kind="save" class="rc-chip">Save</button>
+        <button data-kind="skill" class="rc-chip">Skill check</button>
+        <button data-kind="ability" class="rc-chip">Ability</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <select id="call-key" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs hidden"></select>
+        <input id="call-custom" type="text" placeholder="Title (optional)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+      </div>
+      <div class="flex items-center gap-2 mb-3 text-xs">
+        <span class="text-slate-400">DC</span><input id="call-dc" type="number" min="1" max="40" placeholder="—" class="w-14 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5">
+        <label class="flex items-center gap-1 text-slate-300"><input type="checkbox" id="call-showdc" class="accent-amber-500"> show DC</label>
+        <select id="call-mode" class="ml-auto bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+      </div>
+      <div id="call-targets" class="flex flex-wrap gap-1.5 mb-4 text-xs"></div>
+      <div class="flex justify-end"><button id="btn-call-send" class="text-xs px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold">Call it</button></div>
+    </div>
+  </div>
+
+  <!-- Roll call screen -->
+  <div id="rc-overlay">
+    <div class="rc-kicker" id="rc-kicker">The DM calls for</div>
+    <div class="rc-title" id="rc-title">Initiative</div>
+    <div class="flex items-center gap-2 mt-1"><span id="rc-dc" class="rc-dc hidden"></span><span id="rc-for" class="text-xs text-slate-400"></span></div>
+    <div class="rc-main">
+      <div id="rc-tray"></div>
+      <div class="rc-side">
+        <div class="rc-card" id="rc-me"></div>
+        <div class="rc-card"><div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Results</div><div id="rc-results"></div></div>
+        <div class="rc-card gm-only" id="rc-gm"></div>
+        <button id="rc-hide" class="text-xs text-slate-400 hover:text-white self-center">Hide this screen</button>
+      </div>
+    </div>
+  </div>
+  <button id="rc-pill" class="hidden glass-panel rounded-full px-4 py-2 text-sm text-amber-200 border border-amber-500/40 shadow-xl"><i class="fa-solid fa-dice-d20"></i> <span id="rc-pill-text">Roll in progress</span></button>
+  <div id="free-tray"></div>
+
   <div id="mind-overlay">
     <div class="mind-ring"></div><div class="mind-ring"></div><div class="mind-ring"></div>
     <div class="mind-box"><div class="mind-from" id="mind-from"></div><div class="mind-text" id="mind-text"></div><div class="mind-hint">click anywhere to let it fade</div></div>
+  </div>
+
+  <!-- Loot window (containers) -->
+  <div id="loot-panel" class="hidden fixed left-1/2 -translate-x-1/2 bottom-5 z-30 w-[360px] max-w-[94vw] glass-panel rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[60vh]">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-slate-700/60">
+      <span class="font-semibold text-sm flex items-center gap-2"><span id="loot-icon" class="text-lg">🧰</span><span id="loot-title">Chest</span>
+        <span id="loot-state" class="text-[10px] px-1.5 py-0.5 rounded border"></span></span>
+      <span class="flex items-center gap-2">
+        <button id="loot-toggle" class="gm-only text-[11px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Open</button>
+        <button id="loot-close" class="text-slate-400 hover:text-white" title="Close (Esc)"><i class="fa-solid fa-xmark"></i></button>
+      </span>
+    </div>
+    <div id="loot-hint" class="px-3 pt-2 text-[11px] text-amber-300 hidden"></div>
+    <div id="loot-list" class="flex-1 overflow-y-auto p-3 space-y-1.5"></div>
+    <div class="gm-only border-t border-slate-700/60 p-2 space-y-2">
+      <div class="flex gap-1.5">
+        <input id="loot-add-name" list="loot-item-names" placeholder="Add item… (SRD items autocomplete)" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+        <input id="loot-add-qty" type="number" min="1" value="1" class="w-12 bg-slate-900 border border-slate-700 rounded-lg px-1.5 py-1.5 text-xs">
+        <button id="loot-add" class="px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">Add</button>
+      </div>
+      <div class="flex items-center gap-1.5 text-[11px] text-slate-400">Give to <select id="loot-give-to" class="flex-1 bg-slate-900 border border-slate-700 rounded px-1 py-1 text-xs text-slate-200"></select></div>
+    </div>
+    <datalist id="loot-item-names"></datalist>
   </div>
 
   <!-- Character sheet panel -->

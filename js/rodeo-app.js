@@ -1,6 +1,7 @@
 // GeezVTT — a small self-hosted Owlbear-style VTT on the GeezSheets Firebase.
 // GM:      rodeo.html?gm=jonny     Player: rodeo.html
-import { db, R, ref, get, onValue, set, update, remove, push, query, limitToLast, onDisconnect } from "./rodeo-firebase.js";
+import { db, R, ref, get, onValue, set, update, remove, push, query, limitToLast, onDisconnect, runTransaction } from "./rodeo-firebase.js";
+import { createDiceTray3D } from "./geez-dice3d.js";
 
 // ───────────────────────── Setup ─────────────────────────
 const GM_KEY = "jonny";
@@ -220,6 +221,15 @@ function drawProp(t) {
     ctx.fillText(t.icon || "📦", 0, s * 0.04);
   }
   ctx.restore();
+  // container badge: item count (players only see it once it's open)
+  const n = lootEntries(t).length;
+  if (n && (t.open || isGMView())) {
+    const r = Math.max(7 / state.zoom, s * 0.16), bx = t.x + s - r * 0.6, by = t.y + r * 0.6;
+    ctx.save(); ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2);
+    ctx.fillStyle = t.open ? "#f59e0b" : "#475569"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5 / state.zoom; ctx.stroke();
+    ctx.fillStyle = "#fff"; ctx.font = `bold ${r * 1.2}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(String(n), bx, by + r * 0.05);
+    ctx.restore();
+  }
   if (t.id === state.selectedTokenId) {
     ctx.save(); ctx.strokeStyle = "#38bdf8"; ctx.lineWidth = 2.5 / state.zoom; ctx.setLineDash([6 / state.zoom, 4 / state.zoom]);
     roundRect(t.x - 4 / state.zoom, t.y - 4 / state.zoom, s + 8 / state.zoom, s + 8 / state.zoom, s * 0.2); ctx.stroke(); ctx.restore();
@@ -264,6 +274,12 @@ function drawTokens() {
       const bw = s * 0.8, bh = Math.max(3, s * 0.08), bx = cx - bw / 2, by = t.y + s - bh * 0.5;
       ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(bx, by, bw, bh);
       ctx.fillStyle = frac > 0.5 ? "#22c55e" : frac > 0.25 ? "#f59e0b" : "#ef4444"; ctx.fillRect(bx, by, bw * frac, bh);
+    }
+    // well rested: little moon on the PC's token
+    if (t.pcId && restedLeft(t.pcId) > 0) {
+      const r = Math.max(6 / state.zoom, s * 0.14), mx = t.x + r * 0.7, my = t.y + r * 0.7;
+      ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.fillStyle = "#4338ca"; ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.2 / state.zoom; ctx.stroke();
+      ctx.font = `${r * 1.25}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🌙", mx, my + r * 0.05);
     }
     // name label
     if (s * state.zoom > 26 && t.name) {
@@ -441,6 +457,7 @@ function subscribeMap() {
       const mine = state.tokens[action.id]; if (mine) { incoming[action.id].x = mine.x; incoming[action.id].y = mine.y; }
     }
     state.tokens = incoming;
+    if (lootId) renderLoot();
     if (state.selectedTokenId && !incoming[state.selectedTokenId]) selectToken(null);
     else if (state.selectedTokenId) refreshRadial();
     requestRender();
@@ -605,7 +622,7 @@ function npcList() {
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 function watchCharacters() {
-  onValue(ref(db, "characters/pcs"), (s) => { pcsData = s.val() || {}; refreshLibrary(); refreshMePicker(); });
+  onValue(ref(db, "characters/pcs"), (s) => { pcsData = s.val() || {}; refreshLibrary(); refreshMePicker(); refreshRestedBadge(); requestRender(); if (call) renderCall(); });
   if (IS_GM) onValue(ref(db, "characters/npcs"), (s) => { npcsData = s.val() || {}; refreshLibrary(); });
 }
 
@@ -712,8 +729,11 @@ function refreshRadial() {
   const own = canControl(t), prop = t.kind === "prop";
   ["radial-btn-rotate", "radial-btn-flip"].forEach((b) => $(b).classList.toggle("hidden", !own));
   ["radial-btn-hp", "radial-btn-status"].forEach((b) => $(b).classList.toggle("hidden", !own || prop));
-  $("radial-btn-give").classList.toggle("hidden", !(IS_GM && prop));
+  $("radial-btn-give").classList.toggle("hidden", !(IS_GM && prop && !t.container));
   $("radial-btn-sheet").classList.toggle("hidden", !sheetIdFor(t));
+  const isBox = prop && (t.container || lootEntries(t).length);
+  $("radial-btn-loot").classList.toggle("hidden", !(prop && (IS_GM || (isBox && t.open))));
+  $("radial-loot-lbl").textContent = IS_GM ? (isBox ? `Contents (${lootEntries(t).length})` : "Add contents") : `Loot (${lootEntries(t).length})`;
   $("radial-desc").textContent = prop ? (t.desc || "") : "";
   $("radial-desc").classList.toggle("hidden", !(prop && t.desc));
 }
@@ -764,6 +784,7 @@ async function giveToPc(pcId, prop) {
 }
 
 function wireRadial() {
+  $("radial-btn-loot").onclick = () => { const t = selTok(); if (t) openLoot(t.id); };
   $("radial-btn-sheet").onclick = () => { const t = selTok(), id = sheetIdFor(t); if (id) openSheet(id, t.name); };
   $("radial-btn-give").onclick = async () => {
     const t = selTok(); if (!t || t.kind !== "prop") return;
@@ -1126,6 +1147,9 @@ function wireUI() {
 
   // mind messages
   $("btn-mind").onclick = openMindModal;
+  $("btn-rest").onclick = openRestModal;
+  $("btn-rest-grant").onclick = () => grantRest(false);
+  $("btn-rest-clear").onclick = () => grantRest(true);
   document.querySelectorAll(".mind-style-btn").forEach((b) => b.addEventListener("click", () => {
     const prevFrom = document.querySelector(".mind-style-btn.on")?.dataset.from;
     document.querySelectorAll(".mind-style-btn").forEach((x) => x.classList.toggle("on", x === b));
@@ -1205,7 +1229,7 @@ function wireUI() {
     else if (k === "+" || k === "=") zoomAt(1.25);
     else if (k === "-") zoomAt(0.8);
     else if (k === "0") fitView();
-    else if (k === "escape") { selectToken(null); cancelAction(); closeSheet(); hideMind(); document.querySelectorAll(".modal:not(#modal-me)").forEach((m) => closeModal(m.id)); }
+    else if (k === "escape") { selectToken(null); cancelAction(); closeSheet(); hideMind(); closeLoot(); document.querySelectorAll(".modal:not(#modal-me)").forEach((m) => closeModal(m.id)); }
     else if ((k === "delete" || k === "backspace") && state.selectedTokenId) deleteToken(state.selectedTokenId);
   });
   window.addEventListener("keyup", (e) => { if (e.code === "Space") spaceHeld = false; });
@@ -1263,7 +1287,7 @@ const SCENERY = [
   ["Chest", "🧰"], ["Barrel", "🛢️"], ["Crate", "📦"], ["Campfire", "🔥"], ["Candle", "🕯️"], ["Trap", "⚠️"], ["Statue", "🗿"], ["Altar", "🛐"],
   ["Bones", "💀"], ["Gold pile", "💰"], ["Lever", "🕹️"], ["Bookshelf", "📚"], ["Tree", "🌲"], ["Boulder", "🪨"], ["Door", "🚪"], ["Ladder", "🪜"],
   ["Portal", "🌀"], ["Web", "🕸️"], ["Mushrooms", "🍄"], ["Corpse", "⚰️"], ["Sign", "🪧"], ["Key", "🗝️"], ["Map", "🗺️"], ["Note", "✉️"],
-].map(([name, icon]) => ({ name, icon, cat: "scenery", cells: 1 }));
+].map(([name, icon]) => ({ name, icon, cat: "scenery", cells: 1, container: ["Chest", "Barrel", "Crate", "Corpse", "Bookshelf", "Gold pile", "Bones"].includes(name) }));
 let propData = null, propEntries = [];
 function propIcon(item) {
   const c = String(item.equipment_category?.name || item.gear_category?.name || "").toLowerCase(), n = item.name.toLowerCase(), both = c + " " + n;
@@ -1346,8 +1370,131 @@ function spawnProp(p, at) {
   const tok = { id, kind: "prop", name: p.name, icon: p.icon || "📦", x: r1(pos.x), y: r1(pos.y), cells, rotation: 0, flipped: false, locked: false, hidden: false };
   if (p.rarity) tok.rarity = p.rarity;
   if (p.desc) tok.desc = p.desc;
+  if (p.container) { tok.container = true; tok.open = false; }
   state.tokens[id] = tok; requestRender();
   set(mapRef("tokens/" + id), tok);
+}
+
+// ───────────────────────── Containers & loot ─────────────────────────
+// A prop's contents live at tokens/<id>/contents/<key> = {name, qty, icon, rarity, desc}; tokens/<id>/open says if players can loot it.
+let lootId = null;
+const lootEntries = (t) => Object.entries(t?.contents || {}).filter(([, it]) => it && it.name);
+function myTokens() { return Object.values(state.tokens).filter((x) => x && x.kind !== "prop" && me?.pcId && x.pcId === me.pcId); }
+function nextTo(a, b) {      // touching, including diagonally (a little slack for unsnapped tokens)
+  const sa = tokPx(a), sb = tokPx(b), g = cellPx();
+  const gx = Math.max(0, b.x - (a.x + sa), a.x - (b.x + sb)), gy = Math.max(0, b.y - (a.y + sa), a.y - (b.y + sb));
+  return Math.max(gx, gy) <= g * 0.3;
+}
+function lootAccess(t) {
+  if (IS_GM) return { ok: true };
+  if (!t.open) return { ok: false, why: "It's closed." };
+  if (!me?.pcId) return { ok: false, why: "Pick your character (top right) to take items." };
+  const mine = myTokens();
+  if (!mine.length) return { ok: false, why: "Your token isn't on this map." };
+  if (!mine.some((m) => nextTo(m, t))) return { ok: false, why: "Move next to it to take things." };
+  return { ok: true };
+}
+function openLoot(id) { lootId = id; $("loot-panel").classList.remove("hidden"); if (IS_GM) loadPropData().then(fillLootGive); renderLoot(); }
+function closeLoot() { lootId = null; $("loot-panel").classList.add("hidden"); }
+function fillLootGive() {
+  const pcs = pcList(), keep = $("loot-give-to").value;
+  $("loot-give-to").innerHTML = pcs.map((p) => `<option value="${esc(p.pcId)}">${esc(p.name)}</option>`).join("") || `<option value="">No PCs</option>`;
+  if (pcs.some((p) => p.pcId === keep)) $("loot-give-to").value = keep;
+  $("loot-item-names").innerHTML = (propData || []).map((p) => `<option value="${esc(p.name)}">`).join("");
+}
+function renderLoot() {
+  const t = state.tokens[lootId];
+  if (!t || (!IS_GM && (t.hidden || !t.open))) { if (t && !IS_GM && !t.open) toast("It was closed."); closeLoot(); return; }
+  const items = lootEntries(t), acc = lootAccess(t);
+  $("loot-icon").textContent = t.icon || "🧰";
+  $("loot-title").textContent = t.name || "Container";
+  $("loot-state").textContent = t.open ? "open" : "closed";
+  $("loot-state").className = `text-[10px] px-1.5 py-0.5 rounded border ${t.open ? "border-amber-500/50 text-amber-300" : "border-slate-600 text-slate-400"}`;
+  $("loot-toggle").textContent = t.open ? "Close" : "Open for players";
+  $("loot-hint").textContent = acc.ok ? "" : acc.why;
+  $("loot-hint").classList.toggle("hidden", acc.ok);
+  $("loot-list").innerHTML = items.length ? items.map(([k, it]) => {
+    const q = Number(it.qty ?? 1) || 1, rc = RARITY[String(it.rarity || "").toLowerCase()];
+    const btns = IS_GM
+      ? `<button data-give="${esc(k)}" class="px-2 py-1 rounded bg-emerald-700 hover:bg-emerald-600 text-[10px] text-white" title="Give one to the PC picked below">Give</button>
+         <button data-remove="${esc(k)}" class="px-1.5 py-1 rounded text-slate-400 hover:text-red-400 text-xs" title="Remove">✕</button>`
+      : `<button data-take="${esc(k)}" ${acc.ok ? "" : "disabled"} class="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-[10px] text-white">Take</button>
+         ${q > 1 ? `<button data-take-all="${esc(k)}" ${acc.ok ? "" : "disabled"} class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-[10px]">All</button>` : ""}`;
+    return `<div class="flex items-center gap-2 p-1.5 rounded-lg bg-slate-800/70 border" style="border-color:${rc || "rgba(51,65,85,.7)"}" title="${esc(it.desc || "")}">
+      <span class="w-8 h-8 rounded-md bg-slate-900 flex items-center justify-center text-lg shrink-0">${it.icon || "🎒"}</span>
+      <span class="flex-1 min-w-0"><span class="block text-xs font-semibold truncate">${esc(it.name)}${q > 1 ? ` <span class="text-amber-300 font-mono">×${q}</span>` : ""}</span>
+        ${it.desc ? `<span class="block text-[10px] text-slate-400 truncate">${esc(it.desc)}</span>` : ""}</span>${btns}</div>`;
+  }).join("") : `<div class="text-xs text-slate-500 text-center py-3">${IS_GM ? "Empty — add items below." : "Empty."}</div>`;
+}
+// Take items out atomically, so two players can't both grab the last potion
+async function takeFromContainer(propId, key, amount) {
+  let taken = null;
+  const res = await runTransaction(mapRef(`tokens/${propId}/contents/${key}`), (cur) => {
+    if (!cur) { taken = null; return; }                 // already gone: abort
+    const q = Number(cur.qty ?? 1) || 1, n = amount === "all" ? q : Math.min(q, amount || 1);
+    taken = { ...cur, qty: n };
+    return q - n > 0 ? { ...cur, qty: q - n } : null;
+  });
+  return res?.committed && taken ? taken : null;
+}
+async function addToInventory(pcId, item) {
+  const invRef = ref(db, `characters/pcs/${pcId}/inventory`);
+  const inv = (await get(invRef)).val() || {};
+  const n = Number(item.qty ?? 1) || 1;
+  const hit = Object.entries(inv).find(([, it]) => it && String(it.name || "").toLowerCase() === String(item.name).toLowerCase());
+  if (hit) return update(ref(db, `characters/pcs/${pcId}/inventory/${hit[0]}`), { qty: (Number(hit[1].qty ?? 1) || 1) + n });
+  const out = { name: item.name, qty: n, given_at: Date.now() };
+  if (item.desc) out.desc = item.desc;
+  return push(invRef, out);
+}
+function feed(text) { push(R("feed"), { text, by: clientId, t: Date.now() }); }
+function watchFeed() {
+  let seen = null;
+  onValue(query(R("feed"), limitToLast(15)), (snap) => {
+    const v = snap.val() || {};
+    if (seen) for (const [k, f] of Object.entries(v)) if (!seen.has(k) && f.by !== clientId) toast(f.text);
+    seen = new Set(Object.keys(v));
+  });
+}
+function wireLoot() {
+  $("loot-close").onclick = closeLoot;
+  $("loot-toggle").onclick = () => { const t = state.tokens[lootId]; if (t) patchToken(t.id, { open: !t.open, container: true }); };
+  $("loot-list").addEventListener("click", async (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const t = state.tokens[lootId]; if (!t) return;
+    if (b.dataset.remove && IS_GM) { remove(mapRef(`tokens/${t.id}/contents/${b.dataset.remove}`)); return; }
+    const key = b.dataset.give || b.dataset.take || b.dataset.takeAll; if (!key) return;
+    let pcId, who;
+    if (b.dataset.give) { pcId = $("loot-give-to").value; who = pcList().find((p) => p.pcId === pcId)?.name; if (!pcId) return toast("No PC to give to"); }
+    else { const acc = lootAccess(t); if (!acc.ok) return toast(acc.why); pcId = me.pcId; who = me.name; }
+    b.disabled = true;
+    try {
+      const got = await takeFromContainer(t.id, key, b.dataset.takeAll ? "all" : 1);
+      if (!got) { toast("Someone got there first."); return; }
+      await addToInventory(pcId, got);
+      const msg = `🎒 <b>${esc(who)}</b> took <b>${esc(got.name)}</b>${got.qty > 1 ? ` ×${got.qty}` : ""} from the ${esc(String(t.name || "container").toLowerCase())}`;
+      toast(msg); feed(msg);
+    } catch (err) { toast(`Couldn't take it: ${esc(err.message)}`, "error"); }
+    finally { b.disabled = false; }
+  });
+  const add = () => {
+    const t = state.tokens[lootId]; if (!t || !IS_GM) return;
+    const name = $("loot-add-name").value.trim(), qty = Math.max(1, parseInt($("loot-add-qty").value, 10) || 1);
+    if (!name) return;
+    const known = (propData || []).find((p) => p.name.toLowerCase() === name.toLowerCase());
+    const same = lootEntries(t).find(([, it]) => it.name.toLowerCase() === name.toLowerCase());
+    if (same) update(mapRef(`tokens/${t.id}/contents/${same[0]}`), { qty: (Number(same[1].qty ?? 1) || 1) + qty });
+    else {
+      const it = { name: known?.name || name, qty, icon: known?.icon || "🎒" };
+      if (known?.rarity) it.rarity = known.rarity;
+      if (known?.desc) it.desc = known.desc;
+      set(mapRef(`tokens/${t.id}/contents/${newId("i")}`), it);
+    }
+    if (!t.container) patchToken(t.id, { container: true });
+    $("loot-add-name").value = ""; $("loot-add-qty").value = 1; $("loot-add-name").focus();
+  };
+  $("loot-add").onclick = add;
+  $("loot-add-name").addEventListener("keydown", (e) => { if (e.key === "Enter") add(); });
 }
 
 // ───────────────────────── Mind messages (telepathy overlay) ─────────────────────────
@@ -1415,7 +1562,42 @@ function watchMind() {
 // ───────────────────────── Player identity ─────────────────────────
 function setMe(m) {
   me = m; localStorage.setItem("rodeo.me", JSON.stringify(m));
-  $("lbl-me").textContent = m.name; closeModal("modal-me"); requestRender();
+  $("lbl-me").textContent = m.name; closeModal("modal-me"); refreshRestedBadge(); requestRender();
+}
+function refreshRestedBadge() {
+  const n = !IS_GM && me?.pcId ? restedLeft(me.pcId) : 0;
+  $("badge-rested").classList.toggle("hidden", !n);
+  $("badge-rested").textContent = `🌙 ${n}`;
+}
+
+// ───────────────────────── Long rest / Well rested (GM) ─────────────────────────
+function openRestModal() {
+  const pcs = pcList(), camp = localStorage.getItem("rodeo.campaign") || "";
+  $("rest-targets").innerHTML = pcs.map((p) => `<label class="flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 cursor-pointer">
+      <input type="checkbox" class="rest-pc accent-indigo-500" value="${esc(p.pcId)}" ${!camp || !p.campaign || p.campaign === camp ? "checked" : ""}> ${esc(p.name)}${restedLeft(p.pcId) ? ` <span class="text-indigo-300">🌙${restedLeft(p.pcId)}</span>` : ""}</label>`).join("") || `<span class="text-slate-500">No PCs in Firebase</span>`;
+  openModal("modal-rest");
+}
+async function grantRest(clear) {
+  const ids = [...document.querySelectorAll(".rest-pc:checked")].map((c) => c.value);
+  if (!ids.length) return toast("Tick at least one character");
+  const rolls = Math.max(1, Math.min(50, parseInt($("inp-rest-rolls").value, 10) || 10));
+  const restore = !clear && $("chk-rest-restore").checked;
+  const patch = {};
+  for (const id of ids) {
+    patch[`${id}/buffs/well_rested`] = clear ? null : { rolls_left: rolls, die: "1d4", granted_at: Date.now() };
+    if (restore) {
+      const c = pcsData[id] || {};
+      if (c.combat?.hp_max != null) patch[`${id}/combat/hp_current`] = c.combat.hp_max;
+      if (c.spellcasting) patch[`${id}/spellcasting/slots_used`] = null;
+    }
+  }
+  try { await update(ref(db, "characters/pcs"), patch); } catch (e) { return toast(`Failed: ${esc(e.message)}`, "error"); }
+  const names = pcList().filter((p) => ids.includes(p.pcId)).map((p) => p.name).join(", ");
+  if (!clear) {
+    push(R("messages"), { style: "dream", from: "Long rest", text: `You wake well rested.\n+1d4 to your next ${rolls} rolls.`, to: Object.fromEntries(ids.map((i) => [i, true])), t: Date.now() });
+    toast(`🌙 ${esc(names)} ${ids.length > 1 ? "are" : "is"} well rested`);
+  } else toast(`Removed Well Rested from ${esc(names)}`);
+  closeModal("modal-rest");
 }
 function refreshMePicker() {
   if (IS_GM) return;
@@ -1429,35 +1611,65 @@ function refreshMePicker() {
 }
 
 // ───────────────────────── Dice ─────────────────────────
+// Every roll keeps its faces as dice: [{s: sides, v: value, drop?: true, bonus?: true}] so every screen can throw the same dice.
+const rnd = (n) => 1 + Math.floor(Math.random() * n);
 function rollExpr(expr) {
   const clean = expr.toLowerCase().replace(/\s/g, "");
   if (!/^[+-]?(\d*d\d+|\d+)([+-](\d*d\d+|\d+))*$/.test(clean)) return null;
-  const parts = []; let total = 0;
+  const parts = [], dice = []; let total = 0;
   for (const m of clean.matchAll(/([+-]?)(\d*d\d+|\d+)/g)) {
     const sign = m[1] === "-" ? -1 : 1;
     if (m[2].includes("d")) {
       let [n, sides] = m[2].split("d").map(Number); n = Math.min(n || 1, 100); sides = Math.max(1, Math.min(sides, 1000));
-      const rolls = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * sides));
+      const rolls = Array.from({ length: n }, () => rnd(sides));
+      rolls.forEach((v) => dice.push({ s: sides, v }));
       total += sign * rolls.reduce((a, b) => a + b, 0);
       parts.push(`${sign < 0 ? "−" : parts.length ? "+" : ""}[${rolls.join(",")}]`);
     } else { total += sign * Number(m[2]); parts.push(`${sign < 0 ? "−" : "+"}${m[2]}`); }
   }
-  return { total, detail: parts.join(" ") };
+  return { total, detail: parts.join(" "), dice };
 }
-function postRoll(entry) {
-  showDiceBox(entry.total, entry.expr);
-  if (IS_GM && $("chk-dice-private").checked) { privateRolls.push({ ...entry, private: true, t: Date.now(), key: "p" + Date.now() }); renderDiceLog(); return; }
+const restedLeft = (pcId) => Number(pcsData[pcId]?.buffs?.well_rested?.rolls_left) || 0;
+// Well rested: +1d4 on the player's own rolls until the charges run out
+async function useWellRested(entry, pcId = me?.pcId) {
+  if (IS_GM || !pcId || pcId !== me?.pcId || restedLeft(pcId) <= 0) return entry;
+  let used = false;
+  try {
+    const res = await runTransaction(ref(db, `characters/pcs/${pcId}/buffs/well_rested`), (cur) => {
+      if (!cur || !(Number(cur.rolls_left) > 0)) { used = false; return; }
+      used = true;
+      const left = Number(cur.rolls_left) - 1;
+      return left > 0 ? { ...cur, rolls_left: left } : null;
+    });
+    if (res?.committed && used) {
+      const b = rnd(4);
+      return { ...entry, total: entry.total + b, detail: `${entry.detail} +🌙${b}`, rested: true, dice: [...(entry.dice || []), { s: 4, v: b, bonus: true }] };
+    }
+  } catch (e) { console.warn("Well rested not applied", e); }
+  return entry;
+}
+async function postRoll(entry) {
+  entry = await useWellRested(entry);
+  showDiceBox(entry.total, entry.expr + (entry.rested ? " +1d4 🌙" : ""));
+  closeModal("modal-dice");                                   // watch the dice land
+  if (IS_GM && $("chk-dice-private").checked) {
+    const e = { ...entry, private: true, name: "DM", color: myColor(), t: Date.now(), key: "p" + Date.now() };
+    privateRolls.push(e); renderDiceLog(); throwOnTable(e); return;
+  }
   push(R("dice"), { ...entry, name: me?.name || "?", color: myColor(), t: Date.now() });
 }
 function roll(expr) {
   const res = rollExpr(expr);
   if (!res) return toast(`Can't roll "${esc(expr)}"`);
-  postRoll({ expr, total: res.total, detail: res.detail });
+  postRoll({ expr, total: res.total, detail: res.detail, dice: res.dice });
 }
 function rollAdv(kind, mod) {
-  const a = 1 + Math.floor(Math.random() * 20), b = 1 + Math.floor(Math.random() * 20);
+  const a = rnd(20), b = rnd(20);
   const keep = kind === "adv" ? Math.max(a, b) : Math.min(a, b);
-  postRoll({ expr: `d20 ${kind === "adv" ? "adv" : "dis"}${mod ? (mod > 0 ? "+" : "") + mod : ""}`, total: keep + mod, detail: `[${a},${b}] keep ${keep}${mod ? (mod > 0 ? " +" : " −") + Math.abs(mod) : ""}` });
+  const dropA = a !== keep;
+  postRoll({ expr: `d20 ${kind === "adv" ? "adv" : "dis"}${mod ? (mod > 0 ? "+" : "") + mod : ""}`, total: keep + mod,
+    detail: `[${a},${b}] keep ${keep}${mod ? (mod > 0 ? " +" : " −") + Math.abs(mod) : ""}`,
+    dice: [{ s: 20, v: a, ...(dropA ? { drop: true } : {}) }, { s: 20, v: b, ...(!dropA ? { drop: true } : {}) }] });
 }
 function showDiceBox(total, expr) {
   const box = $("dice-box");
@@ -1477,9 +1689,350 @@ function watchDice() {
   onValue(query(R("dice"), limitToLast(30)), (s) => {
     const v = s.val() || {};
     diceEntries = Object.entries(v).map(([key, d]) => ({ ...d, key }));
-    if (diceSeen) for (const d of diceEntries) if (!diceSeen.has(d.key)) toast(`<span style="color:${esc(d.color)}">${esc(d.name)}</span> rolled <b>${esc(d.total)}</b> <span class="text-slate-400">${esc(d.expr)}</span>`);
+    if (diceSeen) for (const d of diceEntries) if (!diceSeen.has(d.key) && !d.call) throwOnTable(d);
     diceSeen = new Set(diceEntries.map((d) => d.key));
     renderDiceLog();
+  });
+}
+
+// ───────────────────────── Dice tray: dice tumble, bounce and settle ─────────────────────────
+const DIE_POLY = {
+  4: "50,8 94,86 6,86", 6: "14,14 86,14 86,86 14,86", 8: "50,4 94,50 50,96 6,50", 10: "50,4 92,42 50,96 8,42",
+  12: "50,5 93,36 77,91 23,91 7,36", 20: "50,4 91,27 91,73 50,96 9,73 9,27",
+};
+const DIE_FACETS = { 20: `<polyline points="50,4 30,60 70,60 50,4" /><polyline points="9,27 30,60 9,73" /><polyline points="91,27 70,60 91,73" /><polyline points="30,60 50,96 70,60" />`,
+  8: `<polyline points="6,50 94,50" />`, 10: `<polyline points="8,42 50,62 92,42" /><polyline points="50,62 50,96" />`, 12: `<polyline points="30,40 70,40 78,66 50,84 22,66 30,40" />` };
+function makeDie(d, color, size) {
+  const sides = DIE_POLY[d.s] ? d.s : d.s === 100 ? 10 : d.s <= 4 ? 4 : d.s <= 6 ? 6 : d.s <= 8 ? 8 : d.s <= 10 ? 10 : d.s <= 12 ? 12 : 20;
+  const el = document.createElement("div");
+  el.className = `die d${sides}${d.drop ? " drop" : ""}`;
+  el.style.setProperty("--ds", `${d.bonus ? size * 0.8 : size}px`);
+  const fill = d.bonus ? "#4338ca" : color;
+  el.innerHTML = `<svg viewBox="0 0 100 100"><polygon points="${DIE_POLY[sides]}" fill="${esc(fill)}" stroke="rgba(255,255,255,.9)" stroke-width="4" stroke-linejoin="round"/>
+    <g fill="none" stroke="rgba(255,255,255,.28)" stroke-width="2">${DIE_FACETS[sides] || ""}</g></svg><span class="die-num"></span>`;
+  return el;
+}
+// Throw a group of dice into a tray element; resolves when they settle. Returns the group's resting centre.
+function throwDice(tray, dice, { color = "#0ea5e9", size = 52, label = "", sub = "", total = "", persist = false, from = null } = {}) {
+  dice = asList(dice);
+  return new Promise((resolve) => {
+    if (!dice.length) return resolve(null);
+    const W = tray.clientWidth, H = tray.clientHeight, m = size * 0.7;
+    const group = document.createElement("div"); group.style.cssText = "position:absolute;inset:0;pointer-events:none"; tray.appendChild(group);
+    // pick a landing area away from earlier groups, throw from an edge toward it
+    const spots = tray._spots || (tray._spots = []);
+    let tx = W / 2, ty = H / 2;
+    for (let tries = 0; tries < 25; tries++) {
+      tx = m + size + Math.random() * Math.max(1, W - 2 * (m + size)); ty = m + size + Math.random() * Math.max(1, H - 2 * (m + size) - 30);
+      if (spots.every((p) => Math.hypot(p.x - tx, p.y - ty) > size * 2.4)) break;
+    }
+    spots.push({ x: tx, y: ty });
+    const side = from ?? Math.floor(Math.random() * 4);
+    const bodies = dice.map((d, i) => {
+      const el = makeDie(d, color, size); group.appendChild(el);
+      const sx = side === 0 ? -size : side === 1 ? W + size : tx + (Math.random() - 0.5) * W * 0.6;
+      const sy = side === 2 ? -size : side === 3 ? H + size : ty + (Math.random() - 0.5) * H * 0.6;
+      const ox = tx + (i - (dice.length - 1) / 2) * size * 1.1, oy = ty + (Math.random() - 0.5) * size * 0.6;
+      const k = 2.6 + Math.random() * 0.5;                                          // initial speed so it slides to ~(ox,oy)
+      return { el, d, x: sx, y: sy, vx: (ox - sx) * k, vy: (oy - sy) * k, a: Math.random() * 360, w: (Math.random() - 0.5) * 1400, flick: 0, done: false };
+    });
+    let last = performance.now(); const start = last;
+    const step = (now) => {
+      const dt = Math.min(0.033, (now - last) / 1000); last = now;
+      let moving = 0;
+      for (const b of bodies) {
+        if (b.done) continue;
+        b.x += b.vx * dt; b.y += b.vy * dt; b.a += b.w * dt;
+        const r = size / 2;
+        if (b.x < r && b.vx < 0 && b.x > -r * 3 + 1) { b.x = r; b.vx *= -0.55; b.w *= -0.7; }
+        if (b.x > W - r && b.vx > 0 && b.x < W + r * 3 - 1) { b.x = W - r; b.vx *= -0.55; b.w *= -0.7; }
+        if (b.y < r && b.vy < 0 && b.y > -r * 3 + 1) { b.y = r; b.vy *= -0.55; b.w *= -0.7; }
+        if (b.y > H - r && b.vy > 0 && b.y < H + r * 3 - 1) { b.y = H - r; b.vy *= -0.55; b.w *= -0.7; }
+        const f = Math.pow(0.05, dt); b.vx *= f; b.vy *= f; b.w *= Math.pow(0.04, dt);
+        const sp = Math.hypot(b.vx, b.vy);
+        if (now - b.flick > 70) { b.flick = now; b.el.querySelector(".die-num").textContent = rnd(b.d.s === 100 ? 100 : b.d.s); }
+        if ((sp < 30 && Math.abs(b.w) < 120) || now - start > 1700) {
+          b.done = true;
+          b.a = Math.round(b.a / 90) * 90 + (Math.random() - 0.5) * 16;
+          b.el.querySelector(".die-num").textContent = b.d.v;
+          b.el.classList.add("settled");
+          if (b.d.s === 20 && !b.d.drop && b.d.v === 20) b.el.classList.add("crit");
+          if (b.d.s === 20 && !b.d.drop && b.d.v === 1) b.el.classList.add("fumble");
+        } else moving++;
+        b.el.style.transform = `translate(${b.x}px, ${b.y}px) rotate(${b.a}deg)`;
+        b.el.style.left = "0"; b.el.style.top = "0";
+      }
+      if (moving) return requestAnimationFrame(step);
+      // label under the dice
+      const cx = bodies.reduce((a, b) => a + b.x, 0) / bodies.length, cy = Math.max(...bodies.map((b) => b.y));
+      if (label || total !== "") {
+        const lab = document.createElement("div"); lab.className = "tray-label";
+        lab.style.left = `${Math.max(60, Math.min(W - 60, cx))}px`; lab.style.top = `${Math.min(H - 28, cy + size * 0.55)}px`;
+        lab.innerHTML = `<span style="color:${esc(color)}">●</span> ${esc(label)}<b>${esc(total)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}`;
+        group.appendChild(lab);
+      }
+      if (!persist) setTimeout(() => { group.classList.add("tray-fade"); setTimeout(() => { group.remove(); const i = spots.findIndex((p) => p.x === tx && p.y === ty); if (i >= 0) spots.splice(i, 1); }, 900); }, 4200);
+      resolve({ x: cx, y: cy });
+    };
+    requestAnimationFrame(step);
+  });
+}
+function throwOnTable(d) {
+  if (!asList(d?.dice).length) return;
+  throwDice($("free-tray"), d.dice, { color: d.color || "#0ea5e9", size: 46, label: d.name || "", total: d.total, sub: d.expr });
+}
+
+// ───────────────────────── Roll calls (initiative, saves, checks) ─────────────────────────
+// rodeo/rollcall = {id, kind, key, title, dc, showDc, mode, to:{pcId:true}, open, t, results:{rid:{name,color,pcId,dice,mod,extras,total,t}}}
+const ABIL = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
+const SKILLS = [
+  ["acrobatics", "Acrobatics", "dex"], ["animal_handling", "Animal Handling", "wis"], ["arcana", "Arcana", "int"], ["athletics", "Athletics", "str"],
+  ["deception", "Deception", "cha"], ["history", "History", "int"], ["insight", "Insight", "wis"], ["intimidation", "Intimidation", "cha"],
+  ["investigation", "Investigation", "int"], ["medicine", "Medicine", "wis"], ["nature", "Nature", "int"], ["perception", "Perception", "wis"],
+  ["performance", "Performance", "cha"], ["persuasion", "Persuasion", "cha"], ["religion", "Religion", "int"], ["sleight_of_hand", "Sleight of Hand", "dex"],
+  ["stealth", "Stealth", "dex"], ["survival", "Survival", "wis"],
+];
+const asList = (x) => (Array.isArray(x) ? x : x && typeof x === "object" ? Object.values(x) : []);   // Firebase may hand arrays back as objects
+const abMod = (score) => Math.floor(((Number(score) || 10) - 10) / 2);
+const sgn = (n) => (n >= 0 ? "+" : "−") + Math.abs(n);
+function statOf(c, ab) { return c?.stats?.[ab] ?? c?.abilities?.[ab]?.score ?? c?.abilities?.[ab] ?? 10; }
+// Modifier from the character sheet, with a breakdown for the roll screen
+function callMod(c, call) {
+  const prof = Number(c?.combat?.proficiency_bonus) || 2, parts = [];
+  if (call.kind === "init") {
+    const ib = c?.combat?.initiative_bonus;
+    if (ib != null && ib !== "") parts.push(["Initiative", Number(ib) || 0]); else parts.push(["DEX", abMod(statOf(c, "dex"))]);
+  } else if (call.kind === "save") {
+    parts.push([call.key.toUpperCase(), abMod(statOf(c, call.key))]);
+    if (asList(c?.saves?.proficient).includes(call.key)) parts.push(["Proficient", prof]);
+  } else if (call.kind === "skill") {
+    const sk = SKILLS.find((s) => s[0] === call.key), data = c?.skills?.[call.key] || {};
+    if (data.bonus != null && data.bonus !== "") parts.push([sk?.[1] || "Skill", Number(data.bonus) || 0]);
+    else {
+      parts.push([(sk?.[2] || "dex").toUpperCase(), abMod(statOf(c, sk?.[2] || "dex"))]);
+      if (data.proficient) parts.push(["Proficient", prof]);
+      if (data.expertise) parts.push(["Expertise", prof]);
+    }
+  } else if (call.kind === "ability") parts.push([call.key.toUpperCase(), abMod(statOf(c, call.key))]);
+  return { mod: parts.reduce((a, p) => a + p[1], 0), parts };
+}
+function callTitle(c) {
+  if (c.title) return c.title;
+  if (c.kind === "init") return "Initiative";
+  if (c.kind === "save") return `${ABIL[c.key] || c.key} Saving Throw`;
+  if (c.kind === "skill") { const sk = SKILLS.find((s) => s[0] === c.key); return `${sk ? `${sk[1]} (${sk[2].toUpperCase()})` : c.key} Check`; }
+  if (c.kind === "ability") return `${ABIL[c.key] || c.key} Check`;
+  return "Roll";
+}
+
+let call = null, callSeen = new Set(), callHidden = false, callExtras = {}, callMode = null;
+const EXTRAS = [["bless", "Bless", 4], ["guidance", "Guidance", 4], ["resistance", "Resistance", 4], ["bardic", "Bardic Inspiration", 6]];
+
+// GM: the "Call for a roll" dialog
+let callKind = "init";
+function setCallKind(kind) {
+  callKind = kind;
+  document.querySelectorAll("#call-kinds .rc-chip").forEach((b) => b.classList.toggle("on", b.dataset.kind === kind));
+  const sel = $("call-key");
+  if (kind === "save" || kind === "ability") sel.innerHTML = Object.entries(ABIL).map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+  else if (kind === "skill") sel.innerHTML = SKILLS.map(([k, l, a]) => `<option value="${k}">${l} (${a.toUpperCase()})</option>`).join("");
+  sel.classList.toggle("hidden", kind === "init");
+}
+function openCallModal() {
+  const pcs = pcList(), camp = localStorage.getItem("rodeo.campaign") || "";
+  $("call-targets").innerHTML = pcs.map((p) => `<label class="flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 cursor-pointer">
+    <input type="checkbox" class="call-pc accent-amber-500" value="${esc(p.pcId)}" ${!camp || !p.campaign || p.campaign === camp ? "checked" : ""}> ${esc(p.name)}</label>`).join("") || `<span class="text-slate-500">No PCs in Firebase</span>`;
+  setCallKind(callKind);
+  openModal("modal-call");
+}
+function sendCall() {
+  const ids = [...document.querySelectorAll(".call-pc:checked")].map((c) => c.value);
+  if (!ids.length) return toast("Tick at least one character");
+  const dc = parseInt($("call-dc").value, 10);
+  const c = { id: newId("c"), kind: callKind, key: callKind === "init" ? "" : $("call-key").value, title: $("call-custom").value.trim(),
+    dc: callKind !== "init" && dc > 0 ? dc : null, showDc: $("call-showdc").checked, mode: $("call-mode").value, to: Object.fromEntries(ids.map((i) => [i, true])), open: true, t: Date.now() };
+  set(R("rollcall"), c);
+  $("call-custom").value = "";
+  closeModal("modal-call");
+}
+
+function watchCall() {
+  onValue(R("rollcall"), (s) => {
+    const v = s.val();
+    const fresh = v && (!call || call.id !== v.id);
+    call = v && v.open ? v : null;
+    if (!call) { hideCall(); return; }
+    if (fresh) { callSeen = new Set(); callHidden = false; callExtras = {}; callMode = null; clearCallTray(); }
+    renderCall();
+  });
+}
+// Throw results not yet shown into the tray (only while the screen is visible, so the tray has a size)
+// The roll screen uses the 3D d20 tray (js/geez-dice3d.js); if three.js/cannon can't load, it falls back to the flat dice.
+let tray3d = null, tray3dLoading = null, tray3dFailed = false;
+function getTray3d() {
+  if (tray3d || tray3dFailed) return Promise.resolve(tray3d);
+  return (tray3dLoading ||= createDiceTray3D($("rc-tray")).then((t) => (tray3d = t))
+    .catch((e) => { console.warn("3D dice unavailable, using flat dice", e); tray3dFailed = true; return null; }));
+}
+function clearCallTray() {
+  if (tray3d) tray3d.clear();
+  $("rc-tray").querySelectorAll(":scope > div:not(.d3-layer)").forEach((el) => el.remove());   // flat-dice leftovers
+  $("rc-tray")._spots = [];
+}
+async function throwNewResults() {
+  if (!call || callHidden || !$("rc-tray").clientWidth) return;
+  const callId = call.id;
+  const fresh = Object.entries(call.results || {}).filter(([rid]) => !callSeen.has(rid)).sort((a, b) => (a[1].t || 0) - (b[1].t || 0));
+  if (!fresh.length) return;
+  fresh.forEach(([rid]) => callSeen.add(rid));
+  const showPass = call.dc && (isGMView() || call.showDc) && call.kind !== "init";
+  const groups = fresh.map(([, r]) => {
+    const dice = asList(r.dice), kept = dice.find((d) => d.s === 20 && !d.drop)?.v;
+    const rest = kept != null ? r.total - kept : 0;
+    const cls = kept === 20 ? "crit" : kept === 1 ? "bad" : showPass ? (r.total >= call.dc ? "ok" : "bad") : "";
+    return { dice, color: r.color || hashColor(r.name), label: r.name, total: r.total, cls,
+      sub: kept != null ? `${kept}${rest ? ` ${sgn(rest)}` : ""}${showPass ? (r.total >= call.dc ? " · success" : " · fail") : ""}` : "" };
+  });
+  const tray = await getTray3d();
+  if (!call || call.id !== callId) return;
+  if (tray) tray.throwGroup(groups);
+  else for (const g of groups) throwDice($("rc-tray"), g.dice, { color: g.color, size: 58, label: g.label, total: g.total, sub: g.sub, persist: true });
+}
+function hideCall() { $("rc-overlay").classList.remove("show"); $("rc-pill").classList.add("hidden"); }
+function callTargets() {
+  return Object.keys(call?.to || {}).map((id) => ({ id, name: nameOf(pcsData[id], id), c: pcsData[id] }));
+}
+function renderCall() {
+  if (!call) return;
+  const show = !callHidden;
+  $("rc-overlay").classList.toggle("show", show);
+  $("rc-pill").classList.toggle("hidden", show);
+  const title = callTitle(call);
+  $("rc-pill-text").textContent = `${title} — tap to watch`;
+  $("rc-title").textContent = title;
+  const targets = callTargets(), results = call.results || {};
+  $("rc-kicker").textContent = call.kind === "init" ? "Roll for" : "The DM calls for";
+  const dcVisible = call.dc && (isGMView() || call.showDc);
+  $("rc-dc").classList.toggle("hidden", !dcVisible);
+  $("rc-dc").innerHTML = dcVisible ? `<i class="fa-solid fa-shield"></i> DC ${call.dc}${call.showDc ? "" : " <span class='text-slate-400 font-normal'>(hidden)</span>"}` : "";
+  const modeTxt = call.mode === "adv" ? " · with advantage" : call.mode === "dis" ? " · with disadvantage" : "";
+  $("rc-for").textContent = `${targets.map((t) => t.name).join(", ")}${modeTxt}`;
+
+  // results: everyone in the call (and any NPCs the GM added)
+  const rows = [...targets.map((t) => ({ rid: t.id, name: t.name, r: results[t.id] })),
+    ...Object.entries(results).filter(([rid]) => !call.to?.[rid]).map(([rid, r]) => ({ rid, name: r.name, r }))];
+  rows.sort((a, b) => (b.r ? 1 : 0) - (a.r ? 1 : 0) || (call.kind === "init" ? (b.r?.total ?? 0) - (a.r?.total ?? 0) : 0));
+  $("rc-results").innerHTML = rows.map(({ name, r }) => {
+    if (!r) return `<div class="rc-row wait"><span>${esc(name)}</span><span class="tot">waiting…</span></div>`;
+    const pass = call.dc && call.kind !== "init" && (isGMView() || call.showDc) ? (r.total >= call.dc ? `<span class="text-emerald-400 text-xs">✔</span>` : `<span class="text-red-400 text-xs">✘</span>`) : "";
+    const kept = asList(r.dice).filter((d) => d.s === 20 && !d.drop)[0]?.v;
+    return `<div class="rc-row"><span style="color:${esc(r.color || "#e2e8f0")}">●</span><span>${esc(name)}</span>
+      <span class="text-[10px] text-slate-500">${kept === 20 ? "nat 20!" : kept === 1 ? "nat 1" : ""}</span>${pass}<span class="tot">${esc(r.total)}</span></div>`;
+  }).join("") || `<div class="text-xs text-slate-500">No one called.</div>`;
+
+  // my roll panel
+  const mine = !IS_GM && me?.pcId && call.to?.[me.pcId];
+  const myRes = mine && results[me.pcId];
+  if (mine && !myRes) {
+    const c = pcsData[me.pcId], { mod, parts } = callMod(c, call);
+    const mode = callMode || call.mode || "normal";
+    const extrasHtml = EXTRAS.map(([k, label, die]) => `<button data-extra="${k}" class="rc-chip ${callExtras[k] ? "on" : ""}">${label} +1d${k === "bardic" ? (callExtras.bardicDie || die) : die}</button>`).join("");
+    $("rc-me").innerHTML = `<div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Your roll</div>
+      <div class="flex items-center gap-2 mb-2"><span class="text-3xl">🎲</span><div><div class="font-bold text-lg">${mode === "normal" ? "1d20" : "2d20"} ${sgn(mod)}</div>
+        <div class="text-[11px] text-slate-400">${parts.map(([l, v]) => `${esc(l)} ${sgn(v)}`).join(" · ") || "no modifier"}${restedLeft(me.pcId) ? " · 🌙 +1d4" : ""}</div></div></div>
+      <div class="flex gap-1 mb-2">${["normal", "adv", "dis"].map((m) => `<button data-mode="${m}" class="rc-chip flex-1 ${mode === m ? "on" : ""}">${m === "normal" ? "Normal" : m === "adv" ? "Advantage" : "Disadvantage"}</button>`).join("")}</div>
+      <div class="text-[11px] text-slate-400 mb-1">Extra bonuses</div>
+      <div class="flex flex-wrap gap-1 mb-2">${extrasHtml}</div>
+      <div class="flex items-center gap-2 mb-3 text-xs">${callExtras.bardic ? `<select id="rc-bardic-die" class="bg-slate-900 border border-slate-700 rounded px-1 py-1">${[6, 8, 10, 12].map((d) => `<option value="${d}" ${Number(callExtras.bardicDie || 6) === d ? "selected" : ""}>Bardic d${d}</option>`).join("")}</select>` : ""}
+        <span class="text-slate-400">Other</span><input id="rc-other" type="number" value="${callExtras.other || 0}" class="w-14 bg-slate-900 border border-slate-700 rounded px-1.5 py-1"></div>
+      <button id="rc-roll">ROLL</button>`;
+  } else if (myRes) {
+    $("rc-me").innerHTML = `<div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Your roll</div><div class="text-3xl font-black text-amber-200">${esc(myRes.total)}</div>
+      <div class="text-[11px] text-slate-400">${esc(myRes.detail || "")}</div>`;
+  } else {
+    $("rc-me").innerHTML = IS_GM ? `<div class="text-xs text-slate-400">Players roll on their own screens. You can roll for anyone below.</div>`
+      : `<div class="text-xs text-slate-400">You're watching this one.</div>`;
+  }
+
+  // GM controls
+  if (IS_GM) {
+    const missing = targets.filter((t) => !results[t.id]);
+    $("rc-gm").innerHTML = `<div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">DM</div>
+      ${missing.length ? `<div class="flex flex-wrap gap-1 mb-2">${missing.map((t) => `<button data-rollfor="${esc(t.id)}" class="rc-chip">Roll for ${esc(t.name)}</button>`).join("")}</div>` : ""}
+      ${call.kind === "init" ? `<button id="rc-npcs" class="rc-chip w-full mb-2">Roll initiative for NPCs on this map</button>` : ""}
+      <button id="rc-close" class="w-full py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-sm font-semibold">Close for everyone</button>`;
+  }
+  if (show) requestAnimationFrame(throwNewResults);
+}
+
+// Roll one entry for the call. pcId = whose sheet the modifier comes from.
+async function rollForCall(rid, { name, color, c, pcId, mode = "normal", extras = {}, other = 0 }) {
+  if (!call) return;
+  const { mod, parts } = callMod(c, call);
+  const dice = [];
+  let d20;
+  if (mode === "normal") { d20 = rnd(20); dice.push({ s: 20, v: d20 }); }
+  else {
+    const a = rnd(20), b = rnd(20); d20 = mode === "adv" ? Math.max(a, b) : Math.min(a, b);
+    const dropFirst = a !== d20;
+    dice.push({ s: 20, v: a, ...(dropFirst ? { drop: true } : {}) }, { s: 20, v: b, ...(!dropFirst && a !== b ? { drop: true } : {}) });
+    if (a === b) dice[1].drop = true;
+  }
+  let total = d20 + mod; const bits = [`[${dice.filter((d) => d.s === 20).map((d) => d.v).join(",")}]${mode !== "normal" ? ` ${mode}` : ""}`, sgn(mod)];
+  for (const [k, label, die] of EXTRAS) if (extras[k]) {
+    const sides = k === "bardic" ? Number(extras.bardicDie || die) : die, v = rnd(sides);
+    total += v; dice.push({ s: sides, v }); bits.push(`+${label} ${v}`);
+  }
+  if (other) { total += other; bits.push(sgn(other)); }
+  let entry = { total, detail: bits.join(" "), dice };
+  if (pcId) entry = await useWellRested(entry, pcId);
+  const res = { name, color, dice: entry.dice, mod, total: entry.total, detail: entry.detail, t: Date.now() };
+  if (pcId) res.pcId = pcId;
+  const callId = call.id;
+  const tx = await runTransaction(R(`rollcall/results/${rid}`), (cur) => (cur ? undefined : res));
+  if (!tx?.committed || call?.id !== callId) return;
+  push(R("dice"), { name, color, expr: callTitle(call), total: res.total, detail: res.detail, dice: res.dice, call: callId, t: Date.now() });
+}
+
+function wireCall() {
+  $("btn-call").onclick = openCallModal;
+  document.querySelectorAll("#call-kinds .rc-chip").forEach((b) => (b.onclick = () => setCallKind(b.dataset.kind)));
+  $("btn-call-send").onclick = sendCall;
+  $("rc-hide").onclick = () => { callHidden = true; renderCall(); };
+  $("rc-pill").onclick = () => { callHidden = false; renderCall(); };
+  $("rc-overlay").addEventListener("click", async (e) => {
+    const b = e.target.closest("button"); if (!b || !call) return;
+    if (b.dataset.extra) { callExtras[b.dataset.extra] = !callExtras[b.dataset.extra]; renderCall(); return; }
+    if (b.dataset.mode) { callMode = b.dataset.mode; renderCall(); return; }
+    if (b.id === "rc-roll") {
+      b.disabled = true;
+      callExtras.other = parseInt($("rc-other")?.value, 10) || 0;
+      if ($("rc-bardic-die")) callExtras.bardicDie = Number($("rc-bardic-die").value);
+      await rollForCall(me.pcId, { name: me.name, color: myColor(), c: pcsData[me.pcId], pcId: me.pcId, mode: callMode || call.mode || "normal", extras: callExtras, other: callExtras.other });
+      return;
+    }
+    if (b.dataset.rollfor && IS_GM) {
+      const id = b.dataset.rollfor, nm = nameOf(pcsData[id], id);
+      await rollForCall(id, { name: nm, color: hashColor(nm), c: pcsData[id], mode: call.mode || "normal" });
+      return;
+    }
+    if (b.id === "rc-npcs" && IS_GM) {
+      const npcs = Object.values(state.tokens).filter((t) => t && t.kind !== "prop" && !t.pcId && !t.hidden);
+      if (!npcs.length) return toast("No visible NPC tokens on this map");
+      const count = {};
+      for (const t of npcs) {
+        const rec = npcsData[t.npcId] || pcsData[t.npcId] || {};
+        count[t.name] = (count[t.name] || 0) + 1;
+        const nm = npcs.filter((x) => x.name === t.name).length > 1 ? `${t.name} ${count[t.name]}` : t.name;
+        await rollForCall("tok_" + t.id, { name: nm, color: "#b91c1c", c: rec, mode: "normal" });
+      }
+      return;
+    }
+    if (b.id === "rc-close" && IS_GM) update(R("rollcall"), { open: false });
+  });
+  $("rc-overlay").addEventListener("change", (e) => {
+    if (e.target.id === "rc-bardic-die") { callExtras.bardicDie = Number(e.target.value); renderCall(); }
+    if (e.target.id === "rc-other") callExtras.other = parseInt(e.target.value, 10) || 0;
   });
 }
 
@@ -1495,9 +2048,9 @@ function boot() {
     $("dot-conn").className = `w-2 h-2 rounded-full ${on ? "bg-emerald-400" : "bg-red-500"}`;
     $("dot-conn").title = on ? "Connected" : "Not connected to Firebase";
   });
-  watchCharacters(); watchSession(); watchPings(); watchRulers(); watchDice(); watchMind();
+  watchCharacters(); watchSession(); watchPings(); watchRulers(); watchDice(); watchMind(); watchFeed(); wireLoot(); watchCall(); wireCall();
   if (IS_GM) { fillMapSelect(); refreshLibrary(); }
   else if (!me) { refreshMePicker(); openModal("modal-me"); }
-  window.__rodeo = { state, livePings, spawnToken, spawnProp, showMind, openMap, gmGoTo, pcList, npcList, get me() { return me; } };
+  window.__rodeo = { state, livePings, throwOnTable, get call() { return call; }, spawnToken, spawnProp, showMind, openMap, gmGoTo, pcList, npcList, get me() { return me; } };
 }
 boot();
