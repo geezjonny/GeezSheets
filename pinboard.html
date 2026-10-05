@@ -54,8 +54,8 @@
 
   #boardBar { position: fixed; top: 12px; left: 12px; z-index: 20; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; }
   #boardBar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
-  #boardSel { background: transparent; border: 0; color: var(--text); font: 600 14px inherit; font-family: inherit; padding: 6px 4px; cursor: pointer; max-width: 220px; }
-  #boardSel option { background: #1c1c22; }
+  #campSel { background: transparent; border: 0; color: var(--text); font: 600 14px inherit; font-family: inherit; padding: 6px 4px; cursor: pointer; max-width: 220px; }
+  #campSel option { background: #1c1c22; }
   #searchBar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; width: min(340px, calc(100vw - 340px)); }
   #searchBar svg { width: 16px; height: 16px; fill: none; stroke: var(--dim); stroke-width: 2; flex-shrink: 0; }
   #search { flex: 1; background: transparent; border: 0; color: var(--text); padding: 7px 2px; font: inherit; outline: none; min-width: 0; }
@@ -108,9 +108,6 @@
   #rolePop { position: fixed; z-index: 30; padding: 10px; width: 250px; display: flex; flex-direction: column; gap: 8px; }
   #toast { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); padding: 8px 14px; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 40; }
   #toast.show { opacity: 1; }
-  #setup { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.6); }
-  #setup .glass { max-width: 440px; padding: 20px; line-height: 1.6; }
-  #setup code { background: #000; padding: 1px 6px; border-radius: 4px; }
 
   @media (max-width: 700px) {
     #drawer { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 60vh; }
@@ -118,14 +115,34 @@
     #status { display: none; }
     #legend { bottom: 64px; }
   }
+  .card.note { background: var(--paper); color: #1c1917; border: 0; border-radius: 6px; }
+  .card.note .tagline { color: rgba(28,25,23,.65); } .card.note .nt { color: #292524; -webkit-line-clamp: 5; white-space: pre-line; }
+  .card.note .knob { background: #fff; }
+  .card .pin { position: absolute; top: -9px; left: 50%; margin-left: -8px; width: 16px; height: 16px; border-radius: 50%; background: #dc2626; border: 2px solid #fca5a5; box-shadow: 0 2px 4px #0008; }
+  .card .who { display: flex; align-items: center; gap: 9px; margin-top: 2px; }
+  .card .who img, .card .who .ini { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; border: 1px solid rgba(255,255,255,.15); flex-shrink: 0; }
+  .card .who .ini { display: grid; place-items: center; background: var(--c); color: #fff; font-weight: 700; }
+  .card .sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .card .own { position: absolute; top: 6px; right: 8px; font-size: 10px; color: var(--dim); }
+  .card.note .own { color: rgba(28,25,23,.6); }
+  .card .eye { position: absolute; top: 6px; right: 8px; font-size: 11px; }
+  .pnote { padding: 7px 9px; border-radius: 8px; background: rgba(0,0,0,.22); font-size: 12px; line-height: 1.45; white-space: pre-line; }
+  .pnote b { color: #a5b4fc; font-weight: 600; }
+  .pnote .when { color: var(--dim); font-size: 11px; }
+  .toggle { flex-direction: row; align-items: center; gap: 8px; color: var(--text); font-size: 13px; padding: 8px 10px; border-radius: 8px; background: rgba(34,197,94,.08); border: 1px solid rgba(34,197,94,.25); cursor: pointer; }
+  .toggle input { width: 16px; height: 16px; accent-color: #22c55e; }
+  #modeTag { font-size: 11px; padding: 2px 8px; border-radius: 99px; background: var(--accent-soft); color: #c7d2fe; }
+  body.player #modeTag { background: rgba(34,197,94,.15); color: #86efac; }
+  body.player [data-gm], body.gm [data-player] { display: none !important; }
 </style>
 </head>
 <body>
 <div id="stage"><div id="world"><svg id="edges"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="rgba(220,220,235,.5)"/></marker><marker id="arrHi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#a5b4fc"/></marker></defs><g id="edgeG"></g></svg><div id="labels"></div><div id="cards"></div></div></div>
 
-<div id="boardBar" class="glass" title="Board">
+<div id="boardBar" class="glass" title="Campaign">
   <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.2"/><circle cx="16" cy="14" r="1.2"/><path d="M8 9l8 5"/></svg>
-  <select id="boardSel"></select>
+  <select id="campSel"></select>
+  <span id="modeTag"></span>
 </div>
 <div id="searchBar" class="glass">
   <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -137,7 +154,6 @@
 <div id="rail" class="glass">
   <button class="ib" id="addBtn" data-tip="Add card (or double-click the board)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
   <button class="ib" id="fitBtn" data-tip="Fit everything (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-  <button class="ib" id="tidyBtn" data-tip="Tidy: group cards by type"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></button>
 </div>
 <div id="addMenu" class="glass" hidden></div>
 <div id="legend" class="glass"></div>
@@ -150,16 +166,35 @@
   <header><span id="dTag"></span><button class="x" id="dClose" title="Close (Esc)">✕</button></header>
   <div class="body">
     <input id="fName" type="text" placeholder="Name" />
-    <label>Type<select id="fTag"></select></label>
-    <label>Notes<textarea id="fNotes" placeholder="Who are they, what do they want, what happened…"></textarea></label>
-    <label>Linked character sheet<select id="fChar"></select></label>
-    <div id="charBox"></div>
+    <div id="readName" style="font-size:18px;font-weight:700" hidden></div>
+    <label class="toggle" data-gm><input type="checkbox" id="fKnown"> Players know about this</label>
+    <div id="npcFields" class="row" style="flex-wrap:wrap">
+      <label style="flex:1;min-width:120px">Role<input id="fRole" type="text"></label>
+      <label style="flex:1;min-width:120px">Faction<input id="fFaction" type="text"></label>
+      <label style="flex:1;min-width:120px">Status<input id="fStatus" type="text" placeholder="Alive"></label>
+    </div>
+    <div id="noteFields" class="row">
+      <label style="flex:1">Label<input id="fNoteTag" type="text" placeholder="e.g. Object, Clue"></label>
+      <label>Colour<input id="fColor" type="color" style="width:52px;height:34px;padding:2px;border-radius:8px;border:1px solid var(--line);background:transparent"></label>
+    </div>
+    <label id="notesWrap">Notes<textarea id="fNotes"></textarea></label>
+    <div id="readInfo" class="muted"></div>
+    <div id="partyNotesWrap">
+      <div class="sect" id="pnTitle">Party notes</div>
+      <div id="pnList" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
+      <div data-player style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+        <textarea id="pnInput" style="min-height:60px" placeholder="Add a note for the party…"></textarea>
+        <button class="btn primary" id="pnAdd">Add note</button>
+      </div>
+    </div>
     <div class="sect">Connections</div>
     <div id="conns" style="display:flex;flex-direction:column;gap:4px"></div>
     <div class="row"><select id="newTo" style="flex:1"></select></div>
     <div class="row"><input id="newRole" type="text" list="roleList" placeholder="how? e.g. ally of, killed by" style="flex:1" /><button class="btn primary" id="newConn">Connect</button></div>
-    <div id="attach"></div>
-    <div class="row" style="margin-top:8px"><button class="btn danger" id="delCard">Delete card</button></div>
+    <div class="row" style="margin-top:8px;flex-wrap:wrap">
+      <button class="btn" id="offBoard" data-gm title="Keeps it in the campaign (maps, lists), just not on the board">Take off board</button>
+      <button class="btn danger" id="delCard">Delete</button>
+    </div>
   </div>
 </aside>
 
@@ -168,275 +203,335 @@
   <input id="rpRole" type="text" list="roleList" placeholder="how are they connected?" />
   <div class="row"><button class="btn primary" id="rpSave" style="flex:1">Save</button><button class="btn" id="rpFlip" title="Swap direction">⇄</button><button class="btn danger" id="rpDel">Delete</button></div>
 </div>
+<div id="namePop" hidden style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:center;justify-content:center">
+  <div class="glass" style="width:320px;padding:18px;display:flex;flex-direction:column;gap:10px">
+    <b style="font-size:15px">Your name</b><div class="muted">Shown on the notes you add for the party.</div>
+    <input id="nameIn" type="text" placeholder="e.g. Lark" /><button class="btn primary" id="nameOk">OK</button>
+  </div>
+</div>
 <datalist id="roleList"></datalist>
 <div id="toast" class="glass"></div>
-<div id="setup" hidden><div class="glass"><b>Firebase not set up yet</b><br>Open <code>pinboard.html</code> and paste your project's <code>firebaseConfig</code> at the top of the script (Firebase console → Project settings → Your apps → Config).</div></div>
-
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+// ─────────────────────────────────────────────────────────────────────────────
+//  Campaign pinboard — the same boards as index.html, on their own page.
+//    pinboard.html?gm=jonny   DM board: geezvtt/campaign (everything, editable)
+//    pinboard.html            Player board: only things marked "pc-known", without the
+//                             DM's notes, plus the party's own cards, strings, notes and
+//                             layout in geezvtt/party/<campaign> (same as index.html).
+//  Firebase connection comes from js/rodeo-firebase.js like the rest of GeezSheets.
+// ─────────────────────────────────────────────────────────────────────────────
+import { db, ref, onValue, set, update, remove } from "./js/rodeo-firebase.js";
 
-// ── Paste your Firebase project's config here ─────────────────────────────
-const firebaseConfig = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "PASTE.firebaseapp.com",
-  databaseURL: "https://PASTE-default-rtdb.firebaseio.com",
-  projectId: "PASTE",
-};
-// ──────────────────────────────────────────────────────────────────────────
-// Data (same shape the DM board already uses):
-//   campaigns/<board>/nodes/<id>  { name, tag, notes, x, y, linkedCharacterId?, linkedCharacterType?, attachments? }
-//   campaigns/<board>/edges/<id>  { from, to, role }
-//   campaigns/<board>/tagDefs/<tag> { label, color, plural }
-//   characters/pcs, characters/npcs   (read only, for linking cards to sheets)
-// Anything else under the board (like the world-map data) is never touched.
-
-if (String(firebaseConfig.apiKey).startsWith("PASTE")) { document.getElementById("setup").hidden = false; throw new Error("firebaseConfig not set"); }
-const db = getDatabase(initializeApp(firebaseConfig));
+const GM_KEY = "jonny";   // same key as index.html
+const QS = new URLSearchParams(location.search);
+const GM = QS.get("gm") === GM_KEY || QS.has("gm" + GM_KEY);
+document.body.classList.add(GM ? "gm" : "player");
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const nid = (p = "nm") => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-const pretty = (r) => String(r || "related").replace(/[_-]+/g, " ");
-const CARD_W = 210;
-const DEFAULT_TAGS = {
-  campaign: { label: "Campaign", color: "#9a6fb0", plural: "campaigns" }, event: { label: "Event", color: "#7c6fb0", plural: "events" },
-  faction: { label: "Faction", color: "#a8433d", plural: "factions" }, object: { label: "Object", color: "#4c8ba8", plural: "objects" },
-  pc: { label: "PC", color: "#6d9bc3", plural: "pcs" }, person: { label: "NPC", color: "#c9a04e", plural: "npcs" },
-  place: { label: "Place", color: "#5c8a72", plural: "locations" }, plan: { label: "Plan", color: "#b9762f", plural: "plans" }
+const CARD_W = 220;
+const TYPES = {
+  npc:      { label: "NPC",   color: "#a855f7" },
+  location: { label: "Place", color: "#f59e0b" },
+  event:    { label: "Event", color: "#f43f5e" },
+  note:     { label: "Note",  color: "#facc15" },
 };
+const typeOf = (t) => TYPES[t?.type] || TYPES.note;
+const truthy = (v) => /^(true|yes|y|1|x)$/i.test(String(v ?? "").trim());
+const prop = (t, k) => (Array.isArray(t?.properties) ? t.properties : Object.values(t?.properties || {})).find(p => String(p?.key).trim().toLowerCase() === k)?.value;
+const isKnown = (t) => truthy(prop(t, "pc-known"));
+const CAMP = (p) => ref(db, `geezvtt/campaign/${p}`);
+const PARTY = (p) => ref(db, `geezvtt/party/${camp}/${p}`);
 
 // ── state ──
-let board = new URLSearchParams(location.search).get("board") || localStorage.getItem("pinboard.board") || "default";
-let nodes = {}, edges = {}, tagDefs = {};
-const chars = { pcs: {}, npcs: {} };
-let hidden = new Set(JSON.parse(localStorage.getItem("pinboard.hidden") || "[]"));
-let selected = null, query = "";
+let campaign = { things: {}, links: {}, maps: {} };
+let party = { cards: {}, links: {}, board: {}, notes: {} };
+let camp = QS.get("campaign") || localStorage.getItem(GM ? "pinboard.gm.campaign" : "geezvtt.player.lastCampaign") || null;
+let view = { things: {}, links: {} };
+let hidden = new Set(JSON.parse(localStorage.getItem("pinboard.hiddenTypes") || "[]"));
+let selected = null, query = "", firstFit = true;
+let playerName = "";
 const cam = { x: 0, y: 0, z: 1 };
-let unsubs = [], firstLoad = true;
-const dims = {};   // card id -> {w,h} measured
+const dims = {};
+let partyUnsub = null, partyLoaded = false;
 
 function toast(m) { $("toast").textContent = m; $("toast").classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("show"), 2200); }
-const tagOf = (n) => tagDefs[n?.tag] || { label: n?.tag || "Card", color: "#777" };
-const P = (path) => ref(db, `campaigns/${board}/${path}`);
 
-// ── boards ──
-async function loadBoards() {
-  let ids = [];
-  try { const s = await get(ref(db, "campaigns")); ids = Object.keys(s.val() || {}); } catch {}
-  if (!ids.includes(board)) ids.push(board);
-  ids.sort();
-  $("boardSel").innerHTML = ids.map(b => `<option value="${esc(b)}">${esc(b === "default" ? "Main board" : b)}</option>`).join("") + `<option value="__new">+ New board…</option>`;
-  $("boardSel").value = board;
+// ── which campaign (root world map) a thing belongs to — same rule as index.html ──
+function rootMap(id) { let m = campaign.maps[id], g = 0; while (m && m.parentMap && campaign.maps[m.parentMap] && g++ < 30) m = campaign.maps[m.parentMap]; return m ? m.id || id : null; }
+function campaignOf(id) {
+  const t = campaign.things[id]; if (!t) return null;
+  const mapId = Object.keys(campaign.maps).find(m => campaign.maps[m]?.pins?.[id]);
+  if (mapId) return rootMap(mapId);
+  if (t.campaign && campaign.maps[t.campaign]) return t.campaign;
+  return null;
 }
-$("boardSel").onchange = async (e) => {
-  if (e.target.value === "__new") {
-    const name = (prompt("Name for the new board:") || "").trim();
-    e.target.value = board;
-    if (!name) return;
-    const key = name.replace(/[.#$\[\]\/\s]+/g, "-");
-    await set(ref(db, `campaigns/${key}/tagDefs`), DEFAULT_TAGS);
-    board = key; await loadBoards();
-  } else board = e.target.value;
-  localStorage.setItem("pinboard.board", board);
-  openBoard();
+const inCamp = (id) => (campaignOf(id) || camp) === camp;
+const worlds = () => Object.entries(campaign.maps).filter(([, m]) => m && !m.parentMap).map(([id, m]) => ({ id, name: m.name || id }));
+
+// ── build what this person sees ──
+function buildView() {
+  const things = {}, links = {};
+  if (GM) {
+    for (const [id, t] of Object.entries(campaign.things)) {
+      if (!t?.board || !inCamp(id)) continue;
+      things[id] = { ...t, id, known: isKnown(t), mine: true };
+    }
+    for (const [id, l] of Object.entries(campaign.links)) if (l && things[l.from] && things[l.to]) links[id] = { ...l, id };
+  } else {
+    const known = Object.entries(campaign.things).filter(([id, t]) => t && isKnown(t) && inCamp(id))
+      .sort((a, b) => String(a[1].name).localeCompare(String(b[1].name)));
+    let n = 0;
+    for (const [id, t] of known) {
+      const traits = { ...(t.traits || {}) };
+      if (!traits.pc) { delete traits.hp; delete traits.ac; delete traits.charId; }
+      const board = party.board[id] || { x: 420 + (n % 6) * 260, y: 80 + Math.floor(n / 6) * 190 };
+      n++;
+      things[id] = { id, type: t.type, name: t.name, traits, notes: "", board, mine: false };
+    }
+    for (const [id, c] of Object.entries(party.cards)) if (c) things[id] = { ...c, id, board: party.board[id] || c.board || { x: 60, y: 80 }, mine: true };
+    for (const [id, l] of Object.entries(party.links)) if (l && things[l.from] && things[l.to]) links[id] = { ...l, id };
+  }
+  view = { things, links };
+}
+// what a card shows as its text: DM notes for the DM / party cards; the party's latest note for DM cards on the player side
+const notesOf = (tid) => Object.entries(party.notes?.[tid] || {}).filter(([, n]) => n).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0));
+const cardText = (t) => (!GM && !t.mine) ? (notesOf(t.id).slice(-1)[0]?.[1].text || "") : (t.notes || "");
+
+// ── data ──
+onValue(ref(db, "geezvtt/campaign"), (s) => {
+  const v = s.val() || {};
+  campaign = { things: v.things || {}, links: v.links || {}, maps: v.maps || {} };
+  const ws = worlds();
+  if (!camp || !campaign.maps[camp]) camp = ws[0]?.id || "world";
+  renderCampaigns();
+  watchParty();
+  refresh();
+  $("status").classList.add("live");
+}, () => { $("statusText").textContent = "No access"; toast("Couldn't read the campaign. Check the database rules."); });
+
+function watchParty() {
+  if (watchParty.for === camp) return;
+  watchParty.for = camp;
+  playerName = localStorage.getItem(`geezvtt.player.${camp}.name`) || "";
+  if (partyUnsub) partyUnsub();
+  partyLoaded = false;
+  partyUnsub = onValue(ref(db, `geezvtt/party/${camp}`), (s) => {
+    const p = s.val() || {};
+    party = { cards: p.cards || {}, links: p.links || {}, board: p.board || {}, notes: p.notes || {} };
+    if (drag?.moved && party.board[drag.id]) party.board[drag.id] = { ...dragPos() };
+    partyLoaded = true;
+    refresh();
+  });
+}
+function renderCampaigns() {
+  const ws = worlds();
+  $("campSel").innerHTML = ws.map(w => `<option value="${esc(w.id)}">${esc(w.name)}</option>`).join("") || `<option>${esc(camp)}</option>`;
+  $("campSel").value = camp;
+  $("modeTag").textContent = GM ? "DM" : "Party";
+}
+$("campSel").onchange = (e) => {
+  camp = e.target.value; firstFit = true; selected = null; $("drawer").hidden = true;
+  localStorage.setItem(GM ? "pinboard.gm.campaign" : "geezvtt.player.lastCampaign", camp);
+  watchParty(); refresh();
 };
 
-function openBoard() {
-  unsubs.forEach(u => u()); unsubs = [];
-  nodes = {}; edges = {}; tagDefs = {}; selected = null; firstLoad = true;
-  $("cards").innerHTML = ""; $("labels").innerHTML = "";
-  closeDrawer();
-  let gotNodes = false;
-  unsubs.push(onValue(P("tagDefs"), s => { tagDefs = { ...DEFAULT_TAGS, ...(s.val() || {}) }; renderAll(); }));
-  unsubs.push(onValue(P("edges"), s => { edges = s.val() || {}; renderAll(); }));
-  unsubs.push(onValue(P("nodes"), s => {
-    const v = s.val() || {};
-    if (drag?.moved && v[drag.id]) { v[drag.id].x = nodes[drag.id].x; v[drag.id].y = nodes[drag.id].y; }   // don't fight our own drag
-    nodes = v; gotNodes = true;
-    if (selected && !nodes[selected]) closeDrawer();
-    renderAll();
-    if (firstLoad) { firstLoad = false; requestAnimationFrame(fit); }
-    $("status").classList.add("live"); $("statusText").textContent = `${Object.keys(nodes).length} cards`;
-  }, () => { $("statusText").textContent = "No access"; toast("Couldn't read the board. Check the database rules."); }));
+function refresh() {
+  buildView();
+  if (drag?.moved && view.things[drag.id]) view.things[drag.id].board = dragPos();
+  if (selected && !view.things[selected]) { selected = null; $("drawer").hidden = true; }
+  renderCards(); renderEdges(); renderLegend(); renderRoles();
+  if (selected) renderDrawer();
+  $("statusText").textContent = `${Object.keys(view.things).length} cards`;
+  if (firstFit && (GM || partyLoaded) && Object.keys(view.things).length) { firstFit = false; requestAnimationFrame(fit); }
 }
-onValue(ref(db, "characters/pcs"), s => { chars.pcs = s.val() || {}; if (selected) renderDrawer(); });
-onValue(ref(db, "characters/npcs"), s => { chars.npcs = s.val() || {}; if (selected) renderDrawer(); });
 
 // ── rendering ──
-const visible = (n) => n && !hidden.has(n.tag);
-function matches(n) {
-  if (!query) return false;
-  const q = query.toLowerCase();
-  return (n.name || "").toLowerCase().includes(q) || (n.notes || "").toLowerCase().includes(q);
-}
-function neighbours(id) {
-  const s = new Set([id]);
-  for (const e of Object.values(edges)) { if (e.from === id) s.add(e.to); if (e.to === id) s.add(e.from); }
-  return s;
-}
-function renderAll() { renderCards(); renderEdges(); renderLegend(); renderRoles(); if (selected) renderDrawer(); }
+const visible = (t) => t && !hidden.has(t.type in TYPES ? t.type : "note");
+const matches = (t) => { if (!query) return false; const q = query.toLowerCase(); return (t.name || "").toLowerCase().includes(q) || cardText(t).toLowerCase().includes(q); };
+function neighbours(id) { const s = new Set([id]); for (const l of Object.values(view.links)) { if (l.from === id) s.add(l.to); if (l.to === id) s.add(l.from); } return s; }
 
+function cardHTML(t) {
+  const ty = typeOf(t), tr = t.traits || {}, text = cardText(t);
+  const badge = GM ? (t.known ? `<span class="eye" title="Players know about this">👁</span>` : "") : (t.mine ? `<span class="own">party</span>` : "");
+  if (t.type === "npc") {
+    const ini = esc((t.name || "?").split(/\s+/).map(w => w[0]).join("").slice(0, 2).toUpperCase());
+    const pic = tr.avatar ? `<img src="${esc(tr.avatar)}" alt="" onerror="this.outerHTML='<div class=&quot;ini&quot;>${ini}</div>'">` : `<div class="ini">${ini}</div>`;
+    const sub = [tr.role || "NPC", tr.faction].filter(Boolean).join(" · ");
+    const stats = GM && (tr.hp || tr.ac) ? `<div class="sub">HP ${esc(tr.hp ?? "–")} · AC ${esc(tr.ac ?? "–")}${tr.status ? " · " + esc(tr.status) : ""}</div>` : (tr.status && tr.status !== "Alive" ? `<div class="sub">${esc(tr.status)}</div>` : "");
+    return `<span class="pin"></span>${badge}<div class="who">${pic}<div style="min-width:0"><div class="nm" style="margin:0">${esc(t.name || "Unnamed")}</div><div class="sub" style="margin:0">${esc(sub)}</div></div></div>${stats}${text ? `<div class="nt">${esc(text)}</div>` : ""}<div class="knob"></div>`;
+  }
+  if (t.type === "note") {
+    return `<span class="pin"></span>${badge}${tr.tag ? `<div class="tagline">${esc(tr.tag)}</div>` : ""}<div class="nm">${esc(t.name || "Note")}</div>${text ? `<div class="nt">${esc(text)}</div>` : ""}<div class="knob"></div>`;
+  }
+  const extra = t.type === "event" && tr.when ? ` · ${esc(tr.when)}` : "";
+  return `<span class="pin"></span>${badge}<div class="tagline"><i></i>${esc(ty.label)}${extra}</div><div class="nm">${esc(t.name || "Untitled")}</div>${text ? `<div class="nt">${esc(text)}</div>` : ""}<div class="knob"></div>`;
+}
 function renderCards() {
-  const wrap = $("cards");
-  const near = selected ? neighbours(selected) : null;
+  const wrap = $("cards"), near = selected ? neighbours(selected) : null;
   let count = 0;
-  for (const el of [...wrap.children]) if (!nodes[el.dataset.id]) el.remove();
-  for (const [id, n] of Object.entries(nodes)) {
+  for (const el of [...wrap.children]) if (!view.things[el.dataset.id]) el.remove();
+  for (const [id, t] of Object.entries(view.things)) {
     let el = wrap.querySelector(`[data-id="${CSS.escape(id)}"]`);
-    if (!el) { el = document.createElement("div"); el.className = "card"; el.dataset.id = id; wrap.appendChild(el); }
-    const t = tagOf(n);
-    const linked = n.linkedCharacterId ? (chars[n.linkedCharacterType === "npc" ? "npcs" : "pcs"][n.linkedCharacterId] ? " · sheet" : "") : "";
-    const sig = JSON.stringify([n.name, n.tag, n.notes, t.color, t.label, linked]);
-    if (el.dataset.sig !== sig) {
-      el.dataset.sig = sig;
-      el.style.setProperty("--c", t.color);
-      el.innerHTML = `<div class="tagline"><i></i>${esc(t.label)}${linked}</div><div class="nm">${esc(n.name || "Untitled")}</div>${n.notes ? `<div class="nt">${esc(n.notes)}</div>` : ""}<div class="knob" title="Drag onto another card to connect"></div>`;
-    }
-    if (!(drag && drag.id === id)) { el.style.left = (n.x || 0) + "px"; el.style.top = (n.y || 0) + "px"; }
-    el.hidden = !visible(n);
-    const m = matches(n); if (m && visible(n)) count++;
+    if (!el) { el = document.createElement("div"); el.dataset.id = id; wrap.appendChild(el); }
+    el.className = "card" + (t.type === "note" ? " note" : "");
+    const html = cardHTML(t);
+    if (el.dataset.html !== html) { el.dataset.html = html; el.innerHTML = html; }
+    el.style.setProperty("--c", typeOf(t).color);
+    el.style.setProperty("--paper", t.traits?.color || "#facc15");
+    if (!(drag && drag.id === id)) { el.style.left = (t.board?.x || 0) + "px"; el.style.top = (t.board?.y || 0) + "px"; }
+    el.hidden = !visible(t);
+    const m = matches(t); if (m && visible(t)) count++;
     el.classList.toggle("sel", id === selected);
     el.classList.toggle("match", m);
     el.classList.toggle("fade", (near && !near.has(id)) || (!!query && !m));
   }
-  for (const el of wrap.children) dims[el.dataset.id] = { w: el.offsetWidth || CARD_W, h: el.offsetHeight || 70 };
+  for (const el of wrap.children) dims[el.dataset.id] = { w: el.offsetWidth || CARD_W, h: el.offsetHeight || 80 };
   $("searchCount").textContent = query ? `${count} found` : "";
 }
-
+function centre(id) { const t = view.things[id], d = dims[id] || { w: CARD_W, h: 80 }; return { x: (t.board?.x || 0) + d.w / 2, y: (t.board?.y || 0) + d.h / 2 }; }
 function anchor(id, toward) {
-  // point on the card's border facing `toward`
-  const n = nodes[id], d = dims[id] || { w: CARD_W, h: 70 };
-  const cx = (n.x || 0) + d.w / 2, cy = (n.y || 0) + d.h / 2;
-  const dx = toward.x - cx, dy = toward.y - cy;
-  if (!dx && !dy) return { x: cx, y: cy };
+  const c = centre(id), d = dims[id] || { w: CARD_W, h: 80 };
+  const dx = toward.x - c.x, dy = toward.y - c.y; if (!dx && !dy) return c;
   const s = Math.min(Math.abs((d.w / 2 + 4) / (dx || 1e-9)), Math.abs((d.h / 2 + 4) / (dy || 1e-9)));
-  return { x: cx + dx * s, y: cy + dy * s };
+  return { x: c.x + dx * s, y: c.y + dy * s };
 }
-const centre = (id) => { const n = nodes[id], d = dims[id] || { w: CARD_W, h: 70 }; return { x: (n.x || 0) + d.w / 2, y: (n.y || 0) + d.h / 2 }; };
-
 function renderEdges() {
-  const near = selected;
   let paths = "", labels = "";
-  // spread out parallel edges between the same two cards
-  const pairCount = {}, pairIdx = {};
-  for (const e of Object.values(edges)) { const k = [e.from, e.to].sort().join("|"); pairCount[k] = (pairCount[k] || 0) + 1; }
-  for (const [id, e] of Object.entries(edges)) {
-    if (!visible(nodes[e.from]) || !visible(nodes[e.to])) continue;
-    const ca = centre(e.from), cb = centre(e.to);
-    const a = anchor(e.from, cb), b = anchor(e.to, ca);
-    const k = [e.from, e.to].sort().join("|"); const i = (pairIdx[k] = (pairIdx[k] || 0) + 1) - 1;
-    const bend = (i - (pairCount[k] - 1) / 2) * 46 * (e.from < e.to ? 1 : -1);
+  const pc = {}, pi = {};
+  for (const l of Object.values(view.links)) { const k = [l.from, l.to].sort().join("|"); pc[k] = (pc[k] || 0) + 1; }
+  for (const [id, l] of Object.entries(view.links)) {
+    if (!visible(view.things[l.from]) || !visible(view.things[l.to])) continue;
+    const ca = centre(l.from), cb = centre(l.to), a = anchor(l.from, cb), b = anchor(l.to, ca);
+    const k = [l.from, l.to].sort().join("|"), i = (pi[k] = (pi[k] || 0) + 1) - 1;
+    const bend = (i - (pc[k] - 1) / 2) * 46 * (l.from < l.to ? 1 : -1);
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
     const qx = mx - (b.y - a.y) / len * bend, qy = my + (b.x - a.x) / len * bend;
-    const hi = near && (e.from === near || e.to === near), fade = near && !hi;
+    const hi = selected && (l.from === selected || l.to === selected), fade = selected && !hi;
     paths += `<path d="M${a.x},${a.y} Q${qx},${qy} ${b.x},${b.y}" class="${hi ? "hi" : fade ? "fade" : ""}" marker-end="url(#${hi ? "arrHi" : "arr"})"/>`;
-    const lx = (a.x + 2 * qx + b.x) / 4, ly = (a.y + 2 * qy + b.y) / 4;
-    labels += `<div class="elabel ${hi ? "hi" : fade ? "fade" : ""}" data-edge="${esc(id)}" style="left:${lx}px;top:${ly}px">${esc(pretty(e.role))}</div>`;
+    if (l.label) labels += `<div class="elabel ${hi ? "hi" : fade ? "fade" : ""}" data-edge="${esc(id)}" style="left:${(a.x + 2 * qx + b.x) / 4}px;top:${(a.y + 2 * qy + b.y) / 4}px">${esc(l.label)}</div>`;
+    else labels += `<div class="elabel ${hi ? "hi" : fade ? "fade" : ""}" data-edge="${esc(id)}" style="left:${(a.x + 2 * qx + b.x) / 4}px;top:${(a.y + 2 * qy + b.y) / 4}px;padding:2px 5px">·</div>`;
   }
-  if (link) {
-    const a = centre(link.from);
-    paths += `<path class="temp" d="M${a.x},${a.y} L${link.x},${link.y}"/>`;
-  }
-  $("edgeG").innerHTML = paths;
-  $("labels").innerHTML = labels;
+  if (link) { const a = centre(link.from); paths += `<path class="temp" d="M${a.x},${a.y} L${link.x},${link.y}"/>`; }
+  $("edgeG").innerHTML = paths; $("labels").innerHTML = labels;
 }
-
 function renderLegend() {
   const counts = {};
-  for (const n of Object.values(nodes)) counts[n.tag] = (counts[n.tag] || 0) + 1;
-  const used = Object.keys(tagDefs).filter(t => counts[t]).concat(Object.keys(counts).filter(t => !tagDefs[t]));
-  $("legend").innerHTML = used.map(t => { const d = tagDefs[t] || { label: t, color: "#777" };
-    return `<button class="chip ${hidden.has(t) ? "off" : ""}" data-tag="${esc(t)}" title="Show / hide"><i style="background:${esc(d.color)}"></i>${esc(d.plural ? d.label : d.label)} <b>${counts[t] || 0}</b></button>`; }).join("");
-  $("legend").querySelectorAll("[data-tag]").forEach(b => b.onclick = () => {
-    const t = b.dataset.tag; hidden.has(t) ? hidden.delete(t) : hidden.add(t);
-    localStorage.setItem("pinboard.hidden", JSON.stringify([...hidden])); renderAll();
+  for (const t of Object.values(view.things)) { const k = t.type in TYPES ? t.type : "note"; counts[k] = (counts[k] || 0) + 1; }
+  $("legend").innerHTML = Object.entries(TYPES).filter(([k]) => counts[k]).map(([k, d]) =>
+    `<button class="chip ${hidden.has(k) ? "off" : ""}" data-type="${k}"><i style="background:${d.color}"></i>${d.label} <b>${counts[k]}</b></button>`).join("");
+  $("legend").querySelectorAll("[data-type]").forEach(b => b.onclick = () => {
+    const k = b.dataset.type; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+    localStorage.setItem("pinboard.hiddenTypes", JSON.stringify([...hidden])); refresh();
   });
-  $("addMenu").innerHTML = Object.entries(tagDefs).map(([t, d]) => `<button data-add="${esc(t)}"><i style="background:${esc(d.color)}"></i>${esc(d.label)}</button>`).join("");
-  $("addMenu").querySelectorAll("[data-add]").forEach(b => b.onclick = () => { $("addMenu").hidden = true; const r = $("stage").getBoundingClientRect(); addCard(b.dataset.add, toWorld(r.width / 2, r.height / 2)); });
+  $("addMenu").innerHTML = Object.entries(TYPES).map(([k, d]) => `<button data-add="${k}"><i style="background:${d.color}"></i>${k === "note" ? "Sticky note" : d.label}</button>`).join("");
+  $("addMenu").querySelectorAll("[data-add]").forEach(b => b.onclick = () => { $("addMenu").hidden = true; const r = stage.getBoundingClientRect(); addCard(b.dataset.add, toWorld(r.width / 2, r.height / 2)); });
 }
 function renderRoles() {
-  const roles = new Set(["related", "ally of", "enemy of", "member of", "located in", "owns", "killed by", "parent of", "child of", "spouse of", "works for", "wants", "knows about", "participant in"]);
-  for (const e of Object.values(edges)) roles.add(pretty(e.role));
+  const roles = new Set(["ally of", "enemy of", "member of", "lives in", "owns", "killed by", "parent of", "child of", "works for", "wants", "knows about", "captured by", "map of"]);
+  for (const l of Object.values({ ...campaign.links, ...party.links })) if (l?.label) roles.add(l.label);
   $("roleList").innerHTML = [...roles].sort().map(r => `<option value="${esc(r)}">`).join("");
 }
 
 // ── camera ──
 const world = $("world"), stage = $("stage");
-function applyCam() {
-  world.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})`;
-  const g = 22 * cam.z; stage.style.backgroundSize = `${g}px ${g}px`; stage.style.backgroundPosition = `${cam.x}px ${cam.y}px`;
-}
+function applyCam() { world.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})`; const g = 22 * cam.z; stage.style.backgroundSize = `${g}px ${g}px`; stage.style.backgroundPosition = `${cam.x}px ${cam.y}px`; }
 const toWorld = (sx, sy) => ({ x: (sx - cam.x) / cam.z, y: (sy - cam.y) / cam.z });
-function zoomAt(sx, sy, f) { const w = toWorld(sx, sy); cam.z = clamp(cam.z * f, 0.15, 2.5); cam.x = sx - w.x * cam.z; cam.y = sy - w.y * cam.z; applyCam(); }
+function zoomAt(sx, sy, f) { const w = toWorld(sx, sy); cam.z = clamp(cam.z * f, 0.1, 2.5); cam.x = sx - w.x * cam.z; cam.y = sy - w.y * cam.z; applyCam(); }
 function fit() {
-  const ids = Object.keys(nodes).filter(id => visible(nodes[id]));
+  const ids = Object.keys(view.things).filter(id => visible(view.things[id]));
   const r = stage.getBoundingClientRect();
-  if (!ids.length) { cam.x = r.width / 2; cam.y = r.height / 2; cam.z = 1; return applyCam(); }
+  if (!ids.length) { cam.x = r.width / 2 - 200; cam.y = r.height / 2 - 100; cam.z = 1; return applyCam(); }
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const id of ids) { const n = nodes[id], d = dims[id] || { w: CARD_W, h: 70 }; x0 = Math.min(x0, n.x || 0); y0 = Math.min(y0, n.y || 0); x1 = Math.max(x1, (n.x || 0) + d.w); y1 = Math.max(y1, (n.y || 0) + d.h); }
+  for (const id of ids) { const t = view.things[id], d = dims[id] || { w: CARD_W, h: 80 }; x0 = Math.min(x0, t.board.x); y0 = Math.min(y0, t.board.y); x1 = Math.max(x1, t.board.x + d.w); y1 = Math.max(y1, t.board.y + d.h); }
   const padL = 70, padR = selected ? 370 : 30, padT = 70, padB = 70;
-  cam.z = clamp(Math.min((r.width - padL - padR) / (x1 - x0), (r.height - padT - padB) / (y1 - y0)), 0.15, 1.2);
+  cam.z = clamp(Math.min((r.width - padL - padR) / (x1 - x0), (r.height - padT - padB) / (y1 - y0)), 0.1, 1.2);
   cam.x = padL + (r.width - padL - padR - (x1 - x0) * cam.z) / 2 - x0 * cam.z;
   cam.y = padT + (r.height - padT - padB - (y1 - y0) * cam.z) / 2 - y0 * cam.z;
   applyCam();
 }
 function focusCard(id) {
-  const n = nodes[id]; if (!n) return;
-  if (hidden.has(n.tag)) { hidden.delete(n.tag); localStorage.setItem("pinboard.hidden", JSON.stringify([...hidden])); }
+  const t = view.things[id]; if (!t) return;
+  const k = t.type in TYPES ? t.type : "note";
+  if (hidden.has(k)) { hidden.delete(k); localStorage.setItem("pinboard.hiddenTypes", JSON.stringify([...hidden])); }
   select(id);
   const r = stage.getBoundingClientRect(), c = centre(id);
-  const vw = r.width - (window.innerWidth > 700 ? 360 : 0), vh = window.innerWidth > 700 ? r.height : r.height * 0.4;
-  cam.z = Math.max(cam.z, 0.8);
-  cam.x = vw / 2 - c.x * cam.z; cam.y = vh / 2 - c.y * cam.z; applyCam();
+  const vw = r.width - (innerWidth > 700 ? 360 : 0), vh = innerWidth > 700 ? r.height : r.height * 0.4;
+  cam.z = Math.max(cam.z, 0.8); cam.x = vw / 2 - c.x * cam.z; cam.y = vh / 2 - c.y * cam.z; applyCam();
 }
 
-// ── pointer: pan, drag cards, drag knob to connect ──
+// ── writes (DM → geezvtt/campaign, players → geezvtt/party/<campaign>) ──
+const canEdit = (t) => GM || t?.mine;
+function moveCard(id, x, y) {
+  if (GM) update(CAMP(`things/${id}/board`), { x, y });
+  else set(PARTY(`board/${id}`), { x, y });
+}
+function patchCard(id, patch) {   // top-level fields (name, notes) or traits/*
+  if (GM) update(CAMP(`things/${id}`), patch);
+  else if (party.cards[id]) update(PARTY(`cards/${id}`), patch);
+}
+const linkRef = (id) => GM ? CAMP(`links/${id}`) : PARTY(`links/${id}`);
+
+let lastType = localStorage.getItem("pinboard.lastType") || "note";
+function addCard(type, at) {
+  lastType = type; localStorage.setItem("pinboard.lastType", type);
+  hidden.delete(type);
+  const id = `${type}_${uid()}`;
+  const board = { x: Math.round(at.x - CARD_W / 2), y: Math.round(at.y - 30) };
+  const traits = type === "note" ? { color: "#facc15" } : type === "npc" ? { role: "", faction: "", status: "Alive" } : {};
+  const card = { id, type, name: type === "note" ? "Note" : "", notes: "", traits, properties: [], board };
+  if (GM) { card.campaign = camp; campaign.things[id] = card; set(CAMP(`things/${id}`), card); }
+  else { party.cards[id] = card; party.board[id] = board; update(ref(db, `geezvtt/party/${camp}`), { [`cards/${id}`]: card, [`board/${id}`]: board }); }
+  buildView(); select(id); setTimeout(() => { $("fName").focus(); $("fName").select(); }, 30);
+}
+function deleteCard(id) {
+  const t = view.things[id]; if (!t || !canEdit(t)) return;
+  const touching = Object.entries(GM ? campaign.links : party.links).filter(([, l]) => l && (l.from === id || l.to === id));
+  if (!confirm(`Delete "${t.name || "Untitled"}"${touching.length ? ` and its ${touching.length} string${touching.length > 1 ? "s" : ""}` : ""}?${GM ? " This removes it from the whole campaign, maps included." : ""}`)) return;
+  if (GM) {
+    const patch = { [`things/${id}`]: null };
+    for (const [lid] of touching) patch[`links/${lid}`] = null;
+    for (const [mid, m] of Object.entries(campaign.maps)) if (m?.pins?.[id]) patch[`maps/${mid}/pins/${id}`] = null;
+    update(ref(db, "geezvtt/campaign"), patch);
+  } else {
+    const patch = { [`cards/${id}`]: null, [`board/${id}`]: null, [`notes/${id}`]: null };
+    for (const [lid] of touching) patch[`links/${lid}`] = null;
+    update(ref(db, `geezvtt/party/${camp}`), patch);
+  }
+  closeDrawer();
+}
+
+// ── pointer ──
 let drag = null, pan = null, link = null;
 const pointers = new Map(); let pinch = null;
 const local = (e) => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+const dragPos = () => ({ x: drag.x, y: drag.y });
 
 stage.addEventListener("pointerdown", (e) => {
-  if (e.target.closest("#rolePop")) return;
   hidePop(); $("addMenu").hidden = true;
   const [sx, sy] = local(e);
-  pointers.set(e.pointerId, { x: sx, y: sy });
-  stage.setPointerCapture(e.pointerId);
-  if (pointers.size === 2) {
-    const [a, b] = [...pointers.values()];
-    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: cam.z, w: toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
-    drag = pan = link = null; return;
-  }
+  pointers.set(e.pointerId, { x: sx, y: sy }); stage.setPointerCapture(e.pointerId);
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: cam.z, w: toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) }; drag = pan = link = null; return; }
   const knob = e.target.closest(".knob"), card = e.target.closest(".card"), lab = e.target.closest(".elabel");
   const w = toWorld(sx, sy);
   if (knob) { link = { from: card.dataset.id, x: w.x, y: w.y }; return; }
   if (lab) { editEdge(lab.dataset.edge, e.clientX, e.clientY); return; }
-  if (card) {
-    const id = card.dataset.id, n = nodes[id];
-    drag = { id, el: card, ox: w.x - (n.x || 0), oy: w.y - (n.y || 0), moved: false, sx, sy };
-    return;
-  }
-  pan = { sx, sy, x: cam.x, y: cam.y, moved: false };
-  stage.classList.add("panning");
+  if (card) { const id = card.dataset.id, t = view.things[id]; drag = { id, el: card, ox: w.x - t.board.x, oy: w.y - t.board.y, x: t.board.x, y: t.board.y, moved: false, sx, sy }; return; }
+  pan = { sx, sy, x: cam.x, y: cam.y, moved: false }; stage.classList.add("panning");
 });
 stage.addEventListener("pointermove", (e) => {
   const [sx, sy] = local(e);
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: sx, y: sy });
-  if (pinch && pointers.size === 2) {
-    const [a, b] = [...pointers.values()];
-    cam.z = clamp(pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, 0.15, 2.5);
-    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
-    cam.x = cx - pinch.w.x * cam.z; cam.y = cy - pinch.w.y * cam.z; applyCam(); return;
-  }
+  if (pinch && pointers.size === 2) { const [a, b] = [...pointers.values()]; cam.z = clamp(pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, 0.1, 2.5); cam.x = (a.x + b.x) / 2 - pinch.w.x * cam.z; cam.y = (a.y + b.y) / 2 - pinch.w.y * cam.z; applyCam(); return; }
   const w = toWorld(sx, sy);
   if (link) { link.x = w.x; link.y = w.y; renderEdges(); return; }
   if (drag) {
     if (!drag.moved && Math.hypot(sx - drag.sx, sy - drag.sy) < 4) return;
-    drag.moved = true;
-    const n = nodes[drag.id]; n.x = Math.round(w.x - drag.ox); n.y = Math.round(w.y - drag.oy);
-    drag.el.style.left = n.x + "px"; drag.el.style.top = n.y + "px";
-    renderEdges(); return;
+    drag.moved = true; drag.x = Math.round(w.x - drag.ox); drag.y = Math.round(w.y - drag.oy);
+    view.things[drag.id].board = dragPos();
+    drag.el.style.left = drag.x + "px"; drag.el.style.top = drag.y + "px"; renderEdges(); return;
   }
   if (pan) { if (Math.hypot(sx - pan.sx, sy - pan.sy) > 3) pan.moved = true; cam.x = pan.x + sx - pan.sx; cam.y = pan.y + sy - pan.sy; applyCam(); }
 });
@@ -445,15 +540,15 @@ function endPointer(e) {
   if (pinch) { if (pointers.size < 2) pinch = null; return; }
   stage.classList.remove("panning");
   if (link) {
-    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".card");
-    const from = link.from; link = null; renderEdges();
+    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".card"), from = link.from;
+    link = null; renderEdges();
     if (target && target.dataset.id !== from) newEdgePrompt(from, target.dataset.id, e.clientX, e.clientY);
     return;
   }
   if (drag) {
-    const { id, moved } = drag; drag = null;
-    if (moved) update(P(`nodes/${id}`), { x: nodes[id].x, y: nodes[id].y });
-    else select(id);
+    const d = drag; drag = null;
+    if (d.moved) { if (GM) campaign.things[d.id].board = { x: d.x, y: d.y }; else party.board[d.id] = { x: d.x, y: d.y }; moveCard(d.id, d.x, d.y); }
+    else select(d.id);
     return;
   }
   if (pan) { if (!pan.moved) closeDrawer(); pan = null; }
@@ -462,184 +557,131 @@ stage.addEventListener("pointerup", endPointer);
 stage.addEventListener("pointercancel", endPointer);
 stage.addEventListener("wheel", (e) => { e.preventDefault(); const [sx, sy] = local(e); zoomAt(sx, sy, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
 stage.addEventListener("dblclick", (e) => {
-  if (e.target.closest(".card, .elabel")) { const c = e.target.closest(".card"); if (c) { select(c.dataset.id); $("fName").focus(); } return; }
-  const [sx, sy] = local(e); addCard(lastTag, toWorld(sx, sy));
+  const c = e.target.closest(".card"); if (c) { select(c.dataset.id); if (canEdit(view.things[c.dataset.id])) $("fName").focus(); return; }
+  if (e.target.closest(".elabel")) return;
+  const [sx, sy] = local(e); addCard(lastType, toWorld(sx, sy));
 });
 
-// ── cards ──
-let lastTag = localStorage.getItem("pinboard.lastTag") || "person";
-async function addCard(tag, at) {
-  lastTag = tag; localStorage.setItem("pinboard.lastTag", tag);
-  const id = nid();
-  hidden.delete(tag);
-  const card = { name: "", tag, notes: "", x: Math.round(at.x - CARD_W / 2), y: Math.round(at.y - 30) };
-  nodes[id] = card;            // show it right away; Firebase confirms a moment later
-  select(id);
-  set(P(`nodes/${id}`), card); setTimeout(() => $("fName").focus(), 30);
-}
-async function deleteCard(id) {
-  const n = nodes[id]; if (!n) return;
-  const linked = Object.entries(edges).filter(([, e]) => e.from === id || e.to === id);
-  if (!confirm(`Delete "${n.name || "Untitled"}"${linked.length ? ` and its ${linked.length} connection${linked.length > 1 ? "s" : ""}` : ""}?`)) return;
-  const patch = { [`nodes/${id}`]: null };
-  for (const [eid] of linked) patch[`edges/${eid}`] = null;
-  await update(ref(db, `campaigns/${board}`), patch);
-  closeDrawer();
-}
-
-// ── connections ──
+// ── strings ──
 let popEdge = null;
 function placePop(x, y) { const p = $("rolePop"); p.hidden = false; p.style.left = clamp(x + 10, 8, innerWidth - 262) + "px"; p.style.top = clamp(y + 10, 8, innerHeight - 130) + "px"; }
 function hidePop() { $("rolePop").hidden = true; popEdge = null; }
-function newEdgePrompt(from, to, x, y) {
-  popEdge = { from, to, isNew: true };
-  $("rpTitle").textContent = `${nodes[from]?.name || "?"} → ${nodes[to]?.name || "?"}`;
-  $("rpRole").value = ""; $("rpDel").hidden = true; placePop(x, y); $("rpRole").focus();
+const nm = (id) => view.things[id]?.name || "?";
+function newEdgePrompt(from, to, x, y) { popEdge = { from, to, isNew: true }; $("rpTitle").textContent = `${nm(from)} → ${nm(to)}`; $("rpRole").value = ""; $("rpDel").hidden = true; $("rpRole").disabled = false; $("rpSave").hidden = $("rpFlip").hidden = false; placePop(x, y); $("rpRole").focus(); }
+function editEdge(id, x, y) {
+  const l = view.links[id]; if (!l) return;
+  popEdge = { id, from: l.from, to: l.to };
+  $("rpTitle").textContent = `${nm(l.from)} → ${nm(l.to)}`; $("rpRole").value = l.label || "";
+  $("rpDel").hidden = false; placePop(x, y); $("rpRole").select();
 }
-function editEdge(eid, x, y) {
-  const e = edges[eid]; if (!e) return;
-  popEdge = { id: eid, from: e.from, to: e.to };
-  $("rpTitle").textContent = `${nodes[e.from]?.name || "?"} → ${nodes[e.to]?.name || "?"}`;
-  $("rpRole").value = pretty(e.role); $("rpDel").hidden = false; placePop(x, y); $("rpRole").select();
-}
-const roleKey = (r) => (r.trim().toLowerCase().replace(/\s+/g, "_") || "related");
-$("rpSave").onclick = async () => {
+$("rpSave").onclick = () => {
   if (!popEdge) return;
-  const role = roleKey($("rpRole").value);
-  if (popEdge.isNew) await set(P(`edges/${nid("e")}`), { from: popEdge.from, to: popEdge.to, role });
-  else await update(P(`edges/${popEdge.id}`), { role, from: popEdge.from, to: popEdge.to });
+  const label = $("rpRole").value.trim();
+  if (popEdge.isNew) { const id = (GM ? "link_" : "plink_") + uid(); set(linkRef(id), { id, from: popEdge.from, to: popEdge.to, label }); }
+  else update(linkRef(popEdge.id), { label, from: popEdge.from, to: popEdge.to });
   hidePop();
 };
-$("rpFlip").onclick = () => { if (!popEdge) return; [popEdge.from, popEdge.to] = [popEdge.to, popEdge.from]; $("rpTitle").textContent = `${nodes[popEdge.from]?.name || "?"} → ${nodes[popEdge.to]?.name || "?"}`; };
-$("rpDel").onclick = async () => { if (popEdge?.id) await remove(P(`edges/${popEdge.id}`)); hidePop(); };
+$("rpFlip").onclick = () => { if (!popEdge) return; [popEdge.from, popEdge.to] = [popEdge.to, popEdge.from]; $("rpTitle").textContent = `${nm(popEdge.from)} → ${nm(popEdge.to)}`; };
+$("rpDel").onclick = () => { if (popEdge?.id) remove(linkRef(popEdge.id)); hidePop(); };
 $("rpRole").addEventListener("keydown", (e) => { if (e.key === "Enter") $("rpSave").click(); if (e.key === "Escape") hidePop(); });
 
 // ── drawer ──
-function select(id) { selected = id; $("drawer").hidden = false; renderAll(); }
+function select(id) { selected = id; $("drawer").hidden = false; renderCards(); renderEdges(); renderDrawer(); }
 function closeDrawer() { selected = null; $("drawer").hidden = true; renderCards(); renderEdges(); }
 $("dClose").onclick = closeDrawer;
+const idle = (el, v) => { if (document.activeElement !== el) el.value = v ?? ""; };
 
-function setIfIdle(el, v) { if (document.activeElement !== el) el.value = v ?? ""; }
 function renderDrawer() {
-  const n = nodes[selected]; if (!n) return;
-  const t = tagOf(n);
-  $("dTag").innerHTML = `<i style="background:${esc(t.color)}"></i>${esc(t.label)}`;
-  setIfIdle($("fName"), n.name);
-  setIfIdle($("fNotes"), n.notes);
-  $("fTag").innerHTML = Object.entries(tagDefs).map(([k, d]) => `<option value="${esc(k)}">${esc(d.label)}</option>`).join("") + `<option value="__new">+ New type…</option>`;
-  $("fTag").value = n.tag in tagDefs ? n.tag : "";
+  const t = view.things[selected]; if (!t) return;
+  const ty = typeOf(t), tr = t.traits || {}, edit = canEdit(t);
+  $("dTag").innerHTML = `<i style="background:${ty.color}"></i>${esc(t.type === "note" ? (tr.tag || "Note") : ty.label)}${!GM && t.mine ? " · party card" : ""}`;
+  $("fName").hidden = !edit; $("readName").hidden = edit;
+  idle($("fName"), t.name); $("readName").textContent = t.name || "Untitled";
+  $("fKnown").checked = !!t.known;
+  $("npcFields").hidden = !(edit && t.type === "npc");
+  if (t.type === "npc") { idle($("fRole"), tr.role); idle($("fFaction"), tr.faction); idle($("fStatus"), tr.status); }
+  $("noteFields").hidden = !(edit && t.type === "note");
+  if (t.type === "note") { idle($("fNoteTag"), tr.tag); idle($("fColor"), tr.color || "#facc15"); }
+  $("notesWrap").hidden = !edit;
+  $("fNotes").placeholder = GM ? "Your notes. Players never see these." : "Your notes on this card";
+  idle($("fNotes"), t.notes);
+  $("readInfo").innerHTML = !edit ? [t.type === "npc" ? [tr.role, tr.faction, tr.status].filter(Boolean).map(esc).join(" · ") : "", t.type === "event" && tr.when ? esc(tr.when) : ""].filter(Boolean).join("<br>") : "";
 
-  // character link
-  const pcs = Object.entries(chars.pcs).filter(([, c]) => c?.name && c.record_type !== "npc").sort((a, b) => a[1].name.localeCompare(b[1].name));
-  const npcs = [...Object.entries(chars.npcs).map(([k, c]) => [k, c, "npc"]), ...Object.entries(chars.pcs).filter(([, c]) => c?.record_type === "npc").map(([k, c]) => [k, c, "pc"])]
-    .filter(([, c]) => c?.name).sort((a, b) => a[1].name.localeCompare(b[1].name));
-  const cur = n.linkedCharacterId ? `${n.linkedCharacterType || "pc"}:${n.linkedCharacterId}` : "";
-  if (document.activeElement !== $("fChar")) {
-    $("fChar").innerHTML = `<option value="">Not linked</option>`
-      + (pcs.length ? `<optgroup label="Player characters">${pcs.map(([k, c]) => `<option value="pc:${esc(k)}">${esc(c.name)}${c.campaign ? ` (${esc(c.campaign)})` : ""}</option>`).join("")}</optgroup>` : "")
-      + (npcs.length ? `<optgroup label="NPC sheets">${npcs.map(([k, c, src]) => `<option value="${src === "npc" ? "npc" : "pc"}:${esc(k)}">${esc(c.name)}</option>`).join("")}</optgroup>` : "");
-    $("fChar").value = cur;
-    if ($("fChar").value !== cur && cur) $("fChar").insertAdjacentHTML("beforeend", `<option value="${esc(cur)}">${esc(n.linkedCharacterId)} (missing)</option>`), $("fChar").value = cur;
-  }
-  const c = n.linkedCharacterId ? chars[n.linkedCharacterType === "npc" ? "npcs" : "pcs"][n.linkedCharacterId] : null;
-  $("charBox").innerHTML = c ? `<div class="charbox"><b>${esc(c.name)}</b>${[c.species, c.class && `${c.class} ${c.level || ""}`.trim()].filter(Boolean).length ? `, ${esc([c.species, c.class && `${c.class} ${c.level || ""}`.trim()].filter(Boolean).join(" "))}` : ""}<br>
-    <span class="muted">HP</span> ${esc(c.combat?.hp_current ?? "–")}/${esc(c.combat?.hp_max ?? "–")} &nbsp; <span class="muted">AC</span> ${esc(c.combat?.ac ?? "–")}${c.campaign ? ` &nbsp; <span class="muted">${esc(c.campaign)}</span>` : ""}</div>` : "";
+  // party notes (players write them on DM cards; the DM can read them)
+  const pn = notesOf(selected);
+  const showPN = GM ? pn.length > 0 : !t.mine;
+  $("partyNotesWrap").hidden = !showPN;
+  $("pnTitle").textContent = GM ? "What the party wrote" : "Party notes";
+  $("pnList").innerHTML = pn.length ? pn.map(([nid, n]) => `<div class="pnote"><b>${esc(n.author || "Player")}</b> <span class="when">${n.ts ? new Date(n.ts).toLocaleDateString() : ""}</span>${!GM && n.author === playerName ? ` <button class="x" style="float:right;width:22px;height:22px" data-delnote="${esc(nid)}">✕</button>` : ""}<br>${esc(n.text)}</div>`).join("") : `<div class="muted">Nothing yet.</div>`;
+  $("pnList").querySelectorAll("[data-delnote]").forEach(b => b.onclick = () => remove(PARTY(`notes/${selected}/${b.dataset.delnote}`)));
 
-  // connections
-  const list = Object.entries(edges).filter(([, e]) => e.from === selected || e.to === selected)
-    .map(([eid, e]) => ({ eid, out: e.from === selected, other: e.from === selected ? e.to : e.from, role: e.role }))
-    .sort((a, b) => (nodes[a.other]?.name || "").localeCompare(nodes[b.other]?.name || ""));
-  $("conns").innerHTML = list.length ? list.map(x => { const o = nodes[x.other];
-    return `<div class="conn"><i style="background:${esc(tagOf(o).color)}"></i><span class="r">${x.out ? "" : "← "}${esc(pretty(x.role))}${x.out ? " →" : ""}</span><span class="t" data-go="${esc(x.other)}">${esc(o?.name || "(missing card)")}</span><button class="x" data-edit="${esc(x.eid)}" title="Edit">✎</button></div>`; }).join("")
+  // strings
+  const list = Object.values(view.links).filter(l => l.from === selected || l.to === selected)
+    .map(l => ({ l, out: l.from === selected, other: l.from === selected ? l.to : l.from }))
+    .sort((a, b) => nm(a.other).localeCompare(nm(b.other)));
+  $("conns").innerHTML = list.length ? list.map(x => `<div class="conn"><i style="background:${typeOf(view.things[x.other]).color}"></i><span class="r">${x.out ? "" : "← "}${esc(x.l.label || "")}${x.out ? " →" : ""}</span><span class="t" data-go="${esc(x.other)}">${esc(nm(x.other))}</span><button class="x" data-edit="${esc(x.l.id)}" title="Edit">✎</button></div>`).join("")
     : `<div class="muted">None yet. Drag the dot on the card's edge onto another card, or pick one below.</div>`;
   $("conns").querySelectorAll("[data-go]").forEach(b => b.onclick = () => focusCard(b.dataset.go));
   $("conns").querySelectorAll("[data-edit]").forEach(b => b.onclick = (e) => editEdge(b.dataset.edit, e.clientX - 260, e.clientY));
-
   if (document.activeElement !== $("newTo")) {
     const prev = $("newTo").value;
-    $("newTo").innerHTML = `<option value="">Connect to…</option>` + Object.entries(nodes).filter(([k]) => k !== selected)
-      .sort((a, b) => (a[1].name || "").localeCompare(b[1].name || "")).map(([k, o]) => `<option value="${esc(k)}">${esc(o.name || "Untitled")} (${esc(tagOf(o).label)})</option>`).join("");
+    $("newTo").innerHTML = `<option value="">Connect to…</option>` + Object.values(view.things).filter(o => o.id !== selected)
+      .sort((a, b) => (a.name || "").localeCompare(b.name || "")).map(o => `<option value="${esc(o.id)}">${esc(o.name || "Untitled")} (${esc(typeOf(o).label)})</option>`).join("");
     $("newTo").value = prev;
   }
-  const att = Object.values(n.attachments || {});
-  $("attach").innerHTML = att.length ? `<div class="sect">Attachments</div>` + att.map(a => `<div><a href="${esc((a.path || "").replace(/^\//, ""))}" target="_blank" rel="noopener">${esc(a.filename || a.path)}</a></div>`).join("") : "";
+  $("delCard").hidden = !edit;
 }
 
 let saveT = {};
-function saveField(key, val) {
-  const id = selected; if (!id) return;
-  clearTimeout(saveT[key]);
-  saveT[key] = setTimeout(() => update(P(`nodes/${id}`), { [key]: val }), 350);
-}
-$("fName").oninput = (e) => saveField("name", e.target.value);
-$("fNotes").oninput = (e) => saveField("notes", e.target.value);
+function saveLater(key, patch) { const id = selected; clearTimeout(saveT[key]); saveT[key] = setTimeout(() => patchCard(id, patch()), 350); }
+$("fName").oninput = (e) => saveLater("name", () => ({ name: e.target.value }));
+$("fNotes").oninput = (e) => saveLater("notes", () => ({ notes: e.target.value }));
+$("fRole").oninput = (e) => saveLater("role", () => ({ "traits/role": e.target.value }));
+$("fFaction").oninput = (e) => saveLater("faction", () => ({ "traits/faction": e.target.value }));
+$("fStatus").oninput = (e) => saveLater("status", () => ({ "traits/status": e.target.value }));
+$("fNoteTag").oninput = (e) => saveLater("tag", () => ({ "traits/tag": e.target.value }));
+$("fColor").oninput = (e) => saveLater("color", () => ({ "traits/color": e.target.value }));
 $("fName").addEventListener("keydown", (e) => { if (e.key === "Enter") $("fNotes").focus(); });
-$("fTag").onchange = async (e) => {
-  let tag = e.target.value;
-  if (tag === "__new") {
-    const label = (prompt("Name of the new type (e.g. Faction, Quest):") || "").trim();
-    if (!label) { renderDrawer(); return; }
-    tag = label.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    const palette = ["#c46a8a", "#8aa84c", "#4ca8a0", "#a87a4c", "#7a8ac4", "#c4b04c"];
-    await set(P(`tagDefs/${tag}`), { label, plural: label.toLowerCase().endsWith("s") ? label.toLowerCase() : label.toLowerCase() + "s", color: palette[Object.keys(tagDefs).length % palette.length] });
-  }
-  update(P(`nodes/${selected}`), { tag });
+$("fKnown").onchange = (e) => {
+  const t = campaign.things[selected]; if (!GM || !t) return;
+  const props = (Array.isArray(t.properties) ? t.properties : Object.values(t.properties || {})).filter(p => String(p?.key).trim().toLowerCase() !== "pc-known");
+  if (e.target.checked) props.push({ key: "pc-known", value: "true" });
+  set(CAMP(`things/${selected}/properties`), props);
+  toast(e.target.checked ? "Players can now see this card" : "Hidden from players");
 };
-$("fChar").onchange = (e) => {
-  const v = e.target.value;
-  if (!v) return update(P(`nodes/${selected}`), { linkedCharacterId: null, linkedCharacterType: null });
-  const [type, ...rest] = v.split(":"); const cid = rest.join(":");
-  const patch = { linkedCharacterId: cid, linkedCharacterType: type };
-  const c = chars[type === "npc" ? "npcs" : "pcs"][cid];
-  if (c && !nodes[selected].name) patch.name = c.name;
-  update(P(`nodes/${selected}`), patch);
-};
-$("newConn").onclick = async () => {
+$("newConn").onclick = () => {
   const to = $("newTo").value; if (!to) { toast("Pick a card to connect to"); return; }
-  await set(P(`edges/${nid("e")}`), { from: selected, to, role: roleKey($("newRole").value) });
+  const id = (GM ? "link_" : "plink_") + uid();
+  set(linkRef(id), { id, from: selected, to, label: $("newRole").value.trim() });
   $("newRole").value = ""; $("newTo").value = "";
 };
 $("newRole").addEventListener("keydown", (e) => { if (e.key === "Enter") $("newConn").click(); });
 $("delCard").onclick = () => deleteCard(selected);
+$("offBoard").onclick = () => { if (GM && selected) { set(CAMP(`things/${selected}/board`), null); closeDrawer(); toast("Taken off the board (still in the campaign)"); } };
 
-// ── tidy: lay cards out in columns by type ──
-$("tidyBtn").onclick = async () => {
-  if (!confirm("Rearrange every card into columns by type? (Positions are shared, so everyone sees the new layout.)")) return;
-  const order = Object.keys(tagDefs);
-  const groups = {};
-  for (const [id, n] of Object.entries(nodes)) (groups[n.tag] ||= []).push(id);
-  const patch = {}; let col = 0;
-  for (const t of [...order, ...Object.keys(groups).filter(t => !order.includes(t))]) {
-    const ids = (groups[t] || []).sort((a, b) => (nodes[a].name || "").localeCompare(nodes[b].name || ""));
-    if (!ids.length) continue;
-    let y = 0;
-    ids.forEach((id, i) => {
-      const c = col + Math.floor(i / 12);
-      if (i % 12 === 0) y = 0;
-      patch[`nodes/${id}/x`] = c * (CARD_W + 50); patch[`nodes/${id}/y`] = y;
-      y += (dims[id]?.h || 90) + 24;
-    });
-    col += Math.ceil(ids.length / 12);
-  }
-  await update(ref(db, `campaigns/${board}`), patch);
-  requestAnimationFrame(fit);
+// party notes
+function needName(then) {
+  if (playerName) return then();
+  $("namePop").hidden = false; $("nameIn").focus();
+  $("nameOk").onclick = () => { const v = $("nameIn").value.trim(); if (!v) return; playerName = v; localStorage.setItem(`geezvtt.player.${camp}.name`, v); $("namePop").hidden = true; then(); };
+}
+$("nameIn").addEventListener("keydown", (e) => { if (e.key === "Enter") $("nameOk").click(); });
+$("pnAdd").onclick = () => {
+  const text = $("pnInput").value.trim(); if (!text || !selected) return;
+  needName(() => { set(PARTY(`notes/${selected}/n${uid()}`), { author: playerName, text, ts: Date.now() }); $("pnInput").value = ""; });
 };
 
-// ── search ──
+// ── search, buttons, keys ──
 $("search").oninput = (e) => { query = e.target.value.trim(); renderCards(); };
 $("search").addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
-    const q = query.toLowerCase(), inName = (n) => (n.name || "").toLowerCase().includes(q) ? 0 : 1;
-    const hits = Object.entries(nodes).filter(([, n]) => matches(n) && visible(n))
-      .sort((a, b) => inName(a[1]) - inName(b[1]) || (a[1].name || "").localeCompare(b[1].name || ""));   // name matches first
+    const q = query.toLowerCase(), inName = (t) => (t.name || "").toLowerCase().includes(q) ? 0 : 1;
+    const hits = Object.values(view.things).filter(t => matches(t) && visible(t)).sort((a, b) => inName(a) - inName(b) || (a.name || "").localeCompare(b.name || ""));
     if (!hits.length) return;
-    const i = (hits.findIndex(([id]) => id === selected) + 1) % hits.length;
-    focusCard(hits[i][0]);
+    focusCard(hits[(hits.findIndex(t => t.id === selected) + 1) % hits.length].id);
   }
   if (e.key === "Escape") { e.target.value = ""; query = ""; renderCards(); e.target.blur(); }
 });
-
-// ── buttons & keys ──
 $("addBtn").onclick = () => { $("addMenu").hidden = !$("addMenu").hidden; };
 $("fitBtn").onclick = fit;
 const zoomC = (f) => { const r = stage.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, f); };
@@ -656,9 +698,7 @@ addEventListener("keydown", (e) => {
 addEventListener("resize", applyCam);
 
 applyCam();
-loadBoards();
-openBoard();
-window.__pin = { get nodes() { return nodes; }, get edges() { return edges; }, cam, focusCard };
+window.__pin = { get view() { return view; }, get camp() { return camp; }, focusCard };
 </script>
 </body>
 </html>
