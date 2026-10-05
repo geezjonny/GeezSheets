@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Campaign Pinboard</title>
+<style>
+  :root {
+    --glass: rgba(28,28,34,.88); --line: rgba(255,255,255,.08);
+    --text: #e8e8ee; --dim: #9a9aa6; --accent: #6366f1; --accent-soft: rgba(99,102,241,.22);
+    --radius: 14px; --shadow: 0 8px 28px rgba(0,0,0,.45);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0c0c0f; color: var(--text); overflow: hidden; font-size: 13px; }
+  [hidden] { display: none !important; }
+
+  #stage { position: fixed; inset: 0; overflow: hidden; touch-action: none; cursor: grab;
+    background-color: #0c0c0f; background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px); }
+  #stage.panning { cursor: grabbing; }
+  #world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+  #edges path { fill: none; stroke: rgba(220,220,235,.32); stroke-width: 2; }
+  #edges path.hi { stroke: #a5b4fc; stroke-width: 2.5; }
+  #edges path.fade { stroke: rgba(220,220,235,.08); }
+  #edges path.temp { stroke: #a5b4fc; stroke-dasharray: 6 5; }
+
+  .card { position: absolute; width: 210px; background: #1c1c22; border: 1px solid rgba(255,255,255,.1); border-top: 3px solid var(--c);
+    border-radius: 10px; padding: 9px 11px 10px; box-shadow: 0 6px 18px rgba(0,0,0,.45); cursor: pointer; user-select: none; transition: opacity .15s, box-shadow .15s; }
+  .card:hover { border-color: rgba(255,255,255,.22); border-top-color: var(--c); }
+  .card.sel { box-shadow: 0 0 0 2px var(--accent), 0 10px 26px rgba(0,0,0,.55); }
+  .card.fade { opacity: .22; }
+  .card.match { box-shadow: 0 0 0 2px #facc15, 0 6px 18px rgba(0,0,0,.45); }
+  .card .tagline { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dim); }
+  .card .tagline i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex-shrink: 0; }
+  .card .nm { font-weight: 700; font-size: 14px; margin-top: 3px; line-height: 1.25; word-break: break-word; }
+  .card .nt { color: #b8b8c4; font-size: 12px; margin-top: 4px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .knob { position: absolute; right: -8px; top: 50%; width: 16px; height: 16px; margin-top: -8px; border-radius: 50%; background: #2a2a33; border: 2px solid var(--c); cursor: crosshair; opacity: 0; transition: opacity .12s; }
+  .card:hover .knob, .card.sel .knob { opacity: 1; }
+  @media (hover: none) { .card .knob { opacity: 1; } }
+
+  .elabel { position: absolute; transform: translate(-50%, -50%); font-size: 11px; padding: 2px 8px; border-radius: 99px; background: #26262e; border: 1px solid rgba(255,255,255,.12); color: #c9c9d4; white-space: nowrap; cursor: pointer; }
+  .elabel:hover { border-color: var(--accent); color: #fff; }
+  .elabel.hi { background: #2e2b55; border-color: #6366f1; color: #e0e7ff; }
+  .elabel.fade { opacity: .15; }
+
+  /* floating glass */
+  .glass { background: var(--glass); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+  .ib { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--text); cursor: pointer; position: relative; }
+  .ib:hover { background: rgba(255,255,255,.07); } .ib.active { background: var(--accent-soft); color: #c7d2fe; }
+  .ib svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .ib[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 48px; white-space: nowrap; background: #000d; color: #fff; font-size: 12px; padding: 4px 8px; border-radius: 6px; pointer-events: none; z-index: 40; }
+  @media (hover: none) { .ib[data-tip]:hover::after { display: none; } }
+
+  #boardBar { position: fixed; top: 12px; left: 12px; z-index: 20; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; }
+  #boardBar svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+  #boardSel { background: transparent; border: 0; color: var(--text); font: 600 14px inherit; font-family: inherit; padding: 6px 4px; cursor: pointer; max-width: 220px; }
+  #boardSel option { background: #1c1c22; }
+  #searchBar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; width: min(340px, calc(100vw - 340px)); }
+  #searchBar svg { width: 16px; height: 16px; fill: none; stroke: var(--dim); stroke-width: 2; flex-shrink: 0; }
+  #search { flex: 1; background: transparent; border: 0; color: var(--text); padding: 7px 2px; font: inherit; outline: none; min-width: 0; }
+  #searchCount { color: var(--dim); font-size: 12px; white-space: nowrap; }
+  #rail { position: fixed; left: 12px; top: 68px; z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 4px; }
+  #addMenu { position: fixed; left: 68px; top: 68px; z-index: 25; padding: 6px; display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
+  #addMenu button { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; cursor: pointer; text-align: left; }
+  #addMenu button:hover { background: rgba(255,255,255,.07); }
+  #addMenu i { width: 10px; height: 10px; border-radius: 50%; }
+  #legend { position: fixed; left: 12px; bottom: 12px; z-index: 20; display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; max-width: calc(100vw - 160px); }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; border: 0; background: rgba(255,255,255,.05); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+  .chip i { width: 9px; height: 9px; border-radius: 50%; }
+  .chip.off { opacity: .4; text-decoration: line-through; }
+  .chip b { color: var(--dim); font-weight: 500; }
+  #zoomBar { position: fixed; right: 12px; bottom: 12px; z-index: 20; display: flex; gap: 2px; padding: 4px; }
+  #status { position: fixed; top: 12px; right: 12px; z-index: 20; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; font-weight: 600; }
+  #status i { width: 8px; height: 8px; border-radius: 50%; background: #eab308; }
+  #status.live i { background: #22c55e; }
+
+  /* editor drawer */
+  #drawer { position: fixed; right: 12px; top: 68px; bottom: 68px; width: 340px; z-index: 22; display: flex; flex-direction: column; }
+  #drawer header { display: flex; align-items: center; justify-content: space-between; padding: 10px 10px 4px 14px; }
+  #drawer header span { font-size: 12px; color: var(--dim); display: flex; align-items: center; gap: 6px; }
+  #drawer header i { width: 9px; height: 9px; border-radius: 50%; }
+  #drawer .body { padding: 6px 14px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+  .x { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--dim); cursor: pointer; font-size: 14px; }
+  .x:hover { background: rgba(255,255,255,.08); color: #fff; }
+  #fName { font-size: 18px; font-weight: 700; background: transparent; border: 1px solid transparent; padding: 4px 6px; margin: 0 -6px; border-radius: 8px; width: calc(100% + 12px); color: var(--text); }
+  #fName:hover, #fName:focus { border-color: var(--line); background: rgba(0,0,0,.25); outline: none; }
+  label { font-size: 12px; color: var(--dim); display: flex; flex-direction: column; gap: 4px; }
+  input, select, textarea, button { font: inherit; color: var(--text); }
+  input[type="text"], select, textarea { width: 100%; padding: 7px 9px; background: rgba(0,0,0,.3); border: 1px solid var(--line); border-radius: 8px; }
+  textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid #818cf8; outline-offset: 1px; }
+  .btn { padding: 7px 10px; background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .btn:hover { background: rgba(255,255,255,.12); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger { color: #fca5a5; border-color: rgba(220,38,38,.4); }
+  .row { display: flex; gap: 6px; align-items: center; }
+  .sect { font-size: 12px; font-weight: 600; color: var(--dim); margin-top: 4px; }
+  .conn { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,.22); }
+  .conn .r { color: var(--dim); font-size: 11px; white-space: nowrap; }
+  .conn .t { flex: 1; cursor: pointer; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .conn .t:hover { color: #c7d2fe; }
+  .conn i { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .charbox { padding: 8px 10px; border-radius: 8px; background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.3); font-size: 12px; line-height: 1.5; }
+  .muted { color: var(--dim); }
+  a { color: #a5b4fc; }
+
+  #rolePop { position: fixed; z-index: 30; padding: 10px; width: 250px; display: flex; flex-direction: column; gap: 8px; }
+  #toast { position: fixed; bottom: 64px; left: 50%; transform: translateX(-50%); padding: 8px 14px; pointer-events: none; opacity: 0; transition: opacity .2s; z-index: 40; }
+  #toast.show { opacity: 1; }
+  #setup { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(0,0,0,.6); }
+  #setup .glass { max-width: 440px; padding: 20px; line-height: 1.6; }
+  #setup code { background: #000; padding: 1px 6px; border-radius: 4px; }
+
+  @media (max-width: 700px) {
+    #drawer { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 60vh; }
+    #searchBar { top: 64px; left: 68px; right: 12px; transform: none; width: auto; }
+    #status { display: none; }
+    #legend { bottom: 64px; }
+  }
+</style>
+</head>
+<body>
+<div id="stage"><div id="world"><svg id="edges"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="rgba(220,220,235,.5)"/></marker><marker id="arrHi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#a5b4fc"/></marker></defs><g id="edgeG"></g></svg><div id="labels"></div><div id="cards"></div></div></div>
+
+<div id="boardBar" class="glass" title="Board">
+  <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.2"/><circle cx="16" cy="14" r="1.2"/><path d="M8 9l8 5"/></svg>
+  <select id="boardSel"></select>
+</div>
+<div id="searchBar" class="glass">
+  <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+  <input id="search" type="text" placeholder="Search cards…  (Enter jumps)" autocomplete="off" />
+  <span id="searchCount"></span>
+</div>
+<div id="status" class="glass"><i></i><span id="statusText">Connecting…</span></div>
+
+<div id="rail" class="glass">
+  <button class="ib" id="addBtn" data-tip="Add card (or double-click the board)"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="ib" id="fitBtn" data-tip="Fit everything (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  <button class="ib" id="tidyBtn" data-tip="Tidy: group cards by type"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg></button>
+</div>
+<div id="addMenu" class="glass" hidden></div>
+<div id="legend" class="glass"></div>
+<div id="zoomBar" class="glass">
+  <button class="ib" id="zoomOut" title="Zoom out"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></button>
+  <button class="ib" id="zoomIn" title="Zoom in"><svg viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg></button>
+</div>
+
+<aside id="drawer" class="glass" hidden>
+  <header><span id="dTag"></span><button class="x" id="dClose" title="Close (Esc)">✕</button></header>
+  <div class="body">
+    <input id="fName" type="text" placeholder="Name" />
+    <label>Type<select id="fTag"></select></label>
+    <label>Notes<textarea id="fNotes" placeholder="Who are they, what do they want, what happened…"></textarea></label>
+    <label>Linked character sheet<select id="fChar"></select></label>
+    <div id="charBox"></div>
+    <div class="sect">Connections</div>
+    <div id="conns" style="display:flex;flex-direction:column;gap:4px"></div>
+    <div class="row"><select id="newTo" style="flex:1"></select></div>
+    <div class="row"><input id="newRole" type="text" list="roleList" placeholder="how? e.g. ally of, killed by" style="flex:1" /><button class="btn primary" id="newConn">Connect</button></div>
+    <div id="attach"></div>
+    <div class="row" style="margin-top:8px"><button class="btn danger" id="delCard">Delete card</button></div>
+  </div>
+</aside>
+
+<div id="rolePop" class="glass" hidden>
+  <div id="rpTitle" style="font-weight:600;font-size:12px"></div>
+  <input id="rpRole" type="text" list="roleList" placeholder="how are they connected?" />
+  <div class="row"><button class="btn primary" id="rpSave" style="flex:1">Save</button><button class="btn" id="rpFlip" title="Swap direction">⇄</button><button class="btn danger" id="rpDel">Delete</button></div>
+</div>
+<datalist id="roleList"></datalist>
+<div id="toast" class="glass"></div>
+<div id="setup" hidden><div class="glass"><b>Firebase not set up yet</b><br>Open <code>pinboard.html</code> and paste your project's <code>firebaseConfig</code> at the top of the script (Firebase console → Project settings → Your apps → Config).</div></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+// ── Paste your Firebase project's config here ─────────────────────────────
+const firebaseConfig = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE.firebaseapp.com",
+  databaseURL: "https://PASTE-default-rtdb.firebaseio.com",
+  projectId: "PASTE",
+};
+// ──────────────────────────────────────────────────────────────────────────
+// Data (same shape the DM board already uses):
+//   campaigns/<board>/nodes/<id>  { name, tag, notes, x, y, linkedCharacterId?, linkedCharacterType?, attachments? }
+//   campaigns/<board>/edges/<id>  { from, to, role }
+//   campaigns/<board>/tagDefs/<tag> { label, color, plural }
+//   characters/pcs, characters/npcs   (read only, for linking cards to sheets)
+// Anything else under the board (like the world-map data) is never touched.
+
+if (String(firebaseConfig.apiKey).startsWith("PASTE")) { document.getElementById("setup").hidden = false; throw new Error("firebaseConfig not set"); }
+const db = getDatabase(initializeApp(firebaseConfig));
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nid = (p = "nm") => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const pretty = (r) => String(r || "related").replace(/[_-]+/g, " ");
+const CARD_W = 210;
+const DEFAULT_TAGS = {
+  campaign: { label: "Campaign", color: "#9a6fb0", plural: "campaigns" }, event: { label: "Event", color: "#7c6fb0", plural: "events" },
+  faction: { label: "Faction", color: "#a8433d", plural: "factions" }, object: { label: "Object", color: "#4c8ba8", plural: "objects" },
+  pc: { label: "PC", color: "#6d9bc3", plural: "pcs" }, person: { label: "NPC", color: "#c9a04e", plural: "npcs" },
+  place: { label: "Place", color: "#5c8a72", plural: "locations" }, plan: { label: "Plan", color: "#b9762f", plural: "plans" }
+};
+
+// ── state ──
+let board = new URLSearchParams(location.search).get("board") || localStorage.getItem("pinboard.board") || "default";
+let nodes = {}, edges = {}, tagDefs = {};
+const chars = { pcs: {}, npcs: {} };
+let hidden = new Set(JSON.parse(localStorage.getItem("pinboard.hidden") || "[]"));
+let selected = null, query = "";
+const cam = { x: 0, y: 0, z: 1 };
+let unsubs = [], firstLoad = true;
+const dims = {};   // card id -> {w,h} measured
+
+function toast(m) { $("toast").textContent = m; $("toast").classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => $("toast").classList.remove("show"), 2200); }
+const tagOf = (n) => tagDefs[n?.tag] || { label: n?.tag || "Card", color: "#777" };
+const P = (path) => ref(db, `campaigns/${board}/${path}`);
+
+// ── boards ──
+async function loadBoards() {
+  let ids = [];
+  try { const s = await get(ref(db, "campaigns")); ids = Object.keys(s.val() || {}); } catch {}
+  if (!ids.includes(board)) ids.push(board);
+  ids.sort();
+  $("boardSel").innerHTML = ids.map(b => `<option value="${esc(b)}">${esc(b === "default" ? "Main board" : b)}</option>`).join("") + `<option value="__new">+ New board…</option>`;
+  $("boardSel").value = board;
+}
+$("boardSel").onchange = async (e) => {
+  if (e.target.value === "__new") {
+    const name = (prompt("Name for the new board:") || "").trim();
+    e.target.value = board;
+    if (!name) return;
+    const key = name.replace(/[.#$\[\]\/\s]+/g, "-");
+    await set(ref(db, `campaigns/${key}/tagDefs`), DEFAULT_TAGS);
+    board = key; await loadBoards();
+  } else board = e.target.value;
+  localStorage.setItem("pinboard.board", board);
+  openBoard();
+};
+
+function openBoard() {
+  unsubs.forEach(u => u()); unsubs = [];
+  nodes = {}; edges = {}; tagDefs = {}; selected = null; firstLoad = true;
+  $("cards").innerHTML = ""; $("labels").innerHTML = "";
+  closeDrawer();
+  let gotNodes = false;
+  unsubs.push(onValue(P("tagDefs"), s => { tagDefs = { ...DEFAULT_TAGS, ...(s.val() || {}) }; renderAll(); }));
+  unsubs.push(onValue(P("edges"), s => { edges = s.val() || {}; renderAll(); }));
+  unsubs.push(onValue(P("nodes"), s => {
+    const v = s.val() || {};
+    if (drag?.moved && v[drag.id]) { v[drag.id].x = nodes[drag.id].x; v[drag.id].y = nodes[drag.id].y; }   // don't fight our own drag
+    nodes = v; gotNodes = true;
+    if (selected && !nodes[selected]) closeDrawer();
+    renderAll();
+    if (firstLoad) { firstLoad = false; requestAnimationFrame(fit); }
+    $("status").classList.add("live"); $("statusText").textContent = `${Object.keys(nodes).length} cards`;
+  }, () => { $("statusText").textContent = "No access"; toast("Couldn't read the board. Check the database rules."); }));
+}
+onValue(ref(db, "characters/pcs"), s => { chars.pcs = s.val() || {}; if (selected) renderDrawer(); });
+onValue(ref(db, "characters/npcs"), s => { chars.npcs = s.val() || {}; if (selected) renderDrawer(); });
+
+// ── rendering ──
+const visible = (n) => n && !hidden.has(n.tag);
+function matches(n) {
+  if (!query) return false;
+  const q = query.toLowerCase();
+  return (n.name || "").toLowerCase().includes(q) || (n.notes || "").toLowerCase().includes(q);
+}
+function neighbours(id) {
+  const s = new Set([id]);
+  for (const e of Object.values(edges)) { if (e.from === id) s.add(e.to); if (e.to === id) s.add(e.from); }
+  return s;
+}
+function renderAll() { renderCards(); renderEdges(); renderLegend(); renderRoles(); if (selected) renderDrawer(); }
+
+function renderCards() {
+  const wrap = $("cards");
+  const near = selected ? neighbours(selected) : null;
+  let count = 0;
+  for (const el of [...wrap.children]) if (!nodes[el.dataset.id]) el.remove();
+  for (const [id, n] of Object.entries(nodes)) {
+    let el = wrap.querySelector(`[data-id="${CSS.escape(id)}"]`);
+    if (!el) { el = document.createElement("div"); el.className = "card"; el.dataset.id = id; wrap.appendChild(el); }
+    const t = tagOf(n);
+    const linked = n.linkedCharacterId ? (chars[n.linkedCharacterType === "npc" ? "npcs" : "pcs"][n.linkedCharacterId] ? " · sheet" : "") : "";
+    const sig = JSON.stringify([n.name, n.tag, n.notes, t.color, t.label, linked]);
+    if (el.dataset.sig !== sig) {
+      el.dataset.sig = sig;
+      el.style.setProperty("--c", t.color);
+      el.innerHTML = `<div class="tagline"><i></i>${esc(t.label)}${linked}</div><div class="nm">${esc(n.name || "Untitled")}</div>${n.notes ? `<div class="nt">${esc(n.notes)}</div>` : ""}<div class="knob" title="Drag onto another card to connect"></div>`;
+    }
+    if (!(drag && drag.id === id)) { el.style.left = (n.x || 0) + "px"; el.style.top = (n.y || 0) + "px"; }
+    el.hidden = !visible(n);
+    const m = matches(n); if (m && visible(n)) count++;
+    el.classList.toggle("sel", id === selected);
+    el.classList.toggle("match", m);
+    el.classList.toggle("fade", (near && !near.has(id)) || (!!query && !m));
+  }
+  for (const el of wrap.children) dims[el.dataset.id] = { w: el.offsetWidth || CARD_W, h: el.offsetHeight || 70 };
+  $("searchCount").textContent = query ? `${count} found` : "";
+}
+
+function anchor(id, toward) {
+  // point on the card's border facing `toward`
+  const n = nodes[id], d = dims[id] || { w: CARD_W, h: 70 };
+  const cx = (n.x || 0) + d.w / 2, cy = (n.y || 0) + d.h / 2;
+  const dx = toward.x - cx, dy = toward.y - cy;
+  if (!dx && !dy) return { x: cx, y: cy };
+  const s = Math.min(Math.abs((d.w / 2 + 4) / (dx || 1e-9)), Math.abs((d.h / 2 + 4) / (dy || 1e-9)));
+  return { x: cx + dx * s, y: cy + dy * s };
+}
+const centre = (id) => { const n = nodes[id], d = dims[id] || { w: CARD_W, h: 70 }; return { x: (n.x || 0) + d.w / 2, y: (n.y || 0) + d.h / 2 }; };
+
+function renderEdges() {
+  const near = selected;
+  let paths = "", labels = "";
+  // spread out parallel edges between the same two cards
+  const pairCount = {}, pairIdx = {};
+  for (const e of Object.values(edges)) { const k = [e.from, e.to].sort().join("|"); pairCount[k] = (pairCount[k] || 0) + 1; }
+  for (const [id, e] of Object.entries(edges)) {
+    if (!visible(nodes[e.from]) || !visible(nodes[e.to])) continue;
+    const ca = centre(e.from), cb = centre(e.to);
+    const a = anchor(e.from, cb), b = anchor(e.to, ca);
+    const k = [e.from, e.to].sort().join("|"); const i = (pairIdx[k] = (pairIdx[k] || 0) + 1) - 1;
+    const bend = (i - (pairCount[k] - 1) / 2) * 46 * (e.from < e.to ? 1 : -1);
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+    const qx = mx - (b.y - a.y) / len * bend, qy = my + (b.x - a.x) / len * bend;
+    const hi = near && (e.from === near || e.to === near), fade = near && !hi;
+    paths += `<path d="M${a.x},${a.y} Q${qx},${qy} ${b.x},${b.y}" class="${hi ? "hi" : fade ? "fade" : ""}" marker-end="url(#${hi ? "arrHi" : "arr"})"/>`;
+    const lx = (a.x + 2 * qx + b.x) / 4, ly = (a.y + 2 * qy + b.y) / 4;
+    labels += `<div class="elabel ${hi ? "hi" : fade ? "fade" : ""}" data-edge="${esc(id)}" style="left:${lx}px;top:${ly}px">${esc(pretty(e.role))}</div>`;
+  }
+  if (link) {
+    const a = centre(link.from);
+    paths += `<path class="temp" d="M${a.x},${a.y} L${link.x},${link.y}"/>`;
+  }
+  $("edgeG").innerHTML = paths;
+  $("labels").innerHTML = labels;
+}
+
+function renderLegend() {
+  const counts = {};
+  for (const n of Object.values(nodes)) counts[n.tag] = (counts[n.tag] || 0) + 1;
+  const used = Object.keys(tagDefs).filter(t => counts[t]).concat(Object.keys(counts).filter(t => !tagDefs[t]));
+  $("legend").innerHTML = used.map(t => { const d = tagDefs[t] || { label: t, color: "#777" };
+    return `<button class="chip ${hidden.has(t) ? "off" : ""}" data-tag="${esc(t)}" title="Show / hide"><i style="background:${esc(d.color)}"></i>${esc(d.plural ? d.label : d.label)} <b>${counts[t] || 0}</b></button>`; }).join("");
+  $("legend").querySelectorAll("[data-tag]").forEach(b => b.onclick = () => {
+    const t = b.dataset.tag; hidden.has(t) ? hidden.delete(t) : hidden.add(t);
+    localStorage.setItem("pinboard.hidden", JSON.stringify([...hidden])); renderAll();
+  });
+  $("addMenu").innerHTML = Object.entries(tagDefs).map(([t, d]) => `<button data-add="${esc(t)}"><i style="background:${esc(d.color)}"></i>${esc(d.label)}</button>`).join("");
+  $("addMenu").querySelectorAll("[data-add]").forEach(b => b.onclick = () => { $("addMenu").hidden = true; const r = $("stage").getBoundingClientRect(); addCard(b.dataset.add, toWorld(r.width / 2, r.height / 2)); });
+}
+function renderRoles() {
+  const roles = new Set(["related", "ally of", "enemy of", "member of", "located in", "owns", "killed by", "parent of", "child of", "spouse of", "works for", "wants", "knows about", "participant in"]);
+  for (const e of Object.values(edges)) roles.add(pretty(e.role));
+  $("roleList").innerHTML = [...roles].sort().map(r => `<option value="${esc(r)}">`).join("");
+}
+
+// ── camera ──
+const world = $("world"), stage = $("stage");
+function applyCam() {
+  world.style.transform = `translate(${cam.x}px, ${cam.y}px) scale(${cam.z})`;
+  const g = 22 * cam.z; stage.style.backgroundSize = `${g}px ${g}px`; stage.style.backgroundPosition = `${cam.x}px ${cam.y}px`;
+}
+const toWorld = (sx, sy) => ({ x: (sx - cam.x) / cam.z, y: (sy - cam.y) / cam.z });
+function zoomAt(sx, sy, f) { const w = toWorld(sx, sy); cam.z = clamp(cam.z * f, 0.15, 2.5); cam.x = sx - w.x * cam.z; cam.y = sy - w.y * cam.z; applyCam(); }
+function fit() {
+  const ids = Object.keys(nodes).filter(id => visible(nodes[id]));
+  const r = stage.getBoundingClientRect();
+  if (!ids.length) { cam.x = r.width / 2; cam.y = r.height / 2; cam.z = 1; return applyCam(); }
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const id of ids) { const n = nodes[id], d = dims[id] || { w: CARD_W, h: 70 }; x0 = Math.min(x0, n.x || 0); y0 = Math.min(y0, n.y || 0); x1 = Math.max(x1, (n.x || 0) + d.w); y1 = Math.max(y1, (n.y || 0) + d.h); }
+  const padL = 70, padR = selected ? 370 : 30, padT = 70, padB = 70;
+  cam.z = clamp(Math.min((r.width - padL - padR) / (x1 - x0), (r.height - padT - padB) / (y1 - y0)), 0.15, 1.2);
+  cam.x = padL + (r.width - padL - padR - (x1 - x0) * cam.z) / 2 - x0 * cam.z;
+  cam.y = padT + (r.height - padT - padB - (y1 - y0) * cam.z) / 2 - y0 * cam.z;
+  applyCam();
+}
+function focusCard(id) {
+  const n = nodes[id]; if (!n) return;
+  if (hidden.has(n.tag)) { hidden.delete(n.tag); localStorage.setItem("pinboard.hidden", JSON.stringify([...hidden])); }
+  select(id);
+  const r = stage.getBoundingClientRect(), c = centre(id);
+  const vw = r.width - (window.innerWidth > 700 ? 360 : 0), vh = window.innerWidth > 700 ? r.height : r.height * 0.4;
+  cam.z = Math.max(cam.z, 0.8);
+  cam.x = vw / 2 - c.x * cam.z; cam.y = vh / 2 - c.y * cam.z; applyCam();
+}
+
+// ── pointer: pan, drag cards, drag knob to connect ──
+let drag = null, pan = null, link = null;
+const pointers = new Map(); let pinch = null;
+const local = (e) => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+
+stage.addEventListener("pointerdown", (e) => {
+  if (e.target.closest("#rolePop")) return;
+  hidePop(); $("addMenu").hidden = true;
+  const [sx, sy] = local(e);
+  pointers.set(e.pointerId, { x: sx, y: sy });
+  stage.setPointerCapture(e.pointerId);
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, z: cam.z, w: toWorld((a.x + b.x) / 2, (a.y + b.y) / 2) };
+    drag = pan = link = null; return;
+  }
+  const knob = e.target.closest(".knob"), card = e.target.closest(".card"), lab = e.target.closest(".elabel");
+  const w = toWorld(sx, sy);
+  if (knob) { link = { from: card.dataset.id, x: w.x, y: w.y }; return; }
+  if (lab) { editEdge(lab.dataset.edge, e.clientX, e.clientY); return; }
+  if (card) {
+    const id = card.dataset.id, n = nodes[id];
+    drag = { id, el: card, ox: w.x - (n.x || 0), oy: w.y - (n.y || 0), moved: false, sx, sy };
+    return;
+  }
+  pan = { sx, sy, x: cam.x, y: cam.y, moved: false };
+  stage.classList.add("panning");
+});
+stage.addEventListener("pointermove", (e) => {
+  const [sx, sy] = local(e);
+  if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: sx, y: sy });
+  if (pinch && pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    cam.z = clamp(pinch.z * Math.hypot(a.x - b.x, a.y - b.y) / pinch.d, 0.15, 2.5);
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    cam.x = cx - pinch.w.x * cam.z; cam.y = cy - pinch.w.y * cam.z; applyCam(); return;
+  }
+  const w = toWorld(sx, sy);
+  if (link) { link.x = w.x; link.y = w.y; renderEdges(); return; }
+  if (drag) {
+    if (!drag.moved && Math.hypot(sx - drag.sx, sy - drag.sy) < 4) return;
+    drag.moved = true;
+    const n = nodes[drag.id]; n.x = Math.round(w.x - drag.ox); n.y = Math.round(w.y - drag.oy);
+    drag.el.style.left = n.x + "px"; drag.el.style.top = n.y + "px";
+    renderEdges(); return;
+  }
+  if (pan) { if (Math.hypot(sx - pan.sx, sy - pan.sy) > 3) pan.moved = true; cam.x = pan.x + sx - pan.sx; cam.y = pan.y + sy - pan.sy; applyCam(); }
+});
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size < 2) pinch = null; return; }
+  stage.classList.remove("panning");
+  if (link) {
+    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest(".card");
+    const from = link.from; link = null; renderEdges();
+    if (target && target.dataset.id !== from) newEdgePrompt(from, target.dataset.id, e.clientX, e.clientY);
+    return;
+  }
+  if (drag) {
+    const { id, moved } = drag; drag = null;
+    if (moved) update(P(`nodes/${id}`), { x: nodes[id].x, y: nodes[id].y });
+    else select(id);
+    return;
+  }
+  if (pan) { if (!pan.moved) closeDrawer(); pan = null; }
+}
+stage.addEventListener("pointerup", endPointer);
+stage.addEventListener("pointercancel", endPointer);
+stage.addEventListener("wheel", (e) => { e.preventDefault(); const [sx, sy] = local(e); zoomAt(sx, sy, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+stage.addEventListener("dblclick", (e) => {
+  if (e.target.closest(".card, .elabel")) { const c = e.target.closest(".card"); if (c) { select(c.dataset.id); $("fName").focus(); } return; }
+  const [sx, sy] = local(e); addCard(lastTag, toWorld(sx, sy));
+});
+
+// ── cards ──
+let lastTag = localStorage.getItem("pinboard.lastTag") || "person";
+async function addCard(tag, at) {
+  lastTag = tag; localStorage.setItem("pinboard.lastTag", tag);
+  const id = nid();
+  hidden.delete(tag);
+  const card = { name: "", tag, notes: "", x: Math.round(at.x - CARD_W / 2), y: Math.round(at.y - 30) };
+  nodes[id] = card;            // show it right away; Firebase confirms a moment later
+  select(id);
+  set(P(`nodes/${id}`), card); setTimeout(() => $("fName").focus(), 30);
+}
+async function deleteCard(id) {
+  const n = nodes[id]; if (!n) return;
+  const linked = Object.entries(edges).filter(([, e]) => e.from === id || e.to === id);
+  if (!confirm(`Delete "${n.name || "Untitled"}"${linked.length ? ` and its ${linked.length} connection${linked.length > 1 ? "s" : ""}` : ""}?`)) return;
+  const patch = { [`nodes/${id}`]: null };
+  for (const [eid] of linked) patch[`edges/${eid}`] = null;
+  await update(ref(db, `campaigns/${board}`), patch);
+  closeDrawer();
+}
+
+// ── connections ──
+let popEdge = null;
+function placePop(x, y) { const p = $("rolePop"); p.hidden = false; p.style.left = clamp(x + 10, 8, innerWidth - 262) + "px"; p.style.top = clamp(y + 10, 8, innerHeight - 130) + "px"; }
+function hidePop() { $("rolePop").hidden = true; popEdge = null; }
+function newEdgePrompt(from, to, x, y) {
+  popEdge = { from, to, isNew: true };
+  $("rpTitle").textContent = `${nodes[from]?.name || "?"} → ${nodes[to]?.name || "?"}`;
+  $("rpRole").value = ""; $("rpDel").hidden = true; placePop(x, y); $("rpRole").focus();
+}
+function editEdge(eid, x, y) {
+  const e = edges[eid]; if (!e) return;
+  popEdge = { id: eid, from: e.from, to: e.to };
+  $("rpTitle").textContent = `${nodes[e.from]?.name || "?"} → ${nodes[e.to]?.name || "?"}`;
+  $("rpRole").value = pretty(e.role); $("rpDel").hidden = false; placePop(x, y); $("rpRole").select();
+}
+const roleKey = (r) => (r.trim().toLowerCase().replace(/\s+/g, "_") || "related");
+$("rpSave").onclick = async () => {
+  if (!popEdge) return;
+  const role = roleKey($("rpRole").value);
+  if (popEdge.isNew) await set(P(`edges/${nid("e")}`), { from: popEdge.from, to: popEdge.to, role });
+  else await update(P(`edges/${popEdge.id}`), { role, from: popEdge.from, to: popEdge.to });
+  hidePop();
+};
+$("rpFlip").onclick = () => { if (!popEdge) return; [popEdge.from, popEdge.to] = [popEdge.to, popEdge.from]; $("rpTitle").textContent = `${nodes[popEdge.from]?.name || "?"} → ${nodes[popEdge.to]?.name || "?"}`; };
+$("rpDel").onclick = async () => { if (popEdge?.id) await remove(P(`edges/${popEdge.id}`)); hidePop(); };
+$("rpRole").addEventListener("keydown", (e) => { if (e.key === "Enter") $("rpSave").click(); if (e.key === "Escape") hidePop(); });
+
+// ── drawer ──
+function select(id) { selected = id; $("drawer").hidden = false; renderAll(); }
+function closeDrawer() { selected = null; $("drawer").hidden = true; renderCards(); renderEdges(); }
+$("dClose").onclick = closeDrawer;
+
+function setIfIdle(el, v) { if (document.activeElement !== el) el.value = v ?? ""; }
+function renderDrawer() {
+  const n = nodes[selected]; if (!n) return;
+  const t = tagOf(n);
+  $("dTag").innerHTML = `<i style="background:${esc(t.color)}"></i>${esc(t.label)}`;
+  setIfIdle($("fName"), n.name);
+  setIfIdle($("fNotes"), n.notes);
+  $("fTag").innerHTML = Object.entries(tagDefs).map(([k, d]) => `<option value="${esc(k)}">${esc(d.label)}</option>`).join("") + `<option value="__new">+ New type…</option>`;
+  $("fTag").value = n.tag in tagDefs ? n.tag : "";
+
+  // character link
+  const pcs = Object.entries(chars.pcs).filter(([, c]) => c?.name && c.record_type !== "npc").sort((a, b) => a[1].name.localeCompare(b[1].name));
+  const npcs = [...Object.entries(chars.npcs).map(([k, c]) => [k, c, "npc"]), ...Object.entries(chars.pcs).filter(([, c]) => c?.record_type === "npc").map(([k, c]) => [k, c, "pc"])]
+    .filter(([, c]) => c?.name).sort((a, b) => a[1].name.localeCompare(b[1].name));
+  const cur = n.linkedCharacterId ? `${n.linkedCharacterType || "pc"}:${n.linkedCharacterId}` : "";
+  if (document.activeElement !== $("fChar")) {
+    $("fChar").innerHTML = `<option value="">Not linked</option>`
+      + (pcs.length ? `<optgroup label="Player characters">${pcs.map(([k, c]) => `<option value="pc:${esc(k)}">${esc(c.name)}${c.campaign ? ` (${esc(c.campaign)})` : ""}</option>`).join("")}</optgroup>` : "")
+      + (npcs.length ? `<optgroup label="NPC sheets">${npcs.map(([k, c, src]) => `<option value="${src === "npc" ? "npc" : "pc"}:${esc(k)}">${esc(c.name)}</option>`).join("")}</optgroup>` : "");
+    $("fChar").value = cur;
+    if ($("fChar").value !== cur && cur) $("fChar").insertAdjacentHTML("beforeend", `<option value="${esc(cur)}">${esc(n.linkedCharacterId)} (missing)</option>`), $("fChar").value = cur;
+  }
+  const c = n.linkedCharacterId ? chars[n.linkedCharacterType === "npc" ? "npcs" : "pcs"][n.linkedCharacterId] : null;
+  $("charBox").innerHTML = c ? `<div class="charbox"><b>${esc(c.name)}</b>${[c.species, c.class && `${c.class} ${c.level || ""}`.trim()].filter(Boolean).length ? `, ${esc([c.species, c.class && `${c.class} ${c.level || ""}`.trim()].filter(Boolean).join(" "))}` : ""}<br>
+    <span class="muted">HP</span> ${esc(c.combat?.hp_current ?? "–")}/${esc(c.combat?.hp_max ?? "–")} &nbsp; <span class="muted">AC</span> ${esc(c.combat?.ac ?? "–")}${c.campaign ? ` &nbsp; <span class="muted">${esc(c.campaign)}</span>` : ""}</div>` : "";
+
+  // connections
+  const list = Object.entries(edges).filter(([, e]) => e.from === selected || e.to === selected)
+    .map(([eid, e]) => ({ eid, out: e.from === selected, other: e.from === selected ? e.to : e.from, role: e.role }))
+    .sort((a, b) => (nodes[a.other]?.name || "").localeCompare(nodes[b.other]?.name || ""));
+  $("conns").innerHTML = list.length ? list.map(x => { const o = nodes[x.other];
+    return `<div class="conn"><i style="background:${esc(tagOf(o).color)}"></i><span class="r">${x.out ? "" : "← "}${esc(pretty(x.role))}${x.out ? " →" : ""}</span><span class="t" data-go="${esc(x.other)}">${esc(o?.name || "(missing card)")}</span><button class="x" data-edit="${esc(x.eid)}" title="Edit">✎</button></div>`; }).join("")
+    : `<div class="muted">None yet. Drag the dot on the card's edge onto another card, or pick one below.</div>`;
+  $("conns").querySelectorAll("[data-go]").forEach(b => b.onclick = () => focusCard(b.dataset.go));
+  $("conns").querySelectorAll("[data-edit]").forEach(b => b.onclick = (e) => editEdge(b.dataset.edit, e.clientX - 260, e.clientY));
+
+  if (document.activeElement !== $("newTo")) {
+    const prev = $("newTo").value;
+    $("newTo").innerHTML = `<option value="">Connect to…</option>` + Object.entries(nodes).filter(([k]) => k !== selected)
+      .sort((a, b) => (a[1].name || "").localeCompare(b[1].name || "")).map(([k, o]) => `<option value="${esc(k)}">${esc(o.name || "Untitled")} (${esc(tagOf(o).label)})</option>`).join("");
+    $("newTo").value = prev;
+  }
+  const att = Object.values(n.attachments || {});
+  $("attach").innerHTML = att.length ? `<div class="sect">Attachments</div>` + att.map(a => `<div><a href="${esc((a.path || "").replace(/^\//, ""))}" target="_blank" rel="noopener">${esc(a.filename || a.path)}</a></div>`).join("") : "";
+}
+
+let saveT = {};
+function saveField(key, val) {
+  const id = selected; if (!id) return;
+  clearTimeout(saveT[key]);
+  saveT[key] = setTimeout(() => update(P(`nodes/${id}`), { [key]: val }), 350);
+}
+$("fName").oninput = (e) => saveField("name", e.target.value);
+$("fNotes").oninput = (e) => saveField("notes", e.target.value);
+$("fName").addEventListener("keydown", (e) => { if (e.key === "Enter") $("fNotes").focus(); });
+$("fTag").onchange = async (e) => {
+  let tag = e.target.value;
+  if (tag === "__new") {
+    const label = (prompt("Name of the new type (e.g. Faction, Quest):") || "").trim();
+    if (!label) { renderDrawer(); return; }
+    tag = label.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+    const palette = ["#c46a8a", "#8aa84c", "#4ca8a0", "#a87a4c", "#7a8ac4", "#c4b04c"];
+    await set(P(`tagDefs/${tag}`), { label, plural: label.toLowerCase().endsWith("s") ? label.toLowerCase() : label.toLowerCase() + "s", color: palette[Object.keys(tagDefs).length % palette.length] });
+  }
+  update(P(`nodes/${selected}`), { tag });
+};
+$("fChar").onchange = (e) => {
+  const v = e.target.value;
+  if (!v) return update(P(`nodes/${selected}`), { linkedCharacterId: null, linkedCharacterType: null });
+  const [type, ...rest] = v.split(":"); const cid = rest.join(":");
+  const patch = { linkedCharacterId: cid, linkedCharacterType: type };
+  const c = chars[type === "npc" ? "npcs" : "pcs"][cid];
+  if (c && !nodes[selected].name) patch.name = c.name;
+  update(P(`nodes/${selected}`), patch);
+};
+$("newConn").onclick = async () => {
+  const to = $("newTo").value; if (!to) { toast("Pick a card to connect to"); return; }
+  await set(P(`edges/${nid("e")}`), { from: selected, to, role: roleKey($("newRole").value) });
+  $("newRole").value = ""; $("newTo").value = "";
+};
+$("newRole").addEventListener("keydown", (e) => { if (e.key === "Enter") $("newConn").click(); });
+$("delCard").onclick = () => deleteCard(selected);
+
+// ── tidy: lay cards out in columns by type ──
+$("tidyBtn").onclick = async () => {
+  if (!confirm("Rearrange every card into columns by type? (Positions are shared, so everyone sees the new layout.)")) return;
+  const order = Object.keys(tagDefs);
+  const groups = {};
+  for (const [id, n] of Object.entries(nodes)) (groups[n.tag] ||= []).push(id);
+  const patch = {}; let col = 0;
+  for (const t of [...order, ...Object.keys(groups).filter(t => !order.includes(t))]) {
+    const ids = (groups[t] || []).sort((a, b) => (nodes[a].name || "").localeCompare(nodes[b].name || ""));
+    if (!ids.length) continue;
+    let y = 0;
+    ids.forEach((id, i) => {
+      const c = col + Math.floor(i / 12);
+      if (i % 12 === 0) y = 0;
+      patch[`nodes/${id}/x`] = c * (CARD_W + 50); patch[`nodes/${id}/y`] = y;
+      y += (dims[id]?.h || 90) + 24;
+    });
+    col += Math.ceil(ids.length / 12);
+  }
+  await update(ref(db, `campaigns/${board}`), patch);
+  requestAnimationFrame(fit);
+};
+
+// ── search ──
+$("search").oninput = (e) => { query = e.target.value.trim(); renderCards(); };
+$("search").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const q = query.toLowerCase(), inName = (n) => (n.name || "").toLowerCase().includes(q) ? 0 : 1;
+    const hits = Object.entries(nodes).filter(([, n]) => matches(n) && visible(n))
+      .sort((a, b) => inName(a[1]) - inName(b[1]) || (a[1].name || "").localeCompare(b[1].name || ""));   // name matches first
+    if (!hits.length) return;
+    const i = (hits.findIndex(([id]) => id === selected) + 1) % hits.length;
+    focusCard(hits[i][0]);
+  }
+  if (e.key === "Escape") { e.target.value = ""; query = ""; renderCards(); e.target.blur(); }
+});
+
+// ── buttons & keys ──
+$("addBtn").onclick = () => { $("addMenu").hidden = !$("addMenu").hidden; };
+$("fitBtn").onclick = fit;
+const zoomC = (f) => { const r = stage.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, f); };
+$("zoomIn").onclick = () => zoomC(1.25);
+$("zoomOut").onclick = () => zoomC(0.8);
+addEventListener("keydown", (e) => {
+  const typing = e.target.closest("input, textarea, select");
+  if (e.key === "Escape") { if (!$("rolePop").hidden) hidePop(); else if (!typing) closeDrawer(); }
+  if (typing) return;
+  if (e.key === "f") fit();
+  if (e.key === "/") { e.preventDefault(); $("search").focus(); }
+  if ((e.key === "Delete" || e.key === "Backspace") && selected) deleteCard(selected);
+});
+addEventListener("resize", applyCam);
+
+applyCam();
+loadBoards();
+openBoard();
+window.__pin = { get nodes() { return nodes; }, get edges() { return edges; }, cam, focusCard };
+</script>
+</body>
+</html>
