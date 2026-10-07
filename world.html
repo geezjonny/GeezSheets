@@ -1,0 +1,1458 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>World · GeezSheets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Alegreya+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the map is the stage on the left with your hand (interventions) under it; the world's ledgers stack on the right */
+:root {
+  --bg: #e8ebe3; --panel: #f5f6f1; --panel-2: #eceee6; --ink: #1d2827; --muted: #5a6762; --line: #cfd5ca;
+  --accent: #2f6a4f; --accent-ink: #ffffff; --gold: #9a6a1c; --danger: #b8402b; --strange: #6b3f8f;
+  --m-ground: #cbd5b8; --m-road: #bfae8c; --m-water: #86a9b8; --m-woods: #5a7a52; --m-tree: #3f5e3c; --m-field: #d9cb92;
+  --m-field-line: #c2b070; --m-wall: #efe8d8; --m-roof-house: #9c5f43; --m-roof-work: #4f5d66; --m-market: #e3d4a6;
+  --m-hill: #a9a690; --m-label: #24302e; --m-halo: rgba(245,246,241,.85);
+  --r-ground: #dfe3cf; --r-forest: #7f9c6c; --r-hills: #c3b48a; --r-plains: #d3d9a6; --r-swamp: #8e9a7a; --r-mount: #a2a19a; --r-ruins: #b3a99a;
+  --r-road: #a68f63; --r-town: #f4efe2;
+  --a-work: #b5761a; --a-eat: #2f8a4e; --a-sleep: #4a679c; --a-social: #c24f78; --a-pray: #7a58b3; --a-scheme: #3b1f4a;
+  --a-alert: #d0442c; --a-beg: #8a6a48; --a-idle: #7f8a83;
+  --f-display: "IM Fell English", "Iowan Old Style", Georgia, serif;
+  --f-body: "Alegreya Sans", "Gill Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121817; --panel: #1a2221; --panel-2: #212b29; --ink: #dfe6df; --muted: #93a29b; --line: #2d3a37;
+  --accent: #7fc29c; --accent-ink: #0f1a15; --gold: #e0ad55; --danger: #ff7a5c; --strange: #c9a3ef;
+  --m-ground: #2b3a2c; --m-road: #4f4736; --m-water: #24485a; --m-woods: #213622; --m-tree: #2f4e2d; --m-field: #4c4628;
+  --m-field-line: #5f5832; --m-wall: #5d584c; --m-roof-house: #7a4632; --m-roof-work: #3a4850; --m-market: #5a5038;
+  --m-hill: #47463a; --m-label: #e6ece5; --m-halo: rgba(18,24,23,.8);
+  --r-ground: #232b24; --r-forest: #2f4a2e; --r-hills: #4d4532; --r-plains: #39432c; --r-swamp: #2d3a33; --r-mount: #45464a; --r-ruins: #4a443c;
+  --r-road: #7a6844; --r-town: #3c3a33;
+  --a-work: #e9a84a; --a-eat: #5fcf85; --a-sleep: #86a6e0; --a-social: #ef86ad; --a-pray: #b79af0; --a-scheme: #d9b8ff;
+  --a-alert: #ff7a5c; --a-beg: #c9a57d; --a-idle: #aab5ae; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121817; --panel: #1a2221; --panel-2: #212b29; --ink: #dfe6df; --muted: #93a29b; --line: #2d3a37;
+  --accent: #7fc29c; --accent-ink: #0f1a15; --gold: #e0ad55; --danger: #ff7a5c; --strange: #c9a3ef;
+  --m-ground: #2b3a2c; --m-road: #4f4736; --m-water: #24485a; --m-woods: #213622; --m-tree: #2f4e2d; --m-field: #4c4628;
+  --m-field-line: #5f5832; --m-wall: #5d584c; --m-roof-house: #7a4632; --m-roof-work: #3a4850; --m-market: #5a5038;
+  --m-hill: #47463a; --m-label: #e6ece5; --m-halo: rgba(18,24,23,.8);
+  --r-ground: #232b24; --r-forest: #2f4a2e; --r-hills: #4d4532; --r-plains: #39432c; --r-swamp: #2d3a33; --r-mount: #45464a; --r-ruins: #4a443c;
+  --r-road: #7a6844; --r-town: #3c3a33;
+  --a-work: #e9a84a; --a-eat: #5fcf85; --a-sleep: #86a6e0; --a-social: #ef86ad; --a-pray: #b79af0; --a-scheme: #d9b8ff;
+  --a-alert: #ff7a5c; --a-beg: #c9a57d; --a-idle: #aab5ae; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; padding-inline: 16px; padding-block: 16px 40px; }
+.app { max-width: 1480px; margin: 0 auto; display: grid; gap: 16px; }
+h1, h2, h3 { margin: 0; font-weight: 400; text-wrap: balance; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.muted { color: var(--muted); }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.eyebrow { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.crumbs { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.crumbs button { border: 0; background: none; padding: 0; cursor: pointer; font-family: var(--f-display); font-size: clamp(1.15rem, 2vw, 1.4rem); color: var(--muted); }
+.crumbs button:hover { color: var(--ink); text-decoration: underline; }
+.crumbs .sep { color: var(--line); }
+.title h1 { font-family: var(--f-display); font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1; }
+.clock { font-family: var(--f-mono); font-size: .84rem; color: var(--muted); margin-top: 6px; font-variant-numeric: tabular-nums; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.clock b { color: var(--ink); font-weight: 500; }
+.weird b { color: var(--strange); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 7px 12px; cursor: pointer; line-height: 1.2; }
+.btn:hover { border-color: var(--muted); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; min-width: 76px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { border: 0; background: transparent; padding: 7px 10px; cursor: pointer; font-family: var(--f-mono); font-size: .8rem; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.file-btn { position: relative; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.toggle { display: inline-flex; gap: 6px; align-items: center; font-size: .88rem; cursor: pointer; }
+.toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+.source { font-size: .8rem; color: var(--muted); flex-basis: 100%; text-align: right; }
+.source.err { color: var(--danger); }
+
+/* layout */
+.layout { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(330px, 1fr); gap: 16px; align-items: start; }
+.col { display: grid; gap: 16px; min-width: 0; }
+@media (max-width: 1020px) { .layout { grid-template-columns: minmax(0, 1fr); } .col { display: contents; } .source, .controls { text-align: left; justify-content: flex-start; }
+  .stage { order: 1; } .turning { order: 2; } .catchup { order: 2; } #inspector { order: 3; } .hand { order: 4; } .chron-card { order: 5; } .context { order: 6; } .legends-card { order: 7; } .how-card { order: 8; } .foot { order: 9; text-align: left; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.card > h2 { font-family: var(--f-display); font-size: 1.35rem; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.card > h2 small { font-family: var(--f-body); font-size: .8rem; color: var(--muted); }
+
+/* map */
+.stage { padding: 0; overflow: hidden; }
+.stage-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 1000 / 640; max-width: 100%; touch-action: manipulation; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 14px; border-top: 1px solid var(--line); font-size: .82rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; display: inline-block; }
+.sq { width: 9px; height: 9px; background: var(--c); flex: none; display: inline-block; }
+.tri { width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-bottom: 9px solid var(--c); display: inline-block; }
+
+/* the hand: interventions */
+.hand .target { font-size: .9rem; margin: 0 0 10px; }
+.hand .target b { font-family: var(--f-display); font-size: 1.05rem; font-weight: 400; }
+.groups { display: grid; gap: 10px; }
+.group { display: grid; grid-template-columns: 70px minmax(0,1fr); gap: 8px; align-items: start; }
+.group .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.group .btn { padding: 5px 10px; font-size: .88rem; }
+.hint { font-size: .8rem; color: var(--muted); margin: 8px 0 0; }
+
+/* inspector */
+.who h2 { font-family: var(--f-display); font-size: 1.7rem; line-height: 1.05; }
+.meta { color: var(--muted); font-size: .9rem; margin: 2px 0 0; }
+.now { display: flex; gap: 10px; align-items: baseline; margin: 12px 0; padding: 10px 12px; background: var(--panel-2); border-radius: 8px; }
+.now p { margin: 0; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c); white-space: nowrap; }
+.chip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.needs { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; }
+.need .bar, .meter { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; margin-top: 4px; }
+.need .bar i, .meter i { display: block; height: 100%; background: var(--c); }
+.need b, .coin b { font-family: var(--f-mono); font-weight: 500; font-variant-numeric: tabular-nums; font-size: .9rem; }
+.sect { margin-top: 16px; display: grid; gap: 6px; }
+.scores { display: grid; gap: 6px; }
+.score { display: grid; grid-template-columns: 90px minmax(0,1fr) 32px; gap: 2px 8px; align-items: center; font-size: .85rem; }
+.score .track { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+.score .track i { display: block; height: 100%; background: var(--line); }
+.score.win .track i { background: var(--c); }
+.score.win span:first-child { font-weight: 700; }
+.score .n { font-family: var(--f-mono); font-size: .78rem; text-align: right; font-variant-numeric: tabular-nums; }
+.score .why { grid-column: 2 / 4; color: var(--muted); font-size: .76rem; margin-top: -2px; }
+.stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; text-align: center; }
+.stats div { background: var(--panel-2); border-radius: 6px; padding: 5px 0; }
+.stats small { display: block; font-size: .65rem; letter-spacing: .08em; color: var(--muted); }
+.stats b { font-family: var(--f-mono); font-weight: 500; }
+.traits { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0; font-size: .9rem; }
+.traits dt { color: var(--muted); }
+.traits dd { margin: 0; }
+.boxed { border: 1px dashed var(--c, var(--a-scheme)); border-radius: 8px; padding: 8px 12px; font-size: .9rem; }
+.boxed .label { color: var(--c, var(--a-scheme)); }
+.hero-box { --c: var(--gold); border-style: solid; }
+.hist { list-style: none; margin: 0; padding: 0; font-size: .85rem; display: grid; gap: 2px; }
+.hist li { display: flex; gap: 8px; }
+.hist time { font-family: var(--f-mono); color: var(--muted); font-size: .72rem; padding-top: 2px; white-space: nowrap; }
+.people { display: flex; flex-wrap: wrap; gap: 6px; }
+.person { border: 1px solid var(--line); background: var(--panel-2); border-radius: 999px; padding: 3px 10px 3px 8px; cursor: pointer; font-size: .85rem; display: inline-flex; gap: 6px; align-items: center; }
+.person:hover { border-color: var(--muted); }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+.facts div b { display: block; font-family: var(--f-mono); font-weight: 500; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.facts .warn b { color: var(--danger); }
+.dials { display: grid; gap: 6px; }
+.dial { display: grid; grid-template-columns: 64px auto minmax(0,1fr); gap: 10px; align-items: center; font-size: .88rem; }
+.pips { display: flex; gap: 3px; }
+.pips i { width: 14px; height: 8px; border-radius: 2px; background: var(--panel-2); border: 1px solid var(--line); }
+.pips i.on { background: var(--accent); border-color: var(--accent); }
+.pips.bad i.on { background: var(--a-alert); border-color: var(--a-alert); }
+.dial small { color: var(--muted); font-size: .76rem; }
+.creatures { display: grid; gap: 8px; }
+.creature { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: var(--panel); text-align: left; }
+.creature:hover { border-color: var(--muted); }
+.creature.hostile { border-left: 3px solid var(--danger); }
+.creature.strange { border-left: 3px solid var(--strange); }
+.creature b { font-weight: 700; }
+.creature .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.creature small { grid-column: 1 / 3; color: var(--muted); font-size: .78rem; }
+.tag { display: inline-block; font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 1px; }
+.tag.gold { color: var(--gold); } .tag.danger { color: var(--danger); } .tag.strange { color: var(--strange); } .tag.ok { color: var(--accent); }
+
+/* tables */
+.tbl-wrap { overflow: auto; max-height: 460px; }
+.tbl { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.tbl th { position: sticky; top: 0; background: var(--panel); text-align: left; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl .num { text-align: right; font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.tbl tbody tr[data-town], .tbl tbody tr[data-zone], .tbl tbody tr[data-npc], .tbl tbody tr[data-region] { cursor: pointer; }
+.tbl tbody tr:hover { background: var(--panel-2); }
+.tbl tr.sel { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
+.tbl .doing { color: var(--muted); font-size: .82rem; display: block; }
+.tbl.roster { min-width: 640px; }
+.tbl.towns { min-width: 620px; }
+.warn { color: var(--danger); }
+.mark { color: var(--a-scheme); font-size: .7rem; margin-left: 4px; }
+.mark.hero { color: var(--gold); }
+.goods { width: 100%; border-collapse: collapse; font-size: .85rem; margin-top: 12px; }
+.goods th { text-align: left; font-weight: 700; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 4px 0; border-bottom: 1px solid var(--line); }
+.goods td { padding: 4px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.goods .num { text-align: right; font-family: var(--f-mono); }
+.up { color: var(--a-alert); } .down { color: var(--a-eat); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .split { grid-template-columns: minmax(0, 1fr); } }
+
+/* chronicle */
+.filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.note { font-size: .8rem; color: var(--muted); margin: 0 0 10px; }
+.log { list-style: none; margin: 0; padding: 0; max-height: 520px; overflow: auto; }
+.log li { display: grid; grid-template-columns: 70px minmax(0,1fr); gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.log time { font-family: var(--f-mono); font-size: .72rem; color: var(--muted); padding-top: 3px; }
+.log li.minor { color: var(--muted); font-size: .84rem; }
+.log li.trigger p { font-weight: 500; }
+.log p { margin: 0; }
+.log a { color: inherit; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; cursor: pointer; }
+.trig { display: inline-block; font-size: .64rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); border: 1px solid var(--gold); border-radius: 4px; padding: 0 5px; margin-right: 6px; vertical-align: 1px; }
+
+/* turning point and catch-up */
+.turning { border-color: var(--gold); box-shadow: inset 4px 0 0 var(--gold); }
+.turning ul, .catchup ul { margin: 8px 0 12px; padding-left: 18px; display: grid; gap: 6px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+.catchup { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
+.progress { height: 6px; border-radius: 3px; background: var(--panel-2); overflow: hidden; margin: 10px 0; }
+.progress i { display: block; height: 100%; background: var(--accent); width: 0; }
+
+/* legends */
+.legends { display: grid; gap: 6px; font-size: .9rem; }
+.legends button { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none; padding: 6px 0; cursor: pointer; }
+.legends button:hover b { text-decoration: underline; }
+.legends small { color: var(--muted); }
+.how { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 72ch; }
+.how b { font-weight: 700; }
+details.how-card summary { cursor: pointer; font-family: var(--f-display); font-size: 1.35rem; }
+details.how-card[open] summary { margin-bottom: 10px; }
+.foot { font-size: .8rem; color: var(--muted); text-align: right; }
+@media (max-width: 560px) { .needs { grid-template-columns: 1fr 1fr; } .facts { grid-template-columns: 1fr 1fr; } .stats { grid-template-columns: repeat(3, 1fr); } .group { grid-template-columns: 1fr; } }
+</style>
+<style>
+:root { --r-water: #8fb3c4; --r-other: #c9c3a8; --paper: #f2eee3; --paper-ink: #22201b; --paper-rule: #b9b09a; --t-beast: #b8402b; --t-raider: #b0600c; --t-undead: #4d7a28; --t-dark: #6b3f8f; --t-great: #8c1d4a; --h0: #1f6fb2; --h1: #0b8a83; --h2: #9a6a1c; --h3: #c2378a; --h4: #4b47c4; --h5: #7a5230; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --r-water: #29495a; --r-other: #3f3d33; --paper: #26241f; --paper-ink: #e8e2d4; --paper-rule: #5a5446; --t-beast: #ff7a5c; --t-raider: #f0a04b; --t-undead: #9fd36a; --t-dark: #c9a3ef; --t-great: #ff7aa8; --h0: #6fb3ff; --h1: #4fd1c5; --h2: #e0ad55; --h3: #ff8fcf; --h4: #a9a4ff; --h5: #d2a679; } }
+:root[data-theme="dark"] { --r-water: #29495a; --r-other: #3f3d33; --paper: #26241f; --paper-ink: #e8e2d4; --paper-rule: #5a5446; --t-beast: #ff7a5c; --t-raider: #f0a04b; --t-undead: #9fd36a; --t-dark: #c9a3ef; --t-great: #ff7aa8; --h0: #6fb3ff; --h1: #4fd1c5; --h2: #e0ad55; --h3: #ff8fcf; --h4: #a9a4ff; --h5: #d2a679; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: -4px 0 12px; flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 8px 10px; cursor: pointer; font-family: var(--f-display); font-size: 1.2rem; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.ledger { display: grid; gap: 4px; font-size: .86rem; }
+.ledger .li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.ledger .li small { grid-column: 1 / 3; color: var(--muted); font-size: .76rem; }
+.ledger .li .num { font-family: var(--f-mono); font-size: .78rem; color: var(--muted); }
+.conf { display: inline-block; width: 34px; height: 5px; border-radius: 3px; background: var(--panel-2); vertical-align: middle; margin-left: 6px; overflow: hidden; }
+.conf i { display: block; height: 100%; background: var(--accent); }
+.case { display: grid; grid-template-columns: minmax(0,1fr) 90px 40px; gap: 8px; align-items: center; font-size: .85rem; padding: 3px 0; }
+.case .track { height: 7px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }
+.case .track i { display: block; height: 100%; background: var(--c); }
+.case .n { font-family: var(--f-mono); font-size: .76rem; text-align: right; color: var(--muted); }
+.sub { font-family: var(--f-display); font-size: 1.1rem; margin-top: 18px; }
+/* newspaper: a small-town broadsheet, deliberately its own little world */
+.paper { background: var(--paper); color: var(--paper-ink); border-radius: 6px; padding: 18px 18px 22px; border: 1px solid var(--paper-rule); }
+.paper .mast { text-align: center; border-bottom: 3px double var(--paper-rule); padding-bottom: 8px; }
+.paper .mast h3 { font-family: var(--f-display); font-size: clamp(1.6rem, 3vw, 2.1rem); margin: 0; line-height: 1.05; }
+.paper .mast p { margin: 4px 0 0; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+.paper .head { font-family: var(--f-display); font-size: clamp(1.4rem, 2.6vw, 1.8rem); line-height: 1.1; margin: 14px 0 6px; text-wrap: balance; }
+.paper .lead { margin: 0 0 8px; font-size: .98rem; }
+.paper blockquote { margin: 8px 0 12px; padding-left: 12px; border-left: 2px solid var(--paper-rule); font-style: italic; font-family: var(--f-display); }
+.paper blockquote cite { display: block; font-style: normal; font-family: var(--f-body); font-size: .8rem; opacity: .75; margin-top: 2px; }
+.paper .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; margin-top: 10px; border-top: 1px solid var(--paper-rule); padding-top: 10px; }
+.paper .col h4 { margin: 0 0 6px; font-family: var(--f-mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; }
+.paper .col ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: .86rem; }
+.paper .col li small { opacity: .7; }
+.paper .weather { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--paper-rule); font-size: .82rem; font-style: italic; }
+.paper-nav { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.paper-nav select { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 5px 8px; }
+@media (max-width: 560px) { .paper .cols { grid-template-columns: 1fr; } }
+/* definitions editor */
+.defs textarea { width: 100%; min-height: 380px; font-family: var(--f-mono); font-size: .8rem; line-height: 1.5; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; resize: vertical; tab-size: 2; }
+.defs .status { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 8px 0; font-size: .88rem; }
+.defs .issues { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; font-size: .84rem; max-height: 180px; overflow: auto; }
+.defs .issues li { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 8px; }
+.defs .issues button { border: 0; background: none; padding: 0; text-align: left; font-family: var(--f-mono); font-size: .76rem; color: var(--accent); cursor: pointer; }
+.defs .issues .error { color: var(--danger); }
+.defs .help { font-size: .84rem; color: var(--muted); margin: 0 0 10px; max-width: 75ch; }
+.defs .help code { font-family: var(--f-mono); font-size: .78rem; background: var(--panel-2); padding: 1px 4px; border-radius: 4px; }
+.packs { display: grid; gap: 4px; }
+.pack { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.pack.editing { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.pack input { accent-color: var(--accent); width: 16px; height: 16px; }
+.pack .nm { border: 0; background: none; text-align: left; cursor: pointer; padding: 0; font-family: var(--f-mono); font-size: .86rem; }
+.pack .nm small { font-family: var(--f-body); color: var(--muted); margin-left: 8px; font-size: .78rem; }
+.pack .move { display: inline-flex; gap: 2px; }
+.pack .move button { border: 1px solid var(--line); background: var(--panel-2); border-radius: 6px; width: 26px; height: 24px; cursor: pointer; line-height: 1; }
+.pack .move button:disabled { opacity: .35; cursor: default; }
+.pack-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.defs summary, details.how-card summary { cursor: pointer; font-family: var(--f-display); font-size: 1.35rem; }
+.defs[open] summary { margin-bottom: 10px; }
+/* lives and stories */
+.life { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: .86rem; }
+.life li { display: grid; grid-template-columns: 74px minmax(0,1fr); gap: 8px; }
+.life time { font-family: var(--f-mono); color: var(--muted); font-size: .72rem; padding-top: 2px; }
+.life li.big span { font-weight: 700; }
+.scars { display: flex; flex-wrap: wrap; gap: 6px; }
+.scar { font-size: .8rem; border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; background: var(--panel-2); }
+.scar.dark { border-color: var(--strange); color: var(--strange); }
+.scar.bad { border-color: var(--danger); color: var(--danger); }
+.steps { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.steps span { font-size: .74rem; font-family: var(--f-mono); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; color: var(--muted); }
+.steps span.done { color: var(--ink); background: var(--panel-2); }
+.steps span.now { color: var(--strange); border-color: var(--strange); }
+.desire { font-family: var(--f-display); font-size: 1.15rem; line-height: 1.2; }
+.cast-row b { font-family: var(--f-display); font-weight: 400; font-size: 1.05rem; }
+.cast-row .why { display: block; color: var(--muted); font-size: .8rem; }
+.timeline { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 6px; font-size: .86rem; }
+.timeline li { display: grid; grid-template-columns: 74px minmax(0,1fr); gap: 8px; }
+.timeline time { font-family: var(--f-mono); color: var(--muted); font-size: .72rem; padding-top: 2px; }
+.legend-h { font-family: var(--f-mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
+.table-card h2 small { font-family: var(--f-body); font-size: .85rem; color: var(--muted); margin-left: 6px; }
+.table-card .form { display: grid; gap: 8px; margin-top: 8px; }
+.table-card .form .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.table-card input[type=text], .table-card select { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: .9rem; min-width: 0; }
+.table-card input[type=text] { flex: 1 1 160px; }
+.table-card .help { font-size: .84rem; color: var(--muted); margin: 4px 0 0; }
+.table-card .ok { font-size: .86rem; color: var(--accent); min-height: 1.2em; margin: 0; }
+.table-card details { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 12px; }
+.table-card details summary { cursor: pointer; font-family: var(--f-display); font-size: 1.1rem; }
+.legend .hero-chip { border: 0; background: none; padding: 0; cursor: pointer; font: inherit; color: var(--ink); display: inline-flex; align-items: center; gap: 4px; }
+.legend .hero-chip b { color: var(--c); font-size: 1rem; line-height: 1; }
+.legend .hero-chip:hover { text-decoration: underline; }
+.legend .kinds { display: contents; }
+.star { color: var(--c); }
+body.embed .top .title h1, body.embed .crumbs { display: none; }
+select.inline { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 4px 6px; font-size: .88rem; }
+@media (max-width: 1020px) { .defs-card { order: 7; } .tabbed { order: 5; } }
+</style>
+
+</head><body>
+<div class="app">
+  <header class="top">
+    <div class="title">
+      <div class="crumbs" id="crumbs"></div>
+      <h1 id="place">Rolled World</h1>
+      <div class="clock" id="clock"></div>
+    </div>
+    <div class="controls">
+      <button class="btn primary" id="play" type="button">Play</button>
+      <button class="btn" id="step" type="button">+1 hour</button>
+      <button class="btn" id="dawn" type="button">Next dawn</button>
+      <button class="btn" id="between" type="button" title="Time passes between sessions">Between sessions…</button>
+      <div class="seg" role="group" aria-label="Speed">
+        <button type="button" data-speed="1" aria-pressed="true">1×</button>
+        <button type="button" data-speed="4" aria-pressed="false">4×</button>
+        <button type="button" data-speed="24" aria-pressed="false">24×</button>
+        <button type="button" data-speed="96" aria-pressed="false">96×</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="pause-trig"> Stop at turning points</label>
+      <button class="btn" id="new" type="button">New world</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="col">
+      <section class="card stage" aria-label="Map">
+        <div class="stage-bar">
+          <div class="seg" role="group" aria-label="Map level">
+            <button type="button" data-view="region" aria-pressed="true">Region</button>
+            <button type="button" data-view="town" aria-pressed="false">Town</button>
+          </div>
+          <span class="muted" id="stage-hint" style="font-size:.82rem"></span>
+        </div>
+        <canvas id="map" width="1000" height="640"></canvas>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <section class="card hand" aria-label="Interventions">
+        <h2>Drop something into the world <small>you are the world</small></h2>
+        <p class="target" id="target"></p>
+        <div class="groups" id="hand"></div>
+        <p class="hint">Select a town or a wild area on the map to aim. Picking a town aims wild events at the wilds beside it.</p>
+      </section>
+
+      <section class="card table-card" id="table" aria-label="Your players"></section>
+
+      <section class="card context" id="context"></section>
+
+      <details class="card defs defs-card" id="defs-card">
+        <summary>World packs</summary>
+        <p class="help">The world is built from packs of definitions, read top to bottom. A later pack can add new things, change an existing one by repeating its name (only the lines you write change), or take it out with <code>remove: true</code>. Tick the packs you want, then roll a new world. Mods are off until you tick them.</p>
+        <div class="packs" id="packs"></div>
+        <div class="row" style="margin:10px 0 16px">
+          <button class="btn primary" type="button" id="defs-roll">Roll a new world with the ticked packs</button>
+          <label class="btn file-btn">Load .txt packs<input type="file" id="defs-file" accept=".txt,text/plain" multiple></label>
+          <button class="btn" type="button" id="pack-new">New pack</button>
+        </div>
+        <div class="pack-head"><span class="label" id="pack-label"></span><span class="row" style="gap:6px"><button class="btn" type="button" id="defs-copy">Copy</button><button class="btn" type="button" id="pack-restore">Restore original</button><button class="btn" type="button" id="pack-delete">Delete pack</button></span></div>
+        <textarea id="defs-text" spellcheck="false" aria-label="Pack definitions"></textarea>
+        <div class="status" id="defs-status"></div>
+        <ul class="issues" id="defs-issues"></ul>
+      </details>
+
+      <details class="card how-card">
+        <summary>How the world runs</summary>
+        <ol class="how">
+          <li><b>People act on needs.</b> Every hour each person scores sleep, food, work, company, prayer or a secret, and does the best. Gatherers go where they, or their town, believe the wild food, timber or ore is. If nobody knows, they go and look.</li>
+          <li><b>Knowledge lives in heads.</b> Whatever people see in the wilds or hear on the road, they carry home. At dawn they report to the council. Greedy people keep good spots to themselves, cowards exaggerate danger, the brave play it down, the lazy skip council. Gossip spreads it in taverns and on the road, getting fuzzier each time.</li>
+          <li><b>The council only knows its ledger.</b> It turns the town's needs (food, safety) into options built from what it knows: forage where food was seen, put more people on a known source, buy from a town it has heard has food, scout the unknown, ration, move closer to food, post bounties, raise a militia, build walls, hunt a known threat, ask a neighbour for help, keep away from a dangerous place.</li>
+          <li><b>Towns remember what worked.</b> Every decision is judged afterwards. What works gets tried again; what fails gets dropped. Two towns facing the same problem can learn different answers. When a scout's story turns out to be wrong, the council trusts them less.</li>
+          <li><b>The wilds are a food web.</b> Grass and plants feed deer, boar and fish; those feed wolves, spiders, goblins, dragons and townsfolk alike. Each dawn everything in an area shares what is there, and the strong take a bigger share. Fed and safe animals breed; hungry, hunted or crowded ones move on and settle elsewhere; starving ones die back. Hungry predators fight over food, and the loser is driven out.</li>
+          <li><b>The wilds learn too.</b> Packs remember where they ate. When hungry they go back there or explore. If raiding a town or a road fed them, they come back for more. Raiders, great beasts and the dead can overrun a town; its survivors flee, and settlers may later refound it.</li>
+          <li><b>Lives leave marks.</b> People marry, have children and grow old. Losing someone, a burned home or a bad fight can leave a scar (grief, vengeance, nothing to lose) that changes what they do and what they want. Children inherit their parents' grudges.</li>
+          <li><b>Some lives become stories.</b> A survivor with nothing left may turn outlaw and end up a bandit king; a grieving widow may dig at the graves until the dead walk. Each path is a list of steps in the stories pack, and can end several ways: slain, pardoned, betrayed, redeemed, avenged.</li>
+          <li><b>Your players are part of it.</b> Record what the heroes did in a town and the people there remember it: gratitude, grief, grudges. Add a person shaped by them, and watch what they come to want.</li>
+          <li><b>Each town prints a paper</b> every two days, made only from what has reached it: its own news, word from travellers, rumours and notices.</li>
+          <li><b>Everything is a definition, in packs.</b> Open "World packs" to add a creature, crop, job, terrain, scar, story path or deed, or switch on a mod like Coast, Grimdark or Gentle.</li>
+        </ol>
+      </details>
+      <p class="foot" id="foot"></p>
+    </div>
+
+    <div class="col">
+      <section class="card catchup" id="catchup" hidden></section>
+      <section class="card turning" id="turning" hidden></section>
+      <section class="card" id="inspector" aria-live="polite"></section>
+      <section class="card tabbed">
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" data-tab="chron" aria-selected="true">Chronicle</button>
+          <button type="button" role="tab" data-tab="paper" aria-selected="false">Newspaper</button>
+          <button type="button" role="tab" data-tab="legends" aria-selected="false">People &amp; history</button>
+        </div>
+        <div data-pane="chron">
+          <div class="filters">
+            <div class="seg" role="group" aria-label="Level">
+              <button type="button" data-level="trigger" aria-pressed="false">Turning points</button>
+              <button type="button" data-level="notable" aria-pressed="true">Notable</button>
+              <button type="button" data-level="all" aria-pressed="false">Everything</button>
+            </div>
+            <div class="seg" role="group" aria-label="Where">
+              <button type="button" data-scope="here" aria-pressed="true">Here</button>
+              <button type="button" data-scope="all" aria-pressed="false">Everywhere</button>
+            </div>
+          </div>
+          <ol class="log" id="log"></ol>
+        </div>
+        <div data-pane="paper" hidden><div id="paper"></div></div>
+        <div data-pane="legends" hidden><div class="legends" id="legends"></div></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="js/geez-config.js"></script>
+<script>window.WORLD_GM_KEY = "jonny";   // same DM key as index.html and pinboard.html</script>
+<script src="js/world-packs.js"></script>
+<script src="js/world-defs.js"></script>
+<script src="js/world-engine.js"></script>
+<script type="module" src="js/world-link.js"></script>
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = h => String(h).padStart(2, '0') + ':00';
+  const title = Sim.title;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const QS = new URLSearchParams(location.search), CAMP_Q = QS.get('campaign');
+  const SAVE_KEY = 'rolled-world.v3', PACKS_KEY = 'rolled-world.v3.packs';     // one world, shared by all your campaigns
+  const ACT = {
+    work: ['Working', '--a-work'], eat: ['Eating', '--a-eat'], sleep: ['Sleeping', '--a-sleep'], social: ['Socialising', '--a-social'],
+    pray: ['Praying', '--a-pray'], scheme: ['Out alone', '--a-scheme'], hungry: ['Hungry', '--a-alert'], stuck: ['Stuck', '--a-alert'],
+    sick: ['Sick or hurt', '--a-alert'], beg: ['Begging', '--a-beg'], wander: ['Wandering', '--a-idle'], idle: ['Idle', '--a-idle'], travel: ['Travelling', '--a-idle'],
+  };
+  const OPT = { sleep: 'Sleep', eat: 'Eat', work: 'Work', social: 'Socialise', pray: 'Pray', scheme: 'Slip out', wander: 'Wander' };
+  const OPT_C = { sleep: '--a-sleep', eat: '--a-eat', work: '--a-work', social: '--a-social', pray: '--a-pray', scheme: '--a-scheme', wander: '--a-idle',
+    wait: '--a-idle', bounty: '--gold', militia: '--danger', palisade: '--a-work', hunt: '--danger', appeal: '--a-sleep', buy: '--a-eat', gather: '--a-eat', assign: '--a-work', explore: '--a-sleep', ration: '--a-beg', settle: '--strange', avoid: '--a-beg' };
+  const PARTY = { caravan: ['Caravan', '--gold', 'sq'], import: ['Food caravan', '--a-eat', 'sq'], migrants: ['Migrants', '--a-idle', 'dot'], hunt: ['Hunting party', '--danger', 'tri'],
+    bounty: ['Bounty hunters', '--danger', 'tri'], aid: ['Help on the way', '--a-sleep', 'tri'], forage: ['Foragers', '--a-eat', 'tri'], founders: ['Settlers', '--strange', 'dot'],
+    explore: ['Scouts', '--a-sleep', 'dot'], scout_town: ['Messenger', '--a-sleep', 'dot'] };
+  const DIAL_HINT = { Food: 'days of food stored', Wealth: 'typical savings', Safety: 'guards, heroes, palisade', Faith: 'priest hours and prayers', Health: 'healer hours', Fear: 'how afraid people are', Knowledge: 'what the council knows' };
+  const THREAT = { beast: 'Beasts', raider: 'Raiders', undead: 'Undead', dark: 'Dark things', great: 'Great beasts' };
+  const tcol = p => C['t-' + Sim.threatKind(p)] || C.danger, tvar = p => `var(--t-${Sim.threatKind(p)})`;
+  const hcol = n => C['h' + (n.id % 6)], hvar = n => `var(--h${n.id % 6})`;
+  const terrainColor = t => ({ forest: 'r-forest', hills: 'r-hills', plains: 'r-plains', swamp: 'r-swamp', mountains: 'r-mount', ruins: 'r-ruins' })[t] || (/lake|river|sea|ocean|coast|water|bay/.test(t) ? 'r-water' : 'r-other');
+
+  let W, packs = [], editing = null, view = 'region', regionId = 0, townId = null, sel = null, tab = 'chron', paperTown = null, paperIdx = 0;
+  let playing = !reduced, speed = 1, level = 'notable', scope = 'here', pauseTrig = false;
+  let C = {}, acc = 0, last = performance.now(), dirty = true, lastUI = 0, prevParty = new Map(), shapes = new Map();
+  let turning = [], catching = null;
+  const interval = () => 1500 / speed;
+  const town = id => W.towns.find(t => t.id === id), zone = id => W.zones.find(z => z.id === id), region = id => W.regions.find(r => r.id === id);
+  const pop = id => W.pops.find(p => p.id === id), party = id => W.parties.find(p => p.id === id), npc = id => Sim.IDX.get(id);
+  const jobTitle = n => Sim.D.professions[n.job]?.title || title(n.job);
+  try { pauseTrig = localStorage.getItem(SAVE_KEY + '.stop') === '1'; } catch (e) {}
+
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement);
+    ['m-ground','m-road','m-water','m-woods','m-tree','m-field','m-field-line','m-wall','m-roof-house','m-roof-work','m-market','m-hill','m-label','m-halo','accent','gold','danger','strange','panel','ink','muted','line',
+     'r-ground','r-forest','r-hills','r-plains','r-swamp','r-mount','r-ruins','r-road','r-town','r-water','r-other','a-work','a-eat','a-sleep','a-social','a-pray','a-scheme','a-alert','a-beg','a-idle','t-beast','t-raider','t-undead','t-dark','t-great','h0','h1','h2','h3','h4','h5'].forEach(n => C[n] = cs.getPropertyValue('--' + n).trim());
+  }
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
+  new MutationObserver(readColors).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+
+  /* ---------- start, save, catch up ---------- */
+  const enabledPacks = () => packs.filter(p => p.on).map(p => ({ name: p.name, text: p.text }));
+  function newWorld(list) {
+    W = Sim.createWorld(list || enabledPacks());
+    for (let i = 0; i < 4; i++) Sim.tick();
+    view = 'region'; regionId = 0; townId = W.towns[0].id; sel = { kind: 'town', id: W.towns[0].id }; paperTown = null; paperIdx = 0;
+    W.pending.length = 0; turning = []; acc = 0; shapes.clear();
+    save(); renderAll();
+  }
+  function save() {
+    try { localStorage.setItem(SAVE_KEY, Sim.save()); $('#foot').textContent = `World saved in this browser at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. It picks up where it left off and catches up on the time you were away.`; }
+    catch (e) { $('#foot').textContent = 'This browser is not letting the page save, so the world will start fresh next time.'; }
+  }
+  function boot() {
+    packs = DEFAULT_PACKS.map(p => ({ ...p, base: p.text }));
+    try { const saved = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null'); if (Array.isArray(saved) && saved.length) packs = saved; } catch (e) {}
+    // built-in packs you haven't edited follow the latest version; new built-in packs appear
+    for (const d of DEFAULT_PACKS) {
+      const p = packs.find(x => x.name === d.name);
+      if (!p) { packs.push({ ...d, base: d.text }); continue; }
+      if (p.kind !== 'yours' && (p.base == null || p.text === p.base) && p.text !== d.text) p.text = d.text;
+      if (p.kind !== 'yours') { if (p.text === d.text) p.base = d.text; p.desc = d.desc; }
+    }
+    editing = packs[0]?.name; renderPacks(); checkDefs();
+    let raw = null; try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {}
+    const hot = window.claude?.hot?.data;
+    if (hot && hot.save) raw = hot.save;
+    if (raw) {
+      try {
+        W = Sim.load(raw);
+        townId = W.towns[0]?.id; sel = { kind: 'town', id: townId };
+        if (hot && hot.view) { view = hot.view === 'world' ? 'region' : hot.view; regionId = hot.regionId ?? 0; townId = hot.townId ?? townId; sel = hot.sel ?? sel; }
+        const hours = (Date.now() - (W.savedAt || Date.now())) / 3.6e6, days = Math.min(60, Math.floor(hours));
+        if (days >= 1 && !hot) offerCatchUp(days, hours);
+        renderAll(); return;
+      } catch (e) { console.warn('save unreadable', e); }
+    }
+    try { newWorld(); } catch (e) { packs = DEFAULT_PACKS.map(p => ({ ...p })); renderPacks(); newWorld(); }
+  }
+  setTimeout(startLink, 0);
+  window.claude?.hot?.snapshot?.(() => ({ save: Sim.save(), view, regionId, townId, sel }));
+  function offerBetween() {
+    const box = $('#catchup'); box.hidden = false;
+    box.innerHTML = `<h2>Between sessions</h2><p>How much time passes in the world before your players are back?</p>
+      <div class="progress" hidden><i></i></div><div class="row"><button class="btn" type="button" data-pass="3">3 days</button><button class="btn primary" type="button" data-pass="7">A week</button><button class="btn" type="button" data-pass="14">Two weeks</button><button class="btn" type="button" data-pass="30">A month</button><button class="btn" type="button" id="cu-skip">Cancel</button></div>`;
+    $('#cu-skip').onclick = () => { box.hidden = true; };
+    box.querySelectorAll('[data-pass]').forEach(b => b.onclick = () => catchUp(+b.dataset.pass));
+  }
+  function offerCatchUp(days, hours) {
+    const box = $('#catchup'); box.hidden = false;
+    const away = hours >= 48 ? `${Math.round(hours / 24)} days` : `${Math.round(hours)} hours`;
+    box.innerHTML = `<h2>While you were away</h2><p>You have been gone ${away}. The world lives one day for every hour you are away, up to 60 days. Let ${days} ${days > 1 ? 'days' : 'day'} pass now?</p>
+      <div class="progress" hidden><i></i></div><div class="row"><button class="btn primary" type="button" id="cu-go">Let ${days} ${days > 1 ? 'days' : 'day'} pass</button><button class="btn" type="button" id="cu-skip">Not now</button></div>`;
+    $('#cu-skip').onclick = () => { box.hidden = true; };
+    $('#cu-go').onclick = () => catchUp(days);
+  }
+  function catchUp(days) {
+    const box = $('#catchup'), bar = box.querySelector('.progress'), fill = bar.querySelector('i');
+    bar.hidden = false; box.querySelectorAll('button').forEach(b => b.disabled = true);
+    const startDay = W.day, goal = days * 24; let done = 0;
+    const was = playing; setPlay(false); catching = true;
+    const step = () => {
+      const t0 = performance.now();
+      while (done < goal && performance.now() - t0 < 40) { Sim.tick(); done++; }
+      fill.style.width = (done / goal * 100) + '%';
+      if (done < goal) return requestAnimationFrame(step);
+      catching = null; W.pending.length = 0;
+      const tps = W.log.filter(e => e.level === 'trigger' && e.day >= startDay).slice(0, 10);
+      box.innerHTML = `<h2>${days} ${days > 1 ? 'days' : 'day'} later</h2><p>${days} ${days > 1 ? 'days' : 'day'} passed. ${tps.length ? 'Turning points:' : 'Nothing earth-shaking happened.'} The newspaper tab has the rest.</p>${tps.length ? `<ul>${tps.map(e => `<li>${linkify(e)}</li>`).join('')}</ul>` : ''}<div class="row"><button class="btn" type="button" id="cu-close">Close</button></div>`;
+      $('#cu-close').onclick = () => { box.hidden = true; };
+      W.towns.forEach(t => t.npcs.forEach(n => { if (n.dest) n.pos = { ...n.dest }; }));
+      setPlay(was); save(); writeBack(); renderAll();
+    };
+    requestAnimationFrame(step);
+  }
+
+  /* ---------- map ---------- */
+  const cv = $('#map'), ctx = cv.getContext('2d');
+  let k = 1, dpr = 1, cw = 1000, ch = 640;
+  let aspect = 0.64;
+  function setAspect() { const R = W && view !== 'town' ? (region(regionId) || W.regions[0]) : null; const a = R ? Sim.RH(R) / Sim.RW(R) : 0.64; if (Math.abs(a - aspect) > 0.001) { aspect = a; cv.style.aspectRatio = `1000 / ${Math.round(1000 * a)}`; fit(); } }
+  function fit() { cw = cv.clientWidth; ch = cw * aspect; dpr = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr); }
+  new ResizeObserver(fit).observe(cv);
+  function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function darkness(h, f) { const D = [.45,.45,.45,.45,.42,.32,.16,.04,0,0,0,0,0,0,0,0,0,.02,.08,.18,.3,.38,.42,.45]; const a = D[h % 24], b = D[(h + 1) % 24]; return a + (b - a) * f; }
+  const frac = () => playing ? Math.min(1, acc / interval()) : 0;
+  const ls = () => 1 / Math.max(k, .45);
+  function label(text, x, y, size, o = {}) {
+    ctx.font = `${o.weight || 600} ${o.italic ? 'italic ' : ''}${size}px ${o.display ? '"IM Fell English", Georgia, serif' : '"Alegreya Sans", system-ui, sans-serif'}`;
+    ctx.textAlign = o.align || 'center'; ctx.textBaseline = o.base || 'top';
+    ctx.lineWidth = 4 * ls(); ctx.strokeStyle = C['m-halo']; ctx.lineJoin = 'round'; ctx.strokeText(text, x, y);
+    ctx.fillStyle = o.color || C['m-label']; ctx.fillText(text, x, y);
+  }
+  function zoneShape(z) {
+    if (shapes.has(z.id)) return shapes.get(z.id);
+    const r = mulberry(z.id * 7919 + 13), pts = [], N = 22, ph = [r() * 6, r() * 6, r() * 6];
+    for (let i = 0; i < N; i++) { const a = i / N * Math.PI * 2, f = 0.86 + 0.1 * Math.sin(a * 3 + ph[0]) + 0.07 * Math.sin(a * 5 + ph[1]) + 0.05 * Math.sin(a * 2 + ph[2]); pts.push({ x: z.x + Math.cos(a) * z.r * f, y: z.y + Math.sin(a) * z.r * f }); }
+    const deco = []; for (let i = 0; i < Math.round(z.r / 6); i++) { const a = r() * 6.28, d = Math.sqrt(r()) * z.r * 0.78; deco.push({ x: z.x + Math.cos(a) * d, y: z.y + Math.sin(a) * d, s: r() }); }
+    const river = []; const a0 = r() * 6.28; for (let i = 0; i <= 8; i++) { const t = i / 8 - 0.5; river.push({ x: z.x + Math.cos(a0) * t * z.r * 1.7 + Math.sin(i * 1.3) * 6, y: z.y + Math.sin(a0) * t * z.r * 1.7 + Math.cos(i * 1.1) * 6 }); }
+    const o = { pts, deco, river }; shapes.set(z.id, o); return o;
+  }
+  function drawRegion(R) {
+    const s = cw / Sim.RW(R); k = s;
+    ctx.setTransform(dpr * s, 0, 0, dpr * s, -R.ox * dpr * s, -R.oy * dpr * s);
+    const img = mapImage(R);
+    ctx.fillStyle = C['r-ground']; ctx.fillRect(R.ox, R.oy, Sim.RW(R), Sim.RH(R));
+    if (img) ctx.drawImage(img, R.ox, R.oy, Sim.RW(R), Sim.RH(R));
+    const zs = W.zones.filter(z => z.region === R.id);
+    for (const z of zs) {
+      const { pts, deco, river } = zoneShape(z);
+      ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath();
+      ctx.globalAlpha = img ? 0.38 : 1; ctx.fillStyle = C[terrainColor(z.type)]; ctx.fill(); ctx.globalAlpha = 1;
+      if (img) { ctx.strokeStyle = C[terrainColor(z.type)]; ctx.lineWidth = 1.5 * ls(); ctx.stroke(); }
+      if (sel?.kind === 'zone' && sel.id === z.id) { ctx.strokeStyle = C.accent; ctx.lineWidth = 3 * ls(); ctx.stroke(); }
+      ctx.save(); ctx.globalAlpha = .35; ctx.fillStyle = C.ink; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2 * ls();
+      for (const d of deco) {
+        const t = z.type;
+        if (t === 'forest') { ctx.beginPath(); ctx.arc(d.x, d.y, 4 + d.s * 4, 0, 7); ctx.fill(); }
+        else if (t === 'mountains') { ctx.beginPath(); ctx.moveTo(d.x - 9, d.y + 6); ctx.lineTo(d.x, d.y - 8); ctx.lineTo(d.x + 9, d.y + 6); ctx.stroke(); }
+        else if (t === 'hills') { ctx.beginPath(); ctx.arc(d.x, d.y + 4, 7, Math.PI, 0); ctx.stroke(); }
+        else if (t === 'swamp') { ctx.beginPath(); ctx.moveTo(d.x - 5, d.y); ctx.lineTo(d.x + 5, d.y); ctx.moveTo(d.x, d.y); ctx.lineTo(d.x - 2, d.y - 6); ctx.stroke(); }
+        else if (t === 'ruins') ctx.strokeRect(d.x - 4, d.y - 4, 8, 8);
+        else if (terrainColor(t) === 'r-water') { if (d.s < .5) { ctx.beginPath(); ctx.moveTo(d.x - 5, d.y); ctx.quadraticCurveTo(d.x, d.y - 3, d.x + 5, d.y); ctx.stroke(); } }
+        else if (d.s < .4) { ctx.beginPath(); ctx.moveTo(d.x - 3, d.y); ctx.lineTo(d.x + 3, d.y); ctx.stroke(); }
+      }
+      ctx.restore();
+      if (z.terrains.some(t => terrainColor(t) === 'r-water') && terrainColor(z.type) !== 'r-water') { ctx.strokeStyle = C['r-water']; ctx.lineWidth = 4 * ls(); ctx.lineCap = 'round'; ctx.beginPath(); river.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke(); }
+      if (z.tags.includes('rift')) { ctx.strokeStyle = C.strange; ctx.lineWidth = 3 * ls(); ctx.beginPath(); ctx.arc(z.x, z.y, 10 + Math.sin(performance.now() / 300) * 3, 0, 7); ctx.stroke(); }
+    }
+    ctx.lineCap = 'round';
+    for (const r of W.roads) {
+      const a = town(r.a), b = town(r.b); if (!a || !b || (a.region !== R.id && b.region !== R.id) || r.far) continue;
+      ctx.strokeStyle = C['r-road']; ctx.lineWidth = 4 * ls(); ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.strokeStyle = C['r-ground']; ctx.lineWidth = 1.2 * ls(); ctx.setLineDash([6, 8]); ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const fs = Math.max(11, 10.5 / s);
+    for (const z of zs) {
+      const ps = W.pops.filter(p => p.zone === z.id && Sim.def(p).kind === 'animal' || (p.zone === z.id && Sim.isHostile(p))).sort((a, b) => (Sim.isHostile(b) - Sim.isHostile(a)) || b.count - a.count);
+      const rr = mulberry(z.id * 31);
+      for (const p of ps) {
+        const hostile = Sim.isHostile(p), n = Math.min(hostile ? 12 : 8, Math.ceil(p.count / (hostile ? 1 : 6)));
+        ctx.fillStyle = hostile ? tcol(p) : C['m-halo'];
+        for (let i = 0; i < n; i++) { const a = rr() * 6.28, d = Math.sqrt(rr()) * z.r * 0.6; ctx.beginPath(); ctx.arc(z.x + Math.cos(a) * d, z.y + Math.sin(a) * d, (hostile ? (Sim.def(p).solo ? 6 : 3.2) : 2.2) * Math.max(1, .8 / s), 0, 7); ctx.fill(); }
+      }
+      label(z.name, z.x, z.y - z.r * 0.82, fs * 1.05, { display: true, weight: 400, italic: true });
+      let y = z.y - z.r * 0.82 + fs * 1.25;
+      for (const p of ps.filter(Sim.isHostile).slice(0, 3)) {
+        const b = W.bounties.find(b => b.pop === p.id && !b.done);
+        label(`${p.chief != null ? '⚑ ' : p.mutation ? '✦ ' : ''}${Sim.popName(p)} ${Sim.def(p).solo ? '' : Math.round(p.count)}${b ? ` · bounty ${b.reward}` : ''}`, z.x, y, fs * .92, { color: tcol(p), weight: 700 }); y += fs * 1.1;
+      }
+    }
+    for (const t of W.towns.filter(t => t.region === R.id)) {
+      const r = 6 + Math.sqrt(Math.max(1, t.npcs.length)) * 1.7;
+      if (t.palisade) { ctx.strokeStyle = C['r-road']; ctx.lineWidth = 2.5 * ls(); ctx.strokeRect(t.x - r - 5, t.y - r - 5, (r + 5) * 2, (r + 5) * 2); }
+      ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, 7); ctx.fillStyle = t.npcs.length ? C['r-town'] : C['r-ground']; ctx.fill();
+      ctx.lineWidth = (t.id === townId ? 3 : 1.6) * ls(); ctx.strokeStyle = t.fear >= 5 ? C.danger : Sim.foodDays(t) < 0.8 ? C.gold : C.ink; ctx.stroke();
+      if (sel?.kind === 'town' && sel.id === t.id) { ctx.strokeStyle = C.accent; ctx.lineWidth = 3 * ls(); ctx.beginPath(); ctx.arc(t.x, t.y, r + 9, 0, 7); ctx.stroke(); }
+      label(t.name, t.x, t.y + r + 4, fs * 1.08, { weight: 700 });
+      label(t.npcs.length ? `${t.npcs.length} people` : 'empty', t.x, t.y + r + 4 + fs * 1.15, fs * .85, { weight: 500, color: C.muted });
+    }
+    drawParties(R, s);
+    drawHeroes(R, s, fs);
+    const dark = darkness(W.hour, frac()) * 0.6;
+    if (dark > 0) { ctx.fillStyle = `rgba(10,18,40,${dark})`; ctx.fillRect(R.ox, R.oy, Sim.RW(R), Sim.RH(R)); }
+  }
+  function star(x, y, r, fill) { ctx.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r; ctx.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = C['m-halo']; ctx.lineWidth = 1.4 * ls(); ctx.stroke(); }
+  // every hero gets their own colour, wherever they are: at home beside their town, or out on the road with a line to where they're going
+  function drawHeroes(R, s, fs) {
+    const r = Math.max(8, 7.5 / s);
+    for (const t of W.towns.filter(t => t.region === R.id)) {
+      const hs = t.npcs.filter(n => n.hero), tr = 6 + Math.sqrt(Math.max(1, t.npcs.length)) * 1.7;
+      hs.forEach((n, i) => { const a = -Math.PI * 0.75 + i * 0.55, x = t.x + Math.cos(a) * (tr + r + 3), y = t.y + Math.sin(a) * (tr + r + 3); star(x, y, r, hcol(n)); if (sel?.kind === 'npc' && sel.id === n.id) { ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5 * ls(); ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 7); ctx.stroke(); } });
+    }
+    for (const P of W.parties) {
+      const hs = P.members.filter(n => n.hero); if (!hs.length) continue;
+      const pos = partyPos(P); if (pos.x < R.ox || pos.x > R.ox + Sim.RW(R) || pos.y < R.oy || pos.y > R.oy + Sim.RH(R)) continue;
+      hs.forEach((n, i) => {
+        const x = pos.x + (i - (hs.length - 1) / 2) * r * 2.1, y = pos.y - r * 2.2;
+        ctx.strokeStyle = hcol(n); ctx.globalAlpha = .7; ctx.setLineDash([3, 5]); ctx.lineWidth = 1.6 * ls(); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); for (let k = P.seg + 1; k < P.pts.length; k++) ctx.lineTo(P.pts[k].x, P.pts[k].y); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        star(x, y, r, hcol(n)); label(n.first, x, y - r - 2, fs * .85, { color: hcol(n), weight: 700, base: 'bottom' });
+      });
+    }
+    // where your players are
+    for (const pc of (W.campaigns?.length ? W.campaigns : [W])) {
+    const at = pc.partyAt, spot = at?.town != null ? town(at.town) : at?.zone != null ? zone(at.zone) : null;
+    if (spot && spot.region === R.id) {
+      const x = spot.x + (at.town != null ? 0 : 0), y = spot.y - (at.town != null ? 22 : 0), h = Math.max(16, 14 / s);
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2 * ls(); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - h); ctx.stroke();
+      ctx.fillStyle = C.accent; ctx.beginPath(); ctx.moveTo(x, y - h); ctx.lineTo(x + h * 0.75, y - h * 0.78); ctx.lineTo(x, y - h * 0.56); ctx.closePath(); ctx.fill(); ctx.strokeStyle = C['m-halo']; ctx.lineWidth = 1.2 * ls(); ctx.stroke();
+      label(pc.party || W.party || 'the heroes', x, y - h - 2, fs * .95, { weight: 700, base: 'bottom', color: C.accent });
+    }
+    }
+  }
+  function partyPos(P) { const prev = prevParty.get(P.id), f = frac(); if (!prev || reduced) return P.pos; return { x: prev.x + (P.pos.x - prev.x) * f, y: prev.y + (P.pos.y - prev.y) * f }; }
+  function drawParties(R, s) {
+    const sz = Math.max(5, 4 / s);
+    for (const P of W.parties) {
+      const pos = partyPos(P);
+      if (pos.x < R.ox || pos.x > R.ox + Sim.RW(R) || pos.y < R.oy || pos.y > R.oy + Sim.RH(R)) continue;
+      const [, col, shape] = PARTY[P.type] || ['Party', '--a-idle', 'dot'];
+      if (sel?.kind === 'party' && sel.id === P.id) {
+        ctx.strokeStyle = C.ink; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.5 * ls(); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); for (let i = P.seg + 1; i < P.pts.length; i++) ctx.lineTo(P.pts[i].x, P.pts[i].y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5 * ls(); ctx.beginPath(); ctx.arc(pos.x, pos.y, sz + 5, 0, 7); ctx.stroke();
+      }
+      ctx.fillStyle = C[col.slice(2)]; ctx.strokeStyle = C['m-halo']; ctx.lineWidth = 1.5 * ls(); ctx.beginPath();
+      if (shape === 'sq') ctx.rect(pos.x - sz, pos.y - sz, sz * 2, sz * 2);
+      else if (shape === 'tri') { ctx.moveTo(pos.x, pos.y - sz * 1.3); ctx.lineTo(pos.x + sz * 1.1, pos.y + sz * .8); ctx.lineTo(pos.x - sz * 1.1, pos.y + sz * .8); ctx.closePath(); }
+      else ctx.arc(pos.x, pos.y, sz, 0, 7);
+      ctx.fill(); ctx.stroke();
+    }
+  }
+  function worldBox() { const cols = Math.min(3, W.regions.length), rows = Math.ceil(W.regions.length / 3), s = Math.min(cw / (cols * Sim.TW), ch / (rows * Sim.TH)); return { s, ox: (cw - cols * Sim.TW * s) / 2, oy: (ch - rows * Sim.TH * s) / 2 }; }
+  function drawWorld() {
+    const { s, ox, oy } = worldBox();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = C.panel; ctx.fillRect(0, 0, cw, ch);
+    for (const R of W.regions) {
+      ctx.save(); ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox, dpr * oy); k = s; ctx.beginPath(); ctx.rect(R.ox, R.oy, Sim.TW, Sim.TH); ctx.clip();
+      ctx.fillStyle = C['r-ground']; ctx.fillRect(R.ox, R.oy, Sim.TW, Sim.TH);
+      for (const z of W.zones.filter(z => z.region === R.id)) { const { pts } = zoneShape(z); ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.closePath(); ctx.fillStyle = C[terrainColor(z.type)]; ctx.fill();
+        const h = W.pops.filter(p => p.zone === z.id && Sim.isHostile(p)); if (h.length) { ctx.fillStyle = h.some(p => p.mutation) ? C.strange : C.danger; ctx.beginPath(); ctx.arc(z.x, z.y, 16, 0, 7); ctx.fill(); } }
+      ctx.strokeStyle = C['r-road']; ctx.lineWidth = 8;
+      for (const r of W.roads) { const a = town(r.a), b = town(r.b); if (a && b && (a.region === R.id || b.region === R.id)) { ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); } }
+      for (const t of W.towns.filter(t => t.region === R.id)) { ctx.beginPath(); ctx.arc(t.x, t.y, 10 + Math.sqrt(t.npcs.length) * 3, 0, 7); ctx.fillStyle = C['r-town']; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = t.fear >= 5 ? C.danger : C.ink; ctx.stroke(); }
+      ctx.restore();
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); k = 1;
+      label(R.name, ox + (R.ox + Sim.TW / 2) * s, oy + (R.oy + 24) * s, 15, { display: true, weight: 400 });
+      ctx.strokeStyle = sel?.kind === 'region' && sel.id === R.id ? C.accent : C.line; ctx.lineWidth = sel?.kind === 'region' && sel.id === R.id ? 3 : 1; ctx.strokeRect(ox + R.ox * s, oy + R.oy * s, Sim.TW * s, Sim.TH * s);
+    }
+  }
+  const center = b => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
+  function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function drawTown(S) {
+    const s = cw / 1000; k = s; ctx.setTransform(dpr * s, 0, 0, dpr * s, 0, 0);
+    const B = S.buildings, market = B[0], mc = center(market), Wd = 1000, H = 640;
+    ctx.fillStyle = C['m-ground']; ctx.fillRect(0, 0, Wd, H);
+    if (B.some(b => b.x > 850 && b.y < 60)) { ctx.fillStyle = C['m-hill']; [[850, 120, 70], [930, 110, 80], [990, 130, 60]].forEach(([x, y, z]) => { ctx.beginPath(); ctx.moveTo(x - z, y); ctx.lineTo(x, y - z * 1.1); ctx.lineTo(x + z, y); ctx.fill(); }); }
+    if (S.water) { ctx.fillStyle = C['m-water']; ctx.fillRect(0, 590, Wd, 50); }
+    for (const f of B.filter(b => b.type === 'fields')) { ctx.fillStyle = C['m-field']; ctx.fillRect(f.x, f.y, f.w, f.h); ctx.strokeStyle = C['m-field-line']; ctx.lineWidth = 2; for (let y = f.y + 10; y < f.y + f.h; y += 12) { ctx.beginPath(); ctx.moveTo(f.x + 6, y); ctx.lineTo(f.x + f.w - 6, y); ctx.stroke(); } }
+    ctx.fillStyle = C['m-woods']; ctx.fillRect(0, 0, 92, S.water ? 590 : H);
+    const rr = mulberry(S.decor || 7); ctx.fillStyle = C['m-tree'];
+    for (let i = 0; i < 70; i++) { const x = 6 + rr() * 80, y = 8 + rr() * 624, r = 9 + rr() * 9; if (!S.water || y < 585) { ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); } }
+    ctx.strokeStyle = C['m-road']; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    B.forEach(b => { if (b === market || b.type === 'woods') return; const c = center(b); ctx.lineWidth = b.type === 'house' ? 5 : 8; ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x, mc.y); ctx.lineTo(mc.x, mc.y); ctx.stroke(); });
+    ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(92, mc.y); ctx.lineTo(Wd, mc.y); ctx.stroke();
+    if (S.palisade) { ctx.strokeStyle = C['m-roof-house']; ctx.setLineDash([3, 4]); ctx.lineWidth = 3 + S.palisade * 2; ctx.strokeRect(112, 22, 870, S.water ? 560 : 600); ctx.setLineDash([]); }
+    ctx.fillStyle = C['m-market']; roundRect(market.x, market.y, market.w, market.h, 6); ctx.fill();
+    ['a-work', 'a-social', 'a-eat', 'a-pray', 'a-sleep'].forEach((c, i) => { ctx.fillStyle = C[c]; ctx.globalAlpha = .55; ctx.fillRect(market.x + 10 + i * 23, market.y + 8, 17, 10); }); ctx.globalAlpha = 1;
+    const dark = darkness(W.hour, frac());
+    B.forEach(b => {
+      if (['market', 'woods', 'fields'].includes(b.type)) return;
+      ctx.fillStyle = b.burned ? C['m-hill'] : C['m-wall']; roundRect(b.x, b.y, b.w, b.h, 4); ctx.fill();
+      ctx.fillStyle = b.burned ? C.ink : b.type === 'house' ? C['m-roof-house'] : C['m-roof-work']; roundRect(b.x, b.y, b.w, Math.min(18, b.h * .38), 4); ctx.fill();
+      if (b.type === 'house' && dark > .2 && !b.burned && (b.residents || []).length) { ctx.fillStyle = '#ffd27a'; ctx.globalAlpha = .9; ctx.fillRect(b.x + 12, b.y + 24, 9, 8); ctx.fillRect(b.x + b.w - 21, b.y + 24, 9, 8); ctx.globalAlpha = 1; }
+    });
+    if (dark > 0) { ctx.fillStyle = `rgba(10,18,40,${dark})`; ctx.fillRect(0, 0, Wd, H); }
+    if (sel?.kind === 'bld' && sel.town === S.id) { const b = B[sel.id]; if (b) { ctx.strokeStyle = C.accent; ctx.lineWidth = 3 * ls(); roundRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6, 6); ctx.stroke(); } }
+    const fs = Math.max(11, 10.5 / s);
+    B.forEach(b => {
+      const selected = sel?.kind === 'bld' && sel.town === S.id && sel.id === b.id;
+      if (b.type === 'house' && !selected) return; if (s < .55 && !b.zone && b.type !== 'market' && !selected) return;
+      const c = center(b), y = b.type === 'woods' ? 14 : b.type === 'market' ? b.y + b.h - fs - 6 : b.y + b.h + 3;
+      label(b.burned ? 'Burned house' : b.name, c.x, y, fs);
+    });
+    const r = Math.max(5, 3.4 / s);
+    S.npcs.forEach(n => { if (!n.pos) return; const a = ACT[n.action] || ACT.idle; ctx.beginPath(); ctx.arc(n.pos.x, n.pos.y, n.child ? r * 0.65 : r, 0, 7); ctx.fillStyle = C[a[1].slice(2)]; ctx.fill(); ctx.lineWidth = (n.hero ? 3.5 : 1.5) * ls(); ctx.strokeStyle = n.hero ? hcol(n) : C['m-halo']; ctx.stroke(); if (n.hero) label(n.first, n.pos.x, n.pos.y - r - 4, fs * .9, { color: hcol(n), weight: 700, base: 'bottom' }); });
+    if (sel?.kind === 'npc') { const n = S.npcs.find(n => n.id === sel.id); if (n && n.pos) { ctx.strokeStyle = C.ink; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5 * ls(); ctx.beginPath(); ctx.moveTo(n.pos.x, n.pos.y); ctx.lineTo(n.dest.x, n.dest.y); ctx.stroke(); ctx.setLineDash([]); ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5 * ls(); ctx.beginPath(); ctx.arc(n.pos.x, n.pos.y, r + 5, 0, 7); ctx.stroke(); label(n.first, n.pos.x, n.pos.y - r - 6, fs, { base: 'bottom' }); } }
+  }
+  function walk(dt) {
+    const S = town(townId); if (!S) return; const pace = 650 / interval();
+    S.npcs.forEach(n => { if (!n.dest) return; if (!n.pos) n.pos = { ...n.dest }; const dx = n.dest.x - n.pos.x, dy = n.dest.y - n.pos.y, d = Math.hypot(dx, dy), step = pace * dt * (0.85 + (n.id % 7) * 0.04); if (reduced || d <= step) { n.pos.x = n.dest.x; n.pos.y = n.dest.y; } else { n.pos.x += dx / d * step; n.pos.y += dy / d * step; } });
+  }
+  function draw() {
+    if (!W || !cw) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+    if (view === 'world') drawWorld(); else if (view === 'town' && town(townId)) drawTown(town(townId)); else drawRegion(region(regionId) || W.regions[0]);
+  }
+
+  /* ---------- picking ---------- */
+  function pointer(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  function hit(e) {
+    const p = pointer(e);
+    if (view === 'world') { const { s, ox, oy } = worldBox(), wx = (p.x - ox) / s, wy = (p.y - oy) / s; const R = W.regions.find(R => wx >= R.ox && wx < R.ox + Sim.TW && wy >= R.oy && wy < R.oy + Sim.TH); return R ? { kind: 'region', id: R.id } : null; }
+    if (view === 'town') {
+      const S = town(townId), s = cw / 1000, x = p.x / s, y = p.y / s, r = Math.max(5, 3.4 / s) + 6 / Math.max(s, .5);
+      let best = null, bd = r; S.npcs.forEach(n => { if (!n.pos) return; const d = Math.hypot(n.pos.x - x, n.pos.y - y); if (d < bd) { bd = d; best = n; } });
+      if (best) return { kind: 'npc', id: best.id };
+      const b = [...S.buildings].sort((a, c) => (a.zone ? 1 : 0) - (c.zone ? 1 : 0)).find(b => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+      return b ? { kind: 'bld', id: b.id, town: S.id } : null;
+    }
+    const R = region(regionId), s = cw / Sim.RW(R), x = R.ox + p.x / s, y = R.oy + p.y / s, tol = 10 / s;
+    for (const P of W.parties) { const q = partyPos(P); if (Math.hypot(q.x - x, q.y - y) < tol + 4) return { kind: 'party', id: P.id }; }
+    for (const t of W.towns.filter(t => t.region === R.id)) if (Math.hypot(t.x - x, t.y - y) < 6 + Math.sqrt(Math.max(1, t.npcs.length)) * 1.7 + tol) return { kind: 'town', id: t.id };
+    const z = W.zones.filter(z => z.region === R.id).find(z => Math.hypot(z.x - x, z.y - y) < z.r);
+    return z ? { kind: 'zone', id: z.id } : null;
+  }
+  cv.addEventListener('click', e => {
+    const h = hit(e); if (!h) { if (view === 'region') { sel = { kind: 'region', id: regionId }; renderAll(); } return; }
+    if (h.kind === 'region' && sel?.kind === 'region' && sel.id === h.id) { regionId = h.id; setView('region'); return; }
+    if (h.kind === 'town' && sel?.kind === 'town' && sel.id === h.id) { townId = h.id; setView('town'); return; }
+    sel = h; if (h.kind === 'town') { townId = h.id; paperTown = h.id; paperIdx = 0; } renderAll();
+  });
+  cv.addEventListener('mousemove', e => { cv.style.cursor = W && hit(e) ? 'pointer' : 'default'; });
+  function setView(v) {
+    view = v;
+    if (v === 'town') { const S = town(townId) || W.towns.find(t => t.region === regionId && t.npcs.length) || W.towns[0]; townId = S.id; regionId = S.region; paperTown = S.id; if (!sel || !['npc', 'bld'].includes(sel.kind)) sel = { kind: 'town', id: S.id }; S.npcs.forEach(n => { if (n.dest) n.pos = { ...n.dest }; }); }
+    if (v === 'region' && sel?.kind === 'region') regionId = sel.id;
+    if (v === 'world') { view = v = 'region'; }
+    document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', b.dataset.view === v));
+    renderAll();
+  }
+  document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view));
+
+  /* ---------- panels ---------- */
+  const cvar = v => `var(${v})`;
+  const chip = a => { const x = ACT[a] || ACT.idle; return `<span class="chip" style="--c:${cvar(x[1])}">${x[0]}</span>`; };
+  const personBtn = n => { const a = ACT[n.action] || ACT.idle; return `<button class="person" type="button" data-npc="${n.id}"><span class="dot" style="--c:${cvar(a[1])}"></span>${esc(n.first)} ${esc(n.last)}${n.hero ? ' <span class="mark hero">★</span>' : ''}</button>`; };
+  const needBar = (l, v, c) => `<div class="need"><span class="label">${esc(l)}</span> <b>${Math.round(v)}</b><div class="bar"><i style="width:${Math.round(v)}%;--c:${cvar(c)}"></i></div></div>`;
+  const pips = (v, bad) => `<span class="pips ${bad ? 'bad' : ''}" aria-label="${v} of 5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= v ? 'on' : ''}"></i>`).join('')}</span>`;
+  const conf = w => `<span class="conf" title="How sure: ${Math.round(Math.min(1, w) * 100)}%"><i style="width:${Math.round(Math.min(1, w) * 100)}%"></i></span>`;
+  function scoreRows(list, colors, labels) {
+    const top = Math.max(1, list[0]?.score || 1);
+    return list.slice(0, 7).map((s, i) => `<div class="score ${i === 0 ? 'win' : ''}" style="--c:${cvar(colors[s.key] || '--a-idle')}"><span>${esc(labels ? s.label : (OPT[s.key] || s.key))}</span><span class="track"><i style="width:${Math.max(2, Math.min(100, s.score / top * 100))}%"></i></span><span class="n">${s.score}</span><span class="why">${esc(s.why)}</span></div>`).join('');
+  }
+  function linkify(e) {
+    let t = esc(e.text); const names = [];
+    if (e.town != null) { const T = town(e.town); if (T) names.push([T.name, `data-go-town="${T.id}"`]); }
+    if (e.zone != null) { const Z = zone(e.zone); if (Z) names.push([Z.name, `data-go-zone="${Z.id}"`]); }
+    for (const [n, attr] of names) { const i = t.indexOf(esc(n)); if (i >= 0) t = t.slice(0, i) + `<a ${attr}>${esc(n)}</a>` + t.slice(i + esc(n).length); }
+    return t;
+  }
+  const source = by => typeof by === 'number' ? (npc(by) ? `${npc(by).first} ${npc(by).last}` : 'someone now gone') : by === 'rumour' ? 'talk in the streets' : by === 'elders' ? 'the founders' : by === 'witness' ? 'seen by the town' : by;
+  const ago = d => { const a = W.day - d; return a <= 0 ? 'today' : a === 1 ? 'yesterday' : `${a} days ago`; };
+  function ledgerHTML(S) {
+    const L = Object.values(S.ledger);
+    const food = L.filter(x => x.t === 'res' && Sim.D.sources[x.src]?.food > 0 && x.amt > 0).sort((a, b) => b.day - a.day || b.amt - a.amt).slice(0, 10);
+    const other = L.filter(x => x.t === 'res' && !(Sim.D.sources[x.src]?.food > 0) && x.amt > 0).sort((a, b) => b.day - a.day).slice(0, 6);
+    const danger = L.filter(x => x.t === 'danger' && x.amt > 0).sort((a, b) => b.day - a.day).slice(0, 8);
+    const mk = L.filter(x => x.t === 'market' && x.town !== S.id).sort((a, b) => b.day - a.day).slice(0, 6);
+    const item = (main, right, small, w) => `<div class="li"><span>${main}${conf(w)}</span><span class="num">${right}</span><small>${small}</small></div>`;
+    const sect = (t, arr, f, empty) => `<div class="sect"><span class="label">${t}</span><div class="ledger">${arr.length ? arr.map(f).join('') : `<span class="muted">${empty}</span>`}</div></div>`;
+    const doubts = Object.entries(S.trust).filter(([, v]) => v < 0.85).map(([id, v]) => npc(+id) ? `${npc(+id).first} ${npc(+id).last} (${Math.round(v * 100)}%)` : null).filter(Boolean);
+    return sect('Food the town knows of', food, x => item(`${title(x.src)} in <a data-go-zone="${x.z}">${esc(zone(x.z)?.name)}</a>`, `~${x.amt}`, `${source(x.by)}, ${ago(x.day)}`, x.w), 'Nothing yet. Scouts and gatherers will find some.')
+      + sect('Dangers the town knows of', danger, x => item(`${esc(Sim.describe(x))} in <a data-go-zone="${x.z}">${esc(zone(x.z)?.name)}</a>`, `power ${Math.round(x.power)}`, `${source(x.by)}, ${ago(x.day)}`, x.w), 'None reported.')
+      + (other.length ? sect('Other resources', other, x => item(`${title(x.src)} in ${esc(zone(x.z)?.name)}`, `~${x.amt}`, `${source(x.by)}, ${ago(x.day)}`, x.w), '') : '')
+      + sect('Other markets', mk, x => item(`<a data-go-town="${x.town}">${esc(town(x.town)?.name)}</a>`, `${x.fd} days of food`, `${source(x.by)}, ${ago(x.day)}`, x.w), 'The town has heard nothing about other markets.')
+      + (doubts.length ? `<div class="sect"><span class="label">The council doubts</span><span>${doubts.map(esc).join(' · ')}</span></div>` : '');
+  }
+  function casesHTML(S) {
+    const cs = Object.entries(S.cases).filter(([k]) => k.includes(':') || !Object.keys(S.cases).some(o => o.startsWith(k + ':'))).sort((a, b) => b[1].n - a[1].n).slice(0, 8);
+    if (!cs.length) return '<span class="muted">Nothing tried yet.</span>';
+    return cs.map(([, c]) => `<div class="case" style="--c:${c.v >= 0.6 ? 'var(--accent)' : c.v <= 0.35 ? 'var(--danger)' : 'var(--gold)'}"><span>${esc(title(c.label.charAt(0)) + c.label.slice(1))}</span><span class="track"><i style="width:${Math.round(c.v * 100)}%"></i></span><span class="n">${c.n}×</span></div>`).join('');
+  }
+  function inspectTown(S) {
+    const beds = S.buildings.filter(b => b.type === 'house'), used = beds.reduce((s, b) => s + b.residents.length, 0), cap = beds.reduce((s, b) => s + b.beds, 0);
+    const fd = Sim.foodDays(S), heroes = S.npcs.filter(n => n.hero), sick = S.npcs.filter(n => n.sick).length, mods = S.mods.filter(m => m.until >= W.day);
+    const bounties = W.bounties.filter(b => b.town === S.id && !b.done), away = W.parties.filter(P => P.home === S.id);
+    const fact = (l, v, warn) => `<div class="${warn ? 'warn' : ''}"><span class="label">${l}</span><b>${v}</b></div>`;
+    const avoid = Object.entries(S.avoid).filter(([, d]) => d > W.day).map(([z]) => zone(+z)?.name).filter(Boolean);
+    return `<div class="who"><h2>${esc(S.name)}</h2><p class="meta">${S.npcs.length ? title(S.kind) : 'Abandoned'} in ${esc(region(S.region).name)} · founded with ${S.founded}${S.palisade ? ` · palisade ${'I'.repeat(S.palisade)}` : ''}</p></div>
+      <div class="row" style="margin:10px 0 2px">${view !== 'town' ? `<button class="btn primary" type="button" data-open-town="${S.id}">Walk the streets</button>` : ''}<button class="btn" type="button" data-read-paper="${S.id}">Read ${esc(S.paper.name)}</button></div>
+      <div class="sect"><div class="facts">${fact('People', S.npcs.length)}${fact('Food', fd.toFixed(1) + ' d', fd < 1)}${fact('Treasury', Math.round(S.treasury), S.treasury < 10)}${fact('Beds', `${used}/${cap}`)}${fact('Threat', Math.round(S.threat), S.threat > S.force)}${fact('Fighters', Math.round(S.force))}</div></div>
+      <div class="sect"><div class="dials">${Object.entries(S.dials).map(([k, v]) => `<div class="dial"><span>${k}</span>${pips(v, k === 'Fear' ? v >= 3 : v <= 1)}<small>${DIAL_HINT[k] || ''}</small></div>`).join('')}</div></div>
+      ${mods.length || sick ? `<div class="sect"><span class="label">Conditions</span><span>${mods.map(m => `${esc(m.name)} (until day ${m.until})`).join(' · ')}${sick ? `${mods.length ? ' · ' : ''}<span class="warn">${sick} sick with fever</span>` : ''}</span></div>` : ''}
+      ${S.councilScores ? `<div class="sect"><span class="label">Council at dawn · options built from what it knows</span><div class="scores">${scoreRows(S.councilScores, OPT_C, true)}</div></div>` : ''}
+      <h3 class="sub">What ${esc(S.name)} has learned</h3><div class="sect">${casesHTML(S)}</div>
+      <h3 class="sub">What ${esc(S.name)} knows</h3>${ledgerHTML(S)}
+      ${avoid.length ? `<div class="sect"><span class="label">Keeping away from</span><span>${avoid.map(esc).join(', ')}</span></div>` : ''}
+      ${bounties.length ? `<div class="sect"><span class="label">Bounties posted</span><span>${bounties.map(b => { const p = pop(b.pop); return p ? `${b.reward} coin on ${esc(Sim.popName(p, true))}${b.taken ? ' (taken)' : ''}` : ''; }).join(' · ')}</span></div>` : ''}
+      ${heroes.length ? `<div class="sect"><span class="label">Heroes</span><div class="people">${heroes.map(personBtn).join('')}</div></div>` : ''}
+      ${away.length ? `<div class="sect"><span class="label">Out in the world</span><div class="people">${away.map(P => `<button class="person" type="button" data-party="${P.id}"><span class="${(PARTY[P.type] || [])[2] || 'dot'}" style="--c:${cvar((PARTY[P.type] || ['', '--a-idle'])[1])}"></span>${esc((PARTY[P.type] || ['Party'])[0])} · ${P.members.length}</button>`).join('')}</div></div>` : ''}`;
+  }
+  function creatureCard(p) {
+    const d = Sim.def(p), hostile = Sim.isHostile(p), strange = p.mutation || d.dark, b = W.bounties.find(b => b.pop === p.id && !b.done);
+    const bits = [d.kind, d.eats.length ? `fed ${Math.round((p.fedAvg ?? 1) * 100)}%` : null, !hostile && d.kind === 'animal' && p.safety != null ? `safety ${Math.round(p.safety * 100)}%` : null, hostile ? `level ${p.level}` : null, hostile ? `aggression ${p.aggro.toFixed(1)}` : d.food ? `food ${d.food}` : d.gives ? `gives ${d.gives}` : null, hostile ? `power ${Math.round(Sim.popPower(p))}` : null, p.hunger > 1 ? 'hungry' : null, p.slew ? `${p.slew} killed` : null].filter(Boolean);
+    return `<button class="creature ${hostile ? 'hostile' : ''} ${strange ? 'strange' : ''}" type="button" data-pop="${p.id}" ${hostile ? `style="border-left-color:${tvar(p)}"` : ''}><b>${hostile ? `<span style="color:${tvar(p)}">${esc(Sim.popName(p))}</span><span class="tag" style="color:${tvar(p)}">${THREAT[Sim.threatKind(p)]}</span>` : esc(Sim.popName(p))}${p.mutation ? '<span class="tag strange">mutated</span>' : ''}${b ? `<span class="tag gold">bounty ${b.reward}</span>` : ''}${p.tags.includes('tame') ? '<span class="tag ok">tame</span>' : ''}${p.chief != null ? '<span class="tag strange">led</span>' : ''}${p.young ? '<span class="tag ok">young</span>' : ''}</b><span class="num">${d.solo ? '' : Math.round(p.count)}</span><small>${bits.join(' · ')}</small></button>`;
+  }
+  function inspectZone(Z) {
+    const ps = W.pops.filter(p => p.zone === Z.id).sort((a, b) => (Sim.isHostile(b) - Sim.isHostile(a)) || b.count - a.count);
+    const knowers = W.towns.filter(t => Object.values(t.ledger).some(x => x.z === Z.id && x.t !== 'news'));
+    return `<div class="who"><h2>${esc(Z.name)}</h2><p class="meta">${Z.terrains.map(title).join(', ')}${Z.tags.length ? ' · ' + Z.tags.map(esc).join(', ') : ''} · ${esc(region(Z.region).name)}</p></div>
+      <div class="sect"><span class="label">What is really here (only you can see this)</span><div class="creatures">${ps.length ? ps.map(creatureCard).join('') : '<span class="muted">Nothing lives here now.</span>'}</div></div>
+      <div class="sect"><span class="label">Towns that know this place</span>${knowers.length ? `<div class="people">${knowers.map(t => `<button class="person" type="button" data-town="${t.id}">${esc(t.name)}</button>`).join('')}</div>` : '<span class="muted">Nobody has been here yet.</span>'}</div>`;
+  }
+  function inspectPop(p) {
+    const Z = zone(p.zone), d = Sim.def(p), hostile = Sim.isHostile(p);
+    const hurt = W.towns.filter(t => t.threats?.[p.id]).map(t => ({ t, i: t.threats[p.id] }));
+    const memZ = Object.entries(p.mem?.z || {}).map(([z, v]) => ({ z: zone(+z), v })).filter(o => o.z).sort((a, b) => b.v - a.v);
+    const memR = Object.entries(p.mem?.raid || {}).map(([t, v]) => ({ t: town(+t), v })).filter(o => o.t).sort((a, b) => b.v - a.v);
+    const believed = W.towns.map(t => ({ t, x: Object.values(t.ledger).find(x => x.t === 'danger' && x.pop === p.id) })).filter(o => o.x);
+    return `<div class="who"><h2 style="${hostile ? `color:${tvar(p)}` : ''}">${esc(Sim.popName(p))}</h2><p class="meta">${hostile ? `${THREAT[Sim.threatKind(p)]} · ` : ''}${esc(d.kind)} · ${esc(p.def)}${p.mutation ? ` · mutated into ${esc(p.mutation)}` : ''} · in <a data-go-zone="${Z.id}" style="cursor:pointer;text-decoration:underline">${esc(Z.name)}</a></p></div>
+      ${p.chief != null && npc(p.chief) ? `<div class="sect"><span class="label">Led by</span><div class="people"><button class="person" type="button" data-npc="${p.chief}">${esc(Sim.titled(npc(p.chief)))}</button></div></div>` : ''}
+      ${p.hoard > 1 ? `<div class="sect"><span class="label">Hoard</span><span>${Math.round(p.hoard)} coin, taken from towns</span></div>` : ''}${p.eggs != null ? '<div class="sect"><span class="warn">Guarding a clutch of eggs.</span></div>' : ''}${p.young ? '<div class="sect"><span class="muted">Young, still growing.</span></div>' : ''}
+      <div class="sect"><div class="facts"><div><span class="label">${d.solo ? 'Beast' : 'Count'}</span><b>${d.solo ? 1 : Math.round(p.count)}</b></div><div><span class="label">Level</span><b>${p.level}</b></div><div><span class="label">Power</span><b>${Math.round(Sim.popPower(p))}</b></div>
+        <div><span class="label">Aggression</span><b>${p.aggro.toFixed(1)}</b></div><div><span class="label">Hunger</span><b>${p.hunger.toFixed(1)}</b></div><div><span class="label">Killed</span><b>${p.slew || 0}</b></div></div></div>
+      ${d.eats.length ? `<div class="sect"><span class="label">Food</span><span>Eats ${d.eats.map(esc).join(', ')}. Fed ${Math.round((p.fedAvg ?? 1) * 100)}% lately${p.hunger > 3 ? ', and starving' : p.hunger > 1 ? ', and hungry' : ''}.${p.safety != null && !hostile ? ` Safety ${Math.round(p.safety * 100)}%: ${p.safety < 0.5 ? 'being hunted hard' : 'left mostly alone'}.` : ''}${p.settled === p.zone ? ' Has settled here.' : ''}</span></div>` : ''}
+      ${hostile ? `<div class="sect"><span class="label">What it has learned</span><span>${memZ.length ? `Feeds best in ${memZ.slice(0, 2).map(o => `${esc(o.z.name)} (${Math.round(o.v * 100)}%)`).join(', ')}.` : 'Has not roamed yet.'} ${memR.length ? `Thinks ${memR.slice(0, 2).map(o => `${esc(o.t.name)} is ${o.v > 0.6 ? 'easy' : o.v < 0.35 ? 'too well defended' : 'worth a try'}`).join(', and ')}.` : ''} ${p.mem?.road > 0.8 ? 'Has learned the roads are good hunting.' : p.mem?.road < 0.3 ? 'Has learned to leave travellers alone.' : ''}</span></div>` : ''}
+      ${believed.length ? `<div class="sect"><span class="label">What towns believe</span><span>${believed.map(o => `${esc(o.t.name)}: ${esc(Sim.describe(o.x))}`).join(' · ')}</span></div>` : ''}
+      ${hurt.length ? `<div class="sect"><span class="label">Towns it has hurt</span><span>${hurt.map(o => `${esc(o.t.name)} (${o.i.incidents} incident${o.i.incidents > 1 ? 's' : ''}${o.i.deaths ? `, ${o.i.deaths} dead` : ''})`).join(' · ')}</span></div>` : ''}`;
+  }
+  function inspectParty(P) {
+    const [name] = PARTY[P.type] || ['Party'];
+    const home = town(P.home), dest = P.dest.town != null ? town(P.dest.town) : P.dest.zone != null ? zone(P.dest.zone) : null, target = P.target ? pop(P.target) : null;
+    const cargo = Object.entries(P.cargo || {}).filter(([, q]) => q >= 1).map(([g, q]) => `${Math.round(q)} ${g}`).join(', ');
+    const state = { out: 'On the road', back: 'Heading home', search: 'Searching', forage: 'Foraging', explore: 'Looking around' }[P.state] || P.state;
+    return `<div class="who"><h2>${name}</h2><p class="meta">From ${esc(home?.name || '?')} to ${esc(dest?.name || 'open country')} · ${state}</p></div>
+      ${target ? `<div class="sect"><span class="label">Hunting</span><span><button class="person" type="button" data-pop="${target.id}">${esc(Sim.popName(target))}</button></span></div>` : ''}
+      ${cargo || P.coin ? `<div class="sect"><span class="label">Carrying</span><span>${cargo}${cargo && P.coin ? ', ' : ''}${P.coin ? Math.round(P.coin) + ' coin' : ''}</span></div>` : ''}
+      <div class="sect"><span class="label">Members</span><div class="people">${P.members.map(personBtn).join('')}</div></div>`;
+  }
+  function knowHTML(n) {
+    if (!n.know.length) return '<span class="muted">Knows nothing worth telling.</span>';
+    return `<div class="ledger">${n.know.slice().sort((a, b) => b.day - a.day).slice(0, 8).map(it => {
+      const secret = n.hidden[it.k];
+      const what = it.t === 'res' ? `${title(it.src)} in ${esc(zone(it.z)?.name)} (~${it.amt})` : it.t === 'danger' ? `${esc(Sim.describe(it))} in ${esc(zone(it.z)?.name)}` : it.t === 'market' ? `${esc(town(it.town)?.name)} market: ${it.fd} days of food` : it.t === 'survey' ? `Looked over ${esc(zone(it.z)?.name)}` : esc(it.text);
+      return `<div class="li"><span>${what}${secret ? ' <span class="tag strange">keeping it secret</span>' : ''}</span><span class="num">${it.hops ? 'heard' : 'saw'}</span><small>${ago(it.day)}${it.told ? '' : ' · not yet told the council'}</small></div>`;
+    }).join('')}</div>`;
+  }
+  const cap = t => String(t || '').charAt(0).toUpperCase() + String(t || '').slice(1);
+  const yd = d => `Y${1 + Math.floor((d - 1) / (Sim.SEASON_LEN * 4))} D${d}`;
+  const BIG = new Set(['lost spouse', 'lost child', 'lost parent', 'town sacked', 'came home to ruins', 'home destroyed', 'turned outlaw', 'became hero', 'avenged', 'redeemed', 'bitten', 'slew a monster']);
+  const STEP_TXT = { outlaw: 'about to take to the wilds', gather: 'gathering a band', raid: 'raiding to prove themself', 'take ruins': 'looking for a hideout', crown: 'about to crown themself', study: 'studying at the graves', 'raise one': 'about to bring back the one they lost', hide: 'hiding what they did', 'raise all': 'waiting for the next deaths', 'become lich': 'becoming something else', train: 'training', 'hunt grudge': 'hunting whoever wronged them', wait: 'biding their time', 'found town': 'gathering people to found a town' };
+  function arcWhy(n) {
+    const A = n.arc, a = Sim.D.arcs[A.name];
+    if (A.done) return `Began day ${A.began}, ended day ${A.ended ?? '?'}: ${A.done}.`;
+    const st = a?.steps[A.step], b = Sim.band(n);
+    const g = Object.values(n.grudges || {}).sort((x, y) => y.w - x.w)[0];
+    const doing = !st ? 'ruling what they built' : st.verb === 'hunt grudge' && g ? `hunting ${g.name}` : STEP_TXT[st.verb] || st.verb;
+    return `Since day ${A.began}. Now ${doing}${b ? `, leading ${Math.round(b.count)} in ${zone(b.zone)?.name || 'the wilds'}` : ''}.`;
+  }
+  function storyHTML(n) {
+    const D = Sim.D, scars = Sim.scarsOf(n), A = n.arc, a = A && D.arcs[A.name];
+    const kinBtn = (k, rel) => { const p = npc(k.id); return p ? `<button class="person" type="button" data-npc="${p.id}">${esc(rel)}: ${esc(Sim.titled(p))}</button>` : `<span class="muted" style="font-size:.85rem;align-self:center">${esc(rel)}: ${esc(k.name)} (dead)</span>`; };
+    const kin = [n.kin?.spouse ? kinBtn(n.kin.spouse, 'spouse') : '', ...(n.kin?.parents || []).map(k => kinBtn(k, 'parent')), ...(n.kin?.kids || []).map(k => kinBtn(k, 'child'))].filter(Boolean);
+    const gr = Object.values(n.grudges || {}).sort((x, y) => y.w - x.w);
+    const scarCls = x => { const d = D.scars[x.name]; return d?.dark > 0 || d?.outlaw > 0 ? 'dark' : d?.grudge ? 'bad' : ''; };
+    return `${n.desire ? `<div class="sect boxed" style="--c:var(--accent)"><span class="label">What ${esc(n.first)} wants now</span><span class="desire">${esc(cap(n.desire.text))}</span></div>` : ''}
+      ${A ? `<div class="sect boxed" style="--c:var(--strange)"><span class="label">On a path · ${esc(A.name)}${A.done ? ' · over' : ''}</span><span>${esc(arcWhy(n))}</span><div class="steps">${(a?.steps || []).map((st, i) => `<span class="${A.done || i < A.step ? 'done' : i === A.step ? 'now' : ''}">${esc(st.verb)}${st.n ? ' ' + st.n : ''}</span>`).join('')}${a && A.step >= a.steps.length && !A.done ? '<span class="now">reigning</span>' : ''}</div>${!A.done ? `<div class="row" style="margin-top:8px;gap:6px"><span class="muted" style="font-size:.8rem">If your players deal with them:</span><button class="btn" type="button" data-resolve="slain" data-id="${n.id}">They slew them</button><button class="btn" type="button" data-resolve="spared" data-id="${n.id}">They spared them</button><button class="btn" type="button" data-resolve="redeemed" data-id="${n.id}">They turned them</button></div>` : ''}</div>` : ''}
+      ${scars.length ? `<div class="sect"><span class="label">Marked by</span><div class="scars">${scars.map(x => `<span class="scar ${scarCls(x)}" title="since day ${x.day}">${esc(Sim.scarText(n, x))}</span>`).join('')}</div></div>` : ''}
+      ${gr.length ? `<div class="sect"><span class="label">Holds a grudge against</span><span>${gr.map(g => esc(g.name) + (g.inherited ? ' <small class="muted">(from their parents)</small>' : '')).join(', ')}</span></div>` : ''}
+      ${kin.length ? `<div class="sect"><span class="label">Family</span><div class="people">${kin.join('')}</div></div>` : ''}
+      ${n.note ? `<div class="sect"><span class="label">Your notes</span><span>${esc(n.note)}</span></div>` : ''}
+      <div class="sect"><span class="label">Life story</span>${n.life?.length ? `<ul class="life">${n.life.map(l => `<li class="${BIG.has(l.t) ? 'big' : ''}"><time>${yd(l.d)}</time><span>${esc(l.text)}</span></li>`).join('')}</ul>` : '<span class="muted">Nothing much has happened to them yet.</span>'}</div>
+      <div class="row" style="margin:6px 0 4px"><button class="btn" type="button" data-copy-card="${n.id}">Copy as a card</button><span class="muted" id="copied" style="font-size:.8rem" aria-live="polite"></span></div>`;
+  }
+  function inspectNPC(n) {
+    const S = town(n.town), home = S && n.home != null ? S.buildings[n.home] : null, away = W.parties.find(P => P.members.includes(n));
+    const mod = v => (v >= 10 ? '+' : '') + Math.floor((v - 10) / 2), jp = Sim.prof(n);
+    const NEEDC = { eat: '--a-eat', sleep: '--a-sleep', company: '--a-social', faith: '--a-pray' };
+    const b = Sim.band(n), fz = n.figure ? zone(b ? b.zone : n.zone) : null;
+    return `<div class="who"><h2>${esc(Sim.titled(n))}${n.hero ? ' <span class="tag gold">hero</span>' : ''}${n.gm ? ' <span class="tag ok">yours</span>' : ''}</h2>
+        <p class="meta">${esc(title(n.race))} · ${n.child ? 'child' : Math.floor(n.age)} · ${esc(n.child ? 'too young to work' : jobTitle(n))}${S ? ` · <a data-go-town="${S.id}" style="cursor:pointer;text-decoration:underline">${esc(S.name)}</a>` : ''}${home ? ` · ${esc(home.name)}` : ''}${fz ? ` · <a data-go-zone="${fz.id}" style="cursor:pointer;text-decoration:underline">${esc(fz.name)}</a>` : ''}</p></div>
+      ${n.dead ? '<p class="now">No longer of this world.</p>' : away ? `<div class="now">${chip('travel')}<p>${esc(n.doing)} <button class="person" type="button" data-party="${away.id}">see party</button></p></div>` : n.figure ? `<div class="now">${chip('scheme')}<p>${b ? `Leads <button class="person" type="button" data-pop="${b.id}">${esc(Sim.popName(b))}</button>` : 'Out in the world, alone'}${fz ? ` in ${esc(fz.name)}` : ''}</p></div>` : `<div class="now">${chip(n.action)}<p>${esc(n.doing || '')}</p></div>`}
+      ${n.hero ? `<div class="sect boxed hero-box" style="--c:${hvar(n)}"><span class="label">★ ${esc(n.hero.cls)} · level ${n.hero.level}</span><span>Renown ${Math.round(n.hero.renown)} · became a hero on day ${n.hero.since} ${esc(n.hero.origin)}.</span></div>` : ''}
+      ${storyHTML(n)}
+      <div class="needs">${Object.values(Sim.D.needs).map(d => needBar(title(d.name), n.needs[d.name] || 0, (n.needs[d.name] || 0) > 75 ? '--a-alert' : NEEDC[d.met] || '--a-idle')).join('')}<div class="coin"><span class="label">Coin</span><br><b>${n.coin.toFixed(1)}</b></div></div>
+      ${n.sick || n.injured || n.grief ? `<div class="sect"><span>${n.sick ? '<span class="warn">Sick with fever.</span> ' : ''}${n.injured ? '<span class="warn">Injured.</span> ' : ''}${n.grief ? `Grieving ${esc(n.grief.name)}, who ${esc(n.grief.cause)}.` : ''}</span></div>` : ''}
+      ${jp.kind === 'gatherer' && n.gz != null && zone(n.gz) ? `<div class="sect"><span class="label">Works in</span><span>${esc(zone(n.gz).name)}, because ${esc(n.gzWhy || 'it is near')}.</span></div>` : ''}
+      ${!away && n.scores?.length ? `<div class="sect"><span class="label">Why this choice · ${pad(W.hour)}</span><div class="scores">${scoreRows(n.scores, OPT_C)}</div></div>` : ''}
+      <div class="sect"><span class="label">What ${esc(n.first)} knows</span>${knowHTML(n)}</div>
+      <div class="sect"><span class="label">Rolled</span>
+        <div class="stats">${['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA'].map((s, i) => `<div><small>${s}</small><b>${n.stats[i]}</b> <small>${mod(n.stats[i])}</small></div>`).join('')}</div>
+        <dl class="traits"><dt>Personality</dt><dd>${esc(n.personality)}</dd><dt>Wants</dt><dd>${esc(n.want)}</dd><dt>Fears</dt><dd>${esc(n.fear)}</dd><dt>Quirk</dt><dd>${esc(n.quirk)}</dd><dt>Fighting</dt><dd>power ${Sim.npcPower(n).toFixed(1)} · ${n.wins} won</dd>${S && S.trust[n.id] != null && S.trust[n.id] < 0.9 ? `<dt>Council trust</dt><dd>${Math.round(S.trust[n.id] * 100)}%</dd>` : ''}</dl></div>
+      ${n.ambition ? `<div class="sect boxed"><span class="label">Secret ambition · only the world knows</span><span>${esc(n.ambition)}</span><span class="muted">${n.secret} of 120 hours spent on it in secret</span></div>` : ''}
+      <div class="sect"><span class="label">Recently</span><ul class="hist">${n.history.map(h => { const m = h.match(/^(D\d+ \d\d:00) (.*)$/); return `<li><time>${esc(m ? m[1] : '')}</time><span>${esc(m ? m[2] : h)}</span></li>`; }).join('')}</ul></div>`;
+  }
+  function inspectBld(S, b) {
+    const here = S.npcs.filter(n => n.where === b.id), workers = S.npcs.filter(n => b.job ? Sim.prof(n).building === b.job : b.type === 'market' && (Sim.prof(n).kind === 'merchant' || !Sim.prof(n).building));
+    const residents = (b.residents || []).map(id => npc(id)).filter(Boolean);
+    const list = (t, a, e) => `<div class="sect"><span class="label">${t}</span>${a.length ? `<div class="people">${a.map(personBtn).join('')}</div>` : `<span class="muted">${e}</span>`}</div>`;
+    return `<div class="who"><h2>${esc(b.burned ? 'Burned house' : b.name)}</h2><p class="meta">${esc(S.name)}</p></div>${list(`Here now · ${here.length}`, here, 'Nobody is here')}
+      ${b.type === 'house' ? list(`Lives here · ${residents.length} of ${b.beds} beds`, residents, 'Empty') : b.type === 'woods' ? `<div class="sect"><span class="muted">The edge of ${esc(b.name)}. Gatherers set out from here, and people with secrets come here after dark.</span></div>` : list(`Works here · ${workers.length}`, workers, 'Nobody works here')}`;
+  }
+  function inspectRegion(R) {
+    const ts = W.towns.filter(t => t.region === R.id), people = ts.reduce((s, t) => s + t.npcs.length, 0), hostile = W.pops.filter(p => Sim.isHostile(p) && zone(p.zone)?.region === R.id);
+    return `<div class="who"><h2>${esc(R.name)}</h2><p class="meta">${ts.length} towns · ${people} people · ${hostile.length} hostile packs</p></div><div class="row" style="margin-top:10px"><button class="btn primary" type="button" data-open-region="${R.id}">Open region</button></div>`;
+  }
+  function renderInspector() {
+    let html = '';
+    if (sel?.kind === 'town' && town(sel.id)) html = inspectTown(town(sel.id));
+    else if (sel?.kind === 'zone' && zone(sel.id)) html = inspectZone(zone(sel.id));
+    else if (sel?.kind === 'pop' && pop(sel.id)) html = inspectPop(pop(sel.id));
+    else if (sel?.kind === 'party' && party(sel.id)) html = inspectParty(party(sel.id));
+    else if (sel?.kind === 'npc') { const n = npc(sel.id); html = n ? inspectNPC(n) : '<p class="muted">They are gone from the world.</p>'; }
+    else if (sel?.kind === 'bld' && town(sel.town)) html = inspectBld(town(sel.town), town(sel.town).buildings[sel.id]);
+    else if (sel?.kind === 'region' && region(sel.id)) html = inspectRegion(region(sel.id));
+    else if (sel?.kind === 'pop') html = '<p class="muted">That creature is gone from the world.</p>';
+    else if (sel?.kind === 'party') html = '<p class="muted">That party has reached its end.</p>';
+    $('#inspector').innerHTML = html || '<p class="muted">Click a town, a wild area, a traveller, or a person.</p>';
+  }
+  function renderContext() {
+    const el = $('#context');
+    if (view === 'world') {
+      el.innerHTML = `<h2>Regions</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Region</th><th class="num">Towns</th><th class="num">People</th><th class="num">Hostile</th><th class="num">Heroes</th></tr></thead><tbody>${W.regions.map(R => { const ts = W.towns.filter(t => t.region === R.id); return `<tr data-region="${R.id}"><td>${esc(R.name)}</td><td class="num">${ts.filter(t => t.npcs.length).length}</td><td class="num">${ts.reduce((s, t) => s + t.npcs.length, 0)}</td><td class="num">${W.pops.filter(p => Sim.isHostile(p) && zone(p.zone)?.region === R.id).length}</td><td class="num">${ts.flatMap(t => t.npcs).filter(n => n.hero).length}</td></tr>`; }).join('')}</tbody></table></div>`;
+      return;
+    }
+    if (view === 'town') {
+      const S = town(townId), awayN = W.parties.filter(P => P.home === S.id).reduce((s, P) => s + P.members.length, 0);
+      const rows = [...S.npcs].sort((a, b) => (b.hero ? 1 : 0) - (a.hero ? 1 : 0) || a.job.localeCompare(b.job) || a.first.localeCompare(b.first));
+      const hunger = n => Sim.needBy(n, 'eat'), tired = n => Sim.needBy(n, 'sleep');
+      const goods = Object.keys(Sim.D.goods).filter(g => (S.market.stock[g] || 0) >= 0.5 || S.market.sold[g]).map(g => { const p = Sim.price(S, g), r = p / Sim.D.goods[g].price; return `<tr><td>${esc(title(g))}${Sim.D.goods[g].food ? ' <span class="muted" style="font-size:.75rem">food</span>' : ''}</td><td class="num">${Math.round(S.market.stock[g] || 0)}</td><td class="num">${p.toFixed(1)}</td><td class="num ${r >= 1.5 ? 'up' : r <= .7 ? 'down' : ''}">${r >= 1.05 ? '▲' : r <= .95 ? '▼' : ''} ${Math.round(r * 100)}%</td></tr>`; }).join('');
+      el.innerHTML = `<h2>${esc(S.name)} <small>${S.npcs.length} people${awayN ? ` · ${awayN} away` : ''}</small></h2>
+        <div class="tbl-wrap"><table class="tbl roster"><thead><tr><th>Name</th><th>Job</th><th>Doing</th><th class="num">Hunger</th><th class="num">Tired</th><th class="num">Coin</th></tr></thead><tbody>${rows.map(n => `<tr data-npc="${n.id}" class="${sel?.kind === 'npc' && sel.id === n.id ? 'sel' : ''}">
+          <td>${esc(Sim.titled(n))}${n.hero ? '<span class="mark hero" title="Hero">★</span>' : ''}${n.arc && !n.arc.done ? '<span class="mark" title="On a path" style="color:var(--strange)">✦</span>' : ''}${n.child ? ' <small class="muted">child</small>' : ''}${n.ambition ? '<span class="mark" title="Secret ambition">◆</span>' : ''}${Object.keys(n.hidden).length ? '<span class="mark" title="Keeping a secret from the council">⌂</span>' : ''}</td><td>${esc(jobTitle(n))}</td><td>${chip(n.action)}<span class="doing">${esc(n.doing || '')}</span></td>
+          <td class="num">${Math.round(hunger(n))}</td><td class="num">${Math.round(tired(n))}</td><td class="num">${n.coin.toFixed(0)}</td></tr>`).join('')}</tbody></table></div>
+        <table class="goods"><thead><tr><th>Market</th><th class="num">Stock</th><th class="num">Price</th><th class="num">vs normal</th></tr></thead><tbody>${goods}</tbody></table>`;
+      return;
+    }
+    const R = region(regionId), ts = W.towns.filter(t => t.region === R.id), zs = W.zones.filter(z => z.region === R.id);
+    el.innerHTML = `<h2>${esc(R.name)} <small>click a row to inspect</small></h2>
+      <div class="tbl-wrap"><table class="tbl towns"><thead><tr><th>Town</th><th class="num">People</th><th class="num">Food</th><th class="num">Treasury</th><th class="num">Fear</th><th class="num">Threat</th><th class="num">Knows</th><th>Council did</th></tr></thead><tbody>${ts.map(t => { const fd = Sim.foodDays(t); return `<tr data-town="${t.id}" class="${sel?.kind === 'town' && sel.id === t.id ? 'sel' : ''}"><td>${esc(t.name)}${t.npcs.some(n => n.hero) ? '<span class="mark hero">★</span>' : ''}</td><td class="num">${t.npcs.length}</td><td class="num ${fd < 1 ? 'warn' : ''}">${fd.toFixed(1)}d</td><td class="num">${Math.round(t.treasury)}</td><td class="num ${t.fear >= 5 ? 'warn' : ''}">${t.fear.toFixed(1)}</td><td class="num ${t.threat > t.force ? 'warn' : ''}">${Math.round(t.threat)}/${Math.round(t.force)}</td><td class="num">${Object.values(t.ledger).filter(x => x.t !== 'news').length}</td><td>${esc(t.npcs.length ? (t.lastCouncil?.length ? t.lastCouncil.join('; ') : 'Waited') : 'Abandoned')}</td></tr>`; }).join('')}</tbody></table></div>
+      <div class="tbl-wrap" style="margin-top:14px"><table class="tbl"><thead><tr><th>Wilds</th><th>Terrain</th><th>Really living there</th></tr></thead><tbody>${zs.map(z => `<tr data-zone="${z.id}" class="${sel?.kind === 'zone' && sel.id === z.id ? 'sel' : ''}"><td>${esc(z.name)}</td><td>${z.terrains.map(esc).join(', ')}</td><td>${W.pops.filter(p => p.zone === z.id && p.count >= 1).sort((a, b) => Sim.isHostile(b) - Sim.isHostile(a)).map(p => `<span class="${Sim.isHostile(p) ? '' : 'muted'}" style="${Sim.isHostile(p) ? `color:${tvar(p)};font-weight:700` : ''}">${esc(Sim.popName(p))} ${Sim.def(p).solo ? '' : Math.round(p.count)}</span>`).join(', ') || '<span class="muted">empty</span>'}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  function currentTarget() {
+    let zoneT = null, townT = null;
+    if (sel?.kind === 'zone') zoneT = zone(sel.id); else if (sel?.kind === 'pop') zoneT = zone(pop(sel.id)?.zone);
+    if (sel?.kind === 'town') townT = town(sel.id); else if (sel?.kind === 'npc') townT = town(npc(sel.id)?.town); else if (view === 'town') townT = town(townId);
+    if (!zoneT && townT) zoneT = zone(townT.wilds?.[0]);
+    const R = region(view === 'world' && sel?.kind === 'region' ? sel.id : (townT?.region ?? zoneT?.region ?? regionId));
+    return { zoneT, townT, R };
+  }
+  let releaseChoice = null;
+  function renderHand() {
+    const { zoneT, townT, R } = currentTarget();
+    const groups = [['zone', 'The wilds', zoneT], ['town', 'A town', townT], ['region', 'The region', R], ['world', 'The world', true]];
+    $('#target').innerHTML = `Aimed at ${zoneT ? `<b>${esc(zoneT.name)}</b>` : ''}${zoneT && townT ? ', ' : ''}${townT ? `<b>${esc(townT.name)}</b>` : ''}${(zoneT || townT) ? ' and ' : ''}<b>${esc(R.name)}</b>`;
+    const srcs = Object.values(Sim.D.sources).sort((a, b) => (b.hostile - a.hostile) || a.name.localeCompare(b.name));
+    if (!releaseChoice || !Sim.D.sources[releaseChoice]) releaseChoice = srcs.find(s => s.hostile)?.name || srcs[0]?.name;
+    $('#hand').innerHTML = groups.map(([sc, name, t]) => `<div class="group"><span class="label">${name}</span><div class="btns">${Sim.INTERVENE.filter(i => i.scope === sc).map(i => i.choose ? `<span class="row" style="gap:4px"><button class="btn" type="button" data-act="${i.id}" ${t ? '' : 'disabled'}>${esc(i.label)}</button><select class="inline" id="release-pick" aria-label="What to release">${srcs.map(s => `<option value="${esc(s.name)}" ${s.name === releaseChoice ? 'selected' : ''}>${esc(title(s.name))}${s.hostile ? ' (hostile)' : ''}</option>`).join('')}</select></span>` : `<button class="btn" type="button" data-act="${i.id}" ${t ? '' : 'disabled'}>${esc(i.label)}</button>`).join('')}</div></div>`).join('');
+    const rp = $('#release-pick'); if (rp) rp.onchange = e => { releaseChoice = e.target.value; };
+  }
+  document.addEventListener('click', e => {
+    const a = e.target.closest('[data-act]');
+    if (a) {
+      const it = Sim.INTERVENE.find(i => i.id === a.dataset.act), { zoneT, townT, R } = currentTarget();
+      const ref = it.scope === 'zone' ? { zone: zoneT?.id } : it.scope === 'town' ? { town: townT?.id } : { region: R.id };
+      it.run(ref, releaseChoice);
+      if (it.id === 'region') { regionId = W.regions[W.regions.length - 1].id; sel = { kind: 'region', id: regionId }; setView('region'); }
+      W.pending.length = 0; renderAll(); return;
+    }
+    const tb = e.target.closest('[data-tab]'); if (tb) { setTab(tb.dataset.tab); return; }
+    const rs = e.target.closest('[data-resolve]'); if (rs) { Sim.resolve(+rs.dataset.id, rs.dataset.resolve); W.pending.length = 0; save(); renderAll(); return; }
+    const cc = e.target.closest('[data-copy-card]'); if (cc) { const n = npc(+cc.dataset.copyCard); if (!n) return; const text = Sim.card(n); const done = () => { const c = $('#copied'); if (c) c.textContent = 'Copied. Paste it into your notes or a card.'; };
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done)); else fallbackCopy(text, done); return; }
+    const rp = e.target.closest('[data-read-paper]'); if (rp) { paperTown = +rp.dataset.readPaper; paperIdx = 0; setTab('paper'); return; }
+    const pn = e.target.closest('[data-paper-step]'); if (pn) { paperIdx = Math.max(0, paperIdx + +pn.dataset.paperStep); renderPaper(); return; }
+    const t = e.target.closest('[data-npc],[data-town],[data-zone],[data-pop],[data-party],[data-region],[data-go-town],[data-go-zone],[data-open-town],[data-open-region]');
+    if (!t) return;
+    const d = t.dataset;
+    if (d.openTown) { townId = +d.openTown; setView('town'); return; }
+    if (d.openRegion) { regionId = +d.openRegion; sel = { kind: 'region', id: regionId }; setView('region'); return; }
+    if (d.goTown) { const S = town(+d.goTown); if (S) { regionId = S.region; townId = S.id; paperTown = S.id; sel = { kind: 'town', id: S.id }; setView(view === 'town' ? 'town' : 'region'); } return; }
+    if (d.goZone) { const Z = zone(+d.goZone); if (Z) { regionId = Z.region; sel = { kind: 'zone', id: Z.id }; setView('region'); } return; }
+    if (d.npc) sel = { kind: 'npc', id: +d.npc };
+    else if (d.town) { sel = { kind: 'town', id: +d.town }; townId = +d.town; paperTown = +d.town; paperIdx = 0; }
+    else if (d.zone) sel = { kind: 'zone', id: +d.zone };
+    else if (d.pop) sel = { kind: 'pop', id: +d.pop };
+    else if (d.party) { sel = { kind: 'party', id: +d.party }; const P = party(+d.party); if (P && view === 'town') { regionId = town(P.home)?.region ?? regionId; setView('region'); return; } }
+    else if (d.region) { sel = { kind: 'region', id: +d.region }; regionId = +d.region; }
+    renderAll();
+  });
+  function fallbackCopy(text, done) { const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+  document.addEventListener('keydown', e => { if (e.key !== 'Escape' || e.target.closest('input,textarea,select') || !W) return; if (view === 'town') { setView('region'); } sel = { kind: 'region', id: regionId }; renderAll(); });
+  function setTab(t) { tab = t; document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t)); document.querySelectorAll('[data-pane]').forEach(p => p.hidden = p.dataset.pane !== t); renderTabs(); }
+  function renderLog() {
+    const here = view === 'town' ? (e => e.town === townId) : view === 'region' ? (e => e.region === regionId || (e.region == null && e.town == null && e.zone == null)) : (() => true);
+    const rows = W.log.filter(e => (level === 'all' || (level === 'trigger' ? e.level === 'trigger' : e.level !== 'minor')) && (scope === 'all' || here(e))).slice(0, 160);
+    $('#log').innerHTML = rows.map(e => `<li class="${e.level}"><time>D${e.day} ${pad(e.hour)}</time><p>${e.level === 'trigger' ? '<span class="trig">Turning point</span>' : ''}${linkify(e)}</p></li>`).join('') || '<li><span></span><p class="muted">Nothing yet.</p></li>';
+  }
+  function renderPaper() {
+    const S = town(paperTown) || town(townId) || W.towns.find(t => t.npcs.length) || W.towns[0];
+    const towns = W.towns.filter(t => t.paper?.issues.length);
+    const issues = S.paper.issues, i = Math.min(paperIdx, Math.max(0, issues.length - 1)), is = issues[i];
+    const nav = `<div class="paper-nav"><select id="paper-pick" aria-label="Which paper">${towns.map(t => `<option value="${t.id}" ${t.id === S.id ? 'selected' : ''}>${esc(t.paper.name)}</option>`).join('')}</select>
+      <span class="row" style="gap:6px"><button class="btn" type="button" data-paper-step="1" ${i >= issues.length - 1 ? 'disabled' : ''}>Older</button><button class="btn" type="button" data-paper-step="-1" ${i === 0 ? 'disabled' : ''}>Newer</button></span></div>`;
+    if (!is) { $('#paper').innerHTML = nav + `<p class="muted">${esc(S.paper.name)} prints its first issue in a day or two.</p>`; bindPaperPick(); return; }
+    const col = (h, items) => items.length ? `<div class="col"><h4>${h}</h4><ul>${items.map(x => `<li>${x}</li>`).join('')}</ul></div>` : '';
+    $('#paper').innerHTML = nav + `<article class="paper"><div class="mast"><h3>${esc(S.paper.name)}</h3><p>No. ${is.no} · Day ${is.day} · ${title(is.season)}, year ${is.year}</p></div>
+      <h4 class="head">${esc(is.headline)}</h4><p class="lead">${esc(is.lead)}</p>
+      ${is.quote ? `<blockquote>“${esc(is.quote.text)}”<cite>${esc(is.quote.who)}</cite></blockquote>` : ''}
+      <div class="cols">${col('Around town', (is.local || []).map(esc))}${col('From the road', (is.road || []).map(r => `<small>${esc(r.how)} ${esc(r.from || 'afar')}:</small> ${esc(r.text)}`))}${col('Rumours', (is.rumours || []).map(esc))}${col('The council', (is.council || []).map(esc))}${col('Notices', (is.notices || []).map(esc))}${col('Obituaries', (is.obits || []).map(esc))}</div>
+      <p class="weather">${esc(is.weather)}</p></article>`;
+    bindPaperPick();
+  }
+  function bindPaperPick() { const p = $('#paper-pick'); if (p) p.onchange = e => { paperTown = +e.target.value; paperIdx = 0; renderPaper(); }; }
+  function renderLegends() {
+    const R = regionId, cast = Sim.cast(R);
+    const where = n => { const S = town(n.town), b = Sim.band(n); return S ? S.name : b ? zone(b.zone)?.name : n.figure ? zone(n.zone)?.name || 'the wilds' : 'on the road'; };
+    const castHTML = cast.map(n => { const sc = Sim.scarsOf(n)[0]; const line = n.arc && !n.arc.done ? `${n.arc.name} · ${arcWhy(n)}` : n.desire ? `Wants ${n.desire.text}.` : sc ? cap(Sim.scarText(n, sc)) + '.' : n.hero ? `${n.hero.cls}, level ${n.hero.level}` : ''; return `<button type="button" class="cast-row" data-npc="${n.id}"><span><b>${esc(Sim.titled(n))}</b> <small>${esc(n.child ? 'child' : jobTitle(n))} · ${esc(where(n))}</small><span class="why">${esc(line)}</span></span><small>${n.gm ? 'yours' : n.arc && !n.arc.done ? 'on a path' : n.hero ? 'hero' : ''}</small></button>`; }).join('');
+    const hist = (W.history || []).filter(h => (h.town == null && h.zone == null) || (h.town != null ? town(h.town)?.region === R : zone(h.zone)?.region === R)).slice(0, 50);
+    const heroes = [...W.towns.flatMap(t => t.npcs), ...W.parties.flatMap(P => P.members)].filter(n => n.hero).sort((a, b) => b.hero.renown - a.hero.renown).slice(0, 6);
+    const foes = W.pops.filter(p => Sim.isHostile(p) && (p.leader || p.mutation || Sim.def(p).solo || p.slew >= 3)).sort((a, b) => Sim.popPower(b) - Sim.popPower(a)).slice(0, 6);
+    $('#legends').innerHTML = `<div class="legend-h">The cast · people with a story</div>${castHTML || '<p class="muted" style="margin:0">Nobody has much of a story yet. Give it time, or record what your players did.</p>'}<div class="legend-h">Heroes and foes</div>` + (heroes.length ? heroes.map(n => `<button type="button" data-npc="${n.id}"><span><b>${esc(n.first)} ${esc(n.last)}</b> <small>${esc(n.hero.cls)} of ${esc(town(n.town)?.name || 'the road')}</small></span><small>level ${n.hero.level} · renown ${Math.round(n.hero.renown)}</small></button>`).join('') : '<p class="muted" style="margin:0">No heroes yet. They rise when towns are hurt and someone steps up.</p>')
+      + foes.map(p => `<button type="button" data-pop="${p.id}"><span><b style="color:${tvar(p)}">${esc(Sim.popName(p))}</b> <small>${esc(zone(p.zone)?.name || '')}</small></span><small>power ${Math.round(Sim.popPower(p))}${p.slew ? ` · ${p.slew} killed` : ''}</small></button>`).join('')
+      + `<div class="legend-h">History of ${esc(region(R)?.name || 'the region')}</div>${hist.length ? `<ol class="timeline">${hist.map(h => `<li><time>${yd(h.day)}</time><span>${linkify(h)}</span></li>`).join('')}</ol>` : '<p class="muted" style="margin:0">History has not started yet.</p>'}`;
+  }
+  function renderTabs() { if (tab === 'chron') renderLog(); else if (tab === 'paper') renderPaper(); else renderLegends(); }
+  function renderHeader() {
+    const R = region(regionId) || W.regions[0], S = town(townId);
+    $('#crumbs').innerHTML = W.regions.length > 1 ? W.regions.map((r, i) => `${i ? '<span class="sep">·</span>' : ''}<button type="button" data-region-go="${r.id}" ${r.id === R.id ? 'aria-current="true" style="font-weight:700"' : ''}>${esc(r.name)}</button>`).join('') : view === 'town' ? `<button type="button" data-view-go="region">${esc(R.name)}</button>` : '';
+    $('#place').textContent = view === 'world' ? 'The Known World' : view === 'town' ? S.name : R.name;
+    const h = W.hour, part = h < 5 ? 'Night' : h < 8 ? 'Dawn' : h < 12 ? 'Morning' : h < 17 ? 'Afternoon' : h < 21 ? 'Evening' : 'Night';
+    $('#clock').innerHTML = `<span>Day <b>${W.day}</b> · <b>${title(Sim.season())}</b>, year ${Sim.year()} · <b>${pad(h)}</b> ${part}</span><span>${W.towns.reduce((s, t) => s + t.npcs.length, 0)} people · ${W.towns.filter(t => t.npcs.length).length} towns</span><span class="weird">Strangeness <b>${W.weird.toFixed(1)}</b>/10</span>`;
+    $('#legend').innerHTML = view === 'town'
+      ? Object.entries(ACT).filter(([k]) => !['idle', 'stuck', 'travel'].includes(k)).map(([, [l, c]]) => `<span><i class="dot" style="--c:${cvar(c)}"></i>${l}</span>`).join('') + '<span><i class="dot" style="--c:var(--panel);box-shadow:0 0 0 2px var(--h0)"></i>Hero (each in their own colour)</span>'
+      : Object.values(PARTY).map(([l, c, s]) => `<span><i class="${s}" style="--c:${cvar(c)}"></i>${l}</span>`).join('') + Object.entries(THREAT).map(([k, l]) => `<span><i class="dot" style="--c:var(--t-${k})"></i>${l}</span>`).join('') + '<span>⚑ led by someone · ✦ mutated</span>';
+    const heroes = Sim.allPeople().filter(n => n.hero && Sim.regionOfP(n) === R.id);
+    if (heroes.length) $('#legend').innerHTML += heroes.map(n => `<button type="button" class="hero-chip" data-npc="${n.id}" style="--c:${hvar(n)}"><b>★</b>${esc(n.first)} ${esc(n.last)}</button>`).join('');
+    $('#stage-hint').textContent = view === 'region' ? 'Click to inspect · click a town twice to walk its streets · click open ground or press Esc for the whole region' : 'Click a person or a building · Esc goes back to the region';
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('[data-view-go]'); if (b) setView(b.dataset.viewGo); const g = e.target.closest('[data-region-go]'); if (g) { regionId = +g.dataset.regionGo; sel = { kind: 'region', id: regionId }; setView('region'); } });
+  function renderTurning() {
+    const box = $('#turning');
+    if (!turning.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = `<h2>Turning point</h2><p class="note">The world has paused. Look around, drop something in, or carry on.</p><ul>${turning.slice(0, 5).map(e => `<li>${linkify(e)}</li>`).join('')}</ul><div class="row"><button class="btn primary" type="button" id="tp-go">Carry on</button><button class="btn" type="button" id="tp-off">Stop pausing</button></div>`;
+    $('#tp-go').onclick = () => { turning = []; renderTurning(); setPlay(true); };
+    $('#tp-off').onclick = () => { turning = []; pauseTrig = false; $('#pause-trig').checked = false; try { localStorage.setItem(SAVE_KEY + '.stop', '0'); } catch (e) {} renderTurning(); setPlay(true); };
+  }
+
+  /* ---------- your campaign: read a GeezVTT export or a campaign.txt ---------- */
+  const Campaign = (() => {
+    const low = x => String(x ?? '').trim().toLowerCase();
+    const props = t => { const o = {}; const ps = t?.properties; (Array.isArray(ps) ? ps : ps && typeof ps === 'object' ? Object.values(ps) : []).forEach(p => { if (p && p.key != null) o[low(p.key)] = String(p.value ?? '').trim(); }); return o; };
+    const truthy = v => /^(true|yes|y|1|x)$/i.test(String(v || '').trim());
+    const TOWN = /^(settlement|city|town|village|hamlet|capital|port|outpost|camp|fort|stronghold)$/i, SKIP = /^(realm|world|plane|battlemap|scene|map|region|continent)$/i;
+    function findDb(obj) {      // the pinboard lives at geezvtt/campaign in the GeezSheets export; take any { things } we can find
+      const hits = [];
+      (function walk(o, path, depth) { if (!o || typeof o !== 'object' || depth > 5) return; if (o.things && typeof o.things === 'object') hits.push({ db: o, path }); for (const [k, v] of Object.entries(o)) if (k !== 'things') walk(v, path ? path + '/' + k : k, depth + 1); })(obj, '', 0);
+      hits.sort((a, b) => (/geezvtt\/campaign$/.test(b.path) ? 1 : 0) - (/geezvtt\/campaign$/.test(a.path) ? 1 : 0) || Object.keys(b.db.things).length - Object.keys(a.db.things).length);
+      return hits[0] || null;
+    }
+    function fromExport(obj) {
+      const hit = findDb(obj); if (!hit) return { error: 'No pin-board cards found in that file. It should be a GeezSheets export (or the geezvtt/campaign part of it).' };
+      const db = hit.db, things = db.things || {}, links = Object.values(db.links || {}), maps = db.maps || {};
+      const sheets = Object.values(obj?.characters?.npcs || {});
+      const T = Object.entries(things).map(([id, t]) => ({ id, ...t, p: props(t), cat: low(t?.traits?.category), type: low(t?.type) }));
+      const byId = new Map(T.map(t => [t.id, t]));
+      // which world map does each map sit under (each world map is tagged with its campaign)
+      const rootOf = m => { let k = m, n = 0; while (maps[k]?.parentMap && n++ < 12) k = maps[k].parentMap; return k; };
+      const pinnedOn = new Map(); for (const [mid, m] of Object.entries(maps)) for (const id of Object.keys(m?.pins || {})) if (!pinnedOn.has(id)) pinnedOn.set(id, mid);
+      const ownerOf = new Map(T.filter(t => t.traits?.childMap).map(t => [t.traits.childMap, t.id]));
+      for (const [mid, m] of Object.entries(maps)) if (m?.parentThing && !ownerOf.has(mid)) ownerOf.set(mid, m.parentThing);
+      const roots = [...new Set(Object.keys(maps).map(rootOf))];
+      const rootName = r => maps[r]?.campaign || maps[r]?.name || byId.get(ownerOf.get(r))?.name || 'Campaign';
+      const neighbours = x => { const id = typeof x === 'object' ? x?.id : x; return links.filter(l => l.from === id || l.to === id).map(l => byId.get(l.from === id ? l.to : l.from)).filter(Boolean); };
+      const isPlace = t => t.type === 'location' && !SKIP.test(t.cat);
+      const isTown = t => isPlace(t) && (TOWN.test(t.cat) || (!t.cat && /town|village|city|burg|haven|port|pointe?$/i.test(t.name || '')));
+      // the town a thing belongs to: linked, or pinned on that town's own map, or one step further out
+      const townOf = (t, seen = new Set()) => {
+        if (!t || seen.has(t.id)) return null; seen.add(t.id);
+        if (isTown(t) && t.type === 'location') return t;
+        const lv = t.p.lives || t.p.home || t.p.location; if (lv) { const h = T.find(x => isPlace(x) && low(x.name) === low(lv)); if (h) return isTown(h) ? h : townOf(h, seen); }
+        const near = neighbours(t); const direct = near.find(isTown); if (direct) return direct;
+        const pm = pinnedOn.get(t.id), own = pm && byId.get(ownerOf.get(pm)); if (own && isTown(own)) return own;
+        for (const n of near.filter(isPlace)) { const r = townOf(n, seen); if (r) return r; }
+        return own ? townOf(own, seen) : null;
+      };
+      const campOf = t => { const pm = pinnedOn.get(t.id); if (pm) return rootOf(pm); if (t.campaign && maps[t.campaign]) return rootOf(t.campaign); if (t.traits?.childMap && maps[t.traits.childMap]) return rootOf(t.traits.childMap); const tw = townOf(t); if (tw && tw !== t) return campOf(tw); for (const n of neighbours(t)) { const m = pinnedOn.get(n.id); if (m) return rootOf(m); } return null; };
+      const camps = new Map();
+      const camp = r => { const k = r || '_'; if (!camps.has(k)) camps.set(k, { id: r || null, name: r ? rootName(r) : 'Everything', spec: { id: r || null, name: r ? rootName(r) : 'Your campaign', region: r ? (byId.get(ownerOf.get(r))?.name || maps[r]?.name || null) : null, map: r && maps[r]?.image ? { image: 'world/' + maps[r].image, file: maps[r].image } : null, places: [], people: [], deeds: [], dead: [] } }); return camps.get(k).spec; };
+      const pinOn = (t, r) => { const pn = r && maps[r]?.pins?.[t.id]; return pn && isFinite(pn.x) && isFinite(pn.y) ? { x: +pn.x, y: +pn.y } : null; };
+      for (const t of T.filter(isPlace)) { const r = campOf(t), sp = camp(r); const tw = isTown(t) ? null : townOf(t); sp.places.push({ key: t.id, ext: t.id, name: t.name, kind: isTown(t) ? 'town' : 'wild', terrain: low(t.p.terrain) || null, near: tw?.id || null, pos: pinOn(t, r) }); }
+      const sheetsById = obj?.characters?.npcs || {};
+      for (const t of T.filter(t => t.type === 'npc' || t.type === 'person' || t.type === 'character')) {
+        if (truthy(t.p.pc) || t.traits?.pc || t.traits?.generic) continue;
+        if (truthy(t.p.dead) || /dead|deceased|killed/i.test(t.traits?.status || '')) { camp(campOf(t)).dead.push(t.id); continue; }
+        const sh = sheetsById[t.traits?.charId] || t.sheet || sheets.find(c => low(c.name) === low(t.name)) || {};
+        const inTown = x => { const pm = pinnedOn.get(x.id), own = pm && byId.get(ownerOf.get(pm)); return own && isTown(own); };
+        const lives = t.p.lives || t.p.home || t.p.location;
+        const directTown = neighbours(t).find(isTown), directWild = !lives && neighbours(t).find(x => isPlace(x) && !isTown(x) && !inTown(x));
+        const tw = directTown || (directWild ? null : townOf(t)), wild = !tw && (directWild || neighbours(t).find(isPlace));
+        camp(campOf(t)).people.push({ ext: t.id, name: t.name, place: (tw || wild)?.id || null, job: t.p.job || t.p.role || t.p.profession || t.p.occupation || t.traits?.role || sh.class || '',
+          race: t.p.race || sh.race || sh.basic?.race || '', personality: t.p.personality || '', want: t.p.wants || t.p.want || '', fear: t.p.fears || t.p.fear || '',
+          story: (t.p.story || '').split(',').map(low).filter(Boolean), who: t.p.lost || '', blame: /party|heroes|players/i.test(t.p.blame || '') ? 'heroes' : '', note: t.p.notes || t.p.description || t.p.desc || (typeof t.notes === 'string' ? t.notes.slice(0, 400) : '') });
+      }
+      for (const t of T.filter(t => t.type === 'event' && t.p.deed)) {
+        const tw = townOf(t), who = neighbours(t).find(n => n.type === 'npc');
+        camp(campOf(t)).deeds.push({ ext: t.id, deed: t.p.deed, place: tw?.id || null, person: who?.id || null, note: t.name });
+      }
+      let list = [...camps.values()].filter(c => c.spec.places.length || c.spec.people.length);
+      const loose = camps.get('_'), real = list.filter(c => c !== loose);
+      if (loose && real.length === 1) { for (const k of ['places', 'people', 'deeds', 'dead']) real[0].spec[k].push(...loose.spec[k]); list = real; }
+      else if (loose && real.length > 1) { loose.name = 'Not tied to a world map'; list = [...real, loose]; }
+      return list.length ? { campaigns: list, from: hit.path || 'the file' } : { error: 'Found the pin board, but no location or NPC cards on it.' };
+    }
+    function fromText(text) {       // campaign.txt: + place / + person / + happened / + party
+      const { blocks } = Defs.parse(text, 'campaign.txt');
+      const spec = { name: 'Your campaign', places: [], people: [], deeds: [], dead: [] };
+      for (const b of blocks) {
+        const f = b.f, key = low(f.name);
+        if (b.t === 'party') { spec.party = f.name; if (f.campaign) spec.name = f.campaign; if (f.region) spec.region = f.region; }
+        else if (b.t === 'place') spec.places.push({ key, name: f.name, kind: /town|city|village|hamlet|settlement/i.test(f.kind || '') ? 'town' : 'wild', terrain: low(f.terrain) || null, near: low(f.near) || null });
+        else if (b.t === 'person') spec.people.push({ name: f.name, place: low(f.lives || f.place), job: f.job || f.role || '', race: f.race || '', personality: f.personality || '', want: f.wants || '', fear: f.fears || '', story: (f.story || '').split(',').map(low).filter(Boolean), who: f.lost || '', blame: /party|heroes|players/i.test(f.blame || '') ? 'heroes' : '', note: f.notes || '' });
+        else if (b.t === 'happened') spec.deeds.push({ deed: f.deed || f.name, place: low(f.where), person: f.who || null, note: f.notes || f.note || '' });
+      }
+      return spec.places.length || spec.people.length ? { campaigns: [{ name: spec.name, spec }], from: 'campaign.txt' } : { error: 'No "+ place" or "+ person" blocks found.' };
+    }
+    function read(text) { const t = String(text).trim(); if (t.startsWith('{')) { try { return fromExport(JSON.parse(t)); } catch (e) { return { error: 'That file is not valid JSON.' }; } } return fromText(t); }
+    return { read, fromExport };
+  })();
+  let campaignFound = null, pickedMap = null;
+  const mapImgs = new Map();
+  function mapImage(R) {
+    const key = R.imageData ? 'data:' + R.id : R.image; if (!key) return null;
+    if (!mapImgs.has(key)) { const im = new Image(); im.onload = () => { dirty = true; }; im.onerror = () => { im.failed = true; }; im.src = R.imageData || R.image; mapImgs.set(key, im); }
+    const im = mapImgs.get(key); return im.complete && im.naturalWidth && !im.failed ? im : null;
+  }
+  const loadImg = src => new Promise((ok, bad) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => bad(new Error(`Couldn't load ${src}`)); im.src = src; });
+  // land is the brighter of the map's two main tones (parchment land, darker sea) — split with Otsu's method
+  function landMask(im, cols = 160) {
+    const rows = Math.max(8, Math.round(cols * im.naturalHeight / im.naturalWidth));
+    const c = document.createElement('canvas'); c.width = cols * 4; c.height = rows * 4; const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(im, 0, 0, c.width, c.height); const px = g.getImageData(0, 0, c.width, c.height).data;
+    const lum = new Float32Array(cols * rows);
+    for (let r = 0; r < rows; r++) for (let q = 0; q < cols; q++) { let t = 0; for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const i = ((r * 4 + y) * c.width + q * 4 + x) * 4; t += px[i] * .3 + px[i + 1] * .59 + px[i + 2] * .11; } lum[r * cols + q] = t / 16; }
+    const hist = new Array(256).fill(0); lum.forEach(v => hist[Math.min(255, v | 0)]++);
+    let sum = 0, sumB = 0, wB = 0, best = 0, th = 128; hist.forEach((h, i) => sum += i * h);
+    for (let i = 0; i < 256; i++) { wB += hist[i]; if (!wB) continue; const wF = lum.length - wB; if (!wF) break; sumB += i * hist[i]; const mB = sumB / wB, mF = (sum - sumB) / wF, v = wB * wF * (mB - mF) ** 2; if (v > best) { best = v; th = i; } }
+    let bits = ''; for (const v of lum) bits += v > th ? '1' : '0';
+    return { cols, rows, bits };
+  }
+  async function prepareMap(spec, file) {
+    const src = file ? await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(file); }) : spec.map?.image;
+    if (!src) return spec;
+    try {
+      const im = await loadImg(src), w = 1500, h = Math.round(1500 * im.naturalHeight / im.naturalWidth);
+      spec.map = { ...(spec.map || {}), image: file ? null : src, w, h, land: landMask(im) };
+      if (file) spec.map.imageData = src;
+    } catch (e) { spec.mapError = e.message; spec.map = null; }
+    return spec;
+  }
+  let liveData = null, liveStatus = '', liveOff = null;
+  const liveCamps = () => liveData ? (Campaign.fromExport(liveData).campaigns || []).filter(c => c.id) : [];
+  const inWorld = id => (W.campaigns || []).find(c => c.id === id);
+  // bring a campaign into the world: the first one starts a fresh world on its own map, each one after gets its own region beside it
+  async function addCampaign(spec, file, fresh) {
+    spec = await prepareMap(JSON.parse(JSON.stringify(spec)), file);
+    const first = fresh || !(W.campaigns || []).length;
+    if (first) W = Sim.createWorld(enabledPacks(), { empty: true });
+    const rep = Sim.seed(spec);
+    const c = inWorld(spec.id) || W.campaigns[W.campaigns.length - 1]; if (c && !window.WorldLink) c.live = false;
+    for (let i = 0; i < (first ? 4 : 0); i++) Sim.tick();
+    view = 'region'; regionId = rep.region; const S = W.towns.find(t => t.yours && t.region === rep.region) || W.towns.find(t => t.region === rep.region); if (S) townId = S.id;
+    sel = { kind: 'region', id: rep.region }; paperTown = null; W.pending.length = 0; turning = []; shapes.clear(); tableFor = null; save(); renderAll();
+    const d = $('#tbl-camp'); if (d) d.open = true;
+    return `${spec.name}: ${rep.towns.length} towns, ${rep.wilds.length} wild places, ${rep.people.length} people${spec.map?.w ? ', on your map' : spec.mapError ? ` (no map: ${spec.mapError})` : ''}.`;
+  }
+  function liveHTML() {
+    if (!window.WorldLink) return '';
+    const camps = liveCamps();
+    return `<div class="form" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0">
+      <p class="help" style="margin:0"><b>${esc(WorldLink.source || 'Firebase')}</b> · <span id="live-status">${esc(liveStatus || WorldLink.status)}</span></p>
+      ${camps.map(c => { const w = inWorld(c.id); return `<div style="border-top:1px solid var(--line);padding-top:8px;display:grid;gap:6px">
+        <div class="row" style="justify-content:space-between"><span><b>${esc(c.name)}</b> <small class="muted">${c.spec.places.length} places, ${c.spec.people.length} NPCs${c.spec.map ? ' · has a world map' : ''}</small></span>
+        ${w ? `<button class="btn" type="button" data-camp-region="${w.region}">Show it</button>` : `<button class="btn ${(W.campaigns || []).length ? '' : 'primary'}" type="button" data-camp-add="${esc(c.id)}">${(W.campaigns || []).length ? 'Add to this world' : 'Start the world with it'}</button>`}</div>
+        ${w ? `<div class="row"><label><input type="checkbox" data-camp-live="${esc(c.id)}" ${w.live !== false ? 'checked' : ''}> Keep in step with the campaign</label><label><input type="checkbox" data-camp-write="${esc(c.id)}" ${w.write ? 'checked' : ''}> Write the world's state back each dawn</label></div>` : ''}
+      </div>`; }).join('')}
+      ${(W.campaigns || []).length ? `<div class="row"><button class="btn" type="button" id="live-fresh">Start over with these campaigns</button></div>
+      <p class="help" style="margin:0">Keeping in step: new NPC and location cards join, event cards with a <code>deed</code> happen, NPCs marked dead die here too. Writing back goes to <code>geezvtt/world/&lt;campaign&gt;</code>: desires, scars, paths and grudges by card id. Your cards are never changed.</p>` : ''}
+    </div>`;
+  }
+  function liveSync() {
+    if (!W?.campaigns?.length || !liveData) return;
+    let any = 0;
+    for (const c of liveCamps()) { const w = inWorld(c.id); if (!w || w.live === false) continue; const r = Sim.seed(c.spec, { add: true }); if (r) any += r.towns.length + r.wilds.length + r.people.length + r.deeds + r.died.length; }
+    if (any) { W.pending.length = 0; save(); renderAll(); }
+  }
+  function writeBack() {
+    if (!W?.campaigns?.length || !window.WorldLink) return;
+    for (const c of W.campaigns.filter(c => c.write && c.id)) WorldLink.write(c.id, Sim.changes(c.id)).then(() => { liveStatus = `Wrote the world's state on day ${W.day}`; const el = $('#live-status'); if (el) el.textContent = liveStatus; },
+      e => { liveStatus = `Couldn't write (${e?.code || e?.message || 'denied'}). The database rules may not allow geezvtt/world.`; const el = $('#live-status'); if (el) el.textContent = liveStatus; });
+  }
+  function bindLive() {
+    document.querySelectorAll('[data-camp-add]').forEach(b => b.onclick = async () => { const c = liveCamps().find(c => c.id === b.dataset.campAdd); if (!c) return; b.disabled = true; b.textContent = 'Building…'; liveStatus = await addCampaign(c.spec); renderAll(); });
+    document.querySelectorAll('[data-camp-region]').forEach(b => b.onclick = () => { regionId = +b.dataset.campRegion; sel = { kind: 'region', id: regionId }; setView('region'); });
+    document.querySelectorAll('[data-camp-live]').forEach(x => x.onchange = () => { const w = inWorld(x.dataset.campLive); if (w) { w.live = x.checked; save(); liveSync(); } });
+    document.querySelectorAll('[data-camp-write]').forEach(x => x.onchange = () => { const w = inWorld(x.dataset.campWrite); if (w) { w.write = x.checked; save(); if (x.checked) writeBack(); } });
+    const fr = $('#live-fresh'); if (fr) fr.onclick = async () => {
+      if (!fr.dataset.sure) { fr.dataset.sure = 1; fr.textContent = 'This replaces the world. Sure?'; return; }
+      const ids = W.campaigns.map(c => c.id), camps = liveCamps(), keep = ids.map(id => camps.find(c => c.id === id)).filter(Boolean);
+      for (let i = 0; i < keep.length; i++) liveStatus = await addCampaign(keep[i].spec, null, i === 0);
+      renderAll();
+    };
+  }
+  function startLink() {
+    if (!window.WorldLink || liveOff) return;
+    liveOff = WorldLink.on((data, status) => { const first = !liveData; liveData = data; liveStatus = status; if (W) { liveSync(); if (first || !document.querySelector('#tbl-camp[open]')) { tableFor = null; renderAll(); } else { const el = $('#live-status'); if (el) el.textContent = status; } } });
+  }
+  window.addEventListener('worldlink', startLink);
+  function campaignHTML() {
+    return `<details id="tbl-camp" ${window.WorldLink ? 'open' : ''}><summary>Bring in your campaign</summary>${liveHTML()}
+      <p class="help">${window.WorldLink ? 'Or load' : 'Load'} your GeezVTT export (.json) or a campaign.txt. Your settlements become towns, other locations become wild places, and your NPCs move in with their names and roles. With your world map, towns and places you pinned on it go exactly there. Event cards with a <code>deed</code> property happen to them. Each campaign gets its own region of one shared world.</p>
+      <div class="form"><div class="row"><label class="btn file-btn">Choose a file<input type="file" id="camp-file" accept=".json,.txt,application/json,text/plain"></label><select id="camp-pick" hidden aria-label="Which campaign"></select></div>
+      <div class="row"><label class="btn file-btn">Its world map (optional)<input type="file" id="camp-map" accept="image/*"></label><span class="help" id="camp-mapname" style="margin:0"></span></div>
+      <p class="help" id="camp-sum" aria-live="polite"></p>
+      <div class="row"><button class="btn primary" type="button" id="camp-go" disabled>Start a new world with it</button><button class="btn" type="button" id="camp-add" disabled ${(W.campaigns || []).length ? '' : 'hidden'}>Add to this world</button><button class="btn" type="button" id="camp-out" ${(W.campaigns || []).length ? '' : 'disabled'}>Download what changed</button></div>
+      <p class="help">NPC card properties it reads: <code>race</code>, <code>job</code> or <code>role</code>, <code>personality</code>, <code>wants</code>, <code>fears</code>, <code>lives</code>, <code>story</code> (for example <code>lost spouse</code>), <code>lost</code> (who), <code>blame: party</code>, <code>notes</code>. Location cards: <code>terrain</code>. PCs, generic NPCs and the dead are left out.</p></div>
+    </details>`;
+  }
+  function bindCampaign() {
+    const f = $('#camp-file'), pick = $('#camp-pick'), sum = $('#camp-sum'), go = $('#camp-go'), addB = $('#camp-add'), mf = $('#camp-map');
+    const show = () => { const c = campaignFound?.campaigns[+pick.value || 0]; if (!c) return; const sp = c.spec; sum.textContent = `${c.name}: ${sp.places.filter(p => p.kind === 'town').length} towns, ${sp.places.filter(p => p.kind !== 'town').length} wild places (${sp.places.filter(p => p.pos).length} pinned on the world map), ${sp.people.length} people${sp.deeds.length ? `, ${sp.deeds.length} things your players did` : ''}.${sp.people.some(p => !p.place) ? ` ${sp.people.filter(p => !p.place).length} people aren't linked to a place, so they'll live in the biggest town.` : ''}${sp.map?.file && !pickedMap ? ` Its map is ${sp.map.file}: this page will look for it in world/, or choose it above.` : ''}`; go.disabled = false; addB.disabled = false; };
+    f.onchange = async () => { const file = f.files[0]; if (!file) return; const r = Campaign.read(await file.text()); if (r.error) { sum.textContent = r.error; go.disabled = addB.disabled = true; pick.hidden = true; campaignFound = null; return; }
+      campaignFound = r; pick.innerHTML = r.campaigns.map((c, i) => `<option value="${i}">${esc(c.name)}</option>`).join(''); pick.hidden = r.campaigns.length < 2; show(); };
+    mf.onchange = () => { pickedMap = mf.files[0] || null; $('#camp-mapname').textContent = pickedMap ? pickedMap.name : ''; show(); };
+    pick.onchange = show;
+    const run = async fresh => { const c = campaignFound?.campaigns[+pick.value || 0]; if (!c) return; go.disabled = addB.disabled = true; sum.textContent = 'Building the world…'; const msg = await addCampaign(c.spec, pickedMap, fresh); pickedMap = null; const s2 = $('#camp-sum'); if (s2) s2.textContent = msg; };
+    go.onclick = () => run(true); addB.onclick = () => run(false);
+    const out = $('#camp-out');
+    out.onclick = async () => {
+      const C = Sim.campOf(regionId) || W.campaigns?.[0];
+      const filename = `${(C?.name || 'world').replace(/[^\w]+/g, '-').toLowerCase()}-day-${W.day}.json`, data = JSON.stringify(Sim.changes(C?.id), null, 2);
+      const dl = await window.claude?.use?.('downloads').catch(() => null);
+      if (dl) { try { await dl.save({ filename, data }); $('#camp-sum').textContent = 'Saved.'; } catch (e) { $('#camp-sum').textContent = e?.code === 'declined' ? '' : 'This view cannot save files.'; } return; }
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    };
+  }
+  let tableFor = null;
+  function buildTable() {
+    const D = Sim.D, deeds = Object.values(D.deeds);
+    const jobs = Object.values(D.professions).filter(p => p.w > 0).sort((a, b) => a.title.localeCompare(b.title));
+    const races = Object.values(D.races);
+    const tags = [...new Set(Object.values(D.scars).flatMap(s => s.from))].sort();
+    $('#table').innerHTML = `<h2>Your players <small>the heroes are part of this world too</small></h2>
+      <p class="target" id="tbl-target"></p>
+      ${deeds.length ? `<div class="form">
+        <div class="row"><label class="label" for="tbl-party">The party is called</label><input type="text" id="tbl-party" value="${esc(Sim.partyOf(regionId))}" placeholder="the heroes"></div>
+        <div class="row"><label class="label" for="tbl-at">They are at</label><select id="tbl-at" aria-label="Where the party is"></select></div>
+        <div class="row"><select id="tbl-deed" aria-label="What they did">${deeds.map(d => `<option value="${esc(d.name)}">${esc(cap(d.title))}</option>`).join('')}</select><input type="text" id="tbl-note" placeholder="What happened, in your words (optional)" aria-label="What happened"></div>
+        <div class="row"><button class="btn primary" type="button" id="tbl-do">Record what they did</button></div>
+        <p class="ok" id="tbl-ok" aria-live="polite"></p>
+        <p class="help">Everyone it touches remembers it, as gratitude, grief or a grudge, and that shapes what they want. Click a person first to make it about them.</p>
+      </div>` : '<p class="help">Turn on the stories pack to record what your players did.</p>'}
+      <details id="tbl-add"><summary>Add a person to this town</summary>
+        <div class="form">
+          <div class="row"><input type="text" id="np-first" placeholder="First name" aria-label="First name"><input type="text" id="np-last" placeholder="Family name" aria-label="Family name"></div>
+          <div class="row"><select id="np-race" aria-label="Race"><option value="">Any race</option>${races.map(r => `<option value="${esc(r.name)}">${esc(r.title)}</option>`).join('')}</select><select id="np-job" aria-label="Job"><option value="">Any job</option>${jobs.map(j => `<option value="${esc(j.name)}">${esc(j.title)}</option>`).join('')}</select></div>
+          <div class="row"><select id="np-tag" aria-label="What happened to them"><option value="">Nothing has happened to them yet</option>${tags.map(t => `<option value="${esc(t)}">${esc(cap(t))}${/ by$/.test(t) ? ' the party' : ''}</option>`).join('')}</select><select id="np-blame" aria-label="Whose fault"><option value="">Nobody to blame</option><option value="heroes">It was the party's fault</option></select></div>
+          <div class="row"><input type="text" id="np-who" placeholder="Who they lost, if anyone" aria-label="Who they lost"></div>
+          <div class="row"><input type="text" id="np-note" placeholder="Their story, in your words" aria-label="Their story"></div>
+          <div class="row"><button class="btn primary" type="button" id="np-add">Add them</button></div>
+          <p class="ok" id="np-ok" aria-live="polite"></p>
+        </div>
+      </details>${campaignHTML()}`;
+    bindCampaign(); bindLive();
+    const pcOf = () => Sim.campOf(regionId) || W;
+    const party = $('#tbl-party'); if (party) party.onchange = () => { pcOf().party = party.value.trim() || 'the heroes'; save(); renderAll(); };
+    const at = $('#tbl-at'); if (at) at.onchange = () => { const v = at.value, pc = pcOf(); pc.partyAt = v ? { [v[0] === 't' ? 'town' : 'zone']: +v.slice(1) } : null; if (pc.partyAt?.town != null) { sel = { kind: 'town', id: pc.partyAt.town }; townId = pc.partyAt.town; } save(); renderAll(); };
+    const go = $('#tbl-do');
+    if (go) go.onclick = () => {
+      const { townT } = currentTarget(); if (!townT) return;
+      const n = sel?.kind === 'npc' ? npc(sel.id) : null;
+      const r = Sim.deed($('#tbl-deed').value, { town: townT.id, npc: n && n.town === townT.id ? n.id : undefined }, { party: $('#tbl-party').value, note: $('#tbl-note').value });
+      if (!r) { $('#tbl-ok').textContent = 'Nothing happened: that town has nobody left.'; return; }
+      const one = r.one != null ? npc(r.one) : null;
+      $('#tbl-ok').textContent = `Recorded.${r.killed ? ` ${r.killed} dead.` : ''} ${r.affected} ${r.affected === 1 ? 'person' : 'people'} will remember it${one && !one.dead ? `, ${one.first} most of all` : ''}.${r.wanting ? ` ${r.wanting} now ${r.wanting === 1 ? 'wants' : 'want'} something from ${Sim.partyOf(townT.region)}.` : ''}`;
+      $('#tbl-note').value = ''; W.pending.length = 0;
+      if (one && !one.dead) sel = { kind: 'npc', id: one.id };
+      save(); renderAll();
+    };
+    $('#np-add').onclick = () => {
+      const { townT } = currentTarget(); if (!townT) return;
+      const tag = $('#np-tag').value;
+      const n = Sim.addPerson(townT.id, { first: $('#np-first').value, last: $('#np-last').value, race: $('#np-race').value, job: $('#np-job').value, story: tag ? [tag] : [], blame: $('#np-blame').value, who: $('#np-who').value, note: $('#np-note').value });
+      if (!n) return;
+      ['#np-first', '#np-last', '#np-who', '#np-note'].forEach(k => $(k).value = '');
+      $('#np-ok').textContent = `${Sim.titled(n)} now lives in ${townT.name}.${n.desire ? ` ${n.first} wants ${n.desire.text}.` : ''}`;
+      W.pending.length = 0; sel = { kind: 'npc', id: n.id }; save(); renderAll();
+    };
+  }
+  function updateTable() {
+    const { townT } = currentTarget(); const n = sel?.kind === 'npc' ? npc(sel.id) : null;
+    const reg = townT?.regard || 0, feel = reg >= 3 ? 'fondly' : reg > 0 ? 'kindly' : reg <= -4 ? 'with hatred' : reg < 0 ? 'warily' : '';
+    $('#tbl-target').innerHTML = townT ? `In <b>${esc(townT.name)}</b>${n && n.town === townT.id ? `, about <b>${esc(Sim.titled(n))}</b>` : ''}${feel ? ` · ${esc(townT.name)} thinks of ${esc(Sim.partyOf(townT.region))} ${feel}` : ''}` : 'Select a town first.';
+    const go = $('#tbl-do'); if (go) go.disabled = !townT; $('#np-add').disabled = !townT;
+    const at = $('#tbl-at');
+    if (at && document.activeElement !== at) { const R = region(regionId) || W.regions[0], pa = (Sim.campOf(R.id) || W).partyAt, cur = pa?.town != null ? 't' + pa.town : pa?.zone != null ? 'z' + pa.zone : '';
+      const pin = $('#tbl-party'); if (pin && document.activeElement !== pin) pin.value = Sim.partyOf(R.id);
+      at.innerHTML = `<option value="">Not on the map</option><optgroup label="Towns">${W.towns.filter(t => t.region === R.id).map(t => `<option value="t${t.id}">${esc(t.name)}${t.npcs.length ? '' : ' (empty)'}</option>`).join('')}</optgroup><optgroup label="The wilds">${W.zones.filter(z => z.region === R.id).map(z => `<option value="z${z.id}">${esc(z.name)}</option>`).join('')}</optgroup>`; at.value = cur; }
+  }
+  function renderAll() { setAspect(); renderHeader(); renderInspector(); renderContext(); renderHand(); if (tableFor !== W) { buildTable(); tableFor = W; } updateTable(); renderTabs(); renderTurning(); }
+  function renderLive() { renderHeader(); renderInspector(); renderContext(); if (tab !== 'paper') renderTabs(); }
+
+  /* ---------- world packs ---------- */
+  let checkTimer = null;
+  const savePacks = () => { try { localStorage.setItem(PACKS_KEY, JSON.stringify(packs)); } catch (e) {} };
+  const cur = () => packs.find(p => p.name === editing) || packs[0];
+  const KIND = { core: 'core', mod: 'mod', yours: 'yours' };
+  function renderPacks() {
+    $('#packs').innerHTML = packs.map((p, i) => {
+      const orig = DEFAULT_PACKS.find(d => d.name === p.name), edited = orig && orig.text !== p.text;
+      return `<div class="pack ${p.name === editing ? 'editing' : ''}"><input type="checkbox" data-pack-on="${i}" ${p.on ? 'checked' : ''} aria-label="Use ${esc(p.name)}">
+        <button class="nm" type="button" data-pack-edit="${i}">${esc(p.name)}<small>${esc(p.desc || '')}</small></button>
+        <span class="tag ${p.kind === 'core' ? 'ok' : p.kind === 'mod' ? 'strange' : 'gold'}">${KIND[p.kind] || 'yours'}${edited ? ', edited' : ''}</span>
+        <span class="move"><button type="button" data-pack-move="${i}:-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button type="button" data-pack-move="${i}:1" ${i === packs.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></span></div>`;
+    }).join('');
+    const c = cur(); if (!c) return;
+    if ($('#defs-text').value !== c.text) $('#defs-text').value = c.text;
+    $('#pack-label').textContent = `Editing ${c.name}`;
+    $('#pack-restore').hidden = !DEFAULT_PACKS.some(d => d.name === c.name);
+    $('#pack-delete').hidden = c.kind !== 'yours';
+  }
+  function checkDefs() {
+    const D = Defs.compile(enabledPacks());
+    const errs = D.issues.filter(i => i.level === 'error'), warns = D.issues.filter(i => i.level === 'warn');
+    const counts = [['race', Object.keys(D.races).length], ['profession', Object.keys(D.professions).length], ['wild thing', Object.keys(D.sources).length], ['terrain', Object.keys(D.terrains).length], ['good', Object.keys(D.goods).length], ['event', D.events.length]];
+    $('#defs-status').innerHTML = `<b>${packs.filter(p => p.on).length} packs, ${D.count} definitions</b>${D.changed || D.removed ? `<span class="muted">${D.changed ? `${D.changed} changed by later packs` : ''}${D.changed && D.removed ? ', ' : ''}${D.removed ? `${D.removed} removed` : ''}</span>` : ''}<span class="muted">${counts.map(([n, c]) => `${c} ${n}${c === 1 ? '' : 's'}`).join(' · ')}</span>${errs.length ? `<span class="warn">${errs.length} problem${errs.length > 1 ? 's' : ''} to fix</span>` : '<span style="color:var(--accent)">Ready to roll</span>'}${warns.length ? `<span class="muted">${warns.length} note${warns.length > 1 ? 's' : ''}</span>` : ''}`;
+    $('#defs-issues').innerHTML = [...errs, ...warns].slice(0, 40).map(i => `<li class="${i.level}"><button type="button" data-line="${i.line}" data-file="${esc(i.file || '')}" ${i.line && i.file ? '' : 'disabled'}>${i.file ? esc(i.file.replace(/\.txt$/, '')) + ' ' : ''}${i.line ? 'line ' + i.line : ''}</button><span class="${i.level === 'error' ? 'error' : 'muted'}">${esc(i.msg)}</span></li>`).join('');
+    $('#defs-roll').disabled = !D.ok;
+    return D;
+  }
+  function selectLine(n) {
+    const ta = $('#defs-text'), lines = ta.value.split('\n'); n = Math.max(0, n - 1); let pos = 0; for (let i = 0; i < n; i++) pos += lines[i].length + 1;
+    ta.focus(); ta.setSelectionRange(pos, pos + (lines[n] || '').length);
+    const lh = parseFloat(getComputedStyle(ta).lineHeight) || 18; ta.scrollTop = Math.max(0, n * lh - ta.clientHeight / 2);
+  }
+  $('#defs-text').addEventListener('input', () => { const c = cur(); if (!c) return; c.text = $('#defs-text').value; clearTimeout(checkTimer); checkTimer = setTimeout(() => { savePacks(); checkDefs(); renderPacks(); }, 350); });
+  $('#defs-card').addEventListener('click', e => {
+    const on = e.target.closest('[data-pack-on]'); if (on) { packs[+on.dataset.packOn].on = on.checked; savePacks(); checkDefs(); return; }
+    const ed = e.target.closest('[data-pack-edit]'); if (ed) { editing = packs[+ed.dataset.packEdit].name; renderPacks(); return; }
+    const mv = e.target.closest('[data-pack-move]'); if (mv) { const [i, d] = mv.dataset.packMove.split(':').map(Number); const j = i + d; if (j < 0 || j >= packs.length) return; [packs[i], packs[j]] = [packs[j], packs[i]]; savePacks(); renderPacks(); checkDefs(); return; }
+    const ln = e.target.closest('[data-line]'); if (ln && ln.dataset.file) { editing = ln.dataset.file; renderPacks(); selectLine(+ln.dataset.line); }
+  });
+  $('#defs-roll').onclick = () => { const D = checkDefs(); if (!D.ok) return; savePacks(); newWorld(); $('#defs-status').insertAdjacentHTML('beforeend', '<span style="color:var(--accent)">New world rolled</span>'); };
+  $('#pack-new').onclick = () => {
+    let name = 'my-pack.txt', i = 2; while (packs.some(p => p.name === name)) name = `my-pack-${i++}.txt`;
+    packs.push({ name, text: `# ${name} — your own definitions. Some examples to edit or delete:\n\n+ animal\nname: elk\narea: forest, hills\nfood: 60\ntags: game\nspawn: 4\n\n# change something that already exists by repeating its name:\n+ monster\nname: wolves\npower: 4\n`, on: true, kind: 'yours', desc: 'your pack' });
+    editing = name; savePacks(); renderPacks(); checkDefs(); $('#defs-text').focus();
+  };
+  $('#pack-restore').onclick = () => { const c = cur(), d = DEFAULT_PACKS.find(x => x.name === c.name); if (!d) return; const b = $('#pack-restore'); if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = 'Lose your edits?'; setTimeout(() => { delete b.dataset.confirm; b.textContent = 'Restore original'; }, 4000); return; } delete b.dataset.confirm; b.textContent = 'Restore original'; c.text = d.text; c.base = d.text; savePacks(); renderPacks(); checkDefs(); };
+  $('#pack-delete').onclick = () => { const c = cur(); if (c.kind !== 'yours') return; const b = $('#pack-delete'); if (!b.dataset.confirm) { b.dataset.confirm = 1; b.textContent = 'Delete it?'; setTimeout(() => { delete b.dataset.confirm; b.textContent = 'Delete pack'; }, 4000); return; } delete b.dataset.confirm; b.textContent = 'Delete pack'; packs = packs.filter(p => p !== c); editing = packs[0]?.name; savePacks(); renderPacks(); checkDefs(); };
+  $('#defs-copy').onclick = async () => { const ta = $('#defs-text'); try { await navigator.clipboard.writeText(ta.value); $('#defs-copy').textContent = 'Copied'; } catch (e) { ta.focus(); ta.select(); $('#defs-copy').textContent = 'Selected, press copy'; } setTimeout(() => $('#defs-copy').textContent = 'Copy', 2000); };
+  $('#defs-file').addEventListener('change', async e => {
+    for (const f of e.target.files) { const text = await f.text(), ex = packs.find(p => p.name === f.name); if (ex) { ex.text = text; ex.on = true; } else packs.push({ name: f.name, text, on: true, kind: 'yours', desc: 'loaded from a file' }); editing = f.name; }
+    savePacks(); renderPacks(); checkDefs(); e.target.value = '';
+  });
+
+  /* ---------- controls ---------- */
+  const playBtn = $('#play');
+  function setPlay(v) { playing = v; playBtn.textContent = v ? 'Pause' : 'Play'; }
+  playBtn.onclick = () => { turning = []; renderTurning(); setPlay(!playing); };
+  function doTick() {
+    prevParty = new Map(W.parties.map(P => [P.id, { ...P.pos }]));
+    Sim.tick();
+    if (W.hour === 6) { save(); writeBack(); }
+    if (W.pending.length) { if (pauseTrig && !catching) { turning = turning.concat(W.pending); setPlay(false); renderTurning(); } W.pending.length = 0; }
+  }
+  $('#step').onclick = () => { doTick(); acc = 0; renderAll(); };
+  $('#between').onclick = () => offerBetween();
+  $('#dawn').onclick = () => { do doTick(); while (W.hour !== 6 && !turning.length); town(townId)?.npcs.forEach(n => { if (n.dest) n.pos = { ...n.dest }; }); acc = 0; renderAll(); };
+  $('#new').onclick = () => { const b = $('#new'); if (b.dataset.confirm) { delete b.dataset.confirm; b.textContent = 'New world'; try { newWorld(); } catch (err) { $('#defs-card').open = true; checkDefs(); } } else { b.dataset.confirm = 1; b.textContent = 'Replace this world?'; setTimeout(() => { delete b.dataset.confirm; b.textContent = 'New world'; }, 4000); } };
+  $('#pause-trig').checked = pauseTrig;
+  $('#pause-trig').onchange = e => { pauseTrig = e.target.checked; try { localStorage.setItem(SAVE_KEY + '.stop', pauseTrig ? '1' : '0'); } catch (err) {} };
+  document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { speed = +b.dataset.speed; acc = 0; document.querySelectorAll('[data-speed]').forEach(x => x.setAttribute('aria-pressed', x === b)); });
+  document.querySelectorAll('[data-level]').forEach(b => b.onclick = () => { level = b.dataset.level; document.querySelectorAll('[data-level]').forEach(x => x.setAttribute('aria-pressed', x === b)); renderLog(); });
+  document.querySelectorAll('[data-scope]').forEach(b => b.onclick = () => { scope = b.dataset.scope; document.querySelectorAll('[data-scope]').forEach(x => x.setAttribute('aria-pressed', x === b)); renderLog(); });
+  document.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON|SELECT|TEXTAREA|SUMMARY/.test(document.activeElement.tagName)) { e.preventDefault(); setPlay(!playing); } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && W) save(); });
+  addEventListener('pagehide', () => { if (W) save(); });
+
+  /* ---------- loop ---------- */
+  function frame(now) {
+    const dt = Math.min(100, now - last); last = now;
+    if (W && playing && !catching) { acc += dt; let n = 0; while (acc >= interval() && n < 4) { acc -= interval(); doTick(); dirty = true; n++; if (!playing) break; } if (n === 4) acc = 0; }
+    if (W && !catching) { if (view === 'town') walk(dt); draw(); }
+    if (dirty && now - lastUI > 280 && W) { renderLive(); dirty = false; lastUI = now; }
+    requestAnimationFrame(frame);
+  }
+  readColors(); fit();
+  const start = () => {
+    if (window.WORLD_GM_KEY && QS.get('gm') !== window.WORLD_GM_KEY) { document.body.innerHTML = '<main style="max-width:40rem;margin:4rem auto;padding:0 16px;font:16px/1.5 system-ui"><h1>The world is the DM\'s</h1><p>Open this page with the DM link (<code>world.html?gm=…</code>).</p></main>'; return; }
+    if (QS.has('embed')) document.body.classList.add('embed');
+    boot(); liveSync();
+    const C0 = CAMP_Q && W.campaigns?.find(c => c.id === CAMP_Q); if (C0) { regionId = C0.region; sel = { kind: 'region', id: C0.region }; view = 'region'; renderAll(); }
+    setPlay(playing); requestAnimationFrame(frame);
+  };
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start();
+})();
+</script>
+
+</body></html>

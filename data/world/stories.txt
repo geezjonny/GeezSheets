@@ -1,0 +1,256 @@
+# STORIES — what life does to people, and the paths it sends them down
+#
+# Things that happen to people (the engine marks these in their life story):
+#   lost spouse, lost child, lost parent, lost friend, town sacked, came home to ruins, home destroyed,
+#   survived raid, mauled, won fight, starving, bitten, married, child born, came of age,
+#   became hero, turned outlaw, avenged, redeemed, fled, slew a monster
+# Deeds (below) add their own: saved by, robbed by, spared by... anything you write in "marks".
+#
+# + scar: what an event leaves behind.  from: the events that cause it.  chance: how often (0-1).
+#   lasts: days (0 = for good).  work / social / pray: how much more or less they do it.
+#   courage: added to their fighting power.  hero: pull toward becoming a hero.  outlaw: pull toward the wilds.
+#   leave: pull toward leaving town.  dark: pull toward forbidden things.  grudge: they hold whoever caused it responsible.
+#   desire: what they now want. {about} is who caused it, {who} is who they lost.  heals: scars this one ends.
+#
+# + arc: a path a life can take.  starts: events or scars that can set it off.  also: personalities or wants that make it likelier.
+#   steps, in order (the engine knows these):
+#     outlaw · gather N (band reaches N) · raid N (N good raids) · take ruins (claims a hideout and renames it) · crown (takes the title)
+#     study N (N nights at the graves) · raise one (brings back the one they lost) · hide N · raise all (the next mass death rises with them)
+#     become lich · train N · hunt grudge (goes after whoever wronged them) · wait N · found town
+#   ends: how it can finish: slain, pardoned, betrayed, redeemed, avenged.   bound: true means their followers fall when they do.
+#
+# + deed: something the heroes (your players) did. Use it from the "What the heroes did" panel.
+#   affects: everyone, some, one (the person you picked), leaders.  marks: what happens to them.
+#   kills: how many die (their families grieve, and blame the heroes).  others: what everyone else in town goes through.
+#
+# + world: how fast lives run.  aging: years of age per year of the world.  childhood: days to grow up.
+#   births: more or fewer babies (x).  courting: more or fewer marriages (x).
+
++ world
+aging: 4
+childhood: 30
+births: 1
+courting: 1
+
+# ---------- scars ----------
+
++ scar
+name: grieving
+from: lost spouse, lost child, lost parent
+lasts: 30
+work: -15
+social: -10
+pray: 12
+hero: 6
+dark: 2
+desire: to see {who} again
+shown: still grieving {who}
+
++ scar
+name: vengeful
+from: lost spouse, lost child, town sacked, came home to ruins, robbed by, betrayed by
+chance: 0.35
+courage: 1
+hero: 5
+grudge: true
+desire: to make {about} pay
+shown: wants vengeance on {about}
+
++ scar
+name: nothing to lose
+from: town sacked, came home to ruins, home destroyed, starving
+chance: 0.6
+lasts: 40
+outlaw: 2
+leave: 2
+desire: a place to belong
+shown: has nothing left to lose
+
++ scar
+name: hardened
+from: survived raid, mauled, won fight, town sacked, slew a monster
+chance: 0.3
+courage: 1.5
+social: -5
+shown: hardened by what they've seen
+
++ scar
+name: frightened
+from: mauled, survived raid, bitten, fled
+chance: 0.5
+lasts: 15
+leave: 3
+work: -5
+shown: jumps at shadows
+
++ scar
+name: orphaned
+from: lost parent
+chance: 0.5
+hero: 3
+outlaw: 1
+desire: someone to look up to
+shown: orphaned
+
++ scar
+name: grateful
+from: saved by, helped by, spared by
+desire: to repay {about}
+shown: owes {about} a debt
+
++ scar
+name: bitter
+from: robbed by, betrayed by, abandoned by, humiliated by
+chance: 0.7
+grudge: true
+work: -5
+desire: to see {about} brought low
+shown: bitter toward {about}
+
++ scar
+name: wary
+from: threatened by
+chance: 0.5
+lasts: 40
+grudge: true
+leave: 1
+shown: wary of {about}
+
++ scar
+name: in love
+from: married
+lasts: 60
+social: 10
+work: 5
+heals: grieving
+shown: newly wed
+
++ scar
+name: proud parent
+from: child born
+lasts: 40
+work: 10
+leave: -2
+shown: a proud parent
+
++ scar
+name: at peace
+from: avenged, redeemed
+heals: vengeful, bitter, grieving
+shown: at peace at last
+
+# ---------- arcs ----------
+
++ arc
+name: bandit king
+starts: town sacked, came home to ruins, nothing to lose
+also: greedy, hot-tempered, ambitious, proud, cynical, power, coin
+chance: 0.25
+steps: outlaw, gather 6, raid 2, take ruins, crown
+title: the Bandit King
+ends: slain, pardoned, betrayed
+
++ arc
+name: grieving necromancer
+starts: grieving
+also: pious, quiet, romantic, curious, love, family, knowledge
+chance: 0.015
+steps: study 6, raise one, hide 8, raise all, become lich
+title: the Necromancer
+ends: slain, redeemed
+bound: true
+
++ arc
+name: avenger
+starts: vengeful
+also: brave, proud, hot-tempered, revenge
+chance: 0.15
+steps: train 4, hunt grudge
+title: the Avenger
+ends: slain, avenged
+
++ arc
+name: wanderer's return
+starts: came home to ruins
+also: hardworking, patient, family
+chance: 0.2
+steps: wait 6, found town
+title: the Founder
+ends: slain
+
+# ---------- deeds: what the heroes did ----------
+
++ deed
+name: saved the town
+affects: everyone
+marks: saved by
+fear: -3
+text: {heroes} saved {town}.
+
++ deed
+name: killed a monster
+affects: everyone
+marks: saved by
+fear: -2
+text: {heroes} killed the beast that troubled {town}.
+
++ deed
+name: helped someone
+affects: one
+marks: helped by
+text: {heroes} helped {one} of {town}.
+
++ deed
+name: spared someone
+affects: one
+marks: spared by
+text: {heroes} spared {one}.
+
++ deed
+name: killed someone
+affects: one
+kills: 1
+others: threatened by
+fear: 2
+text: {heroes} killed {one} of {town}.
+
++ deed
+name: robbed someone
+affects: one
+marks: robbed by
+treasury: -10
+text: {heroes} robbed {one} of {town}.
+
++ deed
+name: humiliated someone
+affects: one
+marks: humiliated by
+text: {heroes} humiliated {one} in front of {town}.
+
++ deed
+name: burned buildings
+affects: some
+marks: home destroyed
+fear: 2
+food: x0.7
+text: {heroes} set fire to part of {town}.
+
++ deed
+name: broke a promise
+affects: leaders
+marks: betrayed by
+text: {heroes} broke their word to {town}.
+
++ deed
+name: abandoned the town
+affects: everyone
+marks: abandoned by
+fear: 3
+text: {heroes} left {town} to its fate.
+
++ deed
+name: threatened the town
+affects: everyone
+marks: threatened by
+fear: 2
+text: {heroes} threatened {town}.

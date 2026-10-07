@@ -1,0 +1,62 @@
+# PLACES — towns and the wild land between them
+# + settlement: how many people.   + terrain: size, also (chance of a second terrain inside it), suffix (name endings)
+
++ settlement
+name: hamlet
+weight: 3
+people: 12-17
+
++ settlement
+name: village
+weight: 4
+people: 18-26
+
++ settlement
+name: town
+weight: 1
+people: 27-33
+
++ terrain
+name: forest
+weight: 4
+size: 65-110
+also: river 0.35
+suffix: wood, weald, holt, pines, thicket
+
++ terrain
+name: hills
+weight: 2
+size: 65-105
+also: river 0.2
+suffix: Hills, Downs, Tors, Crags
+
++ terrain
+name: plains
+weight: 2
+size: 65-110
+also: river 0.3
+suffix: Fields, Meadows, Heath, Leas
+
++ terrain
+name: swamp
+weight: 1.4
+size: 60-100
+suffix: Mire, Fen, Marsh, Bog
+
++ terrain
+name: mountains
+weight: 1
+size: 70-95
+suffix: Peaks, Spires, Teeth, Mountains
+
++ terrain
+name: lake
+weight: 1.2
+size: 45-75
+suffix: mere, water, Lake, Pool
+
++ terrain
+name: ruins
+weight: 1
+size: 30-40
+suffix: Barrow, Keep, Ruins, Tombs

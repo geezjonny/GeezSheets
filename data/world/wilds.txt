@@ -1,0 +1,395 @@
+# WILDS — everything living or lying out there
+# + animal breeds and moves.  + plant fills with its seasons and regrows.  + mineral runs out slowly.  + monster is hostile and levels up.
+# area: terrains it lives in. food: how filling (becomes a market good). gives: the good it becomes. yields: extra goods. tags: words professions gather by.
+# eats: what it hunts ("people" means it hunts townsfolk and travellers). roams: how far it will wander looking for food.
+# eats: what it hunts. pack: splits when crowded. solo: one big beast. raids: loots towns. rises: deaths. dark: feeds on strangeness. recruits: outlaws.
+# spreads: bite (its victims sicken and turn after "turns" days unless "cured by" a service like health).
+# broods: days between clutches for a lone beast (young leave to find their own land). hoards: keeps what it steals in its lair.
+# + mutation: what a wild thing can turn into
+# FOOD WEB: everything with "eats" shares the food in its area each dawn; stronger hunters take a bigger share.
+# Fed and safe animals breed. Hungry, hunted or crowded ones move on and settle elsewhere. Starving ones die back.
+# gives: none means people can't gather it (it's only food for animals).
+
++ plant
+name: grass
+area: forest, plains, hills, swamp, mountains
+gives: none
+season: spring, summer, autumn
+spawn: 12
+start: 120-200
+cap: 220
+regrow: 0.3
+
++ plant
+name: pondweed
+area: river, lake
+gives: none
+spawn: 12
+start: 80-140
+cap: 160
+regrow: 0.3
+
++ animal
+name: deer
+area: forest, plains, hills
+food: 50
+gives: venison
+yields: hides
+tags: game
+spawn: 10
+growth: 0.15
+start: 20-40
+cap: 70
+eats: grass, berries, nuts
+
++ animal
+name: boar
+area: forest, swamp
+food: 50
+gives: pork
+yields: hides
+tags: game
+power: 1
+spawn: 7
+growth: 0.1
+start: 6-14
+cap: 35
+eats: roots, nuts, mushrooms, grass
+
++ animal
+name: goats
+area: mountains, hills
+food: 45
+gives: mutton
+yields: hides
+tags: game
+spawn: 7
+growth: 0.12
+start: 15-30
+cap: 50
+eats: grass
+
++ animal
+name: fish
+area: river, lake
+food: 40
+tags: fish
+spawn: x1.5
+growth: 0.12
+start: 30-60
+cap: 90
+season: spring, summer, autumn
+eats: pondweed
+
++ plant
+name: berries
+area: forest, plains
+food: 25
+tags: forage
+season: summer, autumn
+spawn: 8
+start: 20-40
+cap: 60
+regrow: 0.2
+
++ plant
+name: mushrooms
+area: forest, swamp
+food: 30
+tags: forage
+season: spring, autumn
+danger: 0.02
+spawn: 6
+cap: 45
+
++ plant
+name: nuts
+area: forest
+food: 35
+tags: forage
+season: autumn
+spawn: 6
+cap: 50
+
++ plant
+name: roots
+area: plains, hills, swamp
+food: 28
+tags: forage
+spawn: 6
+cap: 40
+regrow: 0.08
+
++ plant
+name: wild herbs
+area: swamp, hills, forest
+gives: herbs
+tags: forage
+season: spring, summer, autumn
+spawn: 5
+cap: 30
+
++ plant
+name: wild honey
+area: forest
+food: 40
+gives: honey
+tags: forage
+season: summer
+danger: 0.03
+spawn: 2
+start: 4-10
+cap: 15
+
++ plant
+name: timber
+area: forest, swamp
+gives: wood
+tags: timber
+spawn: 10
+start: 200-400
+cap: 500
+regrow: 0.01
+per: 0.2
+
++ mineral
+name: ore vein
+area: hills, mountains
+gives: ore
+tags: ore
+spawn: 8
+start: 150-300
+cap: 400
+regrow: 0.002
+
++ monster
+name: wolves
+area: forest, hills, plains
+eats: deer, boar, goats
+pack: true
+power: 3
+growth: 0.14
+start: 4-8
+spawn: 5
+
++ monster
+name: spiders
+area: forest, swamp
+eats: deer, boar, people
+pack: true
+power: 3
+growth: 0.09
+start: 3-6
+spawn: 2
+
++ monster
+name: goblins
+area: hills, swamp, mountains
+raids: true
+power: 2.5
+growth: 0.06
+start: 5-10
+spawn: 4
+eats: deer, boar, people
+
++ monster
+name: bandits
+area: forest, hills, plains
+raids: true
+recruits: outlaws
+power: 4
+growth: 0
+start: 3-6
+spawn: 1.5
+eats: deer, boar
+
++ monster
+name: undead
+area: swamp, ruins
+rises: deaths
+power: 4
+growth: 0
+start: 2-5
+spawn: 2
+eats: people
+
++ monster
+name: owlbear
+area: forest
+eats: deer, boar, people
+solo: true
+power: 22
+growth: 0
+spawn: 0.8
+roams: 250
+
++ monster
+name: troll
+area: hills, swamp, mountains
+eats: deer, boar, goats, people
+solo: true
+power: 30
+growth: 0
+spawn: 0.8
+roams: 300
+
++ monster
+name: dragon
+area: mountains
+eats: deer, boar, goats, people
+solo: true
+power: 120
+growth: 0
+spawn: 0.25
+roams: 700
+broods: 90
+hoards: true
+
++ monster
+name: plague dead
+area: swamp, ruins
+eats: people
+spreads: bite
+turns: 2
+cured by: health
+power: 3
+growth: 0
+start: 3-6
+spawn: 0.6
+
++ monster
+name: shadows
+area: ruins, swamp, forest
+dark: true
+summoned: true
+power: 5
+growth: 0.04
+start: 2-4
+spawn: 0
+eats: people
+
++ mutation
+of: wolves
+becomes: Dire wolves
+weight: 4
+power: x2
+growth: x0.7
+
++ mutation
+of: wolves
+becomes: Winter wolves
+weight: 2
+power: x1.6
+growth: x1
+tag: frost
+
++ mutation
+of: wolves
+becomes: Werewolves
+weight: 1
+power: x2.5
+growth: x0.5
+tag: curse
+
++ mutation
+of: goblins
+becomes: Hobgoblin warband
+weight: 4
+power: x1.8
+growth: x0.8
+
++ mutation
+of: goblins
+becomes: Goblin shaman cult
+weight: 2
+power: x1.4
+growth: x1.5
+tag: dark
+
++ mutation
+of: deer
+becomes: White stag herd
+weight: 1
+power: x0
+growth: x1
+tag: sacred
+
++ mutation
+of: boar
+becomes: Dire boars
+weight: 3
+power: x4
+growth: x0.8
+tag: hostile
+
++ mutation
+of: spiders
+becomes: Phase spiders
+weight: 2
+power: x2
+growth: x1
+
++ mutation
+of: spiders
+becomes: Spider queen's brood
+weight: 1
+power: x1.5
+growth: x2
+
++ mutation
+of: bandits
+becomes: Bandit lord's company
+weight: 3
+power: x1.6
+growth: x1
+
++ mutation
+of: bandits
+becomes: Rebel army
+weight: 1
+power: x1.4
+growth: x1.5
+
++ mutation
+of: undead
+becomes: Wights
+weight: 3
+power: x2
+growth: x1
+
++ mutation
+of: undead
+becomes: Lich-touched dead
+weight: 1
+power: x3
+growth: x1.5
+tag: dark
+
++ mutation
+of: owlbear
+becomes: Elder owlbear
+weight: 1
+power: x1.8
+growth: x1
+
++ mutation
+of: troll
+becomes: Troll chieftain
+weight: 1
+power: x1.6
+growth: x1
+
++ mutation
+of: shadows
+becomes: Shadow demon
+weight: 1
+power: x3
+growth: x1
+tag: dark
+
++ mutation
+of: dragon
+becomes: Ancient dragon
+weight: 1
+power: x2
+growth: x1

@@ -1,0 +1,127 @@
+# PEOPLE — who can be rolled
+# + need: what everyone wants (met by: eat, sleep, company, faith)
+# + race: weight, lifespan, stat bonuses.   + names: first and last names for a race.
+# + list: personality, wants, fears, quirks, ambitions (xN = weight)
+
++ need
+name: hunger
+rises: 4
+met by: eat
+
++ need
+name: rest
+rises: 3
+met by: sleep
+
++ need
+name: company
+rises: 2.5
+met by: company
+
++ race
+name: Human
+weight: 40
+lifespan: 16-80
+stats: str +1, dex +1, con +1, int +1, wis +1, cha +1
+
++ race
+name: Halfling
+weight: 12
+lifespan: 20-150
+stats: dex +2, cha +1
+
++ race
+name: Dwarf
+weight: 12
+lifespan: 50-300
+stats: con +2, wis +1
+
++ race
+name: Elf
+weight: 10
+lifespan: 100-600
+stats: dex +2, int +1
+
++ race
+name: Gnome
+weight: 8
+lifespan: 40-350
+stats: con +1, int +2
+
++ race
+name: Half-Orc
+weight: 8
+lifespan: 14-60
+stats: str +2, con +1
+
++ race
+name: Tiefling
+weight: 5
+lifespan: 16-90
+stats: int +1, cha +2
+
++ race
+name: Dragonborn
+weight: 5
+lifespan: 15-70
+stats: str +2, cha +1
+
++ names
+race: Human
+first: Aldric, Mara, Tomas, Elsbeth, Gareth, Wren, Hollis, Ada, Corwin, Briony, Edric, Lysa, Bram, Celia, Osric, Nell, Rowan, Tamsin, Jory, Hilde
+last: Ashford, Brightwater, Carver, Dunmore, Fletcher, Greaves, Hawthorne, Millward, Ostrander, Pell, Redgrave, Shaw, Thatcher, Underhill, Wexley, Yarrow
+
++ names
+race: Halfling
+first: Pip, Rosie, Milo, Tansy, Bodo, Lila, Finnan, Daisy, Cob, Marigold, Wendel, Poppy, Ned, Clover, Tobin, Hazel
+last: Tealeaf, Goodbarrel, Underbough, Brushgather, Thorngage, Greenbottle, Highhill, Tosscobble, Applewick, Fernsby, Puddlefoot, Burrows
+
++ names
+race: Dwarf
+first: Borin, Helga, Durgan, Ragna, Thrain, Kelda, Orsik, Brunhild, Grimm, Edda, Baldur, Sigrun, Torvak, Ylva, Magni, Hrolf
+last: Ironfist, Stonehelm, Deepdelver, Frostbeard, Hammerfall, Coppervein, Battlehammer, Granitejaw, Emberforge, Goldfinder, Rockseeker, Anvilborn
+
++ names
+race: Elf
+first: Aelar, Sylwen, Thalion, Ilyra, Faelan, Naivara, Erevan, Liria, Caelum, Shava, Riardon, Velenne, Soveliss, Ielene, Galinndan, Meriel
+last: Amakiir, Galanodel, Liadon, Meliamne, Nailo, Siannodel, Ilphelkiir, Xiloscient, Holimion, Starwhisper, Moonbrook, Duskwalker
+
++ names
+race: Gnome
+first: Fizwick, Nissa, Boddynock, Tilly, Zook, Ellywick, Orryn, Bimpnottin, Wrenn, Dimble, Lorilla, Seebo, Quilla, Nackle, Roywyn, Fonkin
+last: Beren, Daergel, Folkor, Garrick, Nackle, Murnig, Ningel, Raulnor, Scheppen, Timbers, Turen, Gearwhistle
+
++ names
+race: Half-Orc
+first: Grisha, Durk, Ovak, Shautha, Krusk, Yevelda, Holg, Baggi, Thokk, Engong, Mhurren, Sutha, Gell, Volen, Ront, Kansif
+last: Bloodtusk, Skullsplitter, Ashgrin, Bonechewer, Ironhide, Gorefang, Stonejaw, Redmaw, Wolfsbane, Grimscar, Brokentooth, Ragebrand
+
++ names
+race: Tiefling
+first: Zariel, Kallista, Mordai, Nemeia, Akmen, Orianna, Damakos, Lerissa, Skamos, Bryseis, Ekemon, Rieta, Iados, Makaria, Leucis, Kairon
+last: Vex, Ashenvale, Nightbloom, Embercall, Hollowmere, Sorrowind, Cinderveil, Duskbane, Grimmoor, Blackthorne, Vesper, Ruin
+
++ names
+race: Dragonborn
+first: Arjhan, Sora, Balasar, Kava, Donaar, Thava, Ghesh, Perra, Kriv, Biri, Medrash, Raiann, Nadarr, Daar, Torinn, Harann
+last: Kerrhylon, Clethtinthiallor, Daardendrian, Delmirev, Drachedandion, Fenkenkabradon, Kimbatuul, Linxakasendalor, Myastan, Nemmonis, Norixius, Ophinshtalajiir
+
++ list
+name: personality
+items: Kind, Grumpy, Cheerful, Suspicious, Greedy, Brave, Cowardly, Curious, Lazy, Hardworking, Proud, Humble, Gossipy, Quiet, Hot-tempered, Patient, Pious, Cynical, Romantic, Ambitious
+
++ list
+name: wants
+items: Food security, Coin, Safety, Family, Fame, Knowledge, Power, Love, Revenge, Faith, Freedom, Adventure
+
++ list
+name: fears
+items: Monsters, Starvation, Poverty, Dark magic, Being alone, The law, Death, Fire, Strangers, The wilderness, Losing family, Being forgotten
+
++ list
+name: quirks
+items: Hums constantly, Collects odd stones, Never sits with back to a door, Talks to animals, Terrible liar, Always hungry, Afraid of birds, Tells tall tales, Overly polite, Bites nails, Keeps a lucky coin, Speaks in proverbs, Laughs at the wrong times, Writes everything down, Sleepwalks, Hates rain, Missing a finger, Wears a strange amulet, Loves gambling, Can't read
+
++ list
+name: ambitions
+items: Nothing hidden x150, Studies forbidden magic in secret x2, Secretly worships a dark power, Seeks immortality, Wants to found a new town x2, Plans to overthrow the local lord, Searching for a lost relic x2, Dreams of becoming a legendary hero x2, Wants to tame a monster, Hoards wealth obsessively x2, Wants revenge on another town, Believes the world is ending

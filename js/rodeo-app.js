@@ -2050,6 +2050,8 @@ function boot() {
   });
   watchCharacters(); watchSession(); watchPings(); watchRulers(); watchDice(); watchMind(); watchFeed(); wireLoot(); watchCall(); wireCall();
   if (IS_GM) { fillMapSelect(); refreshLibrary(); }
+  // opened from index.html's battle map level: ?map=battlemap/<file> moves everyone to it
+  if (IS_GM && params.get("map")) gmGoTo(params.get("map"));
   else if (!me) { refreshMePicker(); openModal("modal-me"); }
   window.__rodeo = { state, livePings, throwOnTable, get call() { return call; }, spawnToken, spawnProp, showMind, openMap, gmGoTo, pcList, npcList, get me() { return me; } };
 }

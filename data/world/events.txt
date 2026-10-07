@@ -1,0 +1,151 @@
+# EVENTS — rolled most days in each region
+# effect: <building> xN (farm x0.5), <wild thing, kind or tag> xN (game x1.6), spawn <wild thing> N,
+#         plague, weird +N, refugees N, fair, ruins, portal, stranger, hero, fire, bless
+
++ event
+name: Drought
+weight: 3
+scope: region
+season: Summer
+effect: farm x0.5
+days: 12
+text: A drought settles over {region}. The fields crack.
+
++ event
+name: Blight
+weight: 2
+scope: town
+season: Any
+effect: farm x0.3
+days: 8
+text: Blight rots the crops of {town}.
+
++ event
+name: Bountiful harvest
+weight: 3
+scope: town
+season: Autumn
+effect: farm x1.6
+days: 8
+text: {town} brings in a bumper harvest.
+
++ event
+name: Harsh winter
+weight: 3
+scope: region
+season: Winter
+effect: game x0.6
+text: A brutal cold snap kills game across {region}.
+
++ event
+name: Fever
+weight: 2
+scope: town
+season: Any
+effect: plague
+text: Fever breaks out in {town}.
+
++ event
+name: Wandering owlbear
+weight: 1.5
+scope: zone
+season: Any
+effect: spawn owlbear 1
+text: Something huge has moved into {zone}.
+
++ event
+name: Troll
+weight: 1
+scope: zone
+season: Any
+effect: spawn troll 1
+text: A troll has made its lair in {zone}.
+
++ event
+name: Goblin migration
+weight: 2
+scope: zone
+season: Any
+effect: spawn goblins 8
+text: A goblin tribe crosses into {zone}.
+
++ event
+name: Wolf migration
+weight: 2
+scope: zone
+season: Any
+effect: spawn wolves 6
+text: A wolf pack drifts into {zone} from the north.
+
++ event
+name: Ore vein
+weight: 2
+scope: town
+season: Any
+effect: mine x2
+days: 15
+text: Miners near {town} strike a rich vein.
+
++ event
+name: Refugees
+weight: 2
+scope: town
+season: Any
+effect: refugees 4
+text: Refugees from beyond the region arrive at {town}.
+
++ event
+name: Merchant fair
+weight: 2
+scope: town
+season: Summer
+effect: fair
+text: A merchant fair fills {town}'s market with coin.
+
++ event
+name: Green comet
+weight: 1
+scope: region
+season: Any
+effect: weird +2
+text: A green comet hangs over {region} for three nights.
+
++ event
+name: Ruins uncovered
+weight: 1
+scope: zone
+season: Any
+effect: ruins
+text: A landslide uncovers old ruins in {zone}.
+
++ event
+name: Game boom
+weight: 2
+scope: zone
+season: Spring
+effect: game x1.6
+text: Game is plentiful in {zone} this spring.
+
++ event
+name: Stranger with a secret
+weight: 1.5
+scope: town
+season: Any
+effect: stranger
+text: A hooded stranger takes a room in {town}.
+
++ event
+name: Rift
+weight: 0.3
+scope: zone
+season: Any
+effect: portal
+text: A rift tears open in {zone}. Shadows pour out.
+
++ event
+name: Dragon sighting
+weight: 0.15
+scope: zone
+season: Any
+effect: spawn dragon 1
+text: A dragon has been seen over {zone}.

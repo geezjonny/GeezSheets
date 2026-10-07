@@ -1,0 +1,70 @@
+# COAST — a mod pack: shorelines, crabs, seaweed and something in the deep
+# Turn it on and roll a new world. It adds new things and changes a few existing ones.
+
++ terrain
+name: coast
+weight: 3
+size: 70-105
+suffix: Shore, Strand, Sands, Coast
+
+# fish now live along the coast too (this changes the fish in wilds.txt)
++ animal
+name: fish
+area: river, lake, coast
+
+# pondweed grows along the coast too, so fish there have something to eat
++ plant
+name: pondweed
+area: river, lake, coast
+
++ animal
+name: crabs
+area: coast
+eats: seaweed
+food: 30
+tags: shellfish
+spawn: x2
+growth: 0.1
+start: 30-50
+cap: 70
+
++ plant
+name: seaweed
+area: coast
+food: 15
+tags: forage
+spawn: 8
+start: 30-50
+cap: 80
+regrow: 0.25
+
++ profession
+name: Crabber
+weight: 6
+gathers: shellfish
+key stat: dex
+
++ monster
+name: sea serpent
+area: coast
+eats: fish, crabs, people
+roams: 400
+solo: true
+power: 40
+spawn: 0.4
+
++ mutation
+of: crabs
+becomes: Giant crabs
+weight: 1
+power: x6
+growth: x0.5
+tag: hostile
+
++ event
+name: Shipwreck
+weight: 2
+scope: zone
+season: Any
+effect: refugees 3
+text: A ship breaks up on {zone}. Survivors stagger ashore.
