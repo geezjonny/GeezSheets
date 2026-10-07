@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GeezVTT</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { colors: { darkbg: '#0f172a', darkpanel: '#1e293b', darkborder: '#334155' } } } };
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; user-select: none; -webkit-user-select: none;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    #canvas-container { cursor: default; touch-action: none; }
+    #canvas-container.panning { cursor: grabbing !important; }
+    #canvas-container.tool-ruler, #canvas-container.tool-draw, #canvas-container.tool-fog,
+    #canvas-container.tool-calibrate, #canvas-container.tool-ping { cursor: crosshair; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e293b; }
+    ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    .radial-menu { transform: translate(-50%, -50%); }
+    .radial-menu button { pointer-events: auto; }
+    .glass-panel { background: rgba(30, 41, 59, 0.88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+    .tool-btn.active-tool { background: rgba(51,65,85,0.85); color: #34d399; }
+    .gm-only { }
+    body.player .gm-only { display: none !important; }
+    .toast { animation: toastIn .2s ease-out; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    input, select, textarea { user-select: text; -webkit-user-select: text; }
+
+    /* ── Mind message overlay ── */
+    #mind-overlay { --c1: 168,85,247; --c2: 240,171,252; position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center;
+      background: radial-gradient(circle at center, rgba(var(--c1),.38) 0%, rgba(2,6,23,.9) 65%); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+      cursor: pointer; overflow: hidden; animation: mindIn .6s ease-out; }
+    #mind-overlay.show { display: flex; }
+    #mind-overlay.out { animation: mindOut .7s ease-in forwards; }
+    #mind-overlay[data-style="sending"] { --c1: 14,165,233;  --c2: 165,243,252; }
+    #mind-overlay[data-style="divine"]  { --c1: 234,179,8;   --c2: 254,240,138; }
+    #mind-overlay[data-style="dream"]   { --c1: 99,102,241;  --c2: 199,210,254; }
+    #mind-overlay[data-style="dread"]   { --c1: 220,38,38;   --c2: 254,202,202; }
+    .mind-ring { position: absolute; left: 50%; top: 50%; width: 40vmin; height: 40vmin; border-radius: 50%; border: 2px solid rgba(var(--c2),.5);
+      transform: translate(-50%,-50%) scale(.2); opacity: 0; animation: mindRipple 4.5s ease-out infinite; box-shadow: 0 0 40px rgba(var(--c1),.6), inset 0 0 40px rgba(var(--c1),.4); }
+    .mind-ring:nth-child(2) { animation-delay: 1.5s; } .mind-ring:nth-child(3) { animation-delay: 3s; }
+    .mind-box { position: relative; max-width: min(820px, 88vw); text-align: center; padding: 24px; animation: mindDrift 6s ease-in-out infinite; }
+    .mind-from { font: 600 12px/1 system-ui, sans-serif; letter-spacing: .35em; text-transform: uppercase; color: rgba(var(--c2),.75); margin-bottom: 22px; }
+    .mind-text { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: clamp(1.4rem, 3.4vw, 2.6rem); line-height: 1.35; color: rgb(var(--c2));
+      text-shadow: 0 0 12px rgba(var(--c1),.9), 0 0 32px rgba(var(--c1),.6); white-space: pre-wrap; }
+    .mind-text span { opacity: 0; filter: blur(8px); display: inline-block; animation: mindLetter .5s ease-out forwards; white-space: pre; }
+    .mind-hint { margin-top: 28px; font: 11px system-ui, sans-serif; color: rgba(var(--c2),.45); }
+    @keyframes mindIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes mindOut { to { opacity: 0; filter: blur(6px); } }
+    @keyframes mindRipple { 0% { transform: translate(-50%,-50%) scale(.2); opacity: .9; } 100% { transform: translate(-50%,-50%) scale(3.2); opacity: 0; } }
+    @keyframes mindLetter { to { opacity: 1; filter: blur(0); } }
+    @keyframes mindDrift { 0%,100% { transform: translateY(0) skewX(0deg); } 50% { transform: translateY(-6px) skewX(-1deg); } }
+    .mind-style-btn.on { border-color: #a855f7; background: rgba(168,85,247,.18); color: #f0abfc; }
+
+    /* ── Dice tray (shared, physical-ish dice) ── */
+    #free-tray { position: fixed; left: 0; right: 0; top: 48px; bottom: 0; z-index: 45; pointer-events: none; overflow: hidden; }
+    .die { position: absolute; width: var(--ds, 52px); height: var(--ds, 52px); margin: calc(var(--ds, 52px) / -2) 0 0 calc(var(--ds, 52px) / -2); will-change: transform; filter: drop-shadow(0 6px 6px rgba(0,0,0,.55)); }
+    .die svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .die-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 800 calc(var(--ds, 52px) * .36) / 1 system-ui, sans-serif; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+    .die.d4 .die-num { padding-top: 18%; }
+    .die.settled .die-num { animation: diePop .35s ease-out; }
+    .die.drop { opacity: .35; }
+    .die.crit svg polygon { stroke: #fde047; stroke-width: 6; } .die.fumble svg polygon { stroke: #f87171; stroke-width: 6; }
+    @keyframes diePop { 0% { transform: scale(1.6); } 100% { transform: scale(1); } }
+    .tray-label { position: absolute; transform: translate(-50%, 0); padding: 3px 9px; border-radius: 999px; background: rgba(15,23,42,.92); border: 1px solid rgba(255,255,255,.18);
+      font: 600 12px system-ui, sans-serif; color: #e2e8f0; white-space: nowrap; box-shadow: 0 6px 14px rgba(0,0,0,.5); animation: labelIn .3s ease-out; }
+    .tray-label b { font-size: 15px; color: #fff; margin-left: 4px; }
+    .tray-label small { color: #94a3b8; font-weight: 500; margin-left: 4px; }
+    .tray-fade { transition: opacity .8s ease; opacity: 0 !important; }
+    @keyframes labelIn { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+    /* ── Roll call screen ── */
+    #rc-overlay { position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column; align-items: center; padding: 18px 16px 16px;
+      background: radial-gradient(ellipse at 50% 35%, rgba(30,41,59,.92), rgba(2,6,23,.97) 70%); backdrop-filter: blur(4px); animation: mindIn .4s ease-out; overflow-y: auto; }
+    #rc-overlay.show { display: flex; }
+    .rc-kicker { font: 600 11px system-ui, sans-serif; letter-spacing: .35em; text-transform: uppercase; color: #94a3b8; }
+    .rc-title { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(1.7rem, 4vw, 3rem); color: #f4d58d; text-shadow: 0 0 18px rgba(244,213,141,.35); letter-spacing: .04em; text-align: center; margin: 4px 0 2px; }
+    .rc-dc { display: inline-flex; align-items: center; gap: 6px; padding: 3px 12px; border-radius: 999px; border: 1px solid rgba(244,213,141,.45); color: #f4d58d; font: 700 13px system-ui, sans-serif; background: rgba(244,213,141,.08); }
+    .rc-main { display: flex; gap: 16px; width: min(1100px, 100%); margin-top: 14px; flex: 1; min-height: 0; flex-wrap: wrap; }
+    #rc-tray { position: relative; flex: 1 1 520px; min-height: 320px; overflow: hidden; }   /* dice roll straight over the screen */
+    .rc-side { flex: 0 1 300px; display: flex; flex-direction: column; gap: 10px; min-width: 260px; }
+    .rc-card { background: rgba(30,41,59,.85); border: 1px solid #334155; border-radius: 16px; padding: 12px; }
+    .rc-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: rgba(15,23,42,.6); border: 1px solid #1e293b; margin-bottom: 5px; font-size: 13px; }
+    .rc-row .tot { margin-left: auto; font: 800 18px system-ui, sans-serif; }
+    .rc-row.wait .tot { font-size: 11px; font-weight: 500; color: #64748b; }
+    .rc-chip { padding: 4px 9px; border-radius: 999px; border: 1px solid #334155; background: #0f172a; font-size: 11px; cursor: pointer; }
+    .rc-chip.on { border-color: #f4d58d; color: #f4d58d; background: rgba(244,213,141,.1); }
+    #rc-roll { width: 100%; padding: 14px; border-radius: 14px; font: 800 18px Georgia, serif; letter-spacing: .12em; color: #1c1206;
+      background: linear-gradient(180deg, #f8dfa0, #d9a94a); box-shadow: 0 10px 25px -8px rgba(217,169,74,.6); border: 1px solid #f8dfa0; }
+    #rc-roll:hover { filter: brightness(1.08); } #rc-roll:disabled { filter: grayscale(.8) brightness(.6); }
+    #rc-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: 18px; z-index: 44; }
+    #sheet-panel { transform: translateX(105%); transition: transform .25s ease; }
+    #sheet-panel.open { transform: none; }
+  </style>
+</head>
+<body class="bg-darkbg text-slate-100 h-full w-full flex flex-col relative select-none">
+
+  <!-- Header -->
+  <header class="h-12 glass-panel border-b border-slate-700/50 flex items-center justify-between px-3 z-20 shrink-0 gap-2">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="flex items-center gap-2 shrink-0">
+        <i class="fa-solid fa-chess-board text-emerald-400 text-xl"></i>
+        <span class="font-bold tracking-wide text-lg bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent hidden sm:inline">GeezVTT</span>
+      </div>
+      <select id="sel-map" class="gm-only bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-md px-2 py-1 max-w-[220px]" title="Pick a map. Everyone moves to it.">
+        <option value="">— pick a map —</option>
+      </select>
+      <span id="map-title" class="text-xs text-slate-300 truncate"></span>
+      <span id="badge-local" class="hidden text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0" title="Players can't see a map loaded from your computer. Put it in battlemap/ to share it.">Local preview</span>
+    </div>
+
+    <div class="hidden md:flex items-center gap-2 text-xs">
+      <div class="bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700 text-slate-300 flex items-center gap-1.5">
+        <i class="fa-solid fa-border-all text-emerald-400"></i>
+        <span><span id="status-grid-size">50px</span> = <span id="status-scale">5ft</span></span>
+      </div>
+      <button id="btn-toggle-viewmode" class="gm-only bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded-md border border-slate-700 text-slate-200 transition flex items-center gap-1.5">
+        <i id="icon-viewmode" class="fa-solid fa-eye text-indigo-400"></i>
+        <span id="text-viewmode">GM View</span>
+      </button>
+    </div>
+
+    <div class="flex items-center gap-1.5 shrink-0">
+      <label class="gm-only bg-emerald-600/90 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer" title="Open a .dd2vtt or image from your computer (only you see it)">
+        <i class="fa-solid fa-file-circle-plus"></i><span class="hidden lg:inline">Open file</span>
+        <input type="file" id="file-import-dd2vtt" accept=".dd2vtt,.df2vtt,.uvtt,.json,image/*" class="hidden">
+      </label>
+      <button id="btn-call" class="gm-only bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="Call for a roll (initiative, save, check)">
+        <i class="fa-solid fa-bullhorn text-sm"></i><span class="hidden sm:inline">Call roll</span>
+      </button>
+      <button id="btn-rest" class="gm-only bg-indigo-700 hover:bg-indigo-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="Long rest: grant Well Rested">
+        <i class="fa-solid fa-moon text-sm"></i><span class="hidden sm:inline">Rest</span>
+      </button>
+      <button id="btn-mind" class="gm-only bg-purple-700 hover:bg-purple-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5" title="Send a telepathic message">
+        <i class="fa-solid fa-brain text-sm"></i><span class="hidden sm:inline">Mind</span>
+      </button>
+      <button id="btn-dice-modal" class="bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5">
+        <i class="fa-solid fa-dice-d20 text-sm"></i><span class="hidden sm:inline">Dice</span>
+      </button>
+      <button id="btn-settings-toggle" class="gm-only p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition" title="Grid settings"><i class="fa-solid fa-sliders"></i></button>
+      <div class="gm-only h-4 w-[1px] bg-slate-700 mx-1"></div>
+      <button id="btn-export-session" class="gm-only p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition" title="Export this map's state (JSON)"><i class="fa-solid fa-file-export"></i></button>
+      <label class="gm-only p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition cursor-pointer" title="Import map state (JSON) onto this map">
+        <i class="fa-solid fa-file-import"></i><input type="file" id="file-import" accept=".json" class="hidden">
+      </label>
+      <button id="btn-reset-session" class="gm-only p-2 hover:bg-red-900/40 rounded-lg text-red-400 hover:text-red-300 transition" title="Clear tokens, drawings and fog on this map"><i class="fa-solid fa-trash-arrow-up"></i></button>
+      <button id="btn-me" class="ml-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-md border border-slate-700 text-xs flex items-center gap-1.5" title="Who you are">
+        <span id="dot-conn" class="w-2 h-2 rounded-full bg-slate-500"></span>
+        <span id="lbl-me">…</span>
+        <span id="badge-rested" class="hidden text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/25 text-indigo-200 border border-indigo-400/40" title="Well rested: +1d4 on your next rolls"></span>
+      </button>
+    </div>
+  </header>
+
+  <div class="relative flex-1 w-full h-full overflow-hidden flex">
+    <!-- Tool palette -->
+    <div class="absolute top-4 left-4 z-10 flex flex-col gap-2">
+      <div class="glass-panel p-1.5 rounded-xl shadow-2xl flex flex-col gap-1 border border-slate-700/60">
+        <button data-tool="select" class="tool-btn active-tool p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Move tokens / drag map (V)"><i class="fa-solid fa-arrow-pointer text-base"></i></button>
+        <button data-tool="pan" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Pan (H, or hold Space)"><i class="fa-solid fa-hand text-base"></i></button>
+        <button data-tool="ruler" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Measure (R)"><i class="fa-solid fa-ruler-combined text-base"></i></button>
+        <button data-tool="ping" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Ping (P, or Alt-click)"><i class="fa-solid fa-location-crosshairs text-base"></i></button>
+        <button data-tool="draw" class="tool-btn p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Draw (B)"><i class="fa-solid fa-pen-nib text-base"></i></button>
+        <button data-tool="fog" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Fog of war (F)"><i class="fa-solid fa-cloud text-base"></i></button>
+        <button data-tool="portals" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Doors"><i class="fa-solid fa-door-open text-base"></i></button>
+        <button data-tool="calibrate" class="tool-btn gm-only p-2.5 rounded-lg hover:bg-slate-700/60 text-slate-300 transition" title="Calibrate grid"><i class="fa-solid fa-compass-drafting text-base"></i></button>
+      </div>
+      <div class="glass-panel p-1.5 rounded-xl shadow-2xl flex flex-col gap-1 border border-slate-700/60 text-center">
+        <button id="btn-zoom-in" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition" title="Zoom in (+)"><i class="fa-solid fa-plus text-xs"></i></button>
+        <span id="lbl-zoom-level" class="text-[10px] font-mono text-slate-400 py-0.5">100%</span>
+        <button id="btn-zoom-out" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-300 transition" title="Zoom out (-)"><i class="fa-solid fa-minus text-xs"></i></button>
+        <button id="btn-zoom-reset" class="p-2 hover:bg-slate-700/60 rounded-lg text-slate-400 hover:text-slate-200 transition" title="Fit map (0)"><i class="fa-solid fa-arrows-to-dot text-xs"></i></button>
+      </div>
+    </div>
+
+    <!-- Tool sub-panels -->
+    <div id="subpanel-container" class="absolute top-4 left-20 z-10 hidden">
+      <div id="subpanel-ruler" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <span class="text-xs text-slate-400 font-semibold">Diagonals:</span>
+        <select id="sel-ruler-mode" class="bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded p-1">
+          <option value="5e">5e (every square 5ft)</option>
+          <option value="5105">5-10-5 variant</option>
+          <option value="euclid">Straight line</option>
+        </select>
+      </div>
+      <div id="subpanel-draw" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <input type="color" id="draw-color" value="#ef4444" class="w-7 h-7 rounded cursor-pointer border-0 bg-transparent" title="Colour">
+        <div class="flex items-center gap-1.5">
+          <input type="range" id="draw-size" min="2" max="30" value="4" class="w-20 accent-emerald-500">
+          <span id="draw-size-val" class="text-xs font-mono text-slate-300 w-5">4</span>
+        </div>
+        <div class="flex items-center gap-1 border-l border-slate-700 pl-2">
+          <button data-draw-mode="brush" class="draw-mode-btn p-1.5 rounded bg-slate-700 text-emerald-400 text-xs" title="Freehand"><i class="fa-solid fa-paint-brush"></i></button>
+          <button data-draw-mode="rect" class="draw-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs" title="Rectangle"><i class="fa-regular fa-square"></i></button>
+          <button data-draw-mode="circle" class="draw-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs" title="Circle"><i class="fa-regular fa-circle"></i></button>
+          <button data-draw-mode="arrow" class="draw-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs" title="Arrow"><i class="fa-solid fa-long-arrow-right"></i></button>
+          <button data-draw-mode="erase" class="draw-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs" title="Eraser (click a drawing)"><i class="fa-solid fa-eraser"></i></button>
+        </div>
+        <button id="btn-clear-drawings" class="text-xs px-2 py-1 rounded bg-red-900/50 hover:bg-red-800 text-red-200 border border-red-700/50 transition">Clear</button>
+      </div>
+      <div id="subpanel-fog" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <button id="btn-fog-toggle" class="text-xs px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 transition flex items-center gap-1">
+          <i id="icon-fog-toggle" class="fa-solid fa-toggle-off text-slate-400"></i><span id="txt-fog-toggle">Fog off</span>
+        </button>
+        <div class="flex items-center gap-1 border-l border-slate-700 pl-2">
+          <button data-fog-mode="reveal-rect" class="fog-mode-btn p-1.5 rounded bg-slate-700 text-emerald-400 text-xs"><i class="fa-solid fa-vector-square"></i> Reveal box</button>
+          <button data-fog-mode="reveal-circle" class="fog-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs"><i class="fa-regular fa-circle-dot"></i> Reveal circle</button>
+          <button data-fog-mode="hide-rect" class="fog-mode-btn p-1.5 rounded hover:bg-slate-700 text-slate-300 text-xs"><i class="fa-solid fa-eye-slash"></i> Shroud</button>
+        </div>
+        <div class="flex items-center gap-1 border-l border-slate-700 pl-2">
+          <button id="btn-fog-reveal-all" class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">Clear fog</button>
+          <button id="btn-fog-reset-all" class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">Full fog</button>
+        </div>
+      </div>
+      <div id="subpanel-calibrate" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <span class="text-xs text-amber-300 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation"></i> Drag a box over one grid square</span>
+        <button id="btn-apply-calibration" class="text-xs px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition">Set grid size</button>
+        <button id="btn-reset-grid" class="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300">Use file's grid</button>
+      </div>
+      <div id="subpanel-portals" class="subpanel glass-panel p-2.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700/60 hidden">
+        <span id="txt-portal-count" class="text-xs text-emerald-400 font-semibold">0 doors</span>
+        <button id="btn-open-all-doors" class="text-xs px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600">Open all</button>
+        <button id="btn-close-all-doors" class="text-xs px-2.5 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600">Close all</button>
+      </div>
+    </div>
+
+    <!-- Right sidebar (GM) -->
+    <button id="btn-sidebar" class="gm-only absolute top-4 right-4 z-20 glass-panel p-2 rounded-lg text-slate-300 hover:text-white hidden" title="Show tokens"><i class="fa-solid fa-users"></i></button>
+    <div id="right-sidebar" class="gm-only absolute top-4 right-4 bottom-4 w-72 glass-panel rounded-2xl shadow-2xl border border-slate-700/60 z-10 flex flex-col overflow-hidden">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700/60 bg-slate-800/50">
+        <div class="flex items-center gap-2"><i class="fa-solid fa-users-viewfinder text-emerald-400"></i><span class="font-semibold text-sm">Tokens</span></div>
+        <button id="btn-sidebar-close" class="text-slate-400 hover:text-white" title="Hide"><i class="fa-solid fa-angles-right"></i></button>
+      </div>
+      <div class="flex border-b border-slate-700/60 bg-slate-900/30 text-xs font-medium">
+        <button id="tab-btn-tokens" data-tab="tokens" class="side-tab flex-1 py-2 text-center text-emerald-400 border-b-2 border-emerald-400 font-bold">Tokens</button>
+        <button id="tab-btn-props" data-tab="props" class="side-tab flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent">Props</button>
+        <button id="tab-btn-layers" data-tab="layers" class="side-tab flex-1 py-2 text-center text-slate-400 hover:text-slate-200 border-b-2 border-transparent">Layers</button>
+      </div>
+      <div id="tab-content-tokens" class="flex-1 overflow-y-auto p-3 space-y-4">
+        <div class="flex gap-2">
+          <input id="inp-token-search" type="text" placeholder="Search…" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+          <select id="sel-campaign" class="bg-slate-900 border border-slate-700 rounded-lg px-1 py-1.5 text-xs max-w-[110px]"><option value="">All campaigns</option></select>
+        </div>
+        <p class="text-[10px] text-slate-500 -mt-2">Click to drop at the centre of the view, or drag onto the map.</p>
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">Party <span id="count-pcs" class="normal-case font-normal text-slate-500"></span></h4>
+          <div class="grid grid-cols-3 gap-2" id="list-pcs"></div>
+        </div>
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex justify-between">NPCs <span id="count-npcs" class="normal-case font-normal text-slate-500"></span></h4>
+          <div class="grid grid-cols-3 gap-2" id="list-npcs"></div>
+        </div>
+        <div>
+          <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Generic</h4>
+          <div class="grid grid-cols-3 gap-2" id="list-generic"></div>
+        </div>
+        <label class="w-full flex items-center justify-center gap-2 py-2 px-3 border-2 border-dashed border-slate-600 hover:border-emerald-500 rounded-xl cursor-pointer bg-slate-800/40 hover:bg-slate-800 transition text-xs text-slate-300">
+          <i class="fa-solid fa-cloud-arrow-up text-emerald-400"></i><span>Token from image</span>
+          <input type="file" id="file-upload" accept="image/*" class="hidden">
+        </label>
+      </div>
+      <div id="tab-content-props" class="flex-1 overflow-y-auto p-3 space-y-4 hidden">
+        <div class="flex gap-2">
+          <input id="inp-prop-search" type="text" placeholder="Search items…" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+          <select id="sel-prop-cat" class="bg-slate-900 border border-slate-700 rounded-lg px-1 py-1.5 text-xs max-w-[110px]">
+            <option value="">All</option><option value="scenery">Scenery</option><option value="weapon">Weapons</option><option value="armor">Armor</option>
+            <option value="potion">Potions</option><option value="magic">Magic items</option><option value="gear">Gear &amp; tools</option>
+          </select>
+        </div>
+        <p class="text-[10px] text-slate-500 -mt-2">Click to drop, or drag onto the map. Click a placed item → 🎒 to give it to a player.</p>
+        <div id="list-props" class="grid grid-cols-3 gap-2"></div>
+        <p id="props-more" class="text-[10px] text-slate-500"></p>
+      </div>
+      <div id="tab-content-layers" class="flex-1 overflow-y-auto p-3 space-y-3 hidden">
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-chess-knight text-emerald-400"></i>Tokens</span><input type="checkbox" data-layer="tokens" checked class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-pen-nib text-pink-400"></i>Drawings</span><input type="checkbox" data-layer="drawings" checked class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-shield-halved text-red-400"></i>Walls (GM only)</span><input type="checkbox" data-layer="walls" class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-door-open text-amber-400"></i>Doors (GM only)</span><input type="checkbox" data-layer="portals" checked class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-lightbulb text-yellow-300"></i>Light glow</span><input type="checkbox" data-layer="lights" class="accent-emerald-500"></label>
+        <label class="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex items-center justify-between cursor-pointer"><span class="text-xs font-medium flex items-center gap-2"><i class="fa-solid fa-map text-indigo-400"></i>Map image</span><input type="checkbox" data-layer="map" checked class="accent-emerald-500"></label>
+        <p class="text-[10px] text-slate-500">Layers only change your own screen.</p>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div id="canvas-container" class="w-full h-full relative overflow-hidden bg-slate-950 tool-select">
+      <canvas id="vtt-canvas" class="block w-full h-full"></canvas>
+      <div id="empty-msg" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div class="glass-panel rounded-xl px-5 py-3 text-sm text-slate-300" id="empty-msg-text">Connecting…</div>
+      </div>
+    </div>
+
+    <!-- Token radial menu -->
+    <div id="radial-menu" class="radial-menu fixed hidden z-30 pointer-events-none">
+      <div class="relative w-40 h-40">
+        <div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 flex flex-col items-center gap-1">
+          <div class="px-2 py-0.5 rounded bg-slate-900/90 border border-slate-600 text-[11px] whitespace-nowrap flex items-center gap-1.5"><span id="radial-token-name"></span> <span id="radial-token-hp" class="text-emerald-300 font-mono"></span>
+            <button id="radial-btn-loot" class="hidden px-1.5 py-0.5 rounded bg-amber-600 hover:bg-amber-500 text-white text-[10px]" title="Look inside"><i class="fa-solid fa-box-open"></i> <span id="radial-loot-lbl">Loot</span></button>
+            <button id="radial-btn-sheet" class="hidden px-1.5 py-0.5 rounded bg-emerald-700 hover:bg-emerald-600 text-white text-[10px]" title="Open character sheet"><i class="fa-solid fa-scroll"></i> Sheet</button></div>
+          <div id="radial-desc" class="hidden w-56 px-2 py-1.5 rounded-lg bg-slate-900/95 border border-slate-600 text-[10px] text-slate-300 leading-snug whitespace-normal"></div>
+        </div>
+        <button id="radial-btn-delete" class="gm-only absolute top-0 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-lg" title="Delete (Del)"><i class="fa-solid fa-trash text-xs"></i></button>
+        <button id="radial-btn-rotate" class="absolute top-1/2 right-0 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 flex items-center justify-center shadow-lg" title="Rotate 45°"><i class="fa-solid fa-rotate-right text-xs"></i></button>
+        <button id="radial-btn-give" class="gm-only hidden absolute bottom-0 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-amber-600 hover:bg-amber-500 text-white flex items-center justify-center shadow-lg" title="Give to a player (adds to their inventory)"><i class="fa-solid fa-sack-dollar text-xs"></i></button>
+        <button id="radial-btn-hp" class="absolute bottom-0 left-1/2 -translate-x-1/2 w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-lg" title="HP"><i class="fa-solid fa-heart text-xs"></i></button>
+        <button id="radial-btn-status" class="absolute top-1/2 left-0 -translate-y-1/2 w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-indigo-400 flex items-center justify-center shadow-lg" title="Status ring colour"><i class="fa-solid fa-certificate text-xs"></i></button>
+        <button id="radial-btn-lock" class="gm-only absolute top-2 left-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-400 flex items-center justify-center shadow-lg" title="Lock position"><i id="radial-lock-icon" class="fa-solid fa-lock-open text-xs"></i></button>
+        <button id="radial-btn-flip" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 flex items-center justify-center shadow-lg" title="Flip"><i class="fa-solid fa-arrows-left-right text-xs"></i></button>
+        <button id="radial-btn-hide" class="gm-only absolute bottom-2 left-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sky-300 flex items-center justify-center shadow-lg" title="Hide from players"><i id="radial-hide-icon" class="fa-solid fa-eye text-xs"></i></button>
+        <button id="radial-btn-size" class="gm-only absolute bottom-2 right-2 w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 flex items-center justify-center shadow-lg text-[10px] font-bold" title="Size in squares"><span id="radial-size-lbl">1</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="modal-settings" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-700">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-border-all text-emerald-400"></i> Grid for this map</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="space-y-4 py-4">
+        <div class="flex items-center justify-between"><span class="text-xs font-medium text-slate-300">Show grid</span><input type="checkbox" id="chk-grid-show" checked class="w-4 h-4 accent-emerald-500"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Cell size (px)</label><input type="number" id="inp-grid-size" value="50" min="10" max="400" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"></div>
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">One square is</label><input type="text" id="inp-grid-scale" value="5ft" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Offset X</label><input type="number" id="inp-grid-ox" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"></div>
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Offset Y</label><input type="number" id="inp-grid-oy" value="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs"></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Line colour</label><input type="color" id="inp-grid-color" value="#000000" class="w-full h-8 bg-slate-900 border border-slate-700 rounded-lg cursor-pointer"></div>
+          <div><label class="block text-xs font-semibold text-slate-400 mb-1">Opacity</label><input type="range" id="inp-grid-opacity" min="0" max="1" step="0.05" value="0.3" class="w-full accent-emerald-500 mt-2"></div>
+        </div>
+        <div class="flex items-center justify-between"><span class="text-xs font-medium text-slate-300">Snap tokens to grid</span><input type="checkbox" id="chk-grid-snap" checked class="w-4 h-4 accent-emerald-500"></div>
+      </div>
+      <div class="pt-4 border-t border-slate-700 flex justify-end">
+        <button id="btn-apply-settings" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2 rounded-xl font-medium transition">Apply for everyone</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dice -->
+  <div id="modal-dice" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-lg rounded-2xl border border-slate-700/80 p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-dice-d20 text-indigo-400 text-lg"></i> Dice</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="py-4 flex-1 flex flex-col gap-3 overflow-y-auto">
+        <div class="h-20 bg-slate-900/90 rounded-xl border border-slate-800 flex items-center justify-center">
+          <div id="dice-box" class="text-4xl text-emerald-400 font-extrabold tracking-widest flex items-center gap-3">
+            <i class="fa-solid fa-dice text-slate-600 text-4xl"></i><span class="text-slate-400 text-sm font-normal tracking-normal">Pick a die</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-2">
+          <button data-dice="d4" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d4</button>
+          <button data-dice="d6" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d6</button>
+          <button data-dice="d8" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d8</button>
+          <button data-dice="d10" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d10</button>
+          <button data-dice="d12" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d12</button>
+          <button data-dice="d20" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-emerald-400">d20</button>
+          <button data-dice="d100" class="btn-roll-die bg-slate-800 hover:bg-indigo-600/30 border border-slate-700 py-2.5 rounded-xl font-bold text-sm text-indigo-300">d100</button>
+          <div class="grid grid-cols-2 gap-1">
+            <button data-dice="adv" class="btn-roll-die bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-[10px]" title="2d20, keep highest">Adv</button>
+            <button data-dice="dis" class="btn-roll-die bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-bold text-[10px]" title="2d20, keep lowest">Dis</button>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <input id="inp-dice-mod" type="number" value="0" class="w-16 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs" title="Modifier added to button rolls">
+          <input id="inp-dice-expr" type="text" placeholder="e.g. 2d6+3, 1d20+5" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+          <button id="btn-roll-expr" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 rounded-lg font-semibold">Roll</button>
+        </div>
+        <label class="gm-only flex items-center gap-2 text-xs text-slate-400"><input type="checkbox" id="chk-dice-private" class="accent-emerald-500"> GM roll (only you see it)</label>
+        <div class="flex-1 min-h-[100px] bg-slate-900/60 rounded-xl border border-slate-800 p-3 flex flex-col">
+          <div class="text-xs font-semibold text-slate-400 mb-2">Table rolls</div>
+          <div id="dice-log-list" class="flex-1 overflow-y-auto space-y-1.5 font-mono text-xs"><div class="text-slate-500 italic text-center py-2">No rolls yet.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Who are you (players) -->
+  <div id="modal-me" class="modal fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <h3 class="font-bold text-base mb-1">Who are you playing?</h3>
+      <p class="text-xs text-slate-400 mb-4">You can move the token that belongs to your character.</p>
+      <div id="me-pc-list" class="grid grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto mb-4"></div>
+      <div class="flex gap-2">
+        <input id="inp-me-name" type="text" placeholder="Or just a name…" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs">
+        <button id="btn-me-name" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 rounded-lg">Watch</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mind message (GM) -->
+  <div id="modal-mind" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-lg rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700 mb-4">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-brain text-purple-400"></i> Send a message into their minds</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="grid grid-cols-5 gap-2 mb-3" id="mind-styles">
+        <button data-style="psionic" data-from="A voice in your mind" class="mind-style-btn on border border-slate-700 rounded-lg py-2 text-xs">🧠<br>Psionic</button>
+        <button data-style="sending" data-from="Sending" class="mind-style-btn border border-slate-700 rounded-lg py-2 text-xs">✉️<br>Sending</button>
+        <button data-style="divine" data-from="Your god" class="mind-style-btn border border-slate-700 rounded-lg py-2 text-xs">✨<br>Divine</button>
+        <button data-style="dream" data-from="A dream" class="mind-style-btn border border-slate-700 rounded-lg py-2 text-xs">🌙<br>Dream</button>
+        <button data-style="dread" data-from="Something ancient" class="mind-style-btn border border-slate-700 rounded-lg py-2 text-xs">👁️<br>Dread</button>
+      </div>
+      <label class="block text-xs font-semibold text-slate-400 mb-1">From</label>
+      <input id="inp-mind-from" type="text" value="A voice in your mind" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm mb-3" placeholder="e.g. Illithid, Your patron">
+      <label class="block text-xs font-semibold text-slate-400 mb-1">Message</label>
+      <textarea id="inp-mind-text" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm mb-3" placeholder="We see you, little one."></textarea>
+      <label class="block text-xs font-semibold text-slate-400 mb-1">Who hears it</label>
+      <div id="mind-targets" class="flex flex-wrap gap-1.5 mb-4 text-xs"></div>
+      <div class="flex justify-end gap-2">
+        <button id="btn-mind-preview" class="text-xs px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Preview</button>
+        <button id="btn-mind-send" class="text-xs px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Long rest (GM) -->
+  <div id="modal-rest" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700 mb-4">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-moon text-indigo-300"></i> Long rest</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <p class="text-xs text-slate-400 mb-3"><b class="text-indigo-200">Well rested:</b> the next <input id="inp-rest-rolls" type="number" min="1" max="50" value="10" class="w-12 bg-slate-900 border border-slate-700 rounded px-1 text-xs text-slate-100"> dice rolls each get <b>+1d4</b>.</p>
+      <div id="rest-targets" class="flex flex-wrap gap-1.5 mb-3 text-xs"></div>
+      <label class="flex items-center gap-2 text-xs text-slate-300 mb-4"><input type="checkbox" id="chk-rest-restore" class="accent-indigo-500"> Also restore HP to max and refill spell slots</label>
+      <div class="flex justify-between gap-2">
+        <button id="btn-rest-clear" class="text-xs px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-600">Remove Well Rested</button>
+        <button id="btn-rest-grant" class="text-xs px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold">Grant Well Rested</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Call for a roll (GM) -->
+  <div id="modal-call" class="modal fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-700/80 p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700 mb-4">
+        <h3 class="font-bold text-base flex items-center gap-2"><i class="fa-solid fa-bullhorn text-amber-400"></i> Call for a roll</h3>
+        <button class="btn-close-modal text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <div class="grid grid-cols-4 gap-1.5 mb-3" id="call-kinds">
+        <button data-kind="init" class="rc-chip on">Initiative</button>
+        <button data-kind="save" class="rc-chip">Save</button>
+        <button data-kind="skill" class="rc-chip">Skill check</button>
+        <button data-kind="ability" class="rc-chip">Ability</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <select id="call-key" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs hidden"></select>
+        <input id="call-custom" type="text" placeholder="Title (optional)" class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+      </div>
+      <div class="flex items-center gap-2 mb-3 text-xs">
+        <span class="text-slate-400">DC</span><input id="call-dc" type="number" min="1" max="40" placeholder="—" class="w-14 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5">
+        <label class="flex items-center gap-1 text-slate-300"><input type="checkbox" id="call-showdc" class="accent-amber-500"> show DC</label>
+        <select id="call-mode" class="ml-auto bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+      </div>
+      <div id="call-targets" class="flex flex-wrap gap-1.5 mb-4 text-xs"></div>
+      <div class="flex justify-end"><button id="btn-call-send" class="text-xs px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold">Call it</button></div>
+    </div>
+  </div>
+
+  <!-- Roll call screen -->
+  <div id="rc-overlay">
+    <div class="rc-kicker" id="rc-kicker">The DM calls for</div>
+    <div class="rc-title" id="rc-title">Initiative</div>
+    <div class="flex items-center gap-2 mt-1"><span id="rc-dc" class="rc-dc hidden"></span><span id="rc-for" class="text-xs text-slate-400"></span></div>
+    <div class="rc-main">
+      <div id="rc-tray"></div>
+      <div class="rc-side">
+        <div class="rc-card" id="rc-me"></div>
+        <div class="rc-card"><div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Results</div><div id="rc-results"></div></div>
+        <div class="rc-card gm-only" id="rc-gm"></div>
+        <button id="rc-hide" class="text-xs text-slate-400 hover:text-white self-center">Hide this screen</button>
+      </div>
+    </div>
+  </div>
+  <button id="rc-pill" class="hidden glass-panel rounded-full px-4 py-2 text-sm text-amber-200 border border-amber-500/40 shadow-xl"><i class="fa-solid fa-dice-d20"></i> <span id="rc-pill-text">Roll in progress</span></button>
+  <div id="free-tray"></div>
+
+  <div id="mind-overlay">
+    <div class="mind-ring"></div><div class="mind-ring"></div><div class="mind-ring"></div>
+    <div class="mind-box"><div class="mind-from" id="mind-from"></div><div class="mind-text" id="mind-text"></div><div class="mind-hint">click anywhere to let it fade</div></div>
+  </div>
+
+  <!-- Loot window (containers) -->
+  <div id="loot-panel" class="hidden fixed left-1/2 -translate-x-1/2 bottom-5 z-30 w-[360px] max-w-[94vw] glass-panel rounded-2xl border border-slate-700 shadow-2xl flex flex-col max-h-[60vh]">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-slate-700/60">
+      <span class="font-semibold text-sm flex items-center gap-2"><span id="loot-icon" class="text-lg">🧰</span><span id="loot-title">Chest</span>
+        <span id="loot-state" class="text-[10px] px-1.5 py-0.5 rounded border"></span></span>
+      <span class="flex items-center gap-2">
+        <button id="loot-toggle" class="gm-only text-[11px] px-2 py-1 rounded bg-slate-700 hover:bg-slate-600">Open</button>
+        <button id="loot-close" class="text-slate-400 hover:text-white" title="Close (Esc)"><i class="fa-solid fa-xmark"></i></button>
+      </span>
+    </div>
+    <div id="loot-hint" class="px-3 pt-2 text-[11px] text-amber-300 hidden"></div>
+    <div id="loot-list" class="flex-1 overflow-y-auto p-3 space-y-1.5"></div>
+    <div class="gm-only border-t border-slate-700/60 p-2 space-y-2">
+      <div class="flex gap-1.5">
+        <input id="loot-add-name" list="loot-item-names" placeholder="Add item… (SRD items autocomplete)" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-xs">
+        <input id="loot-add-qty" type="number" min="1" value="1" class="w-12 bg-slate-900 border border-slate-700 rounded-lg px-1.5 py-1.5 text-xs">
+        <button id="loot-add" class="px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold">Add</button>
+      </div>
+      <div class="flex items-center gap-1.5 text-[11px] text-slate-400">Give to <select id="loot-give-to" class="flex-1 bg-slate-900 border border-slate-700 rounded px-1 py-1 text-xs text-slate-200"></select></div>
+    </div>
+    <datalist id="loot-item-names"></datalist>
+  </div>
+
+  <!-- Character sheet panel -->
+  <div id="sheet-panel" class="fixed top-12 right-0 bottom-0 w-[360px] max-w-full z-30 glass-panel border-l border-slate-700 flex flex-col shadow-2xl">
+    <div class="flex items-center justify-between px-3 py-2 border-b border-slate-700/60 text-xs">
+      <span class="font-semibold flex items-center gap-2"><i class="fa-solid fa-scroll text-emerald-400"></i><span id="sheet-panel-title">Sheet</span></span>
+      <span class="flex items-center gap-3">
+        <a id="sheet-panel-tab" target="_blank" class="text-slate-400 hover:text-white" title="Open in a new tab"><i class="fa-solid fa-up-right-from-square"></i></a>
+        <button id="sheet-panel-close" class="text-slate-400 hover:text-white" title="Close (Esc)"><i class="fa-solid fa-xmark text-base"></i></button>
+      </span>
+    </div>
+    <iframe id="sheet-frame" class="flex-1 w-full border-0 bg-transparent" title="Character sheet"></iframe>
+  </div>
+
+  <div id="toasts" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none"></div>
+
+  <script type="module" src="js/rodeo-app.js"></script>
+</body>
+</html>

@@ -3,27 +3,28 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>GeezVTT — Party Sheet</title>
+<title>Party · GeezVTT</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=IM+Fell+English&family=JetBrains+Mono:wght@400;700&display=swap');
 :root{
-  /* VTT palette */
-  --bg:#0a0908;--panel:#161210;--panel2:#120f0d;--border:#3d2e1a;
-  --gold:#c8a84b;--gold-dim:#7a6228;--text:#d4c49a;--dim:#6b5a38;
-  --red:#e04040;--green:#4a9a4a;--warn:#aaaa30;
+  /* GeezVTT palette (slate + emerald) */
+  --bg:#0f172a;--panel:rgba(30,41,59,.88);--panel2:#1e293b;--border:#334155;
+  --gold:#34d399;--gold-dim:#059669;--text:#e2e8f0;--dim:#94a3b8;
+  --red:#ef4444;--green:#22c55e;--warn:#f59e0b;
+  --font:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   --magic:#8b5cf6;--magic2:#c084fc;
   --skill:#0ea5e9;--skill2:#38bdf8;
   --weapon:#e8834a;--weapon2:#f5a87b;
   --tip:#22c55e;--tip2:#4ade80;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM Fell English',serif}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font)}
 
 /* ── Header ── */
-.header{position:sticky;top:0;z-index:100;height:48px;background:rgba(10,9,8,.95);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;backdrop-filter:blur(6px)}
-.brand{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:.1em}
+.header{position:sticky;top:0;z-index:100;height:48px;background:rgba(30,41,59,.88);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px;backdrop-filter:blur(6px)}
+.brand{font-family:var(--font);font-size:17px;font-weight:700;letter-spacing:.02em;background:linear-gradient(90deg,#34d399,#99f6e4);-webkit-background-clip:text;background-clip:text;color:transparent}
 .sep{width:1px;height:20px;background:var(--border)}
-.campaign-select{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:5px;color:var(--dim);font-family:'Cinzel',serif;font-size:10px;padding:4px 8px;outline:none;cursor:pointer}
+.campaign-select{background:#1e293b;border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:12px;padding:4px 8px;outline:none;cursor:pointer}
 .campaign-select:focus{border-color:var(--gold-dim);color:var(--text)}
 .campaign-select option{background:var(--panel)}
 .spacer{flex:1}
@@ -31,7 +32,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* ── States ── */
-.state-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 48px);gap:14px;color:var(--dim);font-family:'Cinzel',serif;font-size:.85rem}
+.state-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 48px);gap:14px;color:var(--dim);font-family:var(--font);font-size:.85rem}
 .spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -39,149 +40,189 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM
 .cards-wrap{padding:20px 16px 40px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
 
 /* ── Card ── */
-.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;width:300px;flex-shrink:0;overflow:hidden;transition:border-color .15s}
+.card{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:16px;box-shadow:0 20px 40px -20px rgba(0,0,0,.6);width:300px;flex-shrink:0;overflow:hidden;transition:border-color .15s}
 .card:hover{border-color:var(--gold-dim)}
 
 /* ── Card header ── */
 .card-header{padding:14px 14px 10px;border-bottom:1px solid var(--border)}
-.char-name{font-family:'Cinzel',serif;font-size:1.1rem;font-weight:700;color:var(--gold);margin-bottom:2px}
-.char-sub{font-size:.72rem;color:var(--dim);font-family:'JetBrains Mono',monospace}
-.char-role-badge{display:inline-block;font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(200,168,75,.1);border:1px solid rgba(200,168,75,.3);color:var(--gold);margin-top:5px}
+.char-name{font-family:var(--font);font-size:1.1rem;font-weight:700;color:var(--gold);margin-bottom:2px}
+.char-sub{font-size:.72rem;color:var(--dim);font-family:var(--mono)}
+.char-role-badge{display:inline-block;font-family:var(--font);font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.3);color:var(--gold);margin-top:5px}
 
 /* ── HP ── */
 .hp-row{display:flex;align-items:center;gap:8px;margin-top:10px}
-.hp-label{font-family:'Cinzel',serif;font-size:.6rem;font-weight:700;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;width:16px}
+.hp-label{font-family:var(--font);font-size:.6rem;font-weight:700;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;width:16px}
 .hp-bar-wrap{flex:1;height:5px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}
 .hp-bar{height:100%;border-radius:999px;transition:width .4s,background-color .4s}
-.hp-val{font-size:.72rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);white-space:nowrap;min-width:52px;text-align:right}
-.temp-badge{font-size:.6rem;font-family:'JetBrains Mono',monospace;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);color:var(--magic2);border-radius:999px;padding:1px 7px;white-space:nowrap}
+.hp-val{font-size:.72rem;font-weight:700;font-family:var(--mono);color:var(--text);white-space:nowrap;min-width:52px;text-align:right}
+.temp-badge{font-size:.6rem;font-family:var(--mono);background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.35);color:var(--magic2);border-radius:999px;padding:1px 7px;white-space:nowrap}
 .hp-controls{display:flex;align-items:center;gap:6px;margin-top:8px}
-.hp-delta{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:5px 8px;font-size:.8rem;font-family:'JetBrains Mono',monospace;outline:none;text-align:center;min-width:0}
+.hp-delta{flex:1;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:5px;color:var(--text);padding:5px 8px;font-size:.8rem;font-family:var(--mono);outline:none;text-align:center;min-width:0}
 .hp-delta:focus{border-color:var(--gold-dim)}
-.hp-btn{border-radius:5px;padding:5px 11px;font-size:.75rem;font-weight:700;font-family:'Cinzel',serif;cursor:pointer;transition:all .12s;white-space:nowrap;letter-spacing:.04em}
-.hp-btn.heal{background:rgba(74,154,74,.12);border:1px solid rgba(74,154,74,.3);color:var(--green)}
-.hp-btn.heal:hover{background:rgba(74,154,74,.22)}
-.hp-btn.dmg{background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.3);color:#fca5a5}
-.hp-btn.dmg:hover{background:rgba(224,64,64,.22)}
+.hp-btn{border-radius:5px;padding:5px 11px;font-size:.75rem;font-weight:700;font-family:var(--font);cursor:pointer;transition:all .12s;white-space:nowrap;letter-spacing:.04em}
+.hp-btn.heal{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.hp-btn.heal:hover{background:rgba(34,197,94,.22)}
+.hp-btn.dmg{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+.hp-btn.dmg:hover{background:rgba(239,68,68,.22)}
 
 /* ── Stats row ── */
 .stats-row{display:flex;border-bottom:1px solid var(--border)}
 .stat-cell{flex:1;padding:8px 4px;text-align:center;border-right:1px solid var(--border)}
 .stat-cell:last-child{border-right:none}
-.stat-label{font-family:'Cinzel',serif;font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
-.stat-val{font-size:.9rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
+.stat-label{font-family:var(--font);font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.stat-val{font-size:.9rem;font-weight:700;font-family:var(--mono);color:var(--text)}
 
 /* ── Ability grid ── */
 .ability-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding:10px;border-bottom:1px solid var(--border)}
 .ab-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:6px;padding:6px 3px;text-align:center}
-.ab-name{font-family:'Cinzel',serif;font-size:.54rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
-.ab-score{font-size:.9rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text);line-height:1}
-.ab-mod{font-size:.66rem;font-family:'JetBrains Mono',monospace;color:var(--gold);margin-top:2px}
+.ab-name{font-family:var(--font);font-size:.54rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin-bottom:2px}
+.ab-score{font-size:.9rem;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1}
+.ab-mod{font-size:.66rem;font-family:var(--mono);color:var(--gold);margin-top:2px}
 
 /* ── Conditions ── */
 .conditions-row{display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px;border-bottom:1px solid var(--border)}
 .conditions-row:empty{display:none}
-.cond-pill{font-family:'Cinzel',serif;font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(224,64,64,.12);border:1px solid rgba(224,64,64,.3);color:#fca5a5}
+.rested-pill{font-family:var(--font);font-size:.62rem;font-weight:700;padding:2px 9px;border-radius:999px;background:rgba(99,102,241,.15);border:1px solid rgba(129,140,248,.4);color:#c7d2fe;margin-top:6px;display:inline-block}
+.cond-pill{font-family:var(--font);font-size:.58rem;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
 
 /* ── Card footer / expand buttons ── */
 .card-footer{padding:8px;display:flex;flex-direction:column;gap:5px}
-.panel-btn{width:100%;border-radius:6px;color:var(--dim);font-family:'Cinzel',serif;font-size:.72rem;font-weight:700;letter-spacing:.05em;padding:7px 10px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;border:1px solid var(--border);background:rgba(255,255,255,.02)}
+.panel-btn{width:100%;border-radius:6px;color:var(--dim);font-family:var(--font);font-size:.72rem;font-weight:700;letter-spacing:.05em;padding:7px 10px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;border:1px solid var(--border);background:rgba(255,255,255,.02)}
 .panel-btn .chevron{margin-left:auto;transition:transform .2s}
 .panel-btn.open .chevron{transform:rotate(180deg)}
-.panel-btn:hover,.panel-btn.open{border-color:var(--gold-dim);color:var(--text);background:rgba(200,168,75,.05)}
+.panel-btn:hover,.panel-btn.open{border-color:var(--gold-dim);color:var(--text);background:rgba(52,211,153,.05)}
 .panel-btn.spell-btn:hover,.panel-btn.spell-btn.open{border-color:var(--magic);color:var(--magic2);background:rgba(139,92,246,.08)}
 .panel-btn.skill-btn:hover,.panel-btn.skill-btn.open{border-color:var(--skill);color:var(--skill2);background:rgba(14,165,233,.08)}
 .panel-btn.weapon-btn:hover,.panel-btn.weapon-btn.open{border-color:var(--weapon);color:var(--weapon2);background:rgba(232,131,74,.08)}
 .panel-btn.tip-btn:hover,.panel-btn.tip-btn.open{border-color:var(--tip);color:var(--tip2);background:rgba(34,197,94,.05)}
-.panel-btn.inv-btn:hover,.panel-btn.inv-btn.open{border-color:var(--gold-dim);color:var(--gold);background:rgba(200,168,75,.06)}
-.expand-panel{display:none;border-top:1px solid var(--border);padding:12px;background:rgba(12,9,8,.5)}
+.panel-btn.inv-btn:hover,.panel-btn.inv-btn.open{border-color:var(--gold-dim);color:var(--gold);background:rgba(52,211,153,.06)}
+.expand-panel{display:none;border-top:1px solid var(--border);padding:12px;background:rgba(15,23,42,.55)}
 .expand-panel.open{display:block}
 
 /* ── Sections inside panels ── */
-.sp-section-title{font-family:'Cinzel',serif;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;margin-top:10px}
+.sp-section-title{font-family:var(--font);font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-bottom:6px;margin-top:10px}
 .sp-section-title:first-child{margin-top:0}
-.empty-panel{font-family:'Cinzel',serif;font-size:.7rem;color:var(--dim);text-align:center;padding:10px 0}
+.empty-panel{font-family:var(--font);font-size:.7rem;color:var(--dim);text-align:center;padding:10px 0}
 
 /* ── Spells ── */
 .sp-meta{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
-.sp-meta-item{font-size:.64rem;font-family:'JetBrains Mono',monospace;color:var(--dim)}
+.sp-meta-item{font-size:.64rem;font-family:var(--mono);color:var(--dim)}
 .sp-meta-item span{color:var(--gold);font-weight:700}
 .slot-levels{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
 .slot-level-row{display:flex;align-items:center;gap:8px}
-.slot-level-label{font-family:'Cinzel',serif;font-size:.6rem;color:var(--dim);width:42px;flex-shrink:0}
+.slot-level-label{font-family:var(--font);font-size:.6rem;color:var(--dim);width:42px;flex-shrink:0}
 .slot-pips{display:flex;gap:5px;flex-wrap:wrap}
-.slot-pip{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.15);cursor:pointer;transition:all .12s;flex-shrink:0}
+.slot-pip{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(52,211,153,.15);cursor:pointer;transition:all .12s;flex-shrink:0}
 .slot-pip:hover{transform:scale(1.15)}
 .slot-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
 .spell-list{display:flex;flex-direction:column;gap:3px}
 .spell-item{padding:6px 8px;border-radius:5px;background:rgba(255,255,255,.02);border:1px solid var(--border)}
 .spell-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
-.spell-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text)}
-.spell-level-tag{font-size:.6rem;font-family:'JetBrains Mono',monospace;color:var(--dim);white-space:nowrap}
-.spell-desc{font-size:.67rem;color:var(--dim);line-height:1.5;margin-top:3px;font-family:'JetBrains Mono',monospace}
-.spell-meta{font-size:.62rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.spell-name{font-family:var(--font);font-size:.74rem;font-weight:700;color:var(--text)}
+.spell-level-tag{font-size:.6rem;font-family:var(--mono);color:var(--dim);white-space:nowrap}
+.spell-desc{font-size:.67rem;color:var(--dim);line-height:1.5;margin-top:3px;font-family:var(--mono)}
+.spell-meta{font-size:.62rem;font-family:var(--mono);color:var(--dim);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
 .spell-meta span{color:var(--text)}
 .spell-tip{display:flex;align-items:flex-start;gap:5px;margin-top:4px;padding:4px 7px;border-radius:4px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2)}
-.spell-tip-text{font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--tip2);line-height:1.5}
+.spell-tip-text{font-size:.65rem;font-family:var(--mono);color:var(--tip2);line-height:1.5}
 
 /* ── Skills ── */
 .skill-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-bottom:8px}
 .skill-row-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;border-radius:5px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.7rem}
 .skill-name{color:var(--dim)}
-.skill-val{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--text)}
+.skill-val{font-family:var(--mono);font-weight:700;color:var(--text)}
 .skill-row-item.prof .skill-name{color:var(--skill2)}
 .skill-row-item.expert .skill-name{color:var(--tip2)}
 
 /* ── Feats/abilities ── */
 .feat-item{padding:6px 8px;border-radius:5px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:4px}
-.feat-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:2px}
-.feat-desc{font-size:.67rem;color:var(--dim);line-height:1.5;font-family:'JetBrains Mono',monospace}
+.feat-name{font-family:var(--font);font-size:.74rem;font-weight:700;color:var(--text);margin-bottom:2px}
+.feat-desc{font-size:.67rem;color:var(--dim);line-height:1.5;font-family:var(--mono)}
 
 /* ── Weapons ── */
 .weapon-list{display:flex;flex-direction:column;gap:5px}
 .weapon-item{border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.02);overflow:hidden}
 .weapon-top{display:flex;align-items:center;gap:8px;padding:7px 10px}
-.weapon-name{font-family:'Cinzel',serif;font-size:.78rem;font-weight:700;color:var(--text);flex:1}
-.weapon-type{font-size:.58rem;font-family:'JetBrains Mono',monospace;color:var(--dim);padding:2px 6px;border:1px solid var(--border);border-radius:999px;white-space:nowrap}
+.weapon-name{font-family:var(--font);font-size:.78rem;font-weight:700;color:var(--text);flex:1}
+.weapon-type{font-size:.58rem;font-family:var(--mono);color:var(--dim);padding:2px 6px;border:1px solid var(--border);border-radius:999px;white-space:nowrap}
 .weapon-stats{display:flex;gap:5px;padding:0 10px 8px;flex-wrap:wrap}
 .wstat{display:flex;flex-direction:column;align-items:center;background:rgba(232,131,74,.06);border:1px solid rgba(232,131,74,.2);border-radius:5px;padding:4px 10px;min-width:56px}
-.wstat-label{font-family:'Cinzel',serif;font-size:.52rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--weapon);margin-bottom:2px}
-.wstat-val{font-size:.84rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--weapon2)}
-.weapon-notes{font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--dim);padding:0 10px 7px;line-height:1.5}
+.wstat-label{font-family:var(--font);font-size:.52rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--weapon);margin-bottom:2px}
+.wstat-val{font-size:.84rem;font-weight:700;font-family:var(--mono);color:var(--weapon2)}
+.weapon-notes{font-size:.65rem;font-family:var(--mono);color:var(--dim);padding:0 10px 7px;line-height:1.5}
 
 /* ── Combat guide ── */
-.combat-guide{font-size:.7rem;font-family:'JetBrains Mono',monospace;color:var(--tip2);line-height:1.7;white-space:pre-wrap}
+.combat-guide{font-size:.7rem;font-family:var(--mono);color:var(--tip2);line-height:1.7;white-space:pre-wrap}
 .combat-guide-wrap{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:8px;padding:9px 11px}
 
 /* ── Inventory ── */
 .inv-item{padding:7px 8px;border-radius:5px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:4px}
 .inv-item-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
-.inv-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text)}
-.inv-qty{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--gold);white-space:nowrap}
-.inv-cat{font-size:.58rem;font-family:'JetBrains Mono',monospace;color:var(--dim);margin-top:2px;padding:1px 6px;border:1px solid var(--border);border-radius:999px;display:inline-block}
-.inv-desc{font-size:.67rem;color:var(--dim);line-height:1.5;margin-top:4px;font-family:'JetBrains Mono',monospace}
-.inv-notes{font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--gold-dim);margin-top:3px;font-style:italic}
+.inv-name{font-family:var(--font);font-size:.74rem;font-weight:700;color:var(--text)}
+.inv-qty{font-family:var(--mono);font-size:.65rem;color:var(--gold);white-space:nowrap}
+.inv-cat{font-size:.58rem;font-family:var(--mono);color:var(--dim);margin-top:2px;padding:1px 6px;border:1px solid var(--border);border-radius:999px;display:inline-block}
+.inv-desc{font-size:.67rem;color:var(--dim);line-height:1.5;margin-top:4px;font-family:var(--mono)}
+.inv-notes{font-size:.65rem;font-family:var(--mono);color:var(--gold-dim);margin-top:3px;font-style:italic}
 .inv-rarity-uncommon{border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.03)}
 .inv-rarity-rare{border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.03)}
 .inv-rarity-very.rare{border-color:rgba(192,132,252,.3);background:rgba(192,132,252,.03)}
 .inv-rarity-legendary{border-color:rgba(251,146,60,.3);background:rgba(251,146,60,.03)}
 
+/* ── Single-character / embedded view (opened from the VTT) ── */
+body.single .cards-wrap{justify-content:center}
+body.embed .header{display:none}
+body.embed .cards-wrap{padding:10px}
+body.embed .card{width:100%}
+body.embed,body.embed html{background:transparent}
+body.embed .state-screen{min-height:60vh}
+
+/* ── GM inventory tools ── */
+.btn{height:30px;padding:0 12px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer;font-family:var(--font);border:1px solid var(--border);background:#1e293b;color:var(--text);display:inline-flex;align-items:center;gap:6px}
+.btn:hover{background:#334155}
+.btn.primary{background:#059669;border-color:#059669;color:#fff}.btn.primary:hover{background:#10b981}
+.gm-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.35);color:#fcd34d}
+.inv-x{background:none;border:none;color:var(--dim);cursor:pointer;font-size:.8rem;padding:0 2px;line-height:1}
+.inv-x:hover{color:var(--red)}
+.inv-qbtn{background:#1e293b;border:1px solid var(--border);color:var(--text);border-radius:4px;width:18px;height:18px;font-size:.7rem;line-height:1;cursor:pointer;padding:0}
+.inv-qbtn:hover{border-color:var(--gold-dim)}
+.inv-add{display:flex;gap:4px;margin-top:6px}
+.inv-add input{min-width:0;background:#0f172a;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 7px;font-size:.72rem;font-family:var(--font);outline:none}
+.inv-add input:focus{border-color:var(--gold-dim)}
+.inv-count{font-family:var(--mono);font-size:.62rem;color:var(--dim)}
+.inv-item.new{animation:invNew 2.5s ease-out}
+@keyframes invNew{0%{box-shadow:0 0 0 2px #34d399;background:rgba(52,211,153,.15)}100%{box-shadow:none}}
+.modal{position:fixed;inset:0;background:rgba(2,6,23,.7);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modal-box{background:var(--panel2);border:1px solid var(--border);border-radius:16px;padding:20px;width:100%;max-width:420px;box-shadow:0 25px 50px -12px rgba(0,0,0,.7)}
+.modal-box h3{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+.field label{font-size:11px;font-weight:600;color:var(--dim)}
+.field input,.field textarea{background:#0f172a;border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 9px;font-size:13px;font-family:var(--font);outline:none}
+.field input:focus,.field textarea:focus{border-color:var(--gold-dim)}
+.give-targets{display:flex;flex-wrap:wrap;gap:6px}
+.give-target{display:flex;align-items:center;gap:5px;font-size:12px;padding:4px 9px;border:1px solid var(--border);border-radius:999px;cursor:pointer;background:#0f172a}
+.give-target:has(input:checked){border-color:#34d399;color:#6ee7b7;background:rgba(52,211,153,.08)}
+.give-target input{accent-color:#10b981}
+#toasts{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.toast{background:rgba(30,41,59,.95);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text);box-shadow:0 10px 25px -10px rgba(0,0,0,.6);animation:toastIn .2s ease-out}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
 /* ── Loading tag ── */
-.spell-loading{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--dim);padding:4px 0}
+.spell-loading{font-family:var(--mono);font-size:.65rem;color:var(--dim);padding:4px 0}
 
 /* ── Coin purse ── */
 .coin-row{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.coin-label{font-family:'Cinzel',serif;font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-right:2px}
-.coin{display:flex;align-items:center;gap:3px;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid}
+.coin-label{font-family:var(--font);font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-right:2px}
+.coin{display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid}
 .coin.pp{color:#c4b5fd;border-color:rgba(196,181,253,.3);background:rgba(196,181,253,.07)}
-.coin.gp{color:var(--gold);border-color:rgba(200,168,75,.3);background:rgba(200,168,75,.07)}
+.coin.gp{color:#facc15;border-color:rgba(250,204,21,.3);background:rgba(250,204,21,.07)}
 .coin.ep{color:#67e8f9;border-color:rgba(103,232,249,.3);background:rgba(103,232,249,.07)}
 .coin.sp{color:#94a3b8;border-color:rgba(148,163,184,.3);background:rgba(148,163,184,.07)}
 .coin.cp{color:#b45309;border-color:rgba(180,83,9,.3);background:rgba(180,83,9,.07)}
 
 /* ── Equipped row ── */
 .equipped-row{display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
-.equipped-badge{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:2px 8px;border-radius:5px;border:1px solid rgba(200,168,75,.25);background:rgba(200,168,75,.05);color:var(--gold-dim)}
+.equipped-badge{font-family:var(--mono);font-size:.65rem;padding:2px 8px;border-radius:5px;border:1px solid rgba(52,211,153,.25);background:rgba(52,211,153,.05);color:var(--gold-dim)}
 .equipped-badge span{color:var(--text)}
 
 /* ── Saves & Senses inside skill panel ── */
@@ -189,15 +230,15 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM
 .save-row-item{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:4px 8px;border-radius:5px;background:rgba(255,255,255,.02);border:1px solid var(--border);font-size:.7rem}
 .save-row-item.prof .skill-name{color:var(--gold)}
 .senses-block{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
-.sense-pill{font-family:'JetBrains Mono',monospace;font-size:.65rem;padding:3px 9px;border-radius:5px;border:1px solid rgba(14,165,233,.25);background:rgba(14,165,233,.05);color:var(--skill2)}
+.sense-pill{font-family:var(--mono);font-size:.65rem;padding:3px 9px;border-radius:5px;border:1px solid rgba(14,165,233,.25);background:rgba(14,165,233,.05);color:var(--skill2)}
 
 /* ── Charge pips (abilities) ── */
 .ability-charge{padding:7px 8px;border-radius:5px;border:1px solid var(--border);background:rgba(255,255,255,.02);margin-bottom:4px}
 .ability-charge-top{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px}
-.ability-charge-name{font-family:'Cinzel',serif;font-size:.74rem;font-weight:700;color:var(--text)}
-.ability-charge-meta{font-family:'JetBrains Mono',monospace;font-size:.6rem;color:var(--dim)}
+.ability-charge-name{font-family:var(--font);font-size:.74rem;font-weight:700;color:var(--text)}
+.ability-charge-meta{font-family:var(--mono);font-size:.6rem;color:var(--dim)}
 .charge-pips{display:flex;gap:5px;flex-wrap:wrap}
-.charge-pip{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(200,168,75,.2);cursor:pointer;transition:all .12s;flex-shrink:0}
+.charge-pip{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(52,211,153,.2);cursor:pointer;transition:all .12s;flex-shrink:0}
 .charge-pip:hover{transform:scale(1.15)}
 .charge-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
 </style>
@@ -205,11 +246,14 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM
 <body>
 
 <div class="header">
-  <div class="brand">⚔ GeezVTT</div>
+  <div class="brand">♞ GeezVTT</div>
+  <span style="font-size:12px;color:var(--dim)">Party</span>
   <div class="sep"></div>
   <select id="campaignSelect" class="campaign-select"><option value="">All campaigns</option></select>
   <div class="spacer"></div>
-  <button id="glossaryBtn" onclick="window.toggleGlossarySearch()" style="height:28px;padding:0 10px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:transparent;color:var(--dim);font-family:'Cinzel',serif;cursor:pointer">📖 Almanac</button>
+  <span id="gmBadge" class="gm-badge" style="display:none">GM</span>
+  <button id="giveBtn" class="btn primary" style="display:none" onclick="window.openGive()">🎁 Give item</button>
+  <button id="glossaryBtn" class="btn" onclick="window.toggleGlossarySearch()">📖 Almanac</button>
   <div class="status-dot"></div>
 </div>
 
@@ -223,20 +267,40 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'IM
 </div>
 <div class="cards-wrap" id="cardsWrap" style="display:none"></div>
 
-<script type="module">
-import { initializeApp }                               from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+<div class="modal" id="giveModal" onpointerdown="if(event.target===this)window.closeGive()">
+  <div class="modal-box">
+    <h3>🎁 Give item <button class="inv-x" style="font-size:1rem" onclick="window.closeGive()">✕</button></h3>
+    <div class="field"><label>Item</label><input id="giveName" list="itemNames" placeholder="Start typing — SRD items autocomplete" autocomplete="off"></div>
+    <div style="display:flex;gap:8px">
+      <div class="field" style="width:80px"><label>Qty</label><input id="giveQty" type="number" min="1" value="1"></div>
+      <div class="field" style="flex:1"><label>Note (optional)</label><input id="giveNotes" placeholder="e.g. found in the crypt"></div>
+    </div>
+    <div class="field"><label>Description (optional — SRD items fill this in automatically)</label><textarea id="giveDesc" rows="2"></textarea></div>
+    <div class="field"><label>To</label><div class="give-targets" id="giveTargets"></div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+      <span class="inv-count" id="giveHint"></span>
+      <button class="btn primary" onclick="window.doGive()">Give</button>
+    </div>
+  </div>
+</div>
+<datalist id="itemNames"></datalist>
+<div id="toasts"></div>
 
-const FIREBASE_CONFIG = {
-  apiKey:       "AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",
-  authDomain:   "sheets-e5838.firebaseapp.com",
-  databaseURL:  "https://sheets-e5838-default-rtdb.firebaseio.com",
-  projectId:    "sheets-e5838",
-  storageBucket:"sheets-e5838.firebasestorage.app",
-};
-const app = initializeApp(FIREBASE_CONFIG);
-const db  = getDatabase(app);
+<script type="module">
+// Same Firebase project/config as the VTT (js/rodeo-firebase.js)
+import { db, ref, get, set, update, remove, push, onValue } from "./js/rodeo-firebase.js";
 const $   = id => document.getElementById(id);
+const GM_KEY = "jonny";
+const PARAMS = new URLSearchParams(location.search);
+const IS_GM  = PARAMS.get("gm") === GM_KEY;
+const ONLY   = PARAMS.get("char");          // sheet.html?char=<id> shows just that character
+const EMBED  = PARAMS.has("embed");         // inside the VTT's sheet panel
+if (ONLY) document.body.classList.add("single");
+if (EMBED) document.body.classList.add("embed");
+function toast(html) {
+  const el = document.createElement("div"); el.className = "toast"; el.innerHTML = html;
+  $("toasts").appendChild(el); setTimeout(() => el.remove(), 4000);
+}
 
 // ── Load API data from scraped JSONs ──────────────────────────────────────────
 let spellsDb    = {};  // name.lowercase → spell object
@@ -255,6 +319,8 @@ async function loadApiData() {
     spellsRaw.forEach(s => { spellsDb[s.name.toLowerCase()] = s; });
     equipRaw.forEach(e  => { equipDb[e.name.toLowerCase()]  = e; });
     magicRaw.forEach(m  => { magicDb[m.name.toLowerCase()]  = m; });
+    const names = [...new Set([...equipRaw, ...magicRaw].map(x => x.name).filter(Boolean))].sort();
+    $("itemNames").innerHTML = names.map(n => `<option value="${esc(n)}">`).join("");
     skillsDb = skillsRaw.map(s => ({
       key:   s.index.replace(/-/g, "_"),
       label: s.name,
@@ -396,38 +462,10 @@ function buildCard(char) {
     weaponPanelHtml = `<div class="expand-panel" id="wp-${char.id}"><div class="weapon-list">${weaponItems}</div></div>`;
   }
   
-	// ── Inventory ───────────────────────────────────────────────────────────────
-	// Inventory stored in RTDB as object {itemId: {name, qty, notes...}} or array
-	const invRaw    = char.inventory ?? {};
-	const inventory = Array.isArray(invRaw) ? invRaw : Object.values(invRaw);
-	const hasInventory = inventory.length > 0;
-
-	let inventoryPanelHtml = '';
-
-	if (hasInventory) {
-	  const inventoryItems = inventory.map(item => {
-	    const apiItem  = getItemData(item.name);
-	    const desc     = item.desc ?? itemDescText(apiItem);
-	    const category = item.category ?? itemCategory(apiItem);
-	    const rarity   = apiItem?.rarity?.name?.toLowerCase().replace(/\s+/g,'-') ?? null;
-	    const rarityClass = rarity && rarity!=='none' ? ` inv-rarity-${rarity}` : '';
-	    return `<div class="inv-item${rarityClass}">
-	      <div class="inv-item-top">
-	        <span class="inv-name">${esc(item.name || 'Unnamed')}</span>
-	        ${(item.qty??1) > 1 ? `<span class="inv-qty">×${item.qty}</span>` : ''}
-	      </div>
-	      ${category ? `<span class="inv-cat">${esc(category)}</span>` : ''}
-	      ${desc     ? `<div class="inv-desc">${esc(desc)}</div>` : ''}
-	      ${item.notes ? `<div class="inv-notes">${esc(item.notes)}</div>` : ''}
-	    </div>`;
-	  }).join('');
-
-	  inventoryPanelHtml = `
-	    <div class="expand-panel" id="inv-${char.id}">
-	      ${inventoryItems}
-	    </div>
-	  `;
-	}
+  // ── Inventory (filled in live by watchInventory) ─────────────────────────
+  const invEntries   = inventoryEntries(char.inventory);
+  const hasInventory = IS_GM || invEntries.length > 0;
+  const inventoryPanelHtml = `<div class="expand-panel" id="inv-${char.id}">${inventoryInnerHtml(char.id, invEntries)}</div>`;
 
   // ── Spells — descriptions now from spells.json ─────────────────────────────
   let spellPanelHtml = '', hasSpells = false;
@@ -552,6 +590,7 @@ function buildCard(char) {
       <div class="char-name">${esc(char.name||'Unnamed')}</div>
       <div class="char-sub">${esc(subLine)}</div>
       ${char.combat_role?`<div class="char-role-badge">${esc(char.combat_role)}</div>`:''}
+      <div><span class="rested-pill" id="rested-${char.id}" style="display:none" title="+1d4 to each roll in GeezVTT until used up"></span></div>
       <div class="hp-row">
         <div class="hp-label">HP</div>
         <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${hpColor(hpCur,hpMax)}"></div></div>
@@ -595,7 +634,7 @@ function buildCard(char) {
       ${hasWeapons?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">⚔ Weapons &amp; Attacks <span class="chevron">▾</span></button>`:''}
       <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">📋 Skills &amp; Feats <span class="chevron">▾</span></button>
       ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">✨ Spells &amp; Cantrips <span class="chevron">▾</span></button>`:''}
-      ${hasInventory?`<button class="panel-btn inv-btn" id="invbtn-${char.id}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="chevron">▾</span></button>`:''}
+      <button class="panel-btn inv-btn" id="invbtn-${char.id}" style="${hasInventory?'':'display:none'}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="inv-count" id="invcount-${char.id}">${invEntries.length?`(${invEntries.length})`:''}</span><span class="chevron">▾</span></button>
     </div>
     ${tipPanelHtml}
     ${weaponPanelHtml}
@@ -604,6 +643,108 @@ function buildCard(char) {
     ${inventoryPanelHtml}`;
   return card;
 }
+
+// ── Inventory helpers ─────────────────────────────────────────────────────────
+// Stored as {key: {name, qty, notes, desc, category}} or an array; keys are kept so GM edits hit the right item.
+function inventoryEntries(raw) {
+  if (!raw || typeof raw !== "object") return [];
+  return Object.entries(raw).filter(([, it]) => it && typeof it === "object" && it.name);
+}
+function inventoryInnerHtml(charId, entries, freshKeys = new Set()) {
+  const items = entries.map(([key, item]) => {
+    const apiItem  = getItemData(item.name);
+    const desc     = item.desc || itemDescText(apiItem);
+    const category = item.category ?? itemCategory(apiItem);
+    const rarity   = apiItem?.rarity?.name?.toLowerCase().replace(/\s+/g,'-') ?? null;
+    const rarityClass = rarity && rarity!=='none' ? ` inv-rarity-${rarity}` : '';
+    const qty = Number(item.qty ?? 1) || 1;
+    const k = esc(key);
+    const qtyHtml = IS_GM
+      ? `<span style="display:flex;align-items:center;gap:4px"><button class="inv-qbtn" onclick="window.invQty('${charId}','${k}',-1)">−</button><span class="inv-qty">×${qty}</span><button class="inv-qbtn" onclick="window.invQty('${charId}','${k}',1)">+</button><button class="inv-x" title="Remove" onclick="window.invRemove('${charId}','${k}')">✕</button></span>`
+      : (qty > 1 ? `<span class="inv-qty">×${qty}</span>` : '');
+    return `<div class="inv-item${rarityClass}${freshKeys.has(key) ? ' new' : ''}">
+      <div class="inv-item-top"><span class="inv-name">${esc(item.name)}</span>${qtyHtml}</div>
+      ${category ? `<span class="inv-cat">${esc(category)}</span>` : ''}
+      ${desc     ? `<div class="inv-desc">${esc(desc)}</div>` : ''}
+      ${item.notes ? `<div class="inv-notes">${esc(item.notes)}</div>` : ''}
+    </div>`;
+  }).join('');
+  const empty = !entries.length ? `<div class="empty-panel">Nothing carried.</div>` : '';
+  const add = IS_GM ? `<div class="inv-add">
+      <input id="invadd-${charId}" list="itemNames" placeholder="Add item…" style="flex:1" onkeydown="if(event.key==='Enter')window.invAddQuick('${charId}')">
+      <input id="invaddq-${charId}" type="number" min="1" value="1" style="width:46px">
+      <button class="btn primary" style="height:28px;padding:0 9px" onclick="window.invAddQuick('${charId}')">+</button>
+    </div>` : '';
+  return items + empty + add;
+}
+
+// Give an item: same name already carried → raise its qty, otherwise add a new entry
+async function giveItem(charId, name, qty = 1, notes = "", desc = "") {
+  name = String(name || "").trim(); qty = Math.max(1, parseInt(qty, 10) || 1);
+  if (!name) return false;
+  const invRef = ref(db, `characters/pcs/${charId}/inventory`);
+  const snap = await get(invRef);
+  const match = inventoryEntries(snap.val()).find(([, it]) => String(it.name).toLowerCase() === name.toLowerCase());
+  if (match) {
+    const [key, it] = match;
+    const patch = { qty: (Number(it.qty ?? 1) || 1) + qty };
+    if (notes && !it.notes) patch.notes = notes;
+    await update(ref(db, `characters/pcs/${charId}/inventory/${key}`), patch);
+  } else {
+    const api = getItemData(name);
+    const item = { name: api?.name || name, qty, given_by: "GM", given_at: Date.now() };
+    if (notes) item.notes = notes;
+    if (desc) item.desc = desc;
+    await push(invRef, item);
+  }
+  return true;
+}
+window.invAddQuick = async function(charId) {
+  if (!IS_GM) return;
+  const n = $(`invadd-${charId}`), q = $(`invaddq-${charId}`);
+  const name = n.value, qty = q.value; n.value = ""; q.value = 1;
+  if (!(await giveItem(charId, name, qty)) && name.trim()) n.value = name;
+};
+window.invQty = async function(charId, key, delta) {
+  if (!IS_GM) return;
+  const r = ref(db, `characters/pcs/${charId}/inventory/${key}`);
+  const it = (await get(r)).val(); if (!it) return;
+  const qty = (Number(it.qty ?? 1) || 1) + delta;
+  if (qty <= 0) { if (confirm(`Remove ${it.name}?`)) await remove(r); }
+  else await update(r, { qty });
+};
+window.invRemove = async function(charId, key) {
+  if (!IS_GM) return;
+  const r = ref(db, `characters/pcs/${charId}/inventory/${key}`);
+  const it = (await get(r)).val(); if (it && confirm(`Remove ${it.name}?`)) await remove(r);
+};
+
+// Give-item dialog (GM)
+window.openGive = function() {
+  const camp = $('campaignSelect').value;
+  const list = camp ? allPcs.filter(c => c.campaign === camp) : allPcs;
+  $('giveTargets').innerHTML = list.map(c => `<label class="give-target"><input type="checkbox" value="${esc(c.id)}">${esc(c.name)}</label>`).join('') || '<span class="inv-count">No characters</span>';
+  $('giveHint').textContent = '';
+  $('giveModal').classList.add('open'); setTimeout(() => $('giveName').focus(), 50);
+};
+window.closeGive = () => $('giveModal').classList.remove('open');
+window.doGive = async function() {
+  const name = $('giveName').value.trim();
+  const ids = [...$('giveTargets').querySelectorAll('input:checked')].map(i => i.value);
+  if (!name) { $('giveHint').textContent = 'Name the item first.'; return; }
+  if (!ids.length) { $('giveHint').textContent = 'Pick at least one character.'; return; }
+  try {
+    for (const id of ids) await giveItem(id, name, $('giveQty').value, $('giveNotes').value.trim(), $('giveDesc').value.trim());
+    const who = ids.map(id => allPcs.find(c => c.id === id)?.name).filter(Boolean).join(', ');
+    toast(`Gave <b>${esc(name)}</b> ×${Math.max(1, parseInt($('giveQty').value,10)||1)} to ${esc(who)}`);
+    $('giveName').value = ''; $('giveQty').value = 1; $('giveNotes').value = ''; $('giveDesc').value = '';
+    window.closeGive();
+  } catch (e) { $('giveHint').textContent = 'Save failed: ' + e.message; console.error(e); }
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') window.closeGive();
+  if (e.key === 'Enter' && e.target.id === 'giveName') window.doGive();
+});
 
 // ── Global handlers ───────────────────────────────────────────────────────────
 window.togglePanel = function(panelId, btnId) {
@@ -662,6 +803,44 @@ function watchCharacter(charId) {
   });
 }
 
+// ── Live inventory watcher: GM pushes show up on every open sheet ────────────
+const invSeen = {};
+const invUnsubs = {};
+function watchInventory(charId) {
+  invUnsubs[charId]?.();
+  invUnsubs[charId] = onValue(ref(db, `characters/pcs/${charId}/inventory`), snap => {
+    const entries = inventoryEntries(snap.val());
+    const prev = invSeen[charId];
+    const fresh = new Set();
+    if (prev) for (const [k, it] of entries) {
+      const old = prev[k];
+      if (!old || (Number(it.qty ?? 1) || 1) > old) {
+        fresh.add(k);
+        if (!IS_GM) toast(`🎒 <b>${esc(allPcs.find(c => c.id === charId)?.name || '')}</b> received <b>${esc(it.name)}</b>${old ? ` (now ×${it.qty})` : ''}`);
+      }
+    }
+    invSeen[charId] = Object.fromEntries(entries.map(([k, it]) => [k, Number(it.qty ?? 1) || 1]));
+    const panel = $(`inv-${charId}`), btn = $(`invbtn-${charId}`), cnt = $(`invcount-${charId}`);
+    if (!panel) return;
+    // keep a half-typed "Add item" entry and its focus across the refresh
+    const inp = $(`invadd-${charId}`), keep = inp && { v: inp.value, q: $(`invaddq-${charId}`).value, f: document.activeElement === inp };
+    panel.innerHTML = inventoryInnerHtml(charId, entries, fresh);
+    if (keep && $(`invadd-${charId}`)) { $(`invadd-${charId}`).value = keep.v; $(`invaddq-${charId}`).value = keep.q; if (keep.f) $(`invadd-${charId}`).focus(); }
+    if (btn) btn.style.display = IS_GM || entries.length ? '' : 'none';
+    if (cnt) cnt.textContent = entries.length ? `(${entries.length})` : '';
+  });
+}
+
+// ── Well rested pill (granted by the GM's long rest in the VTT) ──────────────
+function watchBuffs(charId) {
+  onValue(ref(db, `characters/pcs/${charId}/buffs/well_rested`), snap => {
+    const el = $(`rested-${charId}`); if (!el) return;
+    const n = Number(snap.val()?.rolls_left) || 0;
+    el.style.display = n ? '' : 'none';
+    el.textContent = `🌙 Well rested · +1d4 on next ${n} roll${n === 1 ? '' : 's'}`;
+  });
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 let allPcs = [];
 
@@ -669,10 +848,10 @@ function renderCards(campaign) {
   const wrap = $('cardsWrap'); wrap.innerHTML='';
   const filtered = campaign ? allPcs.filter(c=>c.campaign===campaign) : allPcs;
   if(!filtered.length){
-    wrap.innerHTML='<div style="color:var(--dim);font-family:\'Cinzel\',serif;font-size:.8rem;padding:40px 20px">No characters for this campaign.</div>';
+    wrap.innerHTML='<div style="color:var(--dim);font-family:var(--font);font-size:.8rem;padding:40px 20px">No characters for this campaign.</div>';
     return;
   }
-  for(const pc of filtered){wrap.appendChild(buildCard(pc));watchCharacter(pc.id);}
+  for(const pc of filtered){wrap.appendChild(buildCard(pc));watchCharacter(pc.id);watchInventory(pc.id);watchBuffs(pc.id);}
 }
 
 async function loadParty() {
@@ -682,15 +861,21 @@ async function loadParty() {
     $('loadingScreen').style.display='none';
     if(!snap.exists()){$('errorMsg').textContent='No player characters found.';$('errorScreen').style.display='flex';return;}
     allPcs = Object.entries(snap.val())
-      .map(([id,c]) => c ? {...c, id} : null)
-      .filter(c => c && c.name && c.campaign !== '__oracle__' && c.type !== 'npc' && c.record_type !== 'npc')
+      .map(([id,c]) => c ? {...c, id, name: c.name || c.identity?.name || c.basic?.name || ''} : null)
+      .filter(c => c && c.name && (ONLY ? c.id === ONLY : (c.campaign !== '__oracle__' && c.type !== 'npc' && c.record_type !== 'npc')))
       .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+    if (ONLY) {
+      if (!allPcs.length) { $('errorMsg').textContent='That character sheet was not found.'; $('errorScreen').style.display='flex'; return; }
+      $('campaignSelect').style.display='none';
+      document.title = `${allPcs[0].name} · GeezVTT`;
+    }
     const campaigns = [...new Set(allPcs.map(c=>c.campaign||'').filter(c=>c&&c!=='__oracle__'))].sort();
     const sel = $('campaignSelect');
     campaigns.forEach(camp=>{const opt=document.createElement('option');opt.value=camp;opt.textContent=camp;sel.appendChild(opt);});
-    if(campaigns.length===1) sel.value=campaigns[0];
+    if(campaigns.length===1 || ONLY) sel.value = ONLY ? '' : campaigns[0];
     sel.addEventListener('change',()=>renderCards(sel.value));
     $('cardsWrap').style.display='flex';
+    if (IS_GM) { $('gmBadge').style.display=''; $('giveBtn').style.display=''; }
     renderCards(sel.value);
   } catch(err) {
     $('loadingScreen').style.display='none';
