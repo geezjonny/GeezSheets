@@ -76,7 +76,8 @@ function loadFirst(key, srcs) {
   next();
   return entry;
 }
-// Token art: uploaded image → avatar from the character record → tokens/<Name>.png → tokens/<name>.png
+// Token art: uploaded image → avatar from the character record → tokens/<Name>.png → tokens/<name>.png → tokens/<name_like_this>.png
+const snake = (s) => String(s || "").trim().toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 function tokenSrcs(t) {
   const s = [];
   if (t.img) s.push(t.img);
@@ -88,6 +89,7 @@ function tokenSrcs(t) {
   if (t.name) {
     s.push(`tokens/${encodeURIComponent(t.name)}.png`);
     if (t.name !== t.name.toLowerCase()) s.push(`tokens/${encodeURIComponent(t.name.toLowerCase())}.png`);
+    const sn = snake(t.name); if (sn && sn !== t.name.toLowerCase()) s.push(`tokens/${sn}.png`);
   }
   return s;
 }
@@ -655,8 +657,21 @@ function hydrateImgs(root) {
     im.src = srcs[0];
   });
 }
+// Every picture in the repo's tokens/ folder (tokens/index.json, or GitHub's file list), so any art can become a token
+let artFiles = null;
+const artName = (f) => f.replace(/^tokens\//, "").replace(/\.(png|jpe?g|webp)$/i, "").replace(/[_-]+/g, " ").replace(/\b[a-z]/g, (c) => c.toUpperCase());
+async function loadArtList() {
+  if (artFiles) return artFiles;
+  artFiles = [];
+  const ok = (a) => Array.isArray(a) && a.length;
+  try { const r = await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.name}/contents/tokens`); if (r.ok) { const a = await r.json(); if (ok(a)) artFiles = a.filter((f) => f.type === "file" && /\.(png|jpe?g|webp)$/i.test(f.name)).map((f) => "tokens/" + f.name); } } catch {}
+  if (!artFiles.length) try { const r = await fetch("tokens/index.json", { cache: "no-cache" }); if (r.ok) { const a = await r.json(); if (ok(a)) artFiles = a.map((f) => (f.startsWith("tokens/") ? f : "tokens/" + f)); } } catch {}
+  refreshLibrary();
+  return artFiles;
+}
 function refreshLibrary() {
   if (!IS_GM) return;
+  if (!artFiles) loadArtList();
   const q = $("inp-token-search").value.trim().toLowerCase();
   const camp = $("sel-campaign").value;
   const pcs = pcList(), npcs = npcList();
@@ -667,12 +682,17 @@ function refreshLibrary() {
   sel.value = camps.includes(keep) ? keep : "";
   const fit = (x) => (!camp || !x.campaign || x.campaign === camp) && (!q || x.name.toLowerCase().includes(q));
   const P = pcs.filter(fit), N = npcs.filter(fit), G = [...GENERIC.map((g) => ({ ...g, kind: "generic" })), ...uploads].filter((x) => !q || x.name.toLowerCase().includes(q));
-  libEntries = [...P, ...N, ...G];
+  const allArt = (artFiles || []).map((f) => ({ name: artName(f), img: f, kind: "art", cells: /(^| )(adult|ancient) .*dragon|giant|ogre|troll|elemental|horse|owlbear/i.test(artName(f)) ? 2 : 1 }));
+  const A = allArt.filter((x) => !q || x.name.toLowerCase().includes(q) || x.img.toLowerCase().includes(q.replace(/\s+/g, "_")));
+  const shownA = A.slice(0, q ? 60 : 24);
+  libEntries = [...P, ...N, ...G, ...shownA];
   let i = 0;
   const block = (arr, el, empty) => { $(el).innerHTML = arr.length ? arr.map((e) => tokenCard(e, i++)).join("") : `<span class="col-span-3 text-[11px] text-slate-500">${empty}</span>`; };
   block(P, "list-pcs", Object.keys(pcsData).length ? "No match" : "No PCs in Firebase");
   block(N, "list-npcs", npcs.length ? "No match" : "No NPCs in Firebase");
   block(G, "list-generic", "No match");
+  block(shownA, "list-art", artFiles === null ? "Loading…" : allArt.length ? "No match" : "Couldn't list tokens/ (add tokens/index.json)");
+  $("count-art").textContent = allArt.length ? (A.length > shownA.length ? `${shownA.length} of ${A.length}${q ? "" : " · search to find more"}` : `${A.length}`) : "";
   $("count-pcs").textContent = P.length ? `${P.length}` : "";
   $("count-npcs").textContent = `${N.length}${N.length !== npcs.length ? ` of ${npcs.length}` : ""} in Firebase`;
   hydrateImgs($("tab-content-tokens"));
