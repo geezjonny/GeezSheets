@@ -77,6 +77,11 @@
     <div class="control-group">
       <button class="tool-btn active" data-tool="room">⬛ Room (Click & Drag)</button>
       <button class="tool-btn" data-tool="roomEraser">🧹 Erase Room (Click/Drag)</button>
+      <button class="tool-btn" data-tool="floor">🎨 Floor Tile (/assets/*.png)</button>
+      <div id="floorAssetInputGroup" style="display: none; flex-direction: column; gap: 4px; margin-left: 12px;">
+        <label for="tileName">Asset Name (/assets/<b>[name]</b>.png):</label>
+        <input type="text" id="tileName" value="grass" placeholder="e.g. grass, stone, wood">
+      </div>
       <button class="tool-btn" data-tool="wall">➖ Wall (Draw Segment)</button>
       <button class="tool-btn" data-tool="door">🚪 Door (Draw Segment)</button>
       <button class="tool-btn" data-tool="token">🎯 Place / Move Token</button>
@@ -108,6 +113,20 @@
     let gridH = 15;
     let activeTool = 'room';
 
+    // Image Cache
+    const textureCache = {};
+
+    function getTextureImage(name) {
+      if (!name) return null;
+      if (!textureCache[name]) {
+        const img = new Image();
+        img.src = `./assets/${name}.png`;
+        img.onload = () => render();
+        textureCache[name] = img;
+      }
+      return textureCache[name];
+    }
+
     // View Transform State (Pan & Zoom)
     let zoom = 1;
     let panX = 0;
@@ -117,10 +136,11 @@
     let isSpacePressed = false;
 
     // Map Elements
-    let rooms = [];     // { x, y, w, h }
-    let lineWalls = []; // { x1, y1, x2, y2 }
-    let lineDoors = []; // { x1, y1, x2, y2 }
-    let tokens = [];    // { x, y, color, name }
+    let rooms = [];       // { x, y, w, h }
+    let lineWalls = [];   // { x1, y1, x2, y2 }
+    let lineDoors = [];   // { x1, y1, x2, y2 }
+    let tokens = [];      // { x, y, color, name }
+    let floorTiles = {};  // Key: `${x},${y}`, Value: tileName string
 
     // Interactivity state
     let isDrawing = false;
@@ -158,6 +178,10 @@
         document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         activeTool = btn.dataset.tool;
+
+        // Toggle Floor Input visibility
+        const floorGroup = document.getElementById('floorAssetInputGroup');
+        floorGroup.style.display = activeTool === 'floor' ? 'flex' : 'none';
       });
     });
 
@@ -193,8 +217,8 @@
       const x = Math.floor(worldX / CELL_SIZE);
       const y = Math.floor(worldY / CELL_SIZE);
       return { 
-        x: Math.max(0, Math.min(gridW, x)), 
-        y: Math.max(0, Math.min(gridH, y)) 
+        x: Math.max(0, Math.min(gridW - 1, x)), 
+        y: Math.max(0, Math.min(gridH - 1, y)) 
       };
     }
 
@@ -211,6 +235,14 @@
     // Erase rooms touching grid coordinates (x, y)
     function eraseRoomAt(x, y) {
       rooms = rooms.filter(r => !(x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h));
+    }
+
+    // Paint floor tile at (x, y)
+    function paintFloorTile(x, y) {
+      const tileName = document.getElementById('tileName').value.trim();
+      if (!tileName) return;
+      floorTiles[`${x},${y}`] = tileName;
+      getTextureImage(tileName); // Trigger preload
     }
 
     // Zoom Handling (Middle Wheel)
@@ -277,6 +309,9 @@
       } else if (activeTool === 'roomEraser') {
         const pos = getGridPos(e);
         eraseRoomAt(pos.x, pos.y);
+      } else if (activeTool === 'floor') {
+        const pos = getGridPos(e);
+        paintFloorTile(pos.x, pos.y);
       } else if (activeTool === 'wall' || activeTool === 'door') {
         startCell = getGridVertexPos(e);
         currentCell = startCell;
@@ -307,6 +342,9 @@
       } else if (activeTool === 'roomEraser') {
         const pos = getGridPos(e);
         eraseRoomAt(pos.x, pos.y);
+      } else if (activeTool === 'floor') {
+        const pos = getGridPos(e);
+        paintFloorTile(pos.x, pos.y);
       } else if (activeTool === 'wall' || activeTool === 'door') {
         currentCell = getGridVertexPos(e);
       } else if (activeTool === 'token' && draggedToken) {
@@ -332,8 +370,8 @@
       if (activeTool === 'room' && startCell && currentCell) {
         const rx = Math.min(startCell.x, currentCell.x);
         const ry = Math.min(startCell.y, currentCell.y);
-        const rw = Math.abs(startCell.x - currentCell.x);
-        const rh = Math.abs(startCell.y - currentCell.y);
+        const rw = Math.abs(startCell.x - currentCell.x) + 1;
+        const rh = Math.abs(startCell.y - currentCell.y) + 1;
         if (rw > 0 && rh > 0) {
           rooms.push({ x: rx, y: ry, w: rw, h: rh });
         }
@@ -357,6 +395,21 @@
       if (e.button === 1) e.preventDefault();
     });
 
+    // Helper to draw custom floor tile layer
+    function drawFloorTiles(targetCtx) {
+      Object.entries(floorTiles).forEach(([key, name]) => {
+        const [x, y] = key.split(',').map(Number);
+        const img = getTextureImage(name);
+        if (img && img.complete && img.naturalWidth !== 0) {
+          targetCtx.drawImage(img, x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        } else {
+          // Fallback colored square while image is loading or missing
+          targetCtx.fillStyle = '#3a5a40';
+          targetCtx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        }
+      });
+    }
+
     // Main Render Function
     function render() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -373,6 +426,9 @@
       ctx.fillStyle = '#18181c';
       ctx.fillRect(0, 0, mapW, mapH);
 
+      // Draw Floor Tiles
+      drawFloorTiles(ctx);
+
       // Draw Grid
       ctx.strokeStyle = '#2d2d38';
       ctx.lineWidth = 1;
@@ -384,7 +440,7 @@
       }
 
       // Draw Rooms
-      ctx.fillStyle = '#4a4e69';
+      ctx.fillStyle = 'rgba(74, 78, 105, 0.7)';
       rooms.forEach(r => {
         ctx.fillRect(r.x * CELL_SIZE, r.y * CELL_SIZE, r.w * CELL_SIZE, r.h * CELL_SIZE);
         ctx.strokeStyle = '#22223b';
@@ -396,8 +452,8 @@
       if (isDrawing && activeTool === 'room' && startCell && currentCell) {
         const rx = Math.min(startCell.x, currentCell.x);
         const ry = Math.min(startCell.y, currentCell.y);
-        const rw = Math.abs(startCell.x - currentCell.x);
-        const rh = Math.abs(startCell.y - currentCell.y);
+        const rw = Math.abs(startCell.x - currentCell.x) + 1;
+        const rh = Math.abs(startCell.y - currentCell.y) + 1;
         ctx.fillStyle = 'rgba(154, 140, 152, 0.5)';
         ctx.fillRect(rx * CELL_SIZE, ry * CELL_SIZE, rw * CELL_SIZE, rh * CELL_SIZE);
       }
@@ -474,6 +530,9 @@
       offCtx.fillStyle = '#18181c';
       offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
 
+      // Render Floor Textures
+      drawFloorTiles(offCtx);
+
       // Grid
       offCtx.strokeStyle = '#2d2d38';
       offCtx.lineWidth = 1;
@@ -485,7 +544,7 @@
       }
 
       // Rooms
-      offCtx.fillStyle = '#4a4e69';
+      offCtx.fillStyle = 'rgba(74, 78, 105, 0.7)';
       rooms.forEach(r => {
         offCtx.fillRect(r.x * CELL_SIZE, r.y * CELL_SIZE, r.w * CELL_SIZE, r.h * CELL_SIZE);
         offCtx.strokeStyle = '#22223b';
