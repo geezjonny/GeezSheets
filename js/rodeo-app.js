@@ -1876,10 +1876,27 @@ function sendCall() {
   closeModal("modal-call");
 }
 
+// Initiative order stays on screen (top right) after the roll call closes, until the DM clears it
+function renderInitStrip(v) {
+  let el = $("init-strip");
+  if (!el) {
+    el = document.createElement("div"); el.id = "init-strip";
+    el.className = "glass-panel rounded-xl p-2 text-xs shadow-xl";
+    el.style.cssText = "position:absolute;top:10px;right:10px;z-index:20;min-width:150px;max-width:220px;max-height:60vh;overflow-y:auto;display:none";
+    $("canvas-container").appendChild(el);
+    el.addEventListener("click", (e) => { if (e.target.closest("#init-clear") && IS_GM) set(R("rollcall"), null); });
+  }
+  const rows = v && v.kind === "init" ? Object.values(v.results || {}).sort((a, b) => (b.total ?? 0) - (a.total ?? 0)) : [];
+  el.style.display = rows.length ? "block" : "none";
+  if (!rows.length) return;
+  el.innerHTML = `<div class="flex items-center justify-between mb-1"><span class="font-semibold text-slate-300 uppercase tracking-wider text-[10px]">Initiative</span>${IS_GM ? `<button id="init-clear" class="text-slate-500 hover:text-red-400 px-1" title="Clear for everyone">✕</button>` : ""}</div>`
+    + rows.map((r) => `<div class="flex items-center gap-2 py-0.5"><span style="color:${esc(r.color || hashColor(r.name))}">●</span><span class="flex-1 truncate">${esc(r.name)}</span><span class="font-bold text-amber-200">${esc(r.total)}</span></div>`).join("");
+}
 function watchCall() {
   onValue(R("rollcall"), (s) => {
     const v = s.val();
     const fresh = v && (!call || call.id !== v.id);
+    renderInitStrip(v);
     call = v && v.open ? v : null;
     if (!call) { hideCall(); return; }
     if (fresh) { callSeen = new Set(); callHidden = false; callExtras = {}; callMode = null; clearCallTray(); }
