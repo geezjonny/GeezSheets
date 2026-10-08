@@ -76,16 +76,18 @@
     <h2>Tools</h2>
     <div class="control-group">
       <button class="tool-btn active" data-tool="room">⬛ Room (Click & Drag)</button>
+      <button class="tool-btn" data-tool="roomEraser">🧹 Erase Room (Click/Drag)</button>
       <button class="tool-btn" data-tool="wall">➖ Wall (Draw Segment)</button>
       <button class="tool-btn" data-tool="door">🚪 Door (Draw Segment)</button>
       <button class="tool-btn" data-tool="token">🎯 Place / Move Token</button>
     </div>
 
     <div class="nav-hints">
-      <strong>Navigation:</strong><br>
+      <strong>Navigation & Actions:</strong><br>
       • Middle Scroll: Zoom<br>
-      • Middle Click + Drag: Pan<br>
-      • Space + Left Drag: Pan
+      • Middle Click / Space + Drag: Pan<br>
+      • Double-Click Token: Rename<br>
+      • Right-Click Token: Delete
     </div>
 
     <button class="export-btn" id="exportBtn">💾 Export .dd2vtt</button>
@@ -118,7 +120,7 @@
     let rooms = [];     // { x, y, w, h }
     let lineWalls = []; // { x1, y1, x2, y2 }
     let lineDoors = []; // { x1, y1, x2, y2 }
-    let tokens = [];    // { x, y, color }
+    let tokens = [];    // { x, y, color, name }
 
     // Interactivity state
     let isDrawing = false;
@@ -206,6 +208,11 @@
       };
     }
 
+    // Erase rooms touching grid coordinates (x, y)
+    function eraseRoomAt(x, y) {
+      rooms = rooms.filter(r => !(x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h));
+    }
+
     // Zoom Handling (Middle Wheel)
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -225,6 +232,30 @@
       render();
     }, { passive: false });
 
+    // Right-Click Context Menu Suppression & Token Erasure
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const pos = getGridPos(e);
+      const tokenIndex = tokens.findIndex(t => t.x === pos.x && t.y === pos.y);
+      if (tokenIndex !== -1) {
+        tokens.splice(tokenIndex, 1);
+        render();
+      }
+    });
+
+    // Double-click to rename token
+    canvas.addEventListener('dblclick', (e) => {
+      const pos = getGridPos(e);
+      const token = tokens.find(t => t.x === pos.x && t.y === pos.y);
+      if (token) {
+        const newName = prompt('Enter a name for this token:', token.name || '');
+        if (newName !== null) {
+          token.name = newName.trim();
+          render();
+        }
+      }
+    });
+
     // Mouse Press (Drawing + Panning)
     canvas.addEventListener('mousedown', (e) => {
       // Middle Click (button 1) or Left Click + Space triggers panning
@@ -243,6 +274,9 @@
       if (activeTool === 'room') {
         startCell = getGridPos(e);
         currentCell = startCell;
+      } else if (activeTool === 'roomEraser') {
+        const pos = getGridPos(e);
+        eraseRoomAt(pos.x, pos.y);
       } else if (activeTool === 'wall' || activeTool === 'door') {
         startCell = getGridVertexPos(e);
         currentCell = startCell;
@@ -250,7 +284,7 @@
         const pos = getGridPos(e);
         draggedToken = tokens.find(t => t.x === pos.x && t.y === pos.y);
         if (!draggedToken && pos.x < gridW && pos.y < gridH) {
-          draggedToken = { x: pos.x, y: pos.y, color: '#e74c3c' };
+          draggedToken = { x: pos.x, y: pos.y, color: '#e74c3c', name: '' };
           tokens.push(draggedToken);
         }
       }
@@ -270,6 +304,9 @@
 
       if (activeTool === 'room') {
         currentCell = getGridPos(e);
+      } else if (activeTool === 'roomEraser') {
+        const pos = getGridPos(e);
+        eraseRoomAt(pos.x, pos.y);
       } else if (activeTool === 'wall' || activeTool === 'door') {
         currentCell = getGridVertexPos(e);
       } else if (activeTool === 'token' && draggedToken) {
@@ -395,15 +432,26 @@
         ctx.stroke();
       }
 
-      // Draw Tokens
+      // Draw Tokens & Labels
       tokens.forEach(t => {
+        const cx = (t.x + 0.5) * CELL_SIZE;
+        const cy = (t.y + 0.5) * CELL_SIZE;
+
         ctx.fillStyle = t.color;
         ctx.beginPath();
-        ctx.arc((t.x + 0.5) * CELL_SIZE, (t.y + 0.5) * CELL_SIZE, CELL_SIZE * 0.35, 0, Math.PI * 2);
+        ctx.arc(cx, cy, CELL_SIZE * 0.35, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        if (t.name) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(t.name, cx, cy - CELL_SIZE * 0.4);
+        }
       });
 
       // Draw Outer Grid Border
@@ -463,6 +511,28 @@
         offCtx.moveTo(d.x1 * CELL_SIZE, d.y1 * CELL_SIZE);
         offCtx.lineTo(d.x2 * CELL_SIZE, d.y2 * CELL_SIZE);
         offCtx.stroke();
+      });
+
+      // Render Tokens to exported image
+      tokens.forEach(t => {
+        const cx = (t.x + 0.5) * CELL_SIZE;
+        const cy = (t.y + 0.5) * CELL_SIZE;
+
+        offCtx.fillStyle = t.color;
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, CELL_SIZE * 0.35, 0, Math.PI * 2);
+        offCtx.fill();
+        offCtx.strokeStyle = '#fff';
+        offCtx.lineWidth = 2;
+        offCtx.stroke();
+
+        if (t.name) {
+          offCtx.fillStyle = '#ffffff';
+          offCtx.font = '12px sans-serif';
+          offCtx.textAlign = 'center';
+          offCtx.textBaseline = 'bottom';
+          offCtx.fillText(t.name, cx, cy - CELL_SIZE * 0.4);
+        }
       });
 
       // Convert Room Walls & Custom Walls into DD2VTT Line Geometry format
