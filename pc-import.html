@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add a PC · GeezVTT</title>
+<style>
+:root{--bg:#0f172a;--panel:#1e293b;--line:#334155;--ink:#e2e8f0;--dim:#94a3b8;--ok:#34d399;--warn:#fbbf24;--bad:#f87171;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 var(--font)}
+header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:10px 16px;background:rgba(30,41,59,.92);border-bottom:1px solid var(--line)}
+.brand{font-weight:700;font-size:16px;background:linear-gradient(90deg,#34d399,#99f6e4);-webkit-background-clip:text;background-clip:text;color:transparent}
+header a{color:var(--dim);font-size:12px;margin-left:auto;text-decoration:none}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:16px;padding:16px;max-width:1300px;margin:0 auto}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+h2{font-size:13px;margin:0 0 8px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+p.hint{color:var(--dim);font-size:12px;margin:0 0 8px}
+textarea,input,select{font:inherit;color:var(--ink);background:#0b1222;border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:100%}
+textarea{font:12px/1.4 var(--mono);resize:vertical}
+#src{min-height:420px}
+input:focus,textarea:focus{outline:none;border-color:#059669}
+.grid{display:grid;gap:8px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g6{grid-template-columns:repeat(6,1fr)}
+label{display:block;font-size:11px;color:var(--dim);margin-bottom:2px}
+.ab input{text-align:center;font-weight:700;font-size:16px}
+.ab .m{text-align:center;font-size:11px;color:var(--ok)}
+button{font:inherit;border:1px solid var(--line);background:#334155;color:var(--ink);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.primary{background:#059669;border-color:#10b981;color:#fff;font-weight:600}
+button:disabled{opacity:.4;cursor:default}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pills{display:flex;flex-wrap:wrap;gap:4px}
+.pill{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.pill.p{border-color:#059669;color:var(--ok)}.pill.e{border-color:#fbbf24;color:var(--warn)}
+.list{font-size:12px;color:var(--dim);margin:0;padding-left:16px}
+.list b{color:var(--ink);font-weight:600}
+.sec{margin-top:12px}
+#status{font-size:13px}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+details summary{cursor:pointer;color:var(--dim);font-size:12px}
+#json{min-height:260px;margin-top:6px}
+.chk{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--dim)}
+.chk input{width:auto}
+</style>
+</head>
+<body>
+<header><span class="brand">Add a PC</span><span style="color:var(--dim);font-size:12px">Fast Character → GeezVTT</span><a id="sheetLink" href="sheet.html">Open party sheets →</a></header>
+<main>
+  <section class="card">
+    <h2>1 · Paste</h2>
+    <p class="hint">On fastcharacter.com, select the whole character page (Ctrl+A, Ctrl+C) and paste it here. A .txt file works too.</p>
+    <textarea id="src" placeholder="FAST CHARACTER&#10;fastcharacter.com&#10;&#10;Name: …"></textarea>
+    <div class="row" style="margin-top:8px">
+      <label style="margin:0"><input type="file" id="file" accept=".txt,text/plain" style="width:auto;padding:4px"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2 · Check</h2>
+    <div id="empty" class="hint">Paste a character on the left.</div>
+    <div id="form" style="display:none">
+      <div class="grid g2">
+        <div><label>Name</label><input id="f-name"></div>
+        <div><label>Campaign</label><input id="f-campaign" list="camps" placeholder="e.g. Dungeons & Daddies"></div>
+      </div>
+      <div class="grid g3" style="margin-top:8px">
+        <div><label>Class</label><input id="f-class"></div>
+        <div><label>Subclass</label><input id="f-subclass"></div>
+        <div><label>Level</label><input id="f-level" type="number" min="1" max="20"></div>
+        <div><label>Species</label><input id="f-species"></div>
+        <div><label>Background</label><input id="f-background"></div>
+        <div><label>Alignment</label><input id="f-alignment"></div>
+      </div>
+      <div class="grid g6 sec">
+        <div><label>AC</label><input id="f-ac" type="number"></div>
+        <div><label>HP</label><input id="f-hp" type="number"></div>
+        <div><label>Speed</label><input id="f-speed" type="number"></div>
+        <div><label>Init</label><input id="f-init" type="number"></div>
+        <div><label>Prof</label><input id="f-prof" type="number"></div>
+        <div><label>Hit dice</label><input id="f-hd"></div>
+      </div>
+      <div class="grid g6 sec" id="abil"></div>
+      <div class="sec"><label>Token picture (optional: a file in tokens/)</label><input id="f-token" list="tokenFiles" placeholder="tokens/drow_rogue.png"></div>
+      <div class="sec" id="summary"></div>
+      <details class="sec"><summary>Everything that will be saved (JSON, editable)</summary><textarea id="json" spellcheck="false"></textarea></details>
+      <div class="sec row">
+        <button class="primary" id="save">Save to Firebase</button>
+        <span class="chk" id="keepWrap" style="display:none"><input type="checkbox" id="keep" checked> keep their current HP, inventory and coins</span>
+      </div>
+      <div class="sec" id="status"></div>
+    </div>
+  </section>
+</main>
+<datalist id="camps"></datalist><datalist id="tokenFiles"></datalist>
+
+<script src="js/geez-config.js"></script>
+<script type="module">
+import { db, ref, get, set, update } from "./js/rodeo-firebase.js";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+if (new URLSearchParams(location.search).get("gm") !== "jonny") {
+  document.querySelector("main").innerHTML = `<section class="card"><h2>DM only</h2><p class="hint">Open this page with <code>?gm=…</code>.</p></section>`;
+  throw new Error("not the DM");
+}
+$("sheetLink").href = "sheet.html?gm=jonny";
+
+// ── Reference data (spells to recognise, item names to tidy) ──
+let SPELLS = [], ITEMS = new Map(), existing = {};
+const loadJson = (f) => fetch(f).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+Promise.all([loadJson("data/spells.json"), loadJson("data/equipment.json"), loadJson("data/magic_items.json"), loadJson("tokens/index.json")]).then(([sp, eq, mi, tok]) => {
+  SPELLS = sp.map((s) => ({ name: s.name, level: s.level ?? 0 })).sort((a, b) => b.name.length - a.name.length);
+  for (const it of [...eq, ...mi]) if (it?.name) ITEMS.set(it.name.toLowerCase(), it.name);
+  $("tokenFiles").innerHTML = (Array.isArray(tok) ? tok : []).map((f) => `<option value="${esc(f.startsWith("tokens/") ? f : "tokens/" + f)}">`).join("");
+  if ($("src").value.trim()) build();
+});
+get(ref(db, "characters/pcs")).then((s) => {
+  existing = s.val() || {};
+  const camps = [...new Set(Object.values(existing).map((c) => c?.campaign).filter(Boolean))].sort();
+  $("camps").innerHTML = camps.map((c) => `<option value="${esc(c)}">`).join("");
+  if (!$("f-campaign").value && camps.length === 1) $("f-campaign").value = camps[0];
+  if (pc) checkExisting();
+}).catch((e) => { $("status").innerHTML = `<span class="bad">Couldn't read Firebase: ${esc(e.message)}</span>`; });
+
+// ── Parser for fastcharacter.com text ──
+const ABS = { strength: "str", dexterity: "dex", constitution: "con", intelligence: "int", wisdom: "wis", charisma: "cha" };
+const SKILL_KEY = (s) => s.toLowerCase().replace(/[^a-z]+/g, "_").replace(/^_|_$/g, "");
+const CASTER = { wizard: "int", artificer: "int", cleric: "wis", druid: "wis", ranger: "wis", monk: "wis", bard: "cha", sorcerer: "cha", warlock: "cha", paladin: "cha" };
+const WORDNUM = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twenty: 20 };
+const num = (s) => { const n = parseInt(String(s).replace(/[^\d-]/g, ""), 10); return Number.isFinite(n) ? n : null; };
+const field = (t, label) => (t.match(new RegExp(`^\\s*${label}\\s*:\\s*(.+)$`, "mi")) || [])[1]?.trim() || "";
+const between = (t, a, b) => { const i = t.search(a); if (i < 0) return ""; const rest = t.slice(i); const j = b ? rest.slice(1).search(b) : -1; return j < 0 ? rest : rest.slice(0, j + 1); };
+const cleanRefs = (s) => s.replace(/\s*\[(PHB|DMG|MM|TCoE|XGtE|VGtM|MotM|MToF|SJAiS|ERftLW|GGtR|MOoT|EEPG|UA|Basic Rules|TP)[^\]]*\]/g, "");
+// split on commas that aren't inside brackets
+function splitTop(s) {
+  const out = []; let depth = 0, cur = "";
+  for (const ch of s) {
+    if (ch === "(") depth++; else if (ch === ")") depth = Math.max(0, depth - 1);
+    if (ch === "," && !depth) { out.push(cur.trim()); cur = ""; } else cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out.filter(Boolean);
+}
+function tidyItem(raw) {
+  let s = raw.trim().replace(/\.$/, ""), qty = 1, desc = "";
+  let m = s.match(/^(?:ammunition:\s*)?(.+?)\s*\((\d+)\)$/i);                 // "arrows (20)"
+  if (m) { s = m[1]; qty = +m[2]; }
+  m = s.match(/^(one|two|three|four|five|six|seven|eight|nine|ten|twenty|\d+)\s*(?:\((\d+)\))?\s+(.+)$/i);   // "two (2) daggers", "20 arrows"
+  if (m) { qty = m[2] ? +m[2] : WORDNUM[m[1].toLowerCase()] ?? +m[1]; s = m[3]; }
+  m = s.match(/^(.+?)\s*\((.+)\)$/);                                          // "burglar's pack (backpack, …)"
+  if (m) { s = m[1]; desc = m[2]; }
+  s = s.replace(/^(a|an|set of|pair of)\s+/i, (x) => (/set|pair/i.test(x) ? x : ""));
+  const lower = s.toLowerCase();
+  const known = ITEMS.get(lower) || (qty > 1 && ITEMS.get(lower.replace(/s$/, ""))) || ITEMS.get(lower.replace(/ies$/, "y"));
+  const name = known || s.charAt(0).toUpperCase() + s.slice(1);
+  const out = { name, qty };
+  if (desc) out.desc = desc;
+  return out;
+}
+function parse(text) {
+  const t = text.replace(/\r/g, "").replace(/’/g, "'");
+  const c = { record_type: "pc", source: "fastcharacter", imported_at: Date.now() };
+  c.name = field(t, "Name");
+  c.species = field(t, "Race/Ancestry/Heritage") || field(t, "Race");
+  const cl = field(t, "Class & Level") || field(t, "Class");
+  const parts = [...cl.matchAll(/([A-Za-z][A-Za-z ]*?)\s+(\d+)(?:\s*\(([^)]+)\))?/g)];
+  if (parts.length) {
+    c.class = parts.map((p) => p[1].trim()).join(" / ");
+    c.level = parts.reduce((a, p) => a + +p[2], 0);
+    const subs = parts.map((p) => p[3]).filter(Boolean); if (subs.length) c.subclass = subs.join(" / ");
+  } else c.class = cl;
+  c.background = field(t, "Background"); c.alignment = field(t, "Alignment");
+  const xp = num(field(t, "Experience")); if (xp != null) c.xp = xp;
+
+  // abilities, saves, skills
+  c.stats = {}; c.saves = { proficient: [] }; c.skills = {};
+  for (const [full, k] of Object.entries(ABS)) { const m = t.match(new RegExp(`^\\s*${full}\\s+(\\d+)\\s*$`, "mi")); c.stats[k] = m ? +m[1] : 10; }
+  for (const m of t.matchAll(/^\s*([+-−]?\d+)\s*\.\.\.\s*(\w+) Saving Throws\s*(\*+)?/gmi)) if (m[3]) c.saves.proficient.push(ABS[m[2].toLowerCase()]);
+  for (const m of t.matchAll(/^\s*([+-−]?\d+)\s*\.\.\.\s*(.+?) Skill\s*(\*+)?\s*$/gmi)) {
+    const sk = { bonus: num(m[1].replace("−", "-")) };
+    if (m[3]) sk.proficient = true; if (m[3] === "**") sk.expertise = true;
+    c.skills[SKILL_KEY(m[2])] = sk;
+  }
+
+  // combat
+  const prof = num(field(t, "• Proficiency Bonus") || (t.match(/Proficiency Bonus:\s*([+-]?\d+)/i) || [])[1]) ?? 2;
+  const ac = t.match(/Armor Class\s+(\d+)(?:\s*\.\.\.\s*Armor worn:\s*(.+))?/i);
+  const hp = t.match(/(\d+)\s+hit points(?:\s*\.\.\.\s*(\S+)\s+Hit Dice)?/i);
+  const init = t.match(/([+-]?\d+)\s*\.\.\.\s*Initiative/i);
+  const speed = t.match(/(\d+)\s*ft\.\s*Speed/i);
+  c.combat = { ac: ac ? +ac[1] : 10, hp_max: hp ? +hp[1] : 1, hp_current: hp ? +hp[1] : 1, temp_hp: 0, speed: speed ? +speed[1] : 30,
+    initiative_bonus: init ? num(init[1]) : Math.floor((c.stats.dex - 10) / 2), proficiency_bonus: prof, conditions: [] };
+  if (hp?.[2]) c.combat.hit_dice = hp[2];
+  if (ac?.[2]) {
+    const worn = ac[2].trim().replace(/\.$/, "");
+    c.equipped = {};
+    const armor = worn.replace(/,?\s*(and\s+)?shield/i, "").trim();
+    if (armor && !/^none|unarmored/i.test(armor)) c.equipped.armor = armor;
+    if (/shield/i.test(worn)) c.equipped.shield = true;
+  }
+  c.senses = {};
+  const pp = t.match(/(\d+)\s*\.\.\.\s*Passive Perception/i); if (pp) c.senses.passive_perception = +pp[1];
+  for (const m of t.matchAll(/(Darkvision|Blindsight|Tremorsense|Truesight)\s*\((\d+)\s*f(ee)?t/gi)) c.senses[m[1].toLowerCase()] = +m[2];
+
+  // attacks
+  c.attacks = [];
+  for (const line of t.split("\n")) {
+    const m = line.match(/^\s*([^.:\n]{2,40})\.\s*(Melee or Ranged|Melee|Ranged)\s+(Weapon|Spell)\s+Attack:\s*([+-]\d+)\s*to hit(.*)$/i);
+    if (!m) continue;
+    const rest = m[5];
+    const dmg = rest.match(/(\d+d\d+(?:\s*[+-]\s*\d+)?)\s+(\w+)\s+damage/i);
+    const reach = rest.match(/reach\s+(\d+)\s*ft/i);
+    const rng = rest.match(/range to\s+(\d+)\s*ft[^)]*?(\d+)\s*to\s*(\d+)\s*ft/i) || rest.match(/range to\s+(\d+)\s*ft/i);
+    const a = { name: m[1].trim(), to_hit: m[4], damage: dmg ? dmg[1].replace(/\s+/g, "") : "", damage_type: dmg ? dmg[2] : "" };
+    a.range = rng ? (rng[3] ? `${rng[1]}/${rng[3]} ft` : `${rng[1]} ft`) + (reach ? ` (reach ${reach[1]} ft)` : "") : reach ? `${reach[1]} ft` : "";
+    const notes = (rest.split(/damage\.?/i).slice(1).join(" ") || "").replace(/\([^)]*range[^)]*\)/gi, "").replace(/^\W+|\s+$/g, "").replace(/^\+\s*/, "");
+    if (notes) a.notes = notes;
+    c.attacks.push(a);
+  }
+
+  // features & proficiencies
+  const feats = cleanRefs(between(t, /^FEATURES, TRAITS, SPECIAL ABILITIES/m, /^EQUIPMENT & TREASURE/m).replace(/^FEATURES, TRAITS, SPECIAL ABILITIES\s*/m, ""));
+  const profBlock = (feats.match(/Proficiencies & Languages\s*\n([\s\S]*?)(?=\n\s*\n(?!\s*•))/) || [])[1] || "";
+  const blocks = feats.replace(/Proficiencies & Languages\s*\n[\s\S]*?(?=\n\s*\n(?!\s*•))/, "").split(/\n\s*\n+/).map((b) => b.trim()).filter(Boolean);
+  const seen = new Set(), keep = [];
+  for (const b of blocks) { const k = b.replace(/\s+/g, " "); if (!seen.has(k)) { seen.add(k); keep.push(b.replace(/\n\s*\n/g, "\n")); } }
+  // Sneak Attack and similar paragraphs from the COMBAT section belong with the features
+  const combat = cleanRefs(between(t, /^COMBAT/m, /^FEATURES, TRAITS/m));
+  for (const b of combat.split(/\n\s*\n+/).map((x) => x.trim())) if (/^[A-Z][\w' ]+:\s/.test(b) && !/Attack:\s*[+-]\d/.test(b)) { const k = b.replace(/\s+/g, " "); if (!seen.has(k)) { seen.add(k); keep.push(b); } }
+  c.text_blocks = { features_traits: keep.join("\n\n").replace(/[ \t]+\n/g, "\n"), proficiencies_languages: profBlock.trim().replace(/\n\s*\n/g, "\n") };
+
+  // spells: names from data/spells.json found in lines that talk about spells
+  const spellText = t.split("\n").filter((l) => /cantrip|spell|cast|known|prepared/i.test(l) && !/Saving Throws|Skill\s*\*?$/.test(l)).join("\n");
+  const found = []; let scan = spellText;
+  for (const s of SPELLS) {
+    const re = new RegExp(`\\b${s.name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")}\\b`, "i");
+    if (re.test(scan)) { found.push(s); scan = scan.replace(new RegExp(re.source, "gi"), " "); }
+  }
+  const dcs = [...t.matchAll(/Spell Save (?:is )?DC\s*(\d+)/gi)].map((m) => +m[1]);
+  const atks = [...t.matchAll(/spell attack bonus is\s*([+-]?\d+)/gi)].map((m) => num(m[1]));
+  const slots = {};
+  for (const m of t.matchAll(/(\d)(?:st|nd|rd|th)[- ]level[^\n]*?\b(\d+)\s*slots?/gi)) slots[m[1]] = +m[2];
+  for (const m of t.matchAll(/(\d+)\s*(\d)(?:st|nd|rd|th)[- ]level (?:spell )?slots?/gi)) slots[m[2]] = +m[1];
+  if (found.length || dcs.length || Object.keys(slots).length) {
+    const cls = String(c.class || "").toLowerCase().split(/\W+/).find((x) => CASTER[x]) || (t.match(/Magic Initiate \((\w+)\)/i) || [])[1]?.toLowerCase();
+    c.spellcasting = { ability: CASTER[cls] || "", spell_save_dc: dcs.length ? Math.max(...dcs) : null, spell_attack_bonus: atks.length ? Math.max(...atks) : null,
+      slots, slots_used: {}, spells: found.map((s) => ({ name: s.name, level: s.level, prepared_type: s.level === 0 ? "cantrip" : "prepared" })) };
+  }
+
+  // equipment & coins
+  c.inventory = {};
+  const gear = (t.match(/Carried Gear[^:]*:\s*([\s\S]*?)(?:\(This load|\n\s*\n\s*\n|Coins & Gems)/i) || [])[1] || "";
+  let n = 0;
+  for (const raw of splitTop(gear.replace(/\s+/g, " ").replace(/;\s*/g, ", "))) {
+    for (const piece of raw.split(/\s+and\s+(?=\d)/)) {
+      const it = tidyItem(piece); if (!it.name) continue;
+      const dup = Object.values(c.inventory).find((x) => x.name.toLowerCase() === it.name.toLowerCase());
+      if (dup) dup.qty = Math.max(dup.qty, it.qty); else   // Fast Character lists some gear twice ("20 arrows" … "arrows (20)")
+      c.inventory["i" + String(n++).padStart(2, "0")] = it;
+    }
+  }
+  const coins = field(t, "Coins & Gems");
+  c.coin_purse = { pp: 0, gp: 0, ep: 0, sp: 0, cp: 0 };
+  for (const [k, w] of [["pp", "platinum"], ["gp", "gold"], ["ep", "electrum"], ["sp", "silver"], ["cp", "copper"]]) {
+    const m = coins.match(new RegExp(`(\\d[\\d,]*)\\s*${w} pieces`, "i")); if (m) c.coin_purse[k] = num(m[1]);
+  }
+  const gems = coins.match(/(\d+)\s*gems?\s*\(worth\s*([^)]+?)\s*each\)/i);
+  if (gems) c.inventory["i" + String(n++).padStart(2, "0")] = { name: `Gem (${gems[2]})`, qty: +gems[1] };
+  if (!Object.keys(c.inventory).length) delete c.inventory;
+  if (!Object.keys(c.senses).length) delete c.senses;
+  return c;
+}
+
+// ── Form ↔ character ──
+let pc = null;
+const AB = ["str", "dex", "con", "int", "wis", "cha"];
+const slug = (s) => String(s || "").toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "pc";
+const modOf = (v) => { const m = Math.floor(((+v || 10) - 10) / 2); return (m >= 0 ? "+" : "") + m; };
+function fill() {
+  $("empty").style.display = "none"; $("form").style.display = "";
+  const f = (id, v) => ($(id).value = v ?? "");
+  f("f-name", pc.name); f("f-class", pc.class); f("f-subclass", pc.subclass); f("f-level", pc.level); f("f-species", pc.species);
+  f("f-background", pc.background); f("f-alignment", pc.alignment);
+  f("f-ac", pc.combat.ac); f("f-hp", pc.combat.hp_max); f("f-speed", pc.combat.speed); f("f-init", pc.combat.initiative_bonus);
+  f("f-prof", pc.combat.proficiency_bonus); f("f-hd", pc.combat.hit_dice);
+  if (!$("f-token").value) { const guess = `tokens/${slug(pc.name)}.png`; if ([...$("tokenFiles").options].some((o) => o.value === guess)) $("f-token").value = guess; }
+  $("abil").innerHTML = AB.map((k) => `<div class="ab"><label style="text-align:center">${k.toUpperCase()}</label><input id="f-${k}" type="number" value="${pc.stats[k]}"><div class="m" id="m-${k}">${modOf(pc.stats[k])}</div></div>`).join("");
+  summary(); json(); checkExisting();
+}
+function readForm() {
+  const v = (id) => $(id).value.trim(), n = (id) => (v(id) === "" ? null : +v(id));
+  pc.name = v("f-name"); pc.class = v("f-class"); pc.subclass = v("f-subclass") || undefined; pc.level = n("f-level"); pc.species = v("f-species");
+  pc.background = v("f-background"); pc.alignment = v("f-alignment"); pc.campaign = v("f-campaign");
+  Object.assign(pc.combat, { ac: n("f-ac"), hp_max: n("f-hp"), hp_current: n("f-hp"), speed: n("f-speed"), initiative_bonus: n("f-init"), proficiency_bonus: n("f-prof") });
+  if (v("f-hd")) pc.combat.hit_dice = v("f-hd");
+  for (const k of AB) { pc.stats[k] = n("f-" + k) ?? 10; $("m-" + k).textContent = modOf(pc.stats[k]); }
+  if (v("f-token")) pc.avatar = v("f-token"); else delete pc.avatar;
+  if (!pc.subclass) delete pc.subclass;
+}
+function summary() {
+  const sk = Object.entries(pc.skills).filter(([, s]) => s.proficient).map(([k, s]) => `<span class="pill ${s.expertise ? "e" : "p"}">${esc(k.replace(/_/g, " "))} ${s.bonus >= 0 ? "+" : ""}${s.bonus}</span>`).join("");
+  const sv = pc.saves.proficient.map((k) => `<span class="pill p">${k.toUpperCase()} save</span>`).join("");
+  const at = pc.attacks.map((a) => `<li><b>${esc(a.name)}</b> ${esc(a.to_hit)} · ${esc(a.damage)} ${esc(a.damage_type)}${a.range ? ` · ${esc(a.range)}` : ""}</li>`).join("");
+  const sp = pc.spellcasting?.spells?.map((s) => `<span class="pill">${esc(s.name)}${s.level ? ` (${s.level})` : ""}</span>`).join("") || "";
+  const inv = Object.values(pc.inventory || {}).map((i) => `${esc(i.name)}${i.qty > 1 ? ` ×${i.qty}` : ""}`).join(", ");
+  const cp = pc.coin_purse, coins = Object.entries(cp).filter(([, x]) => x).map(([k, x]) => `${x} ${k}`).join(" · ");
+  const feats = (pc.text_blocks.features_traits.match(/^[^\n:•]{3,60}(?=\s*(\[|:|\n))/gm) || []).slice(0, 14).map((x) => `<span class="pill">${esc(x.trim())}</span>`).join("");
+  $("summary").innerHTML = `
+    <label>Proficient saves &amp; skills <span style="color:var(--warn)">(yellow = expertise)</span></label><div class="pills">${sv}${sk || '<span class="pill">none found</span>'}</div>
+    <div class="sec"><label>Attacks</label>${at ? `<ul class="list">${at}</ul>` : '<span class="pill">none found</span>'}</div>
+    ${pc.spellcasting ? `<div class="sec"><label>Spells ${pc.spellcasting.spell_save_dc ? `· DC ${pc.spellcasting.spell_save_dc}` : ""}${pc.spellcasting.spell_attack_bonus != null ? ` · +${pc.spellcasting.spell_attack_bonus} to hit` : ""}</label><div class="pills">${sp || '<span class="pill">no names recognised</span>'}</div></div>` : ""}
+    <div class="sec"><label>Features</label><div class="pills">${feats || '<span class="pill">none found</span>'}</div></div>
+    <div class="sec"><label>Inventory</label><div class="list" style="padding:0">${inv || "—"}</div></div>
+    <div class="sec"><label>Coins</label><div class="list" style="padding:0">${coins || "—"}</div></div>`;
+}
+const clean = (o) => JSON.parse(JSON.stringify(o, (k, v) => (v === undefined || v === null || v === "" ? undefined : v)));
+function json() { $("json").value = JSON.stringify(clean(pc), null, 2); }
+function checkExisting() {
+  if (!pc) return;
+  const id = slug($("f-name").value || pc.name), old = existing[id];
+  $("keepWrap").style.display = old ? "" : "none";
+  $("save").textContent = old ? `Update ${old.name || id}` : "Save to Firebase";
+  $("status").innerHTML = old ? `<span class="warn">${esc(old.name || id)} is already in Firebase. Saving updates them.</span>` : "";
+}
+function build() {
+  const txt = $("src").value;
+  if (!/Name\s*:/i.test(txt)) { $("form").style.display = "none"; $("empty").style.display = ""; $("empty").textContent = txt.trim() ? "That doesn't look like a Fast Character page (no “Name:” line)." : "Paste a character on the left."; return; }
+  const camp = $("f-campaign").value;
+  pc = parse(txt); fill(); if (camp) $("f-campaign").value = camp;
+}
+$("src").addEventListener("input", build);
+$("file").addEventListener("change", async (e) => { const f = e.target.files[0]; if (f) { $("src").value = await f.text(); build(); } });
+$("form").addEventListener("input", (e) => { if (!pc || e.target.id === "json") return; readForm(); json(); if (e.target.id === "f-name") checkExisting(); });
+
+$("save").onclick = async () => {
+  let data;
+  try { data = JSON.parse($("json").value); } catch (e) { $("status").innerHTML = `<span class="bad">The JSON box has a mistake: ${esc(e.message)}</span>`; return; }
+  if (!data.name) { $("status").innerHTML = `<span class="bad">Give them a name.</span>`; return; }
+  if (!data.campaign && !confirm("No campaign set. Save anyway? (They'll show under every campaign.)")) return;
+  const id = slug(data.name), old = existing[id];
+  if (old && $("keep").checked) {
+    if (old.inventory) data.inventory = old.inventory;
+    if (old.coin_purse) data.coin_purse = old.coin_purse;
+    if (old.combat) { data.combat.hp_current = Math.min(old.combat.hp_current ?? data.combat.hp_max, data.combat.hp_max); data.combat.temp_hp = old.combat.temp_hp ?? 0; data.combat.conditions = old.combat.conditions ?? []; }
+    if (old.spellcasting?.slots_used && data.spellcasting) data.spellcasting.slots_used = old.spellcasting.slots_used;
+  }
+  if (old?.vtt_profile && !data.vtt_profile) data.vtt_profile = old.vtt_profile;
+  $("save").disabled = true;
+  try {
+    await set(ref(db, `characters/pcs/${id}`), data);
+    existing[id] = data;
+    $("status").innerHTML = `<span class="ok">Saved ${esc(data.name)}. They're in the party sheets and in the VTT's token list now.</span> <a href="sheet.html?gm=jonny&char=${encodeURIComponent(id)}" target="_blank" style="color:var(--ok)">Open their sheet →</a>`;
+    $("save").textContent = `Update ${data.name}`; $("keepWrap").style.display = "";
+  } catch (e) { $("status").innerHTML = `<span class="bad">Save failed: ${esc(e.message)}</span>`; }
+  finally { $("save").disabled = false; }
+};
+</script>
+</body>
+</html>
