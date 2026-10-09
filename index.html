@@ -5,11 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeezVTT Campaign</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase (only used when FIREBASE_CONFIG is filled in below) -->
+    <!-- Firebase: the same project as every other GeezSheets page (js/geez-config.js) -->
+    <script src="js/geez-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <style>
         @keyframes geezCond { 0%,100% { background: var(--c1); } 50% { background: var(--c2); } }
+        #viewport.framed > :not(.geez-frame):not(.frame-keep) { visibility: hidden !important; }
+        body.framed #toolRail { display: none !important; }
         .geez-cond { opacity: .35; animation: geezCond 2.8s ease-in-out infinite; mix-blend-mode: multiply; }
         @keyframes geezPing { 0% { transform: translate(-50%,-50%) scale(.2); opacity: 1; } 100% { transform: translate(-50%,-50%) scale(2.4); opacity: 0; } }
         .geez-ping { position: absolute; width: 60px; height: 60px; border-radius: 9999px; border: 4px solid var(--c); pointer-events: none; animation: geezPing 1.1s ease-out 3; }
@@ -287,6 +290,9 @@
                 </div>
             </div>
 
+            <!-- Battle maps open in rodeo.html, the table VTT -->
+            <iframe id="rodeoFrame" class="geez-frame" title="Battle map" allow="fullscreen" style="display:none;position:absolute;inset:0;width:100%;height:100%;border:0;z-index:26"></iframe>
+
             <!-- MAP CANVASES WRAPPER (Levels 2, 3, 4) -->
             <div id="mapWrapper" class="absolute left-0 top-0 origin-top-left hidden">
                 <canvas id="mapCanvas" class="block shadow-2xl"></canvas>
@@ -326,6 +332,9 @@
                 </button>
                 <button id="tabDiceBtn" class="flex-1 py-3 text-center text-slate-400 border-b-2 border-transparent hover:text-slate-200 transition">
                     <i class="fa-solid fa-list-ol mr-1"></i> Initiative
+                </button>
+                <button id="tabWorldBtn" class="hidden flex-1 py-3 text-center text-slate-400 border-b-2 border-transparent hover:text-slate-200 transition" title="The living world (DM only)">
+                    <i class="fa-solid fa-seedling mr-1"></i> World
                 </button>
             </div>
 
@@ -533,6 +542,7 @@
                 <div id="entityDirectory" class="space-y-2"></div>
             </div>
 
+            <div id="tabWorld" class="hidden flex-1 overflow-y-auto p-4"></div>
             <div id="tabDice" class="hidden flex-1 overflow-y-auto p-4 space-y-5">
                 <section id="diceSection" class="space-y-2">
                     <h4 class="font-cinzel text-xs font-bold text-amber-400 tracking-wider">Dice</h4>
@@ -599,13 +609,16 @@
         //    geezvtt/party/<campaign>  players: their cards, strings, board layout, notes
         //    geezvtt/live/<campaign>   everyone: token moves, pings, dice, initiative
         // =====================================================================
-        // Same project as GeezSheets (js/firebase.js). Add ?local to the address to work offline.
+        // Same project as every GeezSheets page: js/geez-config.js (the geezsheets project). Add ?local to the address to work offline.
+        // (The old sheets-e5838 project is retired; migrate.html copies anything left there across.)
         const FIREBASE_CONFIG = window.GEEZ_FIREBASE_CONFIG || {
-            apiKey:        "AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY",
-            authDomain:    "sheets-e5838.firebaseapp.com",
-            databaseURL:   "https://sheets-e5838-default-rtdb.firebaseio.com",
-            projectId:     "sheets-e5838",
-            storageBucket: "sheets-e5838.firebasestorage.app",
+            apiKey:            "AIzaSyCJrkcYjFjyyx5UNA9FUaCIlCvxxOYabis",
+            authDomain:        "geezsheets.firebaseapp.com",
+            databaseURL:       "https://geezsheets-default-rtdb.firebaseio.com",
+            projectId:         "geezsheets",
+            storageBucket:     "geezsheets.firebasestorage.app",
+            messagingSenderId: "57811286242",
+            appId:             "1:57811286242:web:cd9cac596acdb355a2c6bb",
         };
         const FB_ROOT = 'geezvtt';
         const USE_FB = !!(FIREBASE_CONFIG && window.firebase) && !new URLSearchParams(location.search).has('local');
@@ -1586,6 +1599,31 @@
             refreshInspector();
             updateDirectories();
             if (window.TownVTT) TownVTT.onLevel(level);   // town life: pause and save when leaving the battle map
+            syncFrames();
+        }
+
+        // ---- Battle maps run in rodeo.html, the table VTT (add ?oldvtt to use the built-in one) ----
+        function useRodeo() { return !QS.has('oldvtt'); }
+        function showFrame(which, src, goTo) {
+            const f = $('rodeoFrame');
+            if (!f.dataset.src) { f.src = src; f.dataset.src = src; }
+            else if (goTo) { try { f.contentWindow.__rodeo?.gmGoTo(goTo); } catch (e) { f.src = src; f.dataset.src = src; } }
+            f.style.display = 'block';
+            $('viewport').classList.add('framed'); document.body.classList.add('framed');
+        }
+        function hideFrames() {
+            $('rodeoFrame').style.display = 'none';
+            $('viewport').classList.remove('framed'); document.body.classList.remove('framed');
+        }
+        function syncFrames() {
+            const lvl = db.view.level;
+            if (lvl === 'VTT' && useRodeo()) {
+                const bt = db.things[db.view.battleId], file = bt?.traits?.dd2vtt ? 'battlemap/' + bt.traits.dd2vtt : '';
+                const frame = $('rodeoFrame'), want = !PLAYER && file && frame.dataset.map !== file ? file : null;
+                if (want) frame.dataset.map = file;
+                showFrame('rodeo', `rodeo.html?${PLAYER ? '' : 'gm=' + GM_KEY + '&'}embed=1${!PLAYER && file ? '&map=' + encodeURIComponent(file) : ''}`, want);
+            } else hideFrames();
+            if (window.WorldDM) WorldDM.onLevel();
         }
 
         $('navDmBoard').onclick = () => setLevel('DM_BOARD');
@@ -1701,6 +1739,7 @@
             tokensLayer.innerHTML = '';
             vttCtx.clearRect(0, 0, vttVectorCanvas.width, vttVectorCanvas.height);
 
+            if (level === 'VTT' && useRodeo()) { clearCanvases(); syncFrames(); return; }
             if (level === 'VTT') {
                 const bt = db.things[db.view.battleId];
                 if (!bt) { clearCanvases(); showEmpty('No battle map open', 'On a location map, select a battle map marker and press Open in VTT, or double-click it.', false); return; }
@@ -1759,6 +1798,7 @@
             }
             drawGrid(map);
             drawMarkers(map);
+            if (window.WorldDM) WorldDM.draw();
             if (newView && !cam().fitted) fitView(); else applyTransform();
             if (ui.selection && newView) refreshInspector();
         }
@@ -2924,6 +2964,7 @@
             const level = db.view.level;
             const p = toContent(e.clientX, e.clientY);
             if (ui.mode === 'ping' && level !== 'DM_BOARD' && ui.loaded) { if (PLAYER && liveSession.lockPings) { showStatus('The DM has paused pings'); return; } sendPing(p.x, p.y); return; }
+            if (level === 'WORLD' && ui.mode === 'pan' && window.WorldDM && !hitMarker(p.x, p.y) && WorldDM.click(p.x, p.y)) return;
             if (!PLAYER && level === 'VTT' && ui.scene && db.view.battleId && ['wall', 'door', 'light', 'erase'].includes(ui.mode)) {
                 const bid = db.view.battleId, g = ui.scene.ppg, gx = p.x / g, gy = p.y / g;
                 const ed = editsOf(bid);
@@ -4077,14 +4118,17 @@
         const TAB_ON = 'flex-1 py-3 text-center text-amber-400 border-b-2 border-amber-500 bg-slate-900/50 transition';
         const TAB_OFF = 'flex-1 py-3 text-center text-slate-400 border-b-2 border-transparent hover:text-slate-200 transition';
         function showTab(which) {
-            [['tabInspectorBtn', 'tabInspector'], ['tabNpcListBtn', 'tabNpcList'], ['tabDirectoryBtn', 'tabDirectory'], ['tabDiceBtn', 'tabDice']].forEach(([b, p]) => {
-                $(b).className = b === which ? TAB_ON : TAB_OFF;
+            [['tabInspectorBtn', 'tabInspector'], ['tabNpcListBtn', 'tabNpcList'], ['tabDirectoryBtn', 'tabDirectory'], ['tabDiceBtn', 'tabDice'], ['tabWorldBtn', 'tabWorld']].forEach(([b, p]) => {
+                const hid = b === 'tabWorldBtn' && !window.WorldDM;
+                $(b).className = (b === which ? TAB_ON : TAB_OFF) + (hid ? ' hidden' : '');
                 $(p).classList.toggle('hidden', b !== which);
             });
+            if (which === 'tabWorldBtn' && window.WorldDM) WorldDM.render();
         }
         const showInspectorTab = () => {};   // cards open on the canvas now; the sidebar tab is for character sheets
         $('tabInspectorBtn').onclick = () => showTab('tabInspectorBtn');
         $('tabNpcListBtn').onclick = () => showTab('tabNpcListBtn');
+        $('tabWorldBtn').onclick = () => showTab('tabWorldBtn');
         $('tabDiceBtn').onclick = () => showTab('tabDiceBtn');
         $('tabDirectoryBtn').onclick = () => showTab('tabDirectoryBtn');
 
@@ -5099,5 +5143,10 @@
     <script src="js/town-sim.js"></script>
     <script src="js/town-vtt.js"></script>
     <script>if (window.TownVTT) { TownVTT.onLevel(db.view.level); if (db.view.level === 'VTT') renderView(); }</script>
+    <!-- The living world (DM only): drawn over the world map, with a World tab in the sidebar. Players never load it. -->
+    <script>
+        if (!PLAYER) ['js/world-packs.js', 'js/world-defs.js', 'js/world-engine.js', 'js/world-campaign.js', 'js/world-dm.js']
+            .reduce((p, src) => p.then(() => new Promise((ok) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => { console.info('[world] could not load ' + src); ok(); }; document.head.appendChild(s); })), Promise.resolve());
+    </script>
 </body>
 </html>

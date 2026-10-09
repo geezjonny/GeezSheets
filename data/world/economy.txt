@@ -1,0 +1,301 @@
+# ECONOMY — what's made, sold and eaten
+# + good: price, food (how filling; leave out for things you can't eat), spoils (share lost per day), tags (tool, weapon, luxury, material, medicine)
+# + building: beds (homes), style (fields, edge, house), outside (workers there face the wilds)
+# + profession: works at, makes, uses, gathers (names, kinds or tags of wild things), earns (market, wage, stall, inn, build, steal, beg, adventure), provides
+
++ good
+name: grain
+price: 1.5
+food: 45
+spoils: 0.008
+
++ good
+name: bread
+price: 3
+food: 65
+spoils: 0.12
+
++ good
+name: ale
+price: 2
+tags: luxury
+
++ good
+name: wood
+price: 2
+tags: material
+
++ good
+name: ore
+price: 3
+tags: material
+
++ good
+name: tools
+price: 8
+tags: tool
+
++ good
+name: weapons
+price: 10
+tags: weapon
+
++ good
+name: hides
+price: 3
+tags: material
+
++ good
+name: clothing
+price: 8
+tags: luxury
+
++ good
+name: herbs
+price: 3
+tags: medicine
+
++ good
+name: venison
+price: 2
+food: 50
+spoils: 0.05
+
++ good
+name: pork
+price: 2
+food: 50
+spoils: 0.05
+
++ good
+name: mutton
+price: 2
+food: 45
+spoils: 0.05
+
++ good
+name: fish
+price: 1.8
+food: 40
+spoils: 0.06
+
++ good
+name: berries
+price: 1
+food: 25
+spoils: 0.08
+
++ good
+name: mushrooms
+price: 1.2
+food: 30
+spoils: 0.06
+
++ good
+name: nuts
+price: 1.5
+food: 35
+spoils: 0.004
+
++ good
+name: roots
+price: 1
+food: 28
+spoils: 0.01
+
++ good
+name: honey
+price: 6
+food: 40
+tags: luxury
+
++ building
+name: house
+beds: 4
+style: house
+
++ building
+name: farm
+style: fields
+
++ building
+name: lumber camp
+outside: true
+style: edge
+
++ building
+name: mine
+outside: true
+style: edge
+
++ profession
+name: Farmer
+weight: 25
+works at: farm
+makes: grain
+key stat: con
+
++ profession
+name: Hunter
+weight: 6
+gathers: game
+key stat: wis
+
++ profession
+name: Forager
+weight: 4
+gathers: forage
+key stat: wis
+
++ profession
+name: Fisher
+weight: 5
+gathers: fish
+key stat: wis
+
++ profession
+name: Woodcutter
+weight: 8
+works at: lumber camp
+gathers: timber
+key stat: str
+
++ profession
+name: Miner
+weight: 6
+works at: mine
+gathers: ore
+key stat: con
+
++ profession
+name: Laborer
+weight: 10
+earns: wage
+provides: labor
+wage: 0.5
+key stat: str
+
++ profession
+name: Baker
+weight: 4
+works at: bakery
+uses: grain
+makes: bread x2
+key stat: dex
+
++ profession
+name: Brewer
+weight: 3
+works at: brewery
+uses: grain
+makes: ale x2
+key stat: con
+
++ profession
+name: Smith
+weight: 4
+works at: smithy
+uses: ore, wood
+makes: tools, weapons
+key stat: str
+
++ profession
+name: Carpenter
+weight: 4
+works at: workshop
+uses: wood
+earns: build
+key stat: dex
+
++ profession
+name: Tailor
+weight: 3
+works at: workshop
+uses: hides
+makes: clothing
+key stat: dex
+
++ profession
+name: Merchant
+weight: 5
+works at: shop
+earns: stall
+key stat: cha
+
++ profession
+name: Innkeeper
+weight: 2
+works at: inn
+earns: inn
+provides: rest
+key stat: cha
+hours: 13-23
+
++ profession
+name: Guard
+weight: 5
+works at: barracks
+earns: wage
+provides: safety
+fights: true
+wage: 0.7
+key stat: str
+
++ profession
+name: Healer
+weight: 2
+works at: clinic
+earns: wage
+provides: health
+uses: herbs
+wage: 0.7
+key stat: wis
+
++ profession
+name: Priest
+weight: 2
+works at: temple
+earns: wage
+provides: faith
+wage: 0.7
+key stat: wis
+hours: 6-15
+
++ profession
+name: Scholar
+weight: 1
+works at: library
+earns: wage
+provides: knowledge
+wage: 0.7
+key stat: int
+
++ profession
+name: Noble
+weight: 1
+works at: manor
+earns: wage
+provides: order
+wage: 1.4
+key stat: cha
+
++ profession
+name: Thief
+weight: 2
+earns: steal
+key stat: dex
+hours: 22-4
+
++ profession
+name: Beggar
+weight: 2
+earns: beg
+key stat: cha
+
++ profession
+name: Adventurer
+weight: 0
+earns: adventure
+fights: true
+provides: safety
+key stat: str

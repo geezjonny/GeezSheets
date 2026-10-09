@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Quick DD2VTT Maker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { display: flex; height: 100vh; background: #1e1e24; color: #fff; overflow: hidden; }
+    
+    /* Sidebar */
+    #sidebar {
+      width: 260px;
+      background: #2a2a32;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border-right: 1px solid #3f3f4c;
+      z-index: 10;
+      user-select: none;
+    }
+    h2 { font-size: 1.1rem; border-bottom: 1px solid #444; padding-bottom: 8px; margin-bottom: 4px; }
+    .control-group { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 0.85rem; color: #aaa; }
+    input[type="number"], input[type="text"] {
+      background: #1e1e24; border: 1px solid #444; color: #fff; padding: 6px 8px; border-radius: 4px;
+    }
+    .grid-inputs { display: flex; gap: 8px; }
+    .grid-inputs input { width: 50%; }
+    
+    /* Tools */
+    .tool-btn {
+      background: #3a3a46; border: 1px solid #555; color: #fff; padding: 10px;
+      border-radius: 4px; cursor: pointer; text-align: left; transition: 0.2s;
+    }
+    .tool-btn:hover { background: #4a4a58; }
+    .tool-btn.active { background: #007acc; border-color: #0099ff; font-weight: bold; }
+    
+    /* Hints */
+    .nav-hints {
+      font-size: 0.75rem;
+      color: #888;
+      background: #22222a;
+      padding: 8px;
+      border-radius: 4px;
+      line-height: 1.4;
+    }
+
+    /* Export Button */
+    .export-btn {
+      margin-top: auto; background: #28a745; border: none; color: #fff;
+      padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; text-align: center;
+    }
+    .export-btn:hover { background: #34ce57; }
+
+    /* Canvas Container */
+    #canvas-container {
+      flex: 1; position: relative; background: #121215;
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+    }
+    canvas { background: #18181c; cursor: crosshair; }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <h2>Grid Setup</h2>
+    <div class="control-group">
+      <label>Dimensions (Width × Height in cells)</label>
+      <div class="grid-inputs">
+        <input type="number" id="gridW" value="20" min="5" max="100">
+        <input type="number" id="gridH" value="15" min="5" max="100">
+      </div>
+    </div>
+
+    <h2>Tools</h2>
+    <div class="control-group">
+      <button class="tool-btn active" data-tool="room">⬛ Room (Click & Drag)</button>
+      <button class="tool-btn" data-tool="roomEraser">🧹 Erase Room (Click/Drag)</button>
+      <button class="tool-btn" data-tool="floor">🎨 Floor Tile (/assets/*.png)</button>
+      <div id="floorAssetInputGroup" style="display: none; flex-direction: column; gap: 4px; margin-left: 12px;">
+        <label for="tileName">Asset Name (/assets/<b>[name]</b>.png):</label>
+        <input type="text" id="tileName" value="grass" placeholder="e.g. grass, stone, wood">
+      </div>
+      <button class="tool-btn" data-tool="wall">➖ Wall (Draw Segment)</button>
+      <button class="tool-btn" data-tool="door">🚪 Door (Draw Segment)</button>
+      <button class="tool-btn" data-tool="token">🎯 Place / Move Token</button>
+    </div>
+
+    <div class="nav-hints">
+      <strong>Navigation & Actions:</strong><br>
+      • Middle Scroll: Zoom<br>
+      • Middle Click / Space + Drag: Pan<br>
+      • Double-Click Token: Rename<br>
+      • Right-Click Token: Delete
+    </div>
+
+    <button class="export-btn" id="exportBtn">💾 Export .dd2vtt</button>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="mapCanvas"></canvas>
+  </div>
+
+  <script>
+    const CELL_SIZE = 40; // Pixels per grid square
+    const canvas = document.getElementById('mapCanvas');
+    const container = document.getElementById('canvas-container');
+    const ctx = canvas.getContext('2d');
+
+    // App State
+    let gridW = 20;
+    let gridH = 15;
+    let activeTool = 'room';
+
+    // Image Cache
+    const textureCache = {};
+
+    function getTextureImage(name) {
+      if (!name) return null;
+      if (!textureCache[name]) {
+        const img = new Image();
+        img.src = `./assets/${name}.png`;
+        img.onload = () => render();
+        textureCache[name] = img;
+      }
+      return textureCache[name];
+    }
+
+    // View Transform State (Pan & Zoom)
+    let zoom = 1;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+    let panStart = { x: 0, y: 0 };
+    let isSpacePressed = false;
+
+    // Map Elements
+    let rooms = [];       // { x, y, w, h }
+    let lineWalls = [];   // { x1, y1, x2, y2 }
+    let lineDoors = [];   // { x1, y1, x2, y2 }
+    let tokens = [];      // { x, y, color, name }
+    let floorTiles = {};  // Key: `${x},${y}`, Value: tileName string
+
+    // Interactivity state
+    let isDrawing = false;
+    let startCell = null;
+    let currentCell = null;
+    let draggedToken = null;
+
+    // Canvas Resize & Center Setup
+    function setupCanvas() {
+      gridW = parseInt(document.getElementById('gridW').value) || 20;
+      gridH = parseInt(document.getElementById('gridH').value) || 15;
+      
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+
+      // Center map initially
+      panX = (canvas.width - gridW * CELL_SIZE * zoom) / 2;
+      panY = (canvas.height - gridH * CELL_SIZE * zoom) / 2;
+      
+      render();
+    }
+
+    window.addEventListener('resize', () => {
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      render();
+    });
+
+    document.getElementById('gridW').addEventListener('change', setupCanvas);
+    document.getElementById('gridH').addEventListener('change', setupCanvas);
+
+    // Tool Selector
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTool = btn.dataset.tool;
+
+        // Toggle Floor Input visibility
+        const floorGroup = document.getElementById('floorAssetInputGroup');
+        floorGroup.style.display = activeTool === 'floor' ? 'flex' : 'none';
+      });
+    });
+
+    // Spacebar Panning Support
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !isSpacePressed) {
+        isSpacePressed = true;
+        canvas.style.cursor = 'grab';
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space') {
+        isSpacePressed = false;
+        canvas.style.cursor = 'crosshair';
+      }
+    });
+
+    // Screen Coordinates to World Grid Snap
+    function screenToWorld(e) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Unproject viewport zoom and pan
+      const worldX = (mouseX - panX) / zoom;
+      const worldY = (mouseY - panY) / zoom;
+
+      return { worldX, worldY };
+    }
+
+    function getGridPos(e) {
+      const { worldX, worldY } = screenToWorld(e);
+      const x = Math.floor(worldX / CELL_SIZE);
+      const y = Math.floor(worldY / CELL_SIZE);
+      return { 
+        x: Math.max(0, Math.min(gridW - 1, x)), 
+        y: Math.max(0, Math.min(gridH - 1, y)) 
+      };
+    }
+
+    function getGridVertexPos(e) {
+      const { worldX, worldY } = screenToWorld(e);
+      const x = Math.round(worldX / CELL_SIZE);
+      const y = Math.round(worldY / CELL_SIZE);
+      return { 
+        x: Math.max(0, Math.min(gridW, x)), 
+        y: Math.max(0, Math.min(gridH, y)) 
+      };
+    }
+
+    // Erase rooms touching grid coordinates (x, y)
+    function eraseRoomAt(x, y) {
+      rooms = rooms.filter(r => !(x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h));
+    }
+
+    // Paint floor tile at (x, y)
+    function paintFloorTile(x, y) {
+      const tileName = document.getElementById('tileName').value.trim();
+      if (!tileName) return;
+      floorTiles[`${x},${y}`] = tileName;
+      getTextureImage(tileName); // Trigger preload
+    }
+
+    // Zoom Handling (Middle Wheel)
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+      const newZoom = Math.max(0.2, Math.min(5, zoom * zoomFactor));
+
+      // Zoom relative to current mouse location
+      panX = mouseX - (mouseX - panX) * (newZoom / zoom);
+      panY = mouseY - (mouseY - panY) * (newZoom / zoom);
+      zoom = newZoom;
+
+      render();
+    }, { passive: false });
+
+    // Right-Click Context Menu Suppression & Token Erasure
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const pos = getGridPos(e);
+      const tokenIndex = tokens.findIndex(t => t.x === pos.x && t.y === pos.y);
+      if (tokenIndex !== -1) {
+        tokens.splice(tokenIndex, 1);
+        render();
+      }
+    });
+
+    // Double-click to rename token
+    canvas.addEventListener('dblclick', (e) => {
+      const pos = getGridPos(e);
+      const token = tokens.find(t => t.x === pos.x && t.y === pos.y);
+      if (token) {
+        const newName = prompt('Enter a name for this token:', token.name || '');
+        if (newName !== null) {
+          token.name = newName.trim();
+          render();
+        }
+      }
+    });
+
+    // Mouse Press (Drawing + Panning)
+    canvas.addEventListener('mousedown', (e) => {
+      // Middle Click (button 1) or Left Click + Space triggers panning
+      if (e.button === 1 || (e.button === 0 && isSpacePressed)) {
+        e.preventDefault();
+        isPanning = true;
+        panStart = { x: e.clientX - panX, y: e.clientY - panY };
+        canvas.style.cursor = 'grabbing';
+        return;
+      }
+
+      if (e.button !== 0) return; // Only process left click for drawing
+
+      isDrawing = true;
+
+      if (activeTool === 'room') {
+        startCell = getGridPos(e);
+        currentCell = startCell;
+      } else if (activeTool === 'roomEraser') {
+        const pos = getGridPos(e);
+        eraseRoomAt(pos.x, pos.y);
+      } else if (activeTool === 'floor') {
+        const pos = getGridPos(e);
+        paintFloorTile(pos.x, pos.y);
+      } else if (activeTool === 'wall' || activeTool === 'door') {
+        startCell = getGridVertexPos(e);
+        currentCell = startCell;
+      } else if (activeTool === 'token') {
+        const pos = getGridPos(e);
+        draggedToken = tokens.find(t => t.x === pos.x && t.y === pos.y);
+        if (!draggedToken && pos.x < gridW && pos.y < gridH) {
+          draggedToken = { x: pos.x, y: pos.y, color: '#e74c3c', name: '' };
+          tokens.push(draggedToken);
+        }
+      }
+      render();
+    });
+
+    // Mouse Move
+    canvas.addEventListener('mousemove', (e) => {
+      if (isPanning) {
+        panX = e.clientX - panStart.x;
+        panY = e.clientY - panStart.y;
+        render();
+        return;
+      }
+
+      if (!isDrawing) return;
+
+      if (activeTool === 'room') {
+        currentCell = getGridPos(e);
+      } else if (activeTool === 'roomEraser') {
+        const pos = getGridPos(e);
+        eraseRoomAt(pos.x, pos.y);
+      } else if (activeTool === 'floor') {
+        const pos = getGridPos(e);
+        paintFloorTile(pos.x, pos.y);
+      } else if (activeTool === 'wall' || activeTool === 'door') {
+        currentCell = getGridVertexPos(e);
+      } else if (activeTool === 'token' && draggedToken) {
+        const pos = getGridPos(e);
+        if (pos.x < gridW && pos.y < gridH) {
+          draggedToken.x = pos.x;
+          draggedToken.y = pos.y;
+        }
+      }
+      render();
+    });
+
+    // Mouse Release
+    canvas.addEventListener('mouseup', (e) => {
+      if (isPanning) {
+        isPanning = false;
+        canvas.style.cursor = isSpacePressed ? 'grab' : 'crosshair';
+        return;
+      }
+
+      if (!isDrawing) return;
+
+      if (activeTool === 'room' && startCell && currentCell) {
+        const rx = Math.min(startCell.x, currentCell.x);
+        const ry = Math.min(startCell.y, currentCell.y);
+        const rw = Math.abs(startCell.x - currentCell.x) + 1;
+        const rh = Math.abs(startCell.y - currentCell.y) + 1;
+        if (rw > 0 && rh > 0) {
+          rooms.push({ x: rx, y: ry, w: rw, h: rh });
+        }
+      } else if ((activeTool === 'wall' || activeTool === 'door') && startCell && currentCell) {
+        if (startCell.x !== currentCell.x || startCell.y !== currentCell.y) {
+          const edge = { x1: startCell.x, y1: startCell.y, x2: currentCell.x, y2: currentCell.y };
+          if (activeTool === 'wall') lineWalls.push(edge);
+          if (activeTool === 'door') lineDoors.push(edge);
+        }
+      }
+
+      isDrawing = false;
+      startCell = null;
+      currentCell = null;
+      draggedToken = null;
+      render();
+    });
+
+    // Prevent default middle click behavior (autoscroll)
+    canvas.addEventListener('auxclick', (e) => {
+      if (e.button === 1) e.preventDefault();
+    });
+
+    // Helper to draw custom floor tile layer
+    function drawFloorTiles(targetCtx) {
+      Object.entries(floorTiles).forEach(([key, name]) => {
+        const [x, y] = key.split(',').map(Number);
+        const img = getTextureImage(name);
+        if (img && img.complete && img.naturalWidth !== 0) {
+          targetCtx.drawImage(img, x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        } else {
+          // Fallback colored square while image is loading or missing
+          targetCtx.fillStyle = '#3a5a40';
+          targetCtx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        }
+      });
+    }
+
+    // Main Render Function
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      // Apply Camera Viewport Transformation
+      ctx.translate(panX, panY);
+      ctx.scale(zoom, zoom);
+
+      const mapW = gridW * CELL_SIZE;
+      const mapH = gridH * CELL_SIZE;
+
+      // Draw Base Map Background
+      ctx.fillStyle = '#18181c';
+      ctx.fillRect(0, 0, mapW, mapH);
+
+      // Draw Floor Tiles
+      drawFloorTiles(ctx);
+
+      // Draw Grid
+      ctx.strokeStyle = '#2d2d38';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= gridW; x++) {
+        ctx.beginPath(); ctx.moveTo(x * CELL_SIZE, 0); ctx.lineTo(x * CELL_SIZE, mapH); ctx.stroke();
+      }
+      for (let y = 0; y <= gridH; y++) {
+        ctx.beginPath(); ctx.moveTo(0, y * CELL_SIZE); ctx.lineTo(mapW, y * CELL_SIZE); ctx.stroke();
+      }
+
+      // Draw Rooms
+      ctx.fillStyle = 'rgba(74, 78, 105, 0.7)';
+      rooms.forEach(r => {
+        ctx.fillRect(r.x * CELL_SIZE, r.y * CELL_SIZE, r.w * CELL_SIZE, r.h * CELL_SIZE);
+        ctx.strokeStyle = '#22223b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(r.x * CELL_SIZE, r.y * CELL_SIZE, r.w * CELL_SIZE, r.h * CELL_SIZE);
+      });
+
+      // Preview Room Drawing
+      if (isDrawing && activeTool === 'room' && startCell && currentCell) {
+        const rx = Math.min(startCell.x, currentCell.x);
+        const ry = Math.min(startCell.y, currentCell.y);
+        const rw = Math.abs(startCell.x - currentCell.x) + 1;
+        const rh = Math.abs(startCell.y - currentCell.y) + 1;
+        ctx.fillStyle = 'rgba(154, 140, 152, 0.5)';
+        ctx.fillRect(rx * CELL_SIZE, ry * CELL_SIZE, rw * CELL_SIZE, rh * CELL_SIZE);
+      }
+
+      // Draw Walls
+      ctx.strokeStyle = '#f2e9e4';
+      ctx.lineWidth = 4;
+      lineWalls.forEach(w => {
+        ctx.beginPath();
+        ctx.moveTo(w.x1 * CELL_SIZE, w.y1 * CELL_SIZE);
+        ctx.lineTo(w.x2 * CELL_SIZE, w.y2 * CELL_SIZE);
+        ctx.stroke();
+      });
+
+      // Draw Doors
+      ctx.strokeStyle = '#e0a96d';
+      ctx.lineWidth = 6;
+      lineDoors.forEach(d => {
+        ctx.beginPath();
+        ctx.moveTo(d.x1 * CELL_SIZE, d.y1 * CELL_SIZE);
+        ctx.lineTo(d.x2 * CELL_SIZE, d.y2 * CELL_SIZE);
+        ctx.stroke();
+      });
+
+      // Preview Line Wall/Door
+      if (isDrawing && (activeTool === 'wall' || activeTool === 'door') && startCell && currentCell) {
+        ctx.strokeStyle = activeTool === 'wall' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(224, 169, 109, 0.6)';
+        ctx.lineWidth = activeTool === 'wall' ? 4 : 6;
+        ctx.beginPath();
+        ctx.moveTo(startCell.x * CELL_SIZE, startCell.y * CELL_SIZE);
+        ctx.lineTo(currentCell.x * CELL_SIZE, currentCell.y * CELL_SIZE);
+        ctx.stroke();
+      }
+
+      // Draw Tokens & Labels
+      tokens.forEach(t => {
+        const cx = (t.x + 0.5) * CELL_SIZE;
+        const cy = (t.y + 0.5) * CELL_SIZE;
+
+        ctx.fillStyle = t.color;
+        ctx.beginPath();
+        ctx.arc(cx, cy, CELL_SIZE * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        if (t.name) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(t.name, cx, cy - CELL_SIZE * 0.4);
+        }
+      });
+
+      // Draw Outer Grid Border
+      ctx.strokeStyle = '#555';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, mapW, mapH);
+
+      ctx.restore();
+    }
+
+    // Export to .dd2vtt
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      // Offscreen canvas to render pristine high-res map without current view zoom/pan
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = gridW * CELL_SIZE;
+      offCanvas.height = gridH * CELL_SIZE;
+      const offCtx = offCanvas.getContext('2d');
+
+      // Draw Base Map
+      offCtx.fillStyle = '#18181c';
+      offCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
+
+      // Render Floor Textures
+      drawFloorTiles(offCtx);
+
+      // Grid
+      offCtx.strokeStyle = '#2d2d38';
+      offCtx.lineWidth = 1;
+      for (let x = 0; x <= gridW; x++) {
+        offCtx.beginPath(); offCtx.moveTo(x * CELL_SIZE, 0); offCtx.lineTo(x * CELL_SIZE, offCanvas.height); offCtx.stroke();
+      }
+      for (let y = 0; y <= gridH; y++) {
+        offCtx.beginPath(); offCtx.moveTo(0, y * CELL_SIZE); offCtx.lineTo(offCanvas.width, y * CELL_SIZE); offCtx.stroke();
+      }
+
+      // Rooms
+      offCtx.fillStyle = 'rgba(74, 78, 105, 0.7)';
+      rooms.forEach(r => {
+        offCtx.fillRect(r.x * CELL_SIZE, r.y * CELL_SIZE, r.w * CELL_SIZE, r.h * CELL_SIZE);
+        offCtx.strokeStyle = '#22223b';
+        offCtx.lineWidth = 2;
+        offCtx.strokeRect(r.x * CELL_SIZE, r.y * CELL_SIZE, r.w * CELL_SIZE, r.h * CELL_SIZE);
+      });
+
+      // Custom Walls
+      offCtx.strokeStyle = '#f2e9e4';
+      offCtx.lineWidth = 4;
+      lineWalls.forEach(w => {
+        offCtx.beginPath();
+        offCtx.moveTo(w.x1 * CELL_SIZE, w.y1 * CELL_SIZE);
+        offCtx.lineTo(w.x2 * CELL_SIZE, w.y2 * CELL_SIZE);
+        offCtx.stroke();
+      });
+
+      // Custom Doors
+      offCtx.strokeStyle = '#e0a96d';
+      offCtx.lineWidth = 6;
+      lineDoors.forEach(d => {
+        offCtx.beginPath();
+        offCtx.moveTo(d.x1 * CELL_SIZE, d.y1 * CELL_SIZE);
+        offCtx.lineTo(d.x2 * CELL_SIZE, d.y2 * CELL_SIZE);
+        offCtx.stroke();
+      });
+
+      // Render Tokens to exported image
+      tokens.forEach(t => {
+        const cx = (t.x + 0.5) * CELL_SIZE;
+        const cy = (t.y + 0.5) * CELL_SIZE;
+
+        offCtx.fillStyle = t.color;
+        offCtx.beginPath();
+        offCtx.arc(cx, cy, CELL_SIZE * 0.35, 0, Math.PI * 2);
+        offCtx.fill();
+        offCtx.strokeStyle = '#fff';
+        offCtx.lineWidth = 2;
+        offCtx.stroke();
+
+        if (t.name) {
+          offCtx.fillStyle = '#ffffff';
+          offCtx.font = '12px sans-serif';
+          offCtx.textAlign = 'center';
+          offCtx.textBaseline = 'bottom';
+          offCtx.fillText(t.name, cx, cy - CELL_SIZE * 0.4);
+        }
+      });
+
+      // Convert Room Walls & Custom Walls into DD2VTT Line Geometry format
+      const lineOfSight = [];
+      const portals = [];
+
+      rooms.forEach(r => {
+        const top = { x1: r.x, y1: r.y, x2: r.x + r.w, y2: r.y };
+        const right = { x1: r.x + r.w, y1: r.y, x2: r.x + r.w, y2: r.y + r.h };
+        const bottom = { x1: r.x + r.w, y1: r.y + r.h, x2: r.x, y2: r.y + r.h };
+        const left = { x1: r.x, y1: r.y + r.h, x2: r.x, y2: r.y };
+        [top, right, bottom, left].forEach(w => {
+          lineOfSight.push([{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }]);
+        });
+      });
+
+      lineWalls.forEach(w => {
+        lineOfSight.push([{ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }]);
+      });
+
+      lineDoors.forEach(d => {
+        portals.push({
+          position: { x: (d.x1 + d.x2) / 2, y: (d.y1 + d.y2) / 2 },
+          bounds: [{ x: d.x1, y: d.y1 }, { x: d.x2, y: d.y2 }],
+          closed: true,
+          freeway: false
+        });
+      });
+
+      const imageBase64 = offCanvas.toDataURL('image/png').split(',')[1];
+
+      const dd2vttData = {
+        format: 0.2,
+        resolution: {
+          map_origin: { x: 0, y: 0 },
+          map_size: { x: gridW, y: gridH },
+          pixels_per_grid: CELL_SIZE
+        },
+        line_of_sight: lineOfSight,
+        portals: portals,
+        environment: {
+          ambient_light: "ffffffff"
+        },
+        image: imageBase64
+      };
+
+      const blob = new Blob([JSON.stringify(dd2vttData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'map.dd2vtt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // Initialize
+    setupCanvas();
+  </script>
+</body>
+</html>

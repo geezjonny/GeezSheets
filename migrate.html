@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Move the campaign · GeezSheets</title>
+<style>
+  :root { --bg: #0f172a; --panel: #1e293b; --line: #334155; --ink: #e2e8f0; --muted: #94a3b8; --ok: #34d399; --warn: #fbbf24; --bad: #f87171; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 46rem; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  p { color: var(--muted); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 14px 0; }
+  .card h2 { font-size: 1rem; margin: 0 0 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  td, th { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  button { font: inherit; border: 1px solid var(--line); background: #334155; color: var(--ink); border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.primary { background: #059669; border-color: #10b981; color: white; }
+  button.danger { background: #7f1d1d; border-color: #b91c1c; }
+  button:disabled { opacity: .4; cursor: default; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  #log { font-family: ui-monospace, monospace; font-size: .82rem; white-space: pre-wrap; color: var(--muted); }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Move the campaign to the new database</h1>
+  <p>Everything else already lives in the <b>geezsheets</b> project. Until now, index.html (the campaign board, world and city maps) was still writing to the old <b>sheets-e5838</b> project. This copies its <code>geezvtt/</code> data — the campaign, the players' boards and the live table — into the new one. Nothing is deleted from the old project.</p>
+  <div class="card"><h2>What's where</h2><table id="tbl"><tr><td>Reading both databases…</td></tr></table></div>
+  <div class="card">
+    <h2>Copy</h2>
+    <p id="advice">…</p>
+    <div class="row">
+      <button class="primary" id="copyMissing" disabled>Copy what the new database is missing</button>
+      <button class="danger" id="copyAll" disabled>Replace the new campaign with the old one</button>
+    </div>
+    <div id="log"></div>
+  </div>
+  <p>After this, open <code>index.html?gm=jonny</code> as usual: it now reads and writes the new database, like every other page. Your browser also keeps its own copy of the campaign; if the new database is empty when you open index.html, it uploads that copy by itself.</p>
+</main>
+<script src="js/geez-config.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+if (new URLSearchParams(location.search).get("gm") !== "jonny") { document.querySelector("main").innerHTML = "<h1>DM only</h1><p>Open this page with <code>?gm=…</code>.</p>"; throw new Error("not the DM"); }
+
+const OLD = { apiKey: "AIzaSyAI3Itfvj4kZ0j0wxUhdrlVK6W76h260ZY", authDomain: "sheets-e5838.firebaseapp.com", databaseURL: "https://sheets-e5838-default-rtdb.firebaseio.com", projectId: "sheets-e5838", storageBucket: "sheets-e5838.firebasestorage.app" };
+const oldDb = getDatabase(initializeApp(OLD, "old"));
+const newDb = getDatabase(initializeApp(window.GEEZ_FIREBASE_CONFIG, "new"));
+const $ = (id) => document.getElementById(id);
+const log = (m, c = "") => { $("log").innerHTML += `<span class="${c}">${m}</span>\n`; };
+const n = (o) => (o && typeof o === "object" ? Object.keys(o).length : 0);
+const PARTS = [["Campaign cards", "campaign/things"], ["Strings between cards", "campaign/links"], ["Maps (world, city)", "campaign/maps"], ["Battle maps", "campaign/battles"], ["Players' boards", "party"], ["Live table state", "live"]];
+let oldV = null, newV = null, oldPass = null, newPass = null;
+
+async function read() {
+  try {
+    [oldV, newV, oldPass, newPass] = await Promise.all([
+      get(ref(oldDb, "geezvtt")).then((s) => s.val() || {}),
+      get(ref(newDb, "geezvtt")).then((s) => s.val() || {}),
+      get(ref(oldDb, "session/passphrase")).then((s) => s.val()).catch(() => null),
+      get(ref(newDb, "session/passphrase")).then((s) => s.val()).catch(() => null),
+    ]);
+  } catch (e) { $("tbl").innerHTML = `<tr><td class="bad">Couldn't read a database: ${e.message}. Check the rules on both projects.</td></tr>`; return; }
+  const at = (o, p) => p.split("/").reduce((x, k) => x?.[k], o);
+  $("tbl").innerHTML = `<tr><th></th><th>Old (sheets-e5838)</th><th>New (geezsheets)</th></tr>` + PARTS.map(([label, p]) => `<tr><td>${label}</td><td class="n">${n(at(oldV, p))}</td><td class="n">${n(at(newV, p))}</td></tr>`).join("")
+    + `<tr><td>Player passphrase</td><td class="n">${oldPass ? "set" : "–"}</td><td class="n">${newPass ? "set" : "–"}</td></tr>`;
+  const oldHas = n(oldV?.campaign?.things) > 0, newHas = n(newV?.campaign?.things) > 0;
+  $("advice").innerHTML = !oldHas ? '<span class="ok">The old database has no campaign. Nothing to move.</span>'
+    : !newHas ? "The new database has no campaign yet. Copy it across."
+    : '<span class="warn">Both have a campaign. "Copy what\'s missing" only fills gaps (the new campaign wins). "Replace" makes the new one match the old one exactly.</span>';
+  $("copyMissing").disabled = !oldHas && !n(oldV?.party) && !oldPass;
+  $("copyAll").disabled = !oldHas;
+}
+// deep-fill: copy only keys the target doesn't have yet
+function fill(src, dst) {
+  if (dst === undefined || dst === null) return src;
+  if (typeof src !== "object" || src === null || typeof dst !== "object") return dst;
+  const out = { ...dst }; for (const [k, v] of Object.entries(src)) out[k] = fill(v, dst[k]); return out;
+}
+$("copyMissing").onclick = async () => {
+  $("copyMissing").disabled = $("copyAll").disabled = true;
+  try {
+    await set(ref(newDb, "geezvtt"), fill(oldV, newV));
+    if (oldPass && !newPass) await set(ref(newDb, "session/passphrase"), oldPass);
+    log("Copied. The new database now has everything from the old one it was missing.", "ok");
+  } catch (e) { log("Copy failed: " + e.message, "bad"); }
+  read();
+};
+$("copyAll").onclick = async () => {
+  if (!confirm("Replace the campaign in the new database with the old one? Anything only in the new campaign will be lost.")) return;
+  $("copyMissing").disabled = $("copyAll").disabled = true;
+  try {
+    await set(ref(newDb, "geezvtt"), { ...newV, ...oldV });
+    if (oldPass) await set(ref(newDb, "session/passphrase"), oldPass);
+    log("Replaced. The new database's campaign now matches the old one.", "ok");
+  } catch (e) { log("Copy failed: " + e.message, "bad"); }
+  read();
+};
+read();
+</script>
+</body>
+</html>

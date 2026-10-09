@@ -1,0 +1,49 @@
+# CAMPAIGN — your real places and people, for "Bring in your campaign" (not a world pack)
+# + party: what your players are called, the campaign and region names.
+# + place: kind: town for settlements, anything else is a wild place. terrain: forest, hills, plains, swamp, mountains, lake, ruins (guessed from the name if left out). near: the town it belongs to.
+# + person: lives (a place name), job or role, race, personality, wants, fears, story (what happened to them), lost (who), blame: party, notes.
+# + happened: something your players already did. deed: one of the deeds in stories.txt. where: a town. who: a person (optional).
+
++ party
+name: the Daddies
+campaign: Dungeons & Daddies
+region: The Sword Coast
+
++ place
+name: Azurite Pointe
+kind: town
+
++ place
+name: The Obelisk
+near: Azurite Pointe
+terrain: ruins
+
++ place
+name: Whispering Wood
+near: Azurite Pointe
+
++ person
+name: Mayor Quillon
+lives: Azurite Pointe
+job: mayor
+race: Halfling
+personality: Greedy
+
++ person
+name: Edda Vane
+lives: Azurite Pointe
+job: smith
+story: lost spouse
+lost: Corin
+blame: party
+notes: Her husband died when the party lured the owlbear into town.
+
++ person
+name: Old Mag
+lives: Whispering Wood
+job: herbalist
+
++ happened
+deed: saved the town
+where: Azurite Pointe
+notes: Drove off the goblin raid in session 3.

@@ -1,0 +1,53 @@
+# GENTLE — a mod pack for a kinder world: no undead, plague, shadows, trolls or dragons, fewer wolves, more festivals
+# "remove: true" takes something out of the world entirely.
+
++ monster
+name: undead
+remove: true
+
++ monster
+name: shadows
+remove: true
+
++ monster
+name: plague dead
+remove: true
+
++ monster
+name: troll
+remove: true
+
++ monster
+name: dragon
+remove: true
+
++ monster
+name: wolves
+spawn: 2
+growth: 0.08
+
++ event
+name: Fever
+weight: 0.5
+
++ plant
+name: apples
+area: plains, forest
+food: 35
+tags: forage
+season: autumn
+spawn: 7
+cap: 60
+
+# deer like apples too
++ animal
+name: deer
+eats: grass, berries, nuts, apples
+
++ event
+name: Harvest festival
+weight: 3
+scope: town
+season: Autumn
+effect: fair
+text: {town} holds a harvest festival. Music, dancing and too much ale.

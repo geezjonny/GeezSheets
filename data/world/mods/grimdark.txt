@@ -1,0 +1,66 @@
+# GRIMDARK — a mod pack: hungrier wolves, more dead, harder winters
+# Changes existing definitions by name and adds a few horrors.
+
++ need
+name: hunger
+rises: 4.5
+
++ monster
+name: wolves
+growth: 0.2
+spawn: 8
+
++ monster
+name: undead
+spawn: 4
+
++ monster
+name: plague dead
+spawn: 1.5
+turns: 1
+
++ monster
+name: ghouls
+area: ruins, swamp, forest
+rises: deaths
+eats: deer, boar, people
+power: 5
+growth: 0.05
+start: 3-6
+spawn: 2
+
++ mutation
+of: ghouls
+becomes: Ghast pack
+weight: 1
+power: x2
+tag: dark
+
++ event
+name: Fever
+weight: 6
+
++ event
+name: Locusts
+weight: 2
+scope: region
+season: Summer
+effect: farm x0.2
+days: 10
+text: Locusts darken the sky over {region}. The fields are stripped.
+
+# lives are harder: fewer children, and grief turns people darker
++ world
+births: 0.7
+
++ arc
+name: grieving necromancer
+chance: 0.04
+
++ event
+name: Blood moon
+weight: 1
+scope: region
+season: Any
+effect: weird +2
+text: The moon rises red over {region}. Nobody sleeps.
