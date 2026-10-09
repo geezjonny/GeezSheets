@@ -1208,7 +1208,7 @@
             const img = await new Promise((res, rej) => {
                 const i = new Image();
                 i.onload = () => res(i); i.onerror = rej;
-                i.src = (String(j.image).startsWith('/9j/') ? 'data:image/jpeg;base64,' : 'data:image/png;base64,') + j.image;
+                i.src = (String(j.image).startsWith('/9j/') ? 'data:image/jpeg;base64,' : String(j.image).startsWith('UklGR') ? 'data:image/webp;base64,' : 'data:image/png;base64,') + j.image;
             });
             const ppg = j.resolution?.pixels_per_grid || 70;
             const o = j.resolution?.map_origin || { x: 0, y: 0 };

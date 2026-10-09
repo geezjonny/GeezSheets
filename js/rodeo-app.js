@@ -505,7 +505,7 @@ function parseUVTT(text) {
     return { id: "d" + i, x: pos.x, y: pos.y, line: b.length >= 2 ? [b[0], b[1]] : null, closed: p.closed !== false };
   });
   const lights = (data.lights || []).map((l) => ({ ...P(l.position || { x: 0, y: 0 }), range: (Number(l.range) || 4) * ppg, color: parseColor(l.color) }));
-  const src = data.image.startsWith("data:") ? data.image : "data:image/png;base64," + data.image;
+  const src = data.image.startsWith("data:") ? data.image : `data:image/${data.image.startsWith("UklGR") ? "webp" : data.image.startsWith("/9j/") ? "jpeg" : "png"};base64,` + data.image;
   const g = { ...GRID_DEFAULT, size: ppg, offsetX: ((-ox * ppg) % ppg + ppg) % ppg, offsetY: ((-oy * ppg) % ppg + ppg) % ppg };
   return { src, grid: g, walls, portals, lights };
 }
