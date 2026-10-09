@@ -110,6 +110,7 @@ function render() {
   ctx.setTransform(dpr * state.zoom, 0, 0, dpr * state.zoom, dpr * state.panX, dpr * state.panY);
 
   if (state.layers.map && state.map.image) ctx.drawImage(state.map.image, 0, 0);
+  if (state.layers.drawings) drawRooms();
   if (state.layers.lights && state.lights.length) drawLights();
   if (state.grid.show) drawGrid();
   if (isGMView() && state.layers.walls) drawWalls();
@@ -183,6 +184,10 @@ function strokeShape(d) {
     for (let i = 1; i < d.points.length; i++) ctx.lineTo(d.points[i][0], d.points[i][1]);
     ctx.stroke();
   } else if (d.type === "rect") ctx.strokeRect(d.x, d.y, d.w, d.h);
+  else if (d.type === "room") {                       // only while dragging one out
+    ctx.fillStyle = "rgba(246,239,220,0.6)"; ctx.fillRect(d.x, d.y, d.w, d.h);
+    ctx.strokeStyle = "#2b2118"; ctx.lineWidth = 3 / state.zoom; ctx.strokeRect(d.x, d.y, d.w, d.h);
+  }
   else if (d.type === "circle") { ctx.beginPath(); ctx.arc(d.x, d.y, Math.max(1, d.r), 0, Math.PI * 2); ctx.stroke(); }
   else if (d.type === "arrow") {
     const ang = Math.atan2(d.y2 - d.y1, d.x2 - d.x1), head = Math.max(12, d.size * 3);
@@ -193,8 +198,20 @@ function strokeShape(d) {
     ctx.closePath(); ctx.fill();
   }
 }
+// Rooms: ink outline under every room, then the floors on top, so touching rooms merge into one shape
+const roomsOf = () => Object.values(state.drawings).filter((d) => d && d.type === "room");
+function drawRooms() {
+  const rooms = roomsOf(); if (!rooms.length) return;
+  const b = Math.max(4, cellPx() * 0.09);
+  ctx.save();
+  ctx.shadowColor = "rgba(60,40,10,0.45)"; ctx.shadowBlur = b * 3; ctx.fillStyle = "#2b2118";
+  for (const r of rooms) ctx.fillRect(r.x - b, r.y - b, r.w + 2 * b, r.h + 2 * b);
+  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.fillStyle = "#f6efdc";
+  for (const r of rooms) ctx.fillRect(r.x, r.y, r.w, r.h);
+  ctx.restore();
+}
 function drawDrawings() {
-  const list = Object.entries(state.drawings).sort((a, b) => a[0].localeCompare(b[0]));
+  const list = Object.entries(state.drawings).filter(([, d]) => d && d.type !== "room").sort((a, b) => a[0].localeCompare(b[0]));
   for (const [, d] of list) { ctx.save(); strokeShape(d); ctx.restore(); }
 }
 
@@ -445,6 +462,32 @@ function doorAt(p) {
 
 // ───────────────────────── Firebase: map data ─────────────────────────
 const keyOf = (file) => String(file).replace(/[.#$\[\]\/]/g, "_");
+// ── Sketch maps: a blank parchment the DM draws rooms on, live for everyone ("sketch:<name>") ──
+const SKETCH = "sketch:", SKETCH_CELLS = { w: 60, h: 40 }, SKETCH_PX = 70;
+const isSketch = (f) => String(f || "").startsWith(SKETCH);
+function parchment(seedStr) {
+  const W = SKETCH_CELLS.w * SKETCH_PX, H = SKETCH_CELLS.h * SKETCH_PX;
+  let seed = [...String(seedStr)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+  const T = document.createElement("canvas"); T.width = T.height = 256;
+  const t = T.getContext("2d"); t.fillStyle = "#e9dcb8"; t.fillRect(0, 0, 256, 256);
+  const px = t.getImageData(0, 0, 256, 256);
+  for (let i = 0; i < px.data.length; i += 4) { const n = (rnd() - 0.5) * 18; px.data[i] += n; px.data[i + 1] += n; px.data[i + 2] += n * 0.8; }
+  t.putImageData(px, 0, 0);
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const g = c.getContext("2d");
+  g.fillStyle = g.createPattern(T, "repeat"); g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 60; i++) {                     // stains and pale patches
+    const x = rnd() * W, y = rnd() * H, r = 150 + rnd() * 600, dark = rnd() < 0.5;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, dark ? "rgba(120,90,40,0.10)" : "rgba(255,250,230,0.12)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+  }
+  const v = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+  v.addColorStop(0, "rgba(0,0,0,0)"); v.addColorStop(1, "rgba(90,60,20,0.35)");
+  g.fillStyle = v; g.fillRect(0, 0, W, H);
+  return c;
+}
 const mapRef = (path = "") => R(`maps/${state.mapKey}${path ? "/" + path : ""}`);
 let mapUnsubs = [];
 
@@ -520,20 +563,21 @@ async function openMap(file, opts = {}) {
   try {
     let parsed;
     if (opts.parsed) parsed = opts.parsed;
+    else if (isSketch(file)) parsed = { canvas: parchment(file), grid: { ...GRID_DEFAULT, size: SKETCH_PX, color: "#5b4630", opacity: 0.25 }, walls: [], portals: [], lights: [] };
     else if (/\.(png|jpe?g|webp)$/i.test(file)) parsed = { src: file, grid: { ...GRID_DEFAULT }, walls: [], portals: [], lights: [] };
     else {
       const resp = await fetch(file, { cache: "no-cache" });
       if (!resp.ok) throw new Error(`${file} not found (${resp.status})`);
       parsed = parseUVTT(await resp.text());
     }
-    const img = await loadImage(parsed.src);
+    const img = parsed.canvas || await loadImage(parsed.src);
     if (seq !== loadSeq) return;
     state.mapFile = file; state.mapKey = keyOf(opts.local ? "local/" + file : file); state.local = !!opts.local;
-    state.map = { image: img, width: img.naturalWidth, height: img.naturalHeight };
+    state.map = { image: img, width: img.naturalWidth || img.width, height: img.naturalHeight || img.height };
     state.walls = parsed.walls; state.portals = parsed.portals; state.lights = parsed.lights;
     state.fileGrid = parsed.grid; state.gridOverride = null; applyGrid();
     $("txt-portal-count").textContent = `${state.portals.length} door${state.portals.length === 1 ? "" : "s"}`;
-    const name = String(file).split("/").pop().replace(MAP_EXT, "");
+    const name = isSketch(file) ? file.slice(SKETCH.length) : String(file).split("/").pop().replace(MAP_EXT, "");
     $("map-title").textContent = IS_GM ? "" : name;
     document.title = `${name} · GeezVTT`;
     $("badge-local").classList.toggle("hidden", !state.local);
@@ -574,8 +618,10 @@ async function fillMapSelect() {
   const sel = $("sel-map");
   const maps = await listRepoMaps();
   const cur = state.local ? "" : state.mapFile;
+  const sketches = Object.values((await get(R("sketches")).catch(() => null))?.val() || {}).filter((x) => x?.name).sort((a, b) => (b.t || 0) - (a.t || 0));
   sel.innerHTML = `<option value="">${maps.length ? "— pick a map —" : "No maps in battlemap/"}</option>` +
-    maps.map((f) => `<option value="${esc(f)}">${esc(f.split("/").pop().replace(MAP_EXT, ""))}</option>`).join("");
+    maps.map((f) => `<option value="${esc(f)}">${esc(f.split("/").pop().replace(MAP_EXT, ""))}</option>`).join("") +
+    `<optgroup label="Sketch maps">${sketches.map((x) => `<option value="${esc(SKETCH + x.name)}">✎ ${esc(x.name)}</option>`).join("")}<option value="__new_sketch">＋ New sketch map…</option></optgroup>`;
   if (cur) sel.value = cur;
 }
 
@@ -922,6 +968,10 @@ function onPointerDown(e) {
     case "ruler": { const c = cellCenter(p); localRuler = { a: c, b: c }; action = { kind: "ruler", ...start }; requestRender(); return; }
     case "draw": {
       if (state.drawMode === "erase") { eraseAt(p); action = { kind: "erase", ...start }; return; }
+      if (state.drawMode === "room") {
+        if (!IS_GM) return;
+        draftShape = { kind: "draw", shape: { type: "room", by: clientId, ...roomRect(p, p) }, origin: p }; action = { kind: "draw", ...start }; requestRender(); return;
+      }
       const color = $("draw-color").value, size = Number($("draw-size").value) || 4;
       const base = { type: state.drawMode, color, size, by: clientId };
       const shape = state.drawMode === "brush" ? { ...base, points: [[r1(p.x), r1(p.y)]] }
@@ -971,7 +1021,8 @@ function onPointerMove(e) {
     case "erase": eraseAt(p); break;
     case "draw": {
       const s = draftShape.shape, o = draftShape.origin;
-      if (s.type === "brush") {
+      if (s.type === "room") Object.assign(s, roomRect(o, p));
+      else if (s.type === "brush") {
         const last = s.points[s.points.length - 1];
         if (Math.hypot(p.x - last[0], p.y - last[1]) > 2 / state.zoom) s.points.push([r1(p.x), r1(p.y)]);
       } else if (s.type === "rect") Object.assign(s, { x: Math.min(o.x, p.x), y: Math.min(o.y, p.y), w: Math.abs(p.x - o.x), h: Math.abs(p.y - o.y) });
@@ -1033,6 +1084,12 @@ function cancelAction() {
   action = null; draftShape = null; container.classList.remove("panning"); requestRender();
 }
 
+// The grid cells between two points, as one rectangle (both corner cells included)
+function roomRect(a, b) {
+  const g = cellPx(), ox = state.grid.offsetX || 0, oy = state.grid.offsetY || 0;
+  const ax = Math.floor((a.x - ox) / g), bx = Math.floor((b.x - ox) / g), ay = Math.floor((a.y - oy) / g), by = Math.floor((b.y - oy) / g);
+  return { x: Math.min(ax, bx) * g + ox, y: Math.min(ay, by) * g + oy, w: (Math.abs(bx - ax) + 1) * g, h: (Math.abs(by - ay) + 1) * g };
+}
 function eraseAt(p) {
   const pad = 8 / state.zoom;
   const hit = Object.entries(state.drawings).reverse().find(([, d]) => {
@@ -1041,7 +1098,7 @@ function eraseAt(p) {
     if (d.type === "brush") { const xs = d.points.map((q) => q[0]), ys = d.points.map((q) => q[1]); x0 = Math.min(...xs); x1 = Math.max(...xs); y0 = Math.min(...ys); y1 = Math.max(...ys);
       if (!(p.x >= x0 - pad && p.x <= x1 + pad && p.y >= y0 - pad && p.y <= y1 + pad)) return false;
       return d.points.some((q) => Math.hypot(q[0] - p.x, q[1] - p.y) <= pad + d.size); }
-    if (d.type === "rect") { x0 = d.x; y0 = d.y; x1 = d.x + d.w; y1 = d.y + d.h; }
+    if (d.type === "rect" || d.type === "room") { x0 = d.x; y0 = d.y; x1 = d.x + d.w; y1 = d.y + d.h; }
     else if (d.type === "circle") return Math.abs(Math.hypot(p.x - d.x, p.y - d.y) - d.r) <= pad + d.size;
     else { x0 = Math.min(d.x1, d.x2); x1 = Math.max(d.x1, d.x2); y0 = Math.min(d.y1, d.y2); y1 = Math.max(d.y1, d.y2); }
     return p.x >= x0 - pad && p.x <= x1 + pad && p.y >= y0 - pad && p.y <= y1 + pad;
@@ -1093,7 +1150,13 @@ function wireUI() {
   }));
   $("btn-clear-drawings").onclick = () => {
     if (!state.mapKey) return;
-    if (IS_GM) { if (confirm("Clear every drawing on this map?")) { state.drawings = {}; remove(mapRef("drawings")); requestRender(); } }
+    if (IS_GM) {
+      const rooms = roomsOf().length;
+      if (confirm(`Clear every drawing on this map?${rooms ? " (Rooms stay. Erase those with the eraser.)" : ""}`)) {
+        for (const [id, d] of Object.entries(state.drawings)) if (d?.type !== "room") { delete state.drawings[id]; remove(mapRef("drawings/" + id)); }
+        requestRender();
+      }
+    }
     else { for (const [id, d] of Object.entries(state.drawings)) if (d.by === clientId) { delete state.drawings[id]; remove(mapRef("drawings/" + id)); } requestRender(); }
   };
 
@@ -1192,7 +1255,16 @@ function wireUI() {
   };
 
   // maps
-  $("sel-map").onchange = (e) => gmGoTo(e.target.value);
+  $("sel-map").onchange = async (e) => {
+    if (e.target.value !== "__new_sketch") return gmGoTo(e.target.value);
+    const name = (prompt("Name this sketch map (e.g. Goblin cave):", "") || "").trim().replace(/[.#$\[\]\/]/g, " ").trim();
+    if (!name) { e.target.value = state.local ? "" : state.mapFile || ""; return; }
+    await set(R("sketches/" + keyOf(name)), { name, t: Date.now() });
+    await fillMapSelect();
+    gmGoTo(SKETCH + name);
+    setTool("draw"); document.querySelector('.draw-mode-btn[data-draw-mode="room"]')?.click();
+    toast("Drag on the grid to draw rooms. Overlapping rooms join up.");
+  };
   $("sel-map").addEventListener("focus", fillMapSelect);
   $("file-import-dd2vtt").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) openLocalFile(f); };
 
