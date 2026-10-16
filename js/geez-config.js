@@ -1,4 +1,4 @@
-// GeezSheets — the ONE Firebase project every page uses (index.html, rodeo.html, pinboard.html, sheet.html, world.html).
+// GeezSheets — the ONE Firebase project every page uses (index.html, pinboard.html, sheet.html, world.html, pc-import.html).
 // Change it here and every page follows. Load this before any page script:  <script src="js/geez-config.js"></script>
 window.GEEZ_FIREBASE_CONFIG = window.GEEZ_FIREBASE_CONFIG || {
   apiKey:            "AIzaSyCJrkcYjFjyyx5UNA9FUaCIlCvxxOYabis",

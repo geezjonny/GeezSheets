@@ -8,7 +8,7 @@
 import {
   findSpell, findCondition, findMonster, findEquipment,
   findMagicItem, findFeat, findWeaponProperty, findDamageType,
-  findRace, findBackground, findClass, searchAll,
+  findRace, findClass, searchAll,
 } from "./data.js";
 
 // ── Tooltip element (singleton) ───────────────────────────────────────────────
