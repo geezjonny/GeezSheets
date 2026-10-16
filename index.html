@@ -7,6 +7,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <!-- Firebase: the same project and SDK version as every other GeezSheets page (js/geez-config.js, js/rodeo-firebase.js) -->
     <script src="js/geez-config.js"></script>
+    <script src="js/swatches.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-database-compat.js"></script>
     <style>
@@ -204,6 +205,14 @@
                 <i class="fa-solid fa-eraser text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Erase a wall, door or light</span>
             </button>
+            <button id="railVision" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-eye text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Player vision</span>
+            </button>
+            <button id="railForget" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-clock-rotate-left text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Forget explored areas (players' map memory)</span>
+            </button>
             <div id="railDivider3" class="w-7 h-px bg-slate-700 my-0.5"></div>
             <button id="modeRuler" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-ruler text-lg"></i>
@@ -245,6 +254,7 @@
 
         <!-- Center Viewport Area -->
         <div id="viewport" class="flex-1 relative overflow-hidden bg-slate-950 canvas-container flex items-center justify-center">
+            <div id="swatchPanel" style="display:none;position:absolute;left:84px;top:12px;z-index:30;padding:8px;border-radius:10px;background:rgba(2,6,23,.92);border:1px solid #334155;max-width:min(340px,calc(100% - 96px))"></div>
             <div id="realmBar" class="hidden absolute top-3 left-3 flex flex-wrap gap-1.5 items-center max-w-[70%]" style="z-index:30"></div>
             <div id="shiftBox" class="hidden absolute top-3 right-3 w-64 rounded-xl border border-fuchsia-700/60 bg-slate-950/95 shadow-2xl p-3 space-y-2 text-xs text-slate-300" style="z-index:30"></div>
             <svg id="rulerSvg" class="absolute inset-0 w-full h-full pointer-events-none" style="z-index:25"></svg>
@@ -781,7 +791,7 @@
             }
             for (const [bid, b] of Object.entries(src.battles || {})) {
                 if (!c.things[bid]) continue;
-                c.battles[bid] = { tokens: { ...b.tokens }, doors: { ...(b.doors || {}) }, ...(b.edits ? { edits: JSON.parse(JSON.stringify(b.edits)) } : {}), ...(b.vision === false ? { vision: false } : {}) };
+                c.battles[bid] = { tokens: { ...b.tokens }, doors: { ...(b.doors || {}) }, ...(b.edits ? { edits: JSON.parse(JSON.stringify(b.edits)) } : {}), ...(b.vision === false ? { vision: false } : {}), ...(b.light ? { light: b.light } : {}) };
                 for (const tid of Object.keys(b.tokens || {})) {
                     if (c.things[tid] || !src.things[tid]) continue;
                     const pc = src.things[tid].traits?.pc || /^PC\b/.test(src.things[tid].traits?.role || '');
@@ -1235,6 +1245,47 @@
             scene: null,            // current dd2vtt scene (for grid snapping)
             loaded: false
         };
+
+        // ---- Wall and door swatches (js/swatches.js) ----
+        const SWATCHES = window.GEEZ_SWATCHES || { wall: [], door: [] };
+        const SWATCH_KEY = 'geezvtt.swatch';
+        const swatchOf = (kind, id) => SWATCHES[kind].find(s => s.id === id) || SWATCHES[kind][0] || { id: '', color: kind === 'door' ? '#7a4e2a' : '#6b6b68' };
+        ui.swatch = (() => { try { return { wall: swatchOf('wall').id, door: swatchOf('door').id, ...JSON.parse(localStorage.getItem(SWATCH_KEY) || '{}') }; } catch { return { wall: swatchOf('wall').id, door: swatchOf('door').id }; } })();
+        const swatchImgs = new Map();
+        function swatchImg(src) {
+            if (!swatchImgs.has(src)) {
+                const img = new Image();
+                img.onload = () => { if (db.view.level === 'VTT' && ui.scene) drawScene(ui.scene, db.view.battleId); };
+                img.src = src;
+                swatchImgs.set(src, img);
+            }
+            return swatchImgs.get(src);
+        }
+        // A canvas paint for a swatch: its texture tiled once per grid square, or its colour until the texture loads
+        function swatchPaint(kind, id, g) {
+            const sw = swatchOf(kind, id), img = sw.texture && swatchImg(sw.texture);
+            if (!img?.complete || !img.naturalWidth) return sw.color;
+            const pat = vttCtx.createPattern(img, 'repeat');
+            pat.setTransform(new DOMMatrix().scale(g / img.naturalWidth));
+            return pat;
+        }
+        function renderSwatchPanel() {
+            const panel = $('swatchPanel'), kind = ui.mode === 'wall' ? 'wall' : ui.mode === 'door' ? 'door' : null;
+            if (!panel) return;
+            if (!kind || PLAYER || db.view.level !== 'VTT' || !SWATCHES[kind].length) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            panel.innerHTML = `<div style="font-size:11px;color:#94a3b8;margin:0 2px 6px">${kind === 'wall' ? 'Wall' : 'Door'} material</div><div style="display:flex;flex-wrap:wrap;gap:6px">` +
+                SWATCHES[kind].map(sw => `<button data-swatch="${esc(sw.id)}" title="${esc(sw.name)}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:4px;border-radius:8px;cursor:pointer;background:#1e293b;color:#e2e8f0;font-size:10px;border:2px solid ${ui.swatch[kind] === sw.id ? '#f59e0b' : '#334155'}">` +
+                    `<span style="display:block;width:44px;height:44px;border-radius:5px;background:${esc(sw.color)}${sw.texture ? ` url('${esc(sw.texture)}') center/cover` : ''}"></span>${esc(sw.name)}</button>`).join('') + '</div>';
+            panel.querySelectorAll('[data-swatch]').forEach(b => b.onclick = (e) => {
+                e.stopPropagation();
+                ui.swatch[kind] = b.dataset.swatch;
+                try { localStorage.setItem(SWATCH_KEY, JSON.stringify(ui.swatch)); } catch {}
+                renderSwatchPanel();
+            });
+        }
+        $('swatchPanel').addEventListener('pointerdown', (e) => e.stopPropagation());
+
 
         const viewKey = () => {
             const v = db.view;
@@ -1706,7 +1757,7 @@
                 drawScene(scene, bt.id);
                 const vis = partyVision(scene, bt.id);
                 ui.vision = vis;
-                drawVision(scene, vis);
+                drawVision(scene, vis, bt.id);
                 renderTokens(bt.id, scene);
                 ui.loaded = true;
                 if (newView && !cam().fitted) fitView(); else applyTransform();
@@ -2091,6 +2142,11 @@
             vttCtx.save();
             vttCtx.lineCap = 'round';
             const line = (o) => { vttCtx.beginPath(); vttCtx.moveTo(o.x1 * g, o.y1 * g); vttCtx.lineTo(o.x2 * g, o.y2 * g); vttCtx.stroke(); };
+            // walls and doors the DM drew aren't in the map image: draw them in their swatch
+            vttCtx.lineCap = 'square';
+            walls.forEach(w => { if (w.src !== 'add') return; vttCtx.strokeStyle = swatchPaint('wall', w.mat, g); vttCtx.lineWidth = g * 0.25; line(w); });
+            doors.forEach(d => { if (d.src !== 'add' || !d.closed) return; vttCtx.strokeStyle = swatchPaint('door', d.mat, g); vttCtx.lineWidth = g * 0.22; line(d); });
+            vttCtx.lineCap = 'round';
             if (PLAYER) {
                 // players only see doors (open ones faintly), never the wall lines
                 vttCtx.lineWidth = Math.max(4, g / 8);
@@ -2122,7 +2178,7 @@
             if (editPreview) {
                 markerCtx.save();
                 markerCtx.lineCap = 'round';
-                markerCtx.strokeStyle = editPreview.kind === 'door' ? '#60a5fa' : 'rgba(251,146,60,.95)';
+                markerCtx.strokeStyle = swatchOf(editPreview.kind === 'door' ? 'door' : 'wall', ui.swatch[editPreview.kind === 'door' ? 'door' : 'wall']).color;
                 markerCtx.lineWidth = editPreview.kind === 'door' ? Math.max(4, g / 8) : Math.max(2, g / 14);
                 markerCtx.setLineDash([g / 6, g / 8]);
                 markerCtx.beginPath(); markerCtx.moveTo(editPreview.a.x * g, editPreview.a.y * g); markerCtx.lineTo(editPreview.b.x * g, editPreview.b.y * g); markerCtx.stroke();
@@ -2190,7 +2246,7 @@
                 const flags = storedPos || {};
                 if (PLAYER && flags.hidden) continue;
                 // outside the party's sight: players don't see the creature
-                if (PLAYER && ui.vision && !n.traits?.pc && !ui.vision.some(poly => inPoly(poly, pos.x * scene.w / scene.ppg, pos.y * scene.h / scene.ppg))) continue;
+                if (PLAYER && ui.vision && !n.traits?.pc && !seenAt(ui.vision, pos.x * scene.w / scene.ppg, pos.y * scene.h / scene.ppg)) continue;
                 const mine = PLAYER && n.traits?.pc && playerName && n.name === playerName;
                 const canMove = !PLAYER || (mine && !liveSession.lockMove);
                 const conds = Array.isArray(flags.conditions) ? flags.conditions : Object.values(flags.conditions || {});
@@ -2289,24 +2345,42 @@
             changed({ keepInspector: true });
             showStatus(`Door ${b.doors[i] === 'open' ? 'opened' : 'closed'}`);
         }
-        // Player vision: the whole party shares sight (union of every PC token's view),
-        // blocked by walls and closed doors. Returns polygons in grid units, or null if off.
-        function partyVision(scene, battleId) {
-            if (!GEO || !PLAYER || !scene.walls.length) return null;
-            if (db.battles[battleId]?.vision === false) return null;
-            const { walls, doors } = sceneGeometry(scene, battleId);
-            const occ = GEO.activeOccluders(walls, doors);
+        // Player vision: each player sees through their own PC token (the character they picked);
+        // without one on this map they share the whole party's sight. Walls and closed doors block it.
+        // On a dark battle map (battles[id].light = 'dark') a spot also needs light to be seen by:
+        // a map light that reaches it, or the viewer's darkvision (from the character sheet).
+        // Returns { dark, lights, views: [{ los, dv }] } with polygons in grid units, or null if off.
+        const darkvisionOf = (t) => { const ft = parseFloat(sheetFor(t)?.senses?.darkvision ?? t?.traits?.darkvision); return ft > 0 ? ft / 5 : 0; };
+        function viewerTokens(scene, battleId) {
             const tokens = db.battles[battleId]?.tokens || {}, moves = live.tokens?.[battleId] || {};
-            const range = Math.hypot(scene.w, scene.h) / scene.ppg;
-            const polys = [];
+            const pcs = [];
             for (const [tid, sp] of Object.entries(tokens)) {
                 const t = db.things[tid];
-                if (!t?.traits?.pc) continue;
+                if (!t?.traits?.pc || sp?.hidden) continue;
                 const p = moves[tid] || sp;
-                polys.push(GEO.computeVisibilityPolygon(p.x * scene.w / scene.ppg, p.y * scene.h / scene.ppg, occ, range));
+                pcs.push({ t, x: p.x * scene.w / scene.ppg, y: p.y * scene.h / scene.ppg });
             }
-            return polys;
+            const mine = playerName ? pcs.filter(v => v.t.name === playerName) : [];
+            return mine.length ? mine : pcs;
         }
+        function partyVision(scene, battleId) {
+            if (!GEO || !PLAYER) return null;
+            const b = db.battles[battleId];
+            if (b?.vision === false) return null;
+            const dark = b?.light === 'dark';
+            const { walls, doors } = sceneGeometry(scene, battleId);
+            if (!dark && !walls.length && !doors.length) return null;
+            const occ = GEO.activeOccluders(walls, doors);
+            const range = Math.hypot(scene.w, scene.h) / scene.ppg;
+            const lights = dark ? sceneLights(scene, battleId).filter(l => l.range > 0).map(l => GEO.computeVisibilityPolygon(l.x, l.y, occ, l.range)) : [];
+            const views = viewerTokens(scene, battleId).map(({ t, x, y }) => {
+                const dv = dark ? darkvisionOf(t) : 0;
+                return { los: GEO.computeVisibilityPolygon(x, y, occ, range), dv: dv ? GEO.computeVisibilityPolygon(x, y, occ, dv) : null };
+            });
+            return { dark, lights, views };
+        }
+        // Can the viewers see this spot (grid units) right now?
+        const seenAt = (vis, x, y) => vis.views.some(v => inPoly(v.los, x, y) && (!vis.dark || (v.dv && inPoly(v.dv, x, y)) || vis.lights.some(l => inPoly(l, x, y))));
         function inPoly(poly, x, y) {
             let inside = false;
             for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -2315,22 +2389,81 @@
             }
             return inside;
         }
-        function drawVision(scene, polys) {
+        // The vision overlay: black where nothing's been seen, dimmed where the player has been
+        // before (explored memory: map only, no creatures), grey-tinted under darkvision alone,
+        // clear where the viewers see in light. Masks are drawn at reduced size and scaled up.
+        const visionMasks = [0, 1, 2, 3].map(() => document.createElement('canvas'));
+        function polyPath(ctx, poly, k) {
+            ctx.beginPath();
+            ctx.moveTo(poly[0].x * k, poly[0].y * k);
+            for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i].x * k, poly[i].y * k);
+            ctx.closePath();
+        }
+        function drawVision(scene, vis, battleId) {
             markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
-            if (!polys) return;
-            markerCtx.save();
-            markerCtx.fillStyle = 'rgba(2,3,8,0.94)';
-            markerCtx.fillRect(0, 0, scene.w, scene.h);
-            markerCtx.globalCompositeOperation = 'destination-out';
-            markerCtx.fillStyle = '#000';
-            for (const poly of polys) {
-                if (!poly.length) continue;
-                markerCtx.beginPath();
-                markerCtx.moveTo(poly[0].x * scene.ppg, poly[0].y * scene.ppg);
-                for (let i = 1; i < poly.length; i++) markerCtx.lineTo(poly[i].x * scene.ppg, poly[i].y * scene.ppg);
-                markerCtx.closePath(); markerCtx.fill();
+            if (!vis) return;
+            const s = Math.min(1, 2048 / Math.max(scene.w, scene.h)), W = Math.ceil(scene.w * s), H = Math.ceil(scene.h * s), k = scene.ppg * s;
+            const [lit, dim, one, light] = visionMasks.map(c => { c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; return x; });
+            if (vis.dark) vis.lights.forEach(p => { if (p.length) { polyPath(light, p, k); light.fill(); } });
+            for (const v of vis.views) {
+                if (!v.los.length) continue;
+                one.globalCompositeOperation = 'source-over';
+                one.clearRect(0, 0, W, H); polyPath(one, v.los, k); one.fill();
+                if (vis.dark) { one.globalCompositeOperation = 'destination-in'; one.drawImage(light.canvas, 0, 0); }
+                lit.drawImage(one.canvas, 0, 0);
+                if (v.dv?.length) { polyPath(dim, v.dv, k); dim.fill(); }
             }
-            markerCtx.restore();
+            const ex = exploredFor(battleId);
+            if (ex) {
+                ex.ctx.drawImage(lit.canvas, 0, 0, ex.ctx.canvas.width, ex.ctx.canvas.height);
+                ex.ctx.drawImage(dim.canvas, 0, 0, ex.ctx.canvas.width, ex.ctx.canvas.height);
+                saveExploredSoon(ex);
+            }
+            const m = markerCtx;
+            m.save();
+            m.fillStyle = 'rgba(2,3,8,0.94)';
+            m.fillRect(0, 0, scene.w, scene.h);
+            m.globalCompositeOperation = 'destination-out';
+            if (ex?.ready) { m.globalAlpha = 0.45; m.drawImage(ex.ctx.canvas, 0, 0, scene.w, scene.h); m.globalAlpha = 1; }
+            m.drawImage(dim.canvas, 0, 0, scene.w, scene.h);
+            m.globalCompositeOperation = 'source-over';
+            dim.globalCompositeOperation = 'source-in';
+            dim.fillStyle = 'rgb(22,26,44)'; dim.fillRect(0, 0, W, H);
+            m.globalAlpha = 0.45; m.drawImage(dim.canvas, 0, 0, scene.w, scene.h); m.globalAlpha = 1;
+            m.globalCompositeOperation = 'destination-out';
+            m.drawImage(lit.canvas, 0, 0, scene.w, scene.h);
+            m.restore();
+        }
+
+        // Explored memory, per player and battle map, kept in this browser (localStorage) as a
+        // small PNG. The DM's "Forget explored areas" stamps session/exploredReset/<battle>;
+        // a saved memory from before the latest stamp is thrown away.
+        const explored = new Map();
+        const exploredKey = (battleId) => `geezvtt.explored.${PCAMP}.${battleId}.${playerName || 'party'}`;
+        function exploredFor(battleId) {
+            const key = exploredKey(battleId), reset = liveSession.exploredReset?.[battleId] || 0;
+            let ex = explored.get(key);
+            if (ex && ex.base === reset) return ex;
+            const c = document.createElement('canvas');
+            const scene = ui.scene, s = Math.min(1, 512 / Math.max(scene.w, scene.h));
+            c.width = Math.ceil(scene.w * s); c.height = Math.ceil(scene.h * s);
+            ex = { key, base: reset, ctx: c.getContext('2d'), ready: true };
+            explored.set(key, ex);
+            let rec = null;
+            try { rec = JSON.parse(localStorage.getItem(key) || 'null'); } catch {}
+            if (rec?.data && rec.base === reset) {
+                ex.ready = false;   // wait for the saved image, so it isn't overwritten half-loaded
+                const img = new Image();
+                img.onload = () => { ex.ctx.globalCompositeOperation = 'destination-over'; ex.ctx.drawImage(img, 0, 0, c.width, c.height); ex.ctx.globalCompositeOperation = 'source-over'; ex.ready = true; if (db.view.level === 'VTT' && ui.scene) renderView(); };
+                img.onerror = () => { ex.ready = true; };
+                img.src = rec.data;
+            } else if (rec) { try { localStorage.removeItem(key); } catch {} }
+            return ex;
+        }
+        function saveExploredSoon(ex) {
+            if (!ex.ready) return;
+            clearTimeout(ex.timer);
+            ex.timer = setTimeout(() => { try { localStorage.setItem(ex.key, JSON.stringify({ base: ex.base, data: ex.ctx.canvas.toDataURL('image/png') })); } catch {} }, 1500);
         }
 
         // =====================================================================
@@ -2918,7 +3051,7 @@
                 if (ui.mode === 'wall') {
                     const pt = { x: snapG(gx, e), y: snapG(gy, e) };
                     if (wallChain && (wallChain.x !== pt.x || wallChain.y !== pt.y)) {
-                        (ed.addWalls ||= {})[uid('w')] = { x1: wallChain.x, y1: wallChain.y, x2: pt.x, y2: pt.y };
+                        (ed.addWalls ||= {})[uid('w')] = { x1: wallChain.x, y1: wallChain.y, x2: pt.x, y2: pt.y, mat: ui.swatch.wall };
                         save(); drawScene(ui.scene, bid); ui.vision = null;
                     }
                     wallChain = pt; editPreview = { kind: 'wall', a: pt, b: pt }; drawEditPreview();
@@ -3082,7 +3215,7 @@
             if (drag.kind === 'ruler') { drag = null; return; }
             if (drag.kind === 'doorDraw') {
                 const pv = editPreview; drag = null; editPreview = null;
-                if (pv && (pv.a.x !== pv.b.x || pv.a.y !== pv.b.y)) { (editsOf(db.view.battleId).addDoors ||= {})[uid('dr')] = { x1: pv.a.x, y1: pv.a.y, x2: pv.b.x, y2: pv.b.y }; changed({ keepInspector: true }); showStatus('Door added (closed). Click it in the select tool to open it.'); }
+                if (pv && (pv.a.x !== pv.b.x || pv.a.y !== pv.b.y)) { (editsOf(db.view.battleId).addDoors ||= {})[uid('dr')] = { x1: pv.a.x, y1: pv.a.y, x2: pv.b.x, y2: pv.b.y, mat: ui.swatch.door }; changed({ keepInspector: true }); showStatus('Door added (closed). Click it in the select tool to open it.'); }
                 else drawEditPreview();
                 return;
             }
@@ -3183,6 +3316,7 @@
             $('modePing').className = mode === 'ping' ? MODE_ON : MODE_OFF;
             ['wall', 'door', 'light', 'erase'].forEach(m => { const el = $('mode' + m[0].toUpperCase() + m.slice(1)); if (el) el.className = mode === m ? MODE_ON : MODE_OFF; });
             if (db.view.level === 'VTT' && ui.scene && !PLAYER) drawScene(ui.scene, db.view.battleId);
+            renderSwatchPanel();
             $('modePan').className = mode === 'pan' ? MODE_ON : MODE_OFF;
             $('modeMarker').className = mode === 'marker' ? MODE_ON : MODE_OFF;
             $('modeTile').className = mode === 'tile' ? MODE_ON : MODE_OFF;
@@ -4802,13 +4936,21 @@
         };
         $('railFog').onclick = () => { $('fogBtn').click(); updateToolRail(); };
         $('railMapFog').onclick = () => { $('mapFogBtn').click(); updateToolRail(); };
+        // Battle-map vision for players: line of sight in daylight, dark (lights + darkvision only), or off
+        const VISION_MODES = ['bright', 'dark', 'off'];
+        const VISION_LABEL = { bright: 'Player vision: line of sight', dark: 'Player vision: dark (lights + darkvision)', off: 'Player vision: off (players see the whole map)' };
+        const VISION_ICON = { bright: 'fa-eye', dark: 'fa-moon', off: 'fa-eye-slash' };
+        function visionMode(bid) { const b = db.battles[bid]; return b?.vision === false ? 'off' : b?.light === 'dark' ? 'dark' : 'bright'; }
         // ---- The tool rail only shows what fits the current view ----
         function updateToolRail() {
             const lv = db.view.level, isMap = lv === 'WORLD' || lv === 'LOCATION', onMap = lv !== 'DM_BOARD';
             const show = (id, on) => { const el = $(id); if (el) el.style.display = on ? '' : 'none'; };
             show('modeMarker', !PLAYER && isMap); show('modeTile', !PLAYER && isMap); show('modeRoad', !PLAYER && isMap);
             show('modeRuler', onMap); show('modePing', onMap); show('diceToolBtn', true);
-            ['modeWall', 'modeDoor', 'modeLight', 'modeErase', 'railDivider3'].forEach(id => show(id, !PLAYER && lv === 'VTT'));
+            ['modeWall', 'modeDoor', 'modeLight', 'modeErase', 'railVision', 'railForget', 'railDivider3'].forEach(id => show(id, !PLAYER && lv === 'VTT'));
+            renderSwatchPanel();
+            const rv = $('railVision'), vm = visionMode(db.view.battleId);
+            if (rv) { rv.querySelector('i').className = `fa-solid ${VISION_ICON[vm]} text-lg`; rv.classList.toggle('text-amber-400', vm !== 'bright'); rv.querySelector('span').textContent = VISION_LABEL[vm] + ' (click to change)'; }
             show('addNpcQuickBtn', !PLAYER && lv === 'DM_BOARD'); show('addEventQuickBtn', !PLAYER && lv === 'DM_BOARD');
             show('addPinNoteQuickBtn', lv === 'DM_BOARD');
             show('railDivider', lv === 'DM_BOARD' ? true : onMap);
@@ -4823,6 +4965,26 @@
         }
         $('lockMoveBtn').onclick = () => { Live.update(livePath('session'), { lockMove: !liveSession.lockMove }); showStatus(liveSession.lockMove ? 'Players can move their tokens again' : 'Token movement locked for players'); };
         $('lockPingBtn').onclick = () => { Live.update(livePath('session'), { lockPings: !liveSession.lockPings }); };
+
+        // ---- Battle-map vision for players (modes are defined above updateToolRail) ----
+        $('railVision').onclick = () => {
+            const bid = db.view.battleId;
+            if (!db.things[bid]) return;
+            const next = VISION_MODES[(VISION_MODES.indexOf(visionMode(bid)) + 1) % VISION_MODES.length];
+            const b = (db.battles[bid] ||= { tokens: {} });
+            delete b.vision; delete b.light;
+            if (next === 'off') b.vision = false;
+            if (next === 'dark') b.light = 'dark';
+            changed({ keepInspector: true });
+            updateToolRail();
+            showStatus(VISION_LABEL[next]);
+        };
+        $('railForget').onclick = () => {
+            const bid = db.view.battleId;
+            if (!db.things[bid] || !confirm(`Make every player forget what they've explored on ${db.things[bid].name}?`)) return;
+            Live.set(livePath('session/exploredReset/' + bid), Date.now());
+            showStatus('Explored areas forgotten for this map');
+        };
 
         // ---- Presence: who's online, as whom, and where ----
         const presenceKey = () => (PLAYER ? 'p_' : 'dm_') + String(playerName || (PLAYER ? 'player' : 'DM')).replace(/[.#$\[\]\/]/g, '_');

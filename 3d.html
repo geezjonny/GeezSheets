@@ -31,6 +31,7 @@
   .char.off img { border-color: var(--line); filter: grayscale(.6); }
 </style>
 <script src="js/geez-config.js"></script>
+<script src="js/swatches.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-database-compat.js"></script>
 <script type="importmap">
@@ -64,6 +65,11 @@
 //    geezvtt/campaign/things             characters and battle maps (traits.dd2vtt)
 //    geezvtt/campaign/battles            token placements, doors, wall edits, dark/bright
 //    geezvtt/live/<campaign>/tokens      token moves during play
+//    geezvtt/live/<campaign>/dmAt        where the DM is; "Pull everyone here" brings everyone to that map
+//    characters/pcs                      character sheets (darkvision)
+//  Sight follows GeezVTT's player vision: walls and closed doors hide creatures, and on a dark
+//  map (battles[id].light = 'dark') you only see what a light or your darkvision reaches.
+//  Walls and doors the DM drew use their swatch (js/swatches.js).
 //  Pick your character and you stand on their token on whichever battle map it's on.
 //  1 world unit = 1 grid square. Map x -> world X, map y -> world Z.
 // =====================================================================
@@ -143,18 +149,41 @@ scene.add(hemi, sun);
 // A fixed pool of point lights (a changing light count would recompile every shader);
 // on a dark map the map lights nearest you get them.
 const pool = Array.from({ length: MAX_LIGHTS }, () => { const l = new THREE.PointLight(0xffffff, 0, 1, 1.4); l.userData = { base: 0, phase: Math.random() * 10 }; scene.add(l); return l; });
+// Your darkvision: a cool, dim light that travels with you on dark maps
+const dvLight = new THREE.PointLight(0xa8b0c4, 0, 1, 1);
+scene.add(dvLight);
 const world = new THREE.Group(); scene.add(world);
 const wallMat = new THREE.MeshStandardMaterial({ color: 0x4b4752, roughness: 0.95 });
 const doorMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.8 });
-let wallsMesh = null, doorsGroup = null, tokensGroup = null, wallsKey = null;
+let wallsGroup = null, doorsGroup = null, tokensGroup = null, wallsKey = null;
+// Swatch materials: walls/doors the DM drew carry a swatch id (mat); dd2vtt walls use the plain material
+const SWATCHES = window.GEEZ_SWATCHES || { wall: [], door: [] };
+const swatchMats = new Map();
+function swatchMaterial(kind, id) {
+  const sw = id && SWATCHES[kind].find(x => x.id === id);
+  if (!sw) return kind === 'door' ? doorMat : wallMat;
+  const k = kind + ':' + sw.id;
+  if (!swatchMats.has(k)) {
+    const m = new THREE.MeshStandardMaterial({ color: sw.texture ? 0xffffff : sw.color, roughness: 0.9 });
+    if (sw.texture) new THREE.TextureLoader().load(sw.texture, (t) => { t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; m.map = t; m.needsUpdate = true; }, undefined, () => { m.color.set(sw.color); });
+    swatchMats.set(k, m);
+  }
+  return swatchMats.get(k);
+}
+// A box whose UVs are scaled to its size, so a texture tiles once per grid square instead of stretching
+function tiledBox(w, h, d) {
+  const g = new THREE.BoxGeometry(w, h, d), uv = g.attributes.uv;
+  [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]].forEach(([u, v], face) => { for (let i = face * 4; i < face * 4 + 4; i++) uv.setXY(i, uv.getX(i) * u, uv.getY(i) * v); });
+  return g;
+}
 
-const ui = { camp: null, things: {}, battles: {}, moves: {}, dmAt: null, charId: '', battleId: null, map: null, geo: null, dark: false, yaw: 0, pitch: 0, heading: 0, sensor: null, motion: false };
+const ui = { camp: null, things: {}, battles: {}, sheets: {}, moves: {}, dmAt: null, pull: null, spot: new THREE.Vector3(), charId: '', battleId: null, map: null, geo: null, dark: false, yaw: 0, pitch: 0, heading: 0, sensor: null, motion: false };
 const battle = () => ui.battles[ui.battleId] || {};
 
 function clearWorld() {
   world.traverse(o => { o.geometry?.dispose(); if (o.userData.ownsMap) o.material.map?.dispose(); });
   world.clear();
-  wallsMesh = doorsGroup = tokensGroup = wallsKey = null;
+  wallsGroup = doorsGroup = tokensGroup = wallsKey = null;
   tokenObjs.clear();
 }
 function buildFloor(map) {
@@ -177,32 +206,33 @@ function buildFloor(map) {
 function segmentGeometry(s, h, t, y0 = 0) {
   const dx = s.x2 - s.x1, dy = s.y2 - s.y1, len = Math.hypot(dx, dy);
   if (len < 1e-3) return null;
-  const g = new THREE.BoxGeometry(len + t * 0.5, h, t);
+  const g = tiledBox(len + t * 0.5, h, t);
   g.applyMatrix4(new THREE.Matrix4().makeRotationY(-Math.atan2(dy, dx)).setPosition((s.x1 + s.x2) / 2, y0 + h / 2, (s.y1 + s.y2) / 2));
   return g;
 }
 function buildWalls() {
-  if (wallsMesh) { world.remove(wallsMesh); wallsMesh.geometry.dispose(); }
+  if (wallsGroup) { world.remove(wallsGroup); wallsGroup.traverse(o => o.geometry?.dispose()); }
   if (doorsGroup) { world.remove(doorsGroup); doorsGroup.traverse(o => o.geometry?.dispose()); }
-  // Every wall and lintel merged into one mesh: one draw call even on big maps
-  const parts = ui.geo.walls.map(w => segmentGeometry(w, WALL_H, WALL_T));
+  // Walls and lintels merged into one mesh per material: a few draw calls even on big maps
+  const byMat = new Map(), add = (mat, g) => { if (!g) return; if (!byMat.has(mat)) byMat.set(mat, []); byMat.get(mat).push(g); };
+  ui.geo.walls.forEach(w => add(w.mat || '', segmentGeometry(w, WALL_H, WALL_T)));
   doorsGroup = new THREE.Group();
   for (const d of ui.geo.doors) {
     const dx = d.x2 - d.x1, dy = d.y2 - d.y1, len = Math.hypot(dx, dy);
     if (len < 1e-3) continue;
-    parts.push(segmentGeometry(d, WALL_H - DOOR_H, WALL_T, DOOR_H));
+    add('', segmentGeometry(d, WALL_H - DOOR_H, WALL_T, DOOR_H));
     // hinge at the first end: the door swings about it
     const pivot = new THREE.Group();
     pivot.position.set(d.x1, 0, d.y1);
-    const leaf = new THREE.Mesh(new THREE.BoxGeometry(len, DOOR_H, DOOR_T), doorMat);
+    const leaf = new THREE.Mesh(new THREE.BoxGeometry(len, DOOR_H, DOOR_T), swatchMaterial('door', d.mat));
     leaf.position.set(len / 2, DOOR_H / 2, 0);
     pivot.add(leaf);
     pivot.userData = { key: d.key, closedAngle: -Math.atan2(dy, dx) };
     doorsGroup.add(pivot);
   }
-  const built = parts.filter(Boolean);
-  if (built.length) { wallsMesh = new THREE.Mesh(mergeGeometries(built), wallMat); built.forEach(g => g.dispose()); world.add(wallsMesh); }
-  world.add(doorsGroup);
+  wallsGroup = new THREE.Group();
+  for (const [mat, parts] of byMat) { wallsGroup.add(new THREE.Mesh(mergeGeometries(parts), swatchMaterial('wall', mat))); parts.forEach(g => g.dispose()); }
+  world.add(wallsGroup, doorsGroup);
   doorTargets(true);
 }
 function doorTargets(snap) {
@@ -288,9 +318,54 @@ function syncTokens() {
     if (fresh) o.group.position.copy(o.target);
     // you turn to face the way the DM moved you
     if (id === ui.charId && !fresh && before.distanceTo(o.target) > 0.2) ui.heading = Math.atan2(-(o.target.x - before.x), -(o.target.z - before.z));
-    o.group.visible = id !== ui.charId;   // your own standee would block your eyes
   }
   for (const [id, o] of tokenObjs) if (!seen.has(id)) { tokensGroup.remove(o.group); o.group.traverse(x => x.geometry?.dispose()); tokenObjs.delete(id); }
+  updateSight();
+  const placed = tokenObjs.has(ui.charId);
+  if (placed && ui.placed === false) faceCenter();
+  ui.placed = placed;
+  const t = ui.things[ui.charId], bt = ui.things[ui.battleId];
+  if (t && bt) $('where').textContent = `${t.name} · ${bt.name}${placed ? '' : ' · waiting for the DM to place you'}`;
+}
+
+// ---------------------------------------------------------------------
+//  Sight (mirrors partyVision / seenAt in index.html): a creature is visible when no wall or
+//  closed door is in the way, and on a dark map when a light or your darkvision also reaches it.
+//  Other PCs are always shown, as in GeezVTT.
+// ---------------------------------------------------------------------
+// The character sheet behind a PC token (characters/pcs), matched like GeezVTT's sheetFor
+function sheetOf(t) {
+  const cid = t?.traits?.charId;
+  if (cid && ui.sheets[cid]) return ui.sheets[cid];
+  const name = String(t?.name || '').trim().toLowerCase();
+  return Object.values(ui.sheets).find(c => String(c?.name || '').trim().toLowerCase() === name) || null;
+}
+// Darkvision range in grid squares (5 ft each)
+function darkvision() { const t = ui.things[ui.charId], ft = parseFloat(sheetOf(t)?.senses?.darkvision ?? t?.traits?.darkvision); return ft > 0 ? ft / 5 : 0; }
+// Does segment a-b cross segment c-d (touching an end of a-b doesn't count)?
+function crosses(ax, ay, bx, by, cx, cy, dx, dy) {
+  const rx = bx - ax, ry = by - ay, sx = dx - cx, sy = dy - cy, den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-9) return false;
+  const t = ((cx - ax) * sy - (cy - ay) * sx) / den, u = ((cx - ax) * ry - (cy - ay) * rx) / den;
+  return t > 1e-4 && t < 1 - 1e-4 && u >= 0 && u <= 1;
+}
+const blocked = (ax, ay, bx, by) => ui.geo.walls.some(w => crosses(ax, ay, bx, by, w.x1, w.y1, w.x2, w.y2)) || ui.geo.doors.some(d => !d.open && crosses(ax, ay, bx, by, d.x1, d.y1, d.x2, d.y2));
+function seen(x, y) {
+  if (battle().vision === false || !ui.geo) return true;
+  const ex = camera.position.x, ey = camera.position.z;
+  if (blocked(ex, ey, x, y)) return false;
+  if (!ui.dark) return true;
+  const dv = darkvision();
+  if (dv && Math.hypot(x - ex, y - ey) <= dv) return true;
+  return ui.geo.lights.some(l => Math.hypot(x - l.x, y - l.y) <= l.range && !blocked(l.x, l.y, x, y));
+}
+let sightAt = 0;
+function updateSight() {
+  sightAt = performance.now();
+  for (const [id, o] of tokenObjs) {
+    if (id === ui.charId) { o.group.visible = false; continue; }   // your own standee would block your eyes
+    o.group.visible = !!ui.things[id]?.traits?.pc || seen(o.group.position.x, o.group.position.z);
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -304,6 +379,9 @@ function applyLighting() {
   sun.intensity = ui.dark ? 0 : Math.PI * 0.55;
   scene.background.set(ui.dark ? 0x020205 : 0x05060a);
   scene.fog = ui.dark ? new THREE.FogExp2(0x020205, 0.06) : null;
+  const dv = darkvision();
+  dvLight.intensity = ui.dark && dv ? Math.PI * 1.2 : 0;
+  dvLight.distance = dv || 1;
   assignLights();
 }
 function assignLights() {
@@ -325,17 +403,18 @@ function assignLights() {
 // ---------------------------------------------------------------------
 const yAxis = new THREE.Vector3(0, 1, 0), turn = new THREE.Quaternion();
 function updateEyes() {
-  const o = tokenObjs.get(ui.charId);
-  if (!o) return;
-  camera.position.set(o.group.position.x, EYE * tokenSize(ui.things[ui.charId]), o.group.position.z);
+  if (!ui.map) return;
+  // on your token, or in the middle of the map until the DM places you
+  const o = tokenObjs.get(ui.charId), at = o ? o.group.position : ui.spot;
+  camera.position.set(at.x, EYE * tokenSize(ui.things[ui.charId]), at.z);
   if (ui.sensor) { camera.quaternion.copy(ui.sensor); camera.quaternion.premultiply(turn.setFromAxisAngle(yAxis, ui.heading + ui.yaw)); }
   else camera.rotation.set(ui.pitch, ui.heading + ui.yaw, 0, 'YXZ');
 }
 // Start out facing the middle of the map
 function faceCenter() {
   const o = tokenObjs.get(ui.charId), m = ui.map;
-  if (!o || !m) return;
-  ui.heading = Math.atan2(-(m.gw / 2 - o.target.x), -(m.gh / 2 - o.target.z));
+  if (!m) return;
+  ui.heading = o ? Math.atan2(-(m.gw / 2 - o.target.x), -(m.gh / 2 - o.target.z)) : 0;
   recenter();
 }
 {
@@ -389,8 +468,10 @@ $('motionBtn').onclick = async () => {
 //  Pick your character
 // ---------------------------------------------------------------------
 const pcs = () => Object.values(ui.things).filter(t => t?.traits?.pc && t.campaign === ui.camp).sort((a, b) => String(a.name).localeCompare(String(b.name)));
-// The battle map your character stands on: the DM's current one if you're on it, else any you're on
+// The battle map you're on: the one the DM last pulled everyone to, else the DM's current one
+// if your token is there, else any map with your token
 function battleOf(charId) {
+  if (ui.things[ui.pull?.target]?.traits?.dd2vtt) return ui.pull.target;
   const on = Object.keys(ui.battles).filter(bid => { const sp = ui.battles[bid]?.tokens?.[charId]; return sp && !sp.hidden && ui.things[bid]?.traits?.dd2vtt; });
   return on.includes(ui.dmAt?.target) ? ui.dmAt.target : on[0] || null;
 }
@@ -408,7 +489,6 @@ function pick(id) {
   ui.charId = id;
   try { localStorage.setItem(CHAR_KEY, id); } catch {}
   $('picker').hidden = true;
-  tokenObjs.forEach((o, tid) => { o.group.visible = tid !== id; });
   faceCenter();
   follow();
 }
@@ -440,7 +520,7 @@ async function follow() {
     catch (e) { say(`Couldn't read ${bt.traits.dd2vtt}: ${e.message || e}`); return; }
     if (seq !== loadSeq) return;
     buildFloor(ui.map);
-    $('where').textContent = `${t.name} · ${bt.name}`;
+    ui.spot.set(ui.map.gw / 2, 0, ui.map.gh / 2); ui.placed = undefined;
     document.title = `${t.name} · ${bt.name}`;
     say('');
     refresh();
@@ -467,6 +547,8 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.1), now = performance.now();
   for (const o of tokenObjs.values()) o.group.position.lerp(o.target, 1 - Math.pow(0.0005, dt));
   updateEyes();
+  dvLight.position.copy(camera.position);
+  if (ui.geo && now - sightAt > 150) updateSight();
   for (const o of tokenObjs.values()) o.standee.rotation.y = Math.atan2(camera.position.x - o.group.position.x, camera.position.z - o.group.position.z);
   doorsGroup?.children.forEach(p => { p.rotation.y += (p.userData.target - p.rotation.y) * (1 - Math.pow(0.002, dt)); });
   if (ui.dark) {
@@ -481,9 +563,9 @@ requestAnimationFrame(frame);
 // ---------------------------------------------------------------------
 //  Start: the campaign the DM is running
 // ---------------------------------------------------------------------
-let ready = { things: false, battles: false };
+let ready = { things: false, battles: false, dmAt: false };
 const proceed = () => {
-  if (!ready.things || !ready.battles) return;
+  if (!ready.things || !ready.battles || !ready.dmAt) return;
   say('');
   if (!ui.charId) { let saved = ''; try { saved = localStorage.getItem(CHAR_KEY) || ''; } catch {} if (ui.things[saved]?.traits?.pc && ui.things[saved].campaign === ui.camp) pick(saved); else showPicker(); }
   else if ($('picker').hidden) follow(); else showPicker();
@@ -493,11 +575,16 @@ watch('live/_dmCampaign', (v) => {
   if (!v?.id) { say('No campaign yet. Ask the DM to open GeezVTT.'); return; }
   if (v.id === ui.camp) return;
   campUnsubs.forEach(f => f());
-  Object.assign(ui, { camp: v.id, charId: '', battleId: null, map: null }); ready = { things: false, battles: false }; clearWorld();
+  Object.assign(ui, { camp: v.id, charId: '', battleId: null, map: null, pull: null }); ready = { things: false, battles: false, dmAt: false }; clearWorld();
   campUnsubs = [
     watch('campaign/things', (val) => { ui.things = val || {}; ready.things = true; proceed(); }),
     watch('campaign/battles', (val) => { ui.battles = val || {}; ready.battles = true; proceed(); }),
-    watch(`live/${v.id}/dmAt`, (val) => { ui.dmAt = val; if (ready.things && ready.battles && $('picker').hidden) follow(); })
+    (() => { const ref = fb.ref('characters/pcs'), h = (snap) => { ui.sheets = snap.val() || {}; if (ui.map) applyLighting(); }; ref.on('value', h); return () => ref.off('value', h); })(),
+    watch(`live/${v.id}/dmAt`, (val) => {
+      ui.dmAt = val;
+      if (val?.pullAt && val.pullAt > (ui.pull?.at || 0)) ui.pull = { at: val.pullAt, target: val.target };
+      ready.dmAt = true; proceed();
+    })
   ];
 });
 </script>
