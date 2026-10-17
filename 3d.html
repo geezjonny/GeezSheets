@@ -29,6 +29,11 @@
   .char b { font-size: 15px; }
   .char span { font-size: 12px; color: var(--muted); }
   .char.off img { border-color: var(--line); filter: grayscale(.6); }
+  #reticle { position: fixed; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.7); z-index: 2; pointer-events: none; transition: transform .15s, border-color .15s; }
+  #reticle.door { border-color: var(--amber); transform: scale(1.8); }
+  #reticle[hidden] { display: none; }
+  #hint { position: fixed; left: 50%; top: calc(50% + 22px); transform: translateX(-50%); padding: 4px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); font-size: 13px; z-index: 2; pointer-events: none; }
+  #hint:empty { display: none; }
 </style>
 <script src="js/geez-config.js"></script>
 <script src="js/swatches.js"></script>
@@ -44,6 +49,8 @@
 <body>
 <div id="stage"></div>
 <div id="where"></div>
+<div id="reticle" hidden></div>
+<div id="hint"></div>
 <div id="msg">Connecting…</div>
 <div id="controls">
   <button id="motionBtn" title="Look around by moving your phone">Enable motion</button>
@@ -71,13 +78,15 @@
 //  map (battles[id].light = 'dark') you only see what a light or your darkvision reaches.
 //  Walls and doors the DM drew use their swatch (js/swatches.js).
 //  Pick your character and you stand on their token on whichever battle map it's on.
+//  Doors: aim the centre dot at a door within reach and tap to open or close it. That only changes
+//  this phone's view (nothing is written to Firebase); when the DM changes that door in GeezVTT, theirs wins.
 //  1 world unit = 1 grid square. Map x -> world X, map y -> world Z.
 // =====================================================================
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const FB_ROOT = 'geezvtt', CHAR_KEY = 'geezvtt.3d.char';
-const WALL_H = 2, WALL_T = 0.14, DOOR_H = 1.7, DOOR_T = 0.1, EYE = 1.0, MAX_LIGHTS = 12;
+const WALL_H = 2, WALL_T = 0.14, DOOR_H = 1.7, DOOR_T = 0.1, EYE = 1.0, MAX_LIGHTS = 12, REACH = 3;
 const $ = (id) => document.getElementById(id);
 const say = (t) => { $('msg').textContent = t || ''; };
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -155,7 +164,8 @@ scene.add(dvLight);
 const world = new THREE.Group(); scene.add(world);
 const wallMat = new THREE.MeshStandardMaterial({ color: 0x4b4752, roughness: 0.95 });
 const doorMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.8 });
-let wallsGroup = null, doorsGroup = null, tokensGroup = null, wallsKey = null;
+let wallsGroup = null, doorsGroup = null, doorways = null, tokensGroup = null, wallsKey = null;
+const aimMat = new THREE.MeshBasicMaterial({ visible: false });   // invisible, but rays still hit it
 // Swatch materials: walls/doors the DM drew carry a swatch id (mat); dd2vtt walls use the plain material
 const SWATCHES = window.GEEZ_SWATCHES || { wall: [], door: [] };
 const swatchMats = new Map();
@@ -177,14 +187,17 @@ function tiledBox(w, h, d) {
   return g;
 }
 
-const ui = { camp: null, things: {}, battles: {}, sheets: {}, moves: {}, dmAt: null, pull: null, spot: new THREE.Vector3(), charId: '', battleId: null, map: null, geo: null, dark: false, yaw: 0, pitch: 0, heading: 0, sensor: null, motion: false };
+const ui = { camp: null, things: {}, battles: {}, sheets: {}, moves: {}, dmAt: null, pull: null, spot: new THREE.Vector3(), charId: '', battleId: null, map: null, geo: null, dark: false, yaw: 0, pitch: 0, heading: 0, sensor: null, motion: false, doorLocal: {}, aim: null, aimNear: false };
 const battle = () => ui.battles[ui.battleId] || {};
 
 function clearWorld() {
   world.traverse(o => { o.geometry?.dispose(); if (o.userData.ownsMap) o.material.map?.dispose(); });
   world.clear();
-  wallsGroup = doorsGroup = tokensGroup = wallsKey = null;
+  wallsGroup = doorsGroup = doorways = tokensGroup = wallsKey = null;
   tokenObjs.clear();
+  ui.aim = null;
+  $('reticle').hidden = true;
+  $('hint').textContent = '';
 }
 function buildFloor(map) {
   const maxTex = Math.min(renderer.capabilities.maxTextureSize, 4096);   // phones choke on bigger textures
@@ -213,10 +226,12 @@ function segmentGeometry(s, h, t, y0 = 0) {
 function buildWalls() {
   if (wallsGroup) { world.remove(wallsGroup); wallsGroup.traverse(o => o.geometry?.dispose()); }
   if (doorsGroup) { world.remove(doorsGroup); doorsGroup.traverse(o => o.geometry?.dispose()); }
+  if (doorways) { world.remove(doorways); doorways.traverse(o => o.geometry?.dispose()); }
   // Walls and lintels merged into one mesh per material: a few draw calls even on big maps
   const byMat = new Map(), add = (mat, g) => { if (!g) return; if (!byMat.has(mat)) byMat.set(mat, []); byMat.get(mat).push(g); };
   ui.geo.walls.forEach(w => add(w.mat || '', segmentGeometry(w, WALL_H, WALL_T)));
   doorsGroup = new THREE.Group();
+  doorways = new THREE.Group();
   for (const d of ui.geo.doors) {
     const dx = d.x2 - d.x1, dy = d.y2 - d.y1, len = Math.hypot(dx, dy);
     if (len < 1e-3) continue;
@@ -226,21 +241,66 @@ function buildWalls() {
     pivot.position.set(d.x1, 0, d.y1);
     const leaf = new THREE.Mesh(new THREE.BoxGeometry(len, DOOR_H, DOOR_T), swatchMaterial('door', d.mat));
     leaf.position.set(len / 2, DOOR_H / 2, 0);
+    leaf.userData.baseMat = leaf.material;
     pivot.add(leaf);
-    pivot.userData = { key: d.key, closedAngle: -Math.atan2(dy, dx) };
+    pivot.userData = { key: d.key, closedAngle: -Math.atan2(dy, dx), leaf };
     doorsGroup.add(pivot);
+    // what you aim at is the doorway, not the leaf, so a door that has swung away can still be closed
+    const gap = new THREE.Mesh(new THREE.BoxGeometry(len, DOOR_H, 0.3), aimMat);
+    gap.position.set((d.x1 + d.x2) / 2, DOOR_H / 2, (d.y1 + d.y2) / 2);
+    gap.rotation.y = pivot.userData.closedAngle;
+    gap.userData.door = pivot;
+    doorways.add(gap);
   }
   wallsGroup = new THREE.Group();
   for (const [mat, parts] of byMat) { wallsGroup.add(new THREE.Mesh(mergeGeometries(parts), swatchMaterial('wall', mat))); parts.forEach(g => g.dispose()); }
-  world.add(wallsGroup, doorsGroup);
+  world.add(wallsGroup, doorsGroup, doorways);
+  ui.aim = null;
   doorTargets(true);
 }
+// A door shows this phone's choice if it made one, else the DM's state
+const shownOpen = (p) => ui.doorLocal[p.userData.key] ?? p.userData.dmOpen;
 function doorTargets(snap) {
   doorsGroup?.children.forEach(p => {
-    const d = ui.geo.doors.find(x => x.key === p.userData.key);
-    p.userData.target = p.userData.closedAngle + (d?.open ? -Math.PI * 0.45 : 0);
+    const d = ui.geo.doors.find(x => x.key === p.userData.key), open = !!d?.open;
+    // the DM changing a door in GeezVTT overrides whatever this phone did to it
+    if (p.userData.dmOpen !== undefined && p.userData.dmOpen !== open) delete ui.doorLocal[p.userData.key];
+    p.userData.dmOpen = open;
+    p.userData.target = p.userData.closedAngle + (shownOpen(p) ? -Math.PI * 0.45 : 0);
     if (snap) p.rotation.y = p.userData.target;
   });
+}
+
+// ---------------------------------------------------------------------
+//  Aim and tap: whatever door is under the centre dot lights up when it's within reach
+// ---------------------------------------------------------------------
+const ray = new THREE.Raycaster(), screenCenter = new THREE.Vector2();
+const glowMats = new Map();
+function glow(m) {
+  if (!glowMats.has(m)) glowMats.set(m, Object.assign(m.clone(), { emissive: new THREE.Color(0x8a5a00) }));
+  const g = glowMats.get(m);
+  if (g.map !== m.map) { g.map = m.map; g.color.copy(m.color); g.needsUpdate = true; }   // swatch texture arrived after the clone
+  return g;
+}
+function updateAim() {
+  let door = null, dist = Infinity;
+  if (doorsGroup && $('picker').hidden) {
+    ray.setFromCamera(screenCenter, camera);
+    const hit = ray.intersectObjects([wallsGroup, doorways].filter(Boolean), true)[0];
+    if (hit?.object.userData.door) { door = hit.object.userData.door; dist = hit.distance; }
+  }
+  if (ui.aim && ui.aim !== door) ui.aim.userData.leaf.material = ui.aim.userData.leaf.userData.baseMat;
+  ui.aim = door; ui.aimNear = dist <= REACH;
+  if (door) { const leaf = door.userData.leaf; leaf.material = ui.aimNear ? glow(leaf.userData.baseMat) : leaf.userData.baseMat; }
+  $('reticle').classList.toggle('door', !!door && ui.aimNear);
+  $('hint').textContent = !door ? '' : !ui.aimNear ? 'Too far to reach' : shownOpen(door) ? 'Tap to close' : 'Tap to open';
+}
+function useAim() {
+  const p = ui.aim;
+  if (!p || !ui.aimNear) return;
+  ui.doorLocal[p.userData.key] = !shownOpen(p);
+  doorTargets(false);
+  updateAim();
 }
 
 // ---------------------------------------------------------------------
@@ -418,16 +478,19 @@ function faceCenter() {
   recenter();
 }
 {
-  const el = renderer.domElement; let prev = null;
-  el.addEventListener('pointerdown', (e) => { prev = { x: e.clientX, y: e.clientY }; el.setPointerCapture(e.pointerId); });
+  const el = renderer.domElement; let prev = null, down = null;
+  el.addEventListener('pointerdown', (e) => { prev = { x: e.clientX, y: e.clientY }; down = { ...prev, t: performance.now() }; el.setPointerCapture(e.pointerId); });
   el.addEventListener('pointermove', (e) => {
     if (!prev) return;
     ui.yaw -= (e.clientX - prev.x) * 0.006;
     if (!ui.sensor) ui.pitch = THREE.MathUtils.clamp(ui.pitch - (e.clientY - prev.y) * 0.006, -1.45, 1.45);
     prev = { x: e.clientX, y: e.clientY };
   });
-  const end = () => { prev = null; };
-  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  const end = () => { prev = down = null; };
+  // a quick tap that barely moves uses whatever the centre dot is on; a drag just looks around
+  el.addEventListener('pointerup', (e) => { if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) < 10 && performance.now() - down.t < 400) useAim(); end(); });
+  el.addEventListener('pointercancel', end);
+  addEventListener('keydown', (e) => { if ((e.key === ' ' || e.key === 'e' || e.key === 'Enter') && $('picker').hidden) { e.preventDefault(); useAim(); } });
 }
 // Phone motion: the device's orientation becomes the camera's, turned so "forward" is your facing
 function onOrientation(e) {
@@ -509,7 +572,7 @@ async function follow() {
   }
   if (bid !== ui.battleId) {
     const seq = ++loadSeq, bt = ui.things[bid];
-    ui.battleId = bid; ui.map = null; clearWorld();
+    ui.battleId = bid; ui.map = null; ui.doorLocal = {}; clearWorld();
     movesUnsub?.(); ui.moves = {};
     movesUnsub = watch(`live/${ui.camp}/tokens/${bid}`, (v) => { ui.moves = v || {}; syncTokens(); });
     say(`Loading ${bt.name}…`);
@@ -520,6 +583,7 @@ async function follow() {
     catch (e) { say(`Couldn't read ${bt.traits.dd2vtt}: ${e.message || e}`); return; }
     if (seq !== loadSeq) return;
     buildFloor(ui.map);
+    $('reticle').hidden = false;
     ui.spot.set(ui.map.gw / 2, 0, ui.map.gh / 2); ui.placed = undefined;
     document.title = `${t.name} · ${bt.name}`;
     say('');
@@ -543,12 +607,14 @@ function refresh() {
 //  Frame loop
 // ---------------------------------------------------------------------
 const clock = new THREE.Clock();
+let aimAt = 0;
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.1), now = performance.now();
   for (const o of tokenObjs.values()) o.group.position.lerp(o.target, 1 - Math.pow(0.0005, dt));
   updateEyes();
   dvLight.position.copy(camera.position);
   if (ui.geo && now - sightAt > 150) updateSight();
+  if (now - aimAt > 80) { aimAt = now; updateAim(); }
   for (const o of tokenObjs.values()) o.standee.rotation.y = Math.atan2(camera.position.x - o.group.position.x, camera.position.z - o.group.position.z);
   doorsGroup?.children.forEach(p => { p.rotation.y += (p.userData.target - p.rotation.y) * (1 - Math.pow(0.002, dt)); });
   if (ui.dark) {
