@@ -5662,17 +5662,39 @@
             if (!t) return;
             const pane = $('sheetPane');
             if (pane.contains(document.activeElement)) return;
-            pane.innerHTML = `<div class="flex items-center gap-3"><img src="${avatarOf(t)}" class="w-14 h-14 rounded-xl object-cover border border-purple-500/40" alt="">
-                <div class="min-w-0 flex-1"><div class="font-cinzel font-bold text-base text-purple-200 truncate">${esc(t.name)}</div><div class="text-[11px] text-slate-400 truncate">${esc(t.traits?.role || '')}</div></div>
-                <button id="sheetCloseBtn" class="text-slate-500 hover:text-red-400" title="Close sheet"><i class="fa-solid fa-xmark"></i></button></div>
-                <div data-sheetsecs class="space-y-2"></div>`;
-            renderCardSections(t, pane.querySelector('[data-sheetsecs]'), true);
-            $('sheetCloseBtn').onclick = () => { sheetId = null; renderSheetPane(); };
+            // A PC linked to a GeezSheets character shows the real sheet (sheet.html?char=…&embed): HP, temp HP,
+            // death saves, initiative and roll calls all work there. Everyone else gets the card's own sections.
+            const cid = t.traits?.pc && t.traits.charId;
+            const frameSrc = cid ? `sheet.html?char=${encodeURIComponent(cid)}&embed&live=${encodeURIComponent(liveCamp())}${PLAYER ? '' : '&gm=' + GM_KEY}` : null;
+            const frame = pane.querySelector('iframe[data-sheet]');
+            if (frameSrc && frame?.dataset.sheet === frameSrc) pane.querySelector('[data-tokbox]')?.remove();   // keep the loaded sheet, redo the rest
+            else {
+                pane.innerHTML = `<div class="flex items-center gap-3"><img src="${avatarOf(t)}" class="w-14 h-14 rounded-xl object-cover border border-purple-500/40" alt="">
+                    <div class="min-w-0 flex-1"><div class="font-cinzel font-bold text-base text-purple-200 truncate">${esc(t.name)}</div><div class="text-[11px] text-slate-400 truncate">${esc(t.traits?.role || '')}</div></div>
+                    ${frameSrc ? `<a href="${esc(frameSrc.replace('&embed', ''))}" target="_blank" class="text-slate-500 hover:text-purple-300" title="Open the sheet in its own tab"><i class="fa-solid fa-up-right-from-square"></i></a>` : ''}
+                    <button id="sheetCloseBtn" class="text-slate-500 hover:text-red-400" title="Close sheet"><i class="fa-solid fa-xmark"></i></button></div>
+                    ${frameSrc ? '' : '<div data-sheetsecs class="space-y-2"></div>'}`;
+                if (frameSrc) {
+                    const f = document.createElement('iframe');
+                    f.dataset.sheet = frameSrc; f.src = frameSrc; f.title = `${t.name}'s character sheet`;
+                    f.style.cssText = 'width:100%;height:480px;border:0;border-radius:12px;background:transparent;display:block';
+                    // same site, so the frame can grow to fit its card instead of scrolling inside the pane
+                    f.onload = () => {
+                        try {
+                            const body = f.contentDocument.body, fit = () => { f.style.height = Math.max(200, body.scrollHeight + 4) + 'px'; };
+                            new ResizeObserver(fit).observe(body); fit();
+                        } catch {}
+                    };
+                    pane.appendChild(f);
+                } else renderCardSections(t, pane.querySelector('[data-sheetsecs]'), true);
+                $('sheetCloseBtn').onclick = () => { sheetId = null; renderSheetPane(); };
+            }
             // DM: this creature's token on the open battle map
             const bid = db.view.battleId, tok = db.view.level === 'VTT' && db.battles[bid]?.tokens?.[t.id];
             if (!PLAYER && tok) {
                 const conds = Array.isArray(tok.conditions) ? tok.conditions : Object.values(tok.conditions || {});
                 const box = document.createElement('div');
+                box.dataset.tokbox = '';
                 box.className = 'bg-slate-900/70 border border-slate-800 rounded-xl p-3 space-y-2';
                 box.innerHTML = `<div class="text-[10px] uppercase tracking-wider font-bold text-indigo-300">Token on this map</div>
                     <div class="grid grid-cols-3 gap-1.5 text-[11px]">
