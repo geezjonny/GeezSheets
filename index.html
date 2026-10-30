@@ -187,7 +187,7 @@
 
         <!-- Left Tools Bar -->
         <div id="toolRail" class="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 p-1.5 rounded-2xl glass-panel border border-slate-800 shadow-2xl" style="z-index:30">
-            <button id="modePan" class="mode-btn p-3 rounded-xl text-amber-400 bg-slate-900 border border-amber-500/50 transition relative group">
+            <button id="modePan" style="display:none" class="mode-btn p-3 rounded-xl text-amber-400 bg-slate-900 border border-amber-500/50 transition relative group">
                 <i class="fa-solid fa-hand text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Pan & Inspect</span>
             </button>
@@ -2855,7 +2855,7 @@
         $('propPanel').addEventListener('pointerdown', (e) => e.stopPropagation());
         // ---- the battle-map tool rail, godot style: number keys, a hint for each tool, X to erase ----
         const VTT_TOOLS = [
-            { mode: 'pan', key: '1', name: 'Select', hint: 'Move tokens, open and close doors, look around.', keys: 'Drag: move · Click a door: open/close · Right-click: ping' },
+            { mode: 'pan', key: '1', name: 'Select', hint: 'Move tokens, open and close doors, look around.', keys: 'Drag: move · Middle-drag: pan · Click a door: open/close · Right-click: ping' },
             { mode: 'room', key: '2', name: 'Room', hint: 'Highlight the squares for a room, any shape, then build it: floor, walls and a door. Rooms that touch merge.', keys: 'Drag: highlight · Right-drag: unhighlight · Enter: build · Esc: clear · X: knock down instead · I: pick a floor' },
             { mode: 'paint', key: '3', name: 'Floor', hint: 'Lay floors: a rectangle, a brush, or fill an area.', keys: 'Drag: highlight · Right-drag: unhighlight · [ ]: brush size · Enter: paint · X: remove floor · I: pick a floor from the map' },
             { mode: 'wall', key: '4', name: 'Walls', hint: 'Build walls along the grid lines.', keys: 'Drag: build · Right-drag or X: remove · R: line / rectangle · Click: chain freely (Alt: no snap) · I: pick a wall' },
@@ -4175,6 +4175,14 @@
         ['pointerup', 'pointercancel'].forEach(ev => viewport.addEventListener(ev, () => clearTimeout(pressTimer)));
 
         viewport.addEventListener('pointerdown', (e) => {
+            // middle-drag pans, whatever tool is out
+            if (e.button === 1) {
+                e.preventDefault();
+                viewport.setPointerCapture(e.pointerId);
+                drag = { kind: 'pan', sx: e.clientX, sy: e.clientY, px: cam().panX, py: cam().panY, moved: false, road: null, middle: true };
+                viewport.classList.add('panning');
+                return;
+            }
             const editing = !PLAYER && db.view.level === 'VTT' && ui.scene && db.view.battleId && (e.button === 0 || e.button === 2) && !e.target.closest('label, button, input, select, textarea');
             if (editing && ui.picking) {
                 const pt = toContent(e.clientX, e.clientY);
@@ -4475,12 +4483,13 @@
                 else if (!drag.moved) select('thing', drag.id);
             } else if (drag.kind === 'pan' && !drag.moved && drag.road) {
                 select('road', drag.road);
-            } else if (drag.kind === 'pan' && !drag.moved && ui.selection) {
+            } else if (drag.kind === 'pan' && !drag.moved && ui.selection && !drag.middle) {
                 select(null);
             }
             drag = null;
         };
         viewport.addEventListener('pointerup', endDrag);
+        viewport.addEventListener('mousedown', (e) => { if (e.button === 1) e.preventDefault(); });
         viewport.addEventListener('pointercancel', endDrag);
 
         viewport.addEventListener('dblclick', (e) => {
@@ -4589,12 +4598,11 @@
             viewport.classList.toggle('placing', mode !== 'pan');
             const map = currentMap();
             if (map && ui.loaded) drawGrid(map);
-            showStatus({ pan: 'Drag to pan, click to select, drag markers to move them. Right-click to ping.', marker: 'Click the map to place a marker', tile: 'Click a grid square to add notes to it', road: 'Click two markers to connect them with a road', ruler: 'Drag to measure. Esc clears it.', ping: 'Click the map to ping it for everyone.', wall: 'Drag along the grid lines to build walls (right-drag removes, R for rectangles). Or click to chain walls freely.', door: 'Click a wall to put a door in it; right-click a door to wall it up. Drag off a wall for a free door.', room: 'Highlight the squares for a room, then Enter builds it.', props: 'Pick an object, then click the map to place it.', trap: 'Drag out the squares a trap covers, then Enter. Only you see traps.', light: 'Click to add a light; drag a light to move it.', erase: 'Click a wall, door or light to remove it.', paint: 'Pick a floor, drag to highlight squares (right-drag removes), then Paint (Enter).' }[mode]);
+            showStatus({ pan: 'Drag to pan (middle-drag pans in every tool), click to select, drag markers to move them. Right-click to ping.', marker: 'Click the map to place a marker', tile: 'Click a grid square to add notes to it', road: 'Click two markers to connect them with a road', ruler: 'Drag to measure. Esc clears it.', ping: 'Click the map to ping it for everyone.', wall: 'Drag along the grid lines to build walls (right-drag removes, R for rectangles). Or click to chain walls freely.', door: 'Click a wall to put a door in it; right-click a door to wall it up. Drag off a wall for a free door.', room: 'Highlight the squares for a room, then Enter builds it.', props: 'Pick an object, then click the map to place it.', trap: 'Drag out the squares a trap covers, then Enter. Only you see traps.', light: 'Click to add a light; drag a light to move it.', erase: 'Click a wall, door or light to remove it.', paint: 'Pick a floor, drag to highlight squares (right-drag removes), then Paint (Enter).' }[mode]);
         }
         $('modePan').onclick = () => setMode('pan');
-        $('modeMarker').onclick = () => setMode('marker');
-        $('modeTile').onclick = () => setMode('tile');
-        $('modeRoad').onclick = () => setMode('road');
+        // a tool's button again (or Esc) puts it away and goes back to Select
+        ['marker', 'tile', 'road'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
         $('modeRuler').onclick = () => setMode(ui.mode === 'ruler' ? 'pan' : 'ruler');
         $('modePing').onclick = () => setMode(ui.mode === 'ping' ? 'pan' : 'ping');
         ['wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
