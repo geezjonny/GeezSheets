@@ -81,6 +81,24 @@
         <div id="handoutBody" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm text-slate-300"></div>
     </div>
 </div>
+<div id="callModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4" style="z-index:75">
+    <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-amber-700/50 bg-slate-950 shadow-2xl p-4 space-y-3 text-sm">
+        <div class="flex items-center"><span class="font-cinzel font-bold text-amber-200 flex-1">Call for a roll</span><button id="callCancel" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
+        <div id="callKinds" class="flex flex-wrap gap-1"></div>
+        <select id="callKey" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs"></select>
+        <input id="callTitle" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs" placeholder="Title (optional, e.g. 'Spot the ambush')">
+        <div class="flex items-center gap-2 text-xs">
+            <label class="flex items-center gap-1">DC <input id="callDc" type="number" min="1" class="w-16 bg-slate-900 border border-slate-700 rounded p-1"></label>
+            <label class="flex items-center gap-1"><input id="callShowDc" type="checkbox" class="accent-amber-500"> show DC to players</label>
+            <select id="callMode" class="ml-auto bg-slate-900 border border-slate-700 rounded p-1"><option value="normal">Normal</option><option value="adv">Advantage</option><option value="dis">Disadvantage</option></select>
+        </div>
+        <div><div class="text-[11px] text-slate-400 mb-1">Who rolls</div><div id="callTargets" class="flex flex-wrap gap-1 text-xs"></div></div>
+        <button id="callSend" class="w-full py-2 rounded-xl bg-amber-700 hover:bg-amber-600 text-white font-semibold">Send to the table</button>
+    </div>
+</div>
+<div id="callPanel" class="hidden fixed top-16 right-4 w-80 max-w-[calc(100vw-32px)] max-h-[75vh] overflow-y-auto rounded-2xl border border-amber-600/60 bg-slate-950/95 shadow-2xl p-3 text-sm space-y-2" style="z-index:66"></div>
+<button id="callPill" class="hidden fixed top-16 right-4 px-3 py-1.5 rounded-full border border-amber-600/60 bg-slate-950/95 shadow-xl text-xs text-amber-200 font-semibold" style="z-index:66"></button>
+<div id="dice3dLayer" class="fixed inset-0 pointer-events-none" style="z-index:69"></div>
 <div id="rollShow" class="hidden fixed top-16 left-1/2 -translate-x-1/2 min-w-[200px] px-6 py-3 rounded-2xl border-2 border-amber-600/70 bg-slate-950/95 shadow-2xl text-center pointer-events-none" style="z-index:70">
     <div id="rollWho" class="text-xs font-semibold text-amber-300"></div>
     <div id="rollNum" class="font-cinzel text-5xl font-bold text-amber-100 leading-tight">–</div>
@@ -123,6 +141,7 @@
             <div id="sessionMenu" class="hidden absolute right-0 top-10 w-64 p-1.5 rounded-xl border border-slate-700 bg-slate-950/95 shadow-2xl">
                 <button id="shareLocBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-bullhorn w-4 text-rose-400"></i>Share my location</button>
                 <button id="pullBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-person-walking-arrow-right w-4 text-rose-400"></i>Pull everyone here</button>
+                <button id="callRollBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-dice-d20 w-4 text-amber-400"></i>Call for a roll…</button>
                 <button id="handoutBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-scroll w-4 text-amber-400"></i>Handouts</button>
                 <div id="sessionDmOnly" class="border-t border-slate-800 my-1"></div>
                 <button id="lockMoveBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-lock-open w-4 text-slate-400"></i><span>Lock token movement</span></button>
@@ -140,6 +159,8 @@
                 <button id="fogBtn" style="display:none" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-smog w-4 text-slate-400"></i><span id="fogLabel">Fog: off</span></button>
                 <button id="mapFogBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-eye-low-vision w-4 text-slate-400"></i><span id="mapFogLabel">This map: auto</span></button>
                 <button id="authRow" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer" style="display:none"><i class="fa-solid fa-user-shield w-4 text-slate-400"></i><span>Sign in as DM</span></button>
+                <button id="undoBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-rotate-left w-4 text-slate-400"></i>Undo <span class="ml-auto text-[10px] text-slate-500">Ctrl+Z</span></button>
+                <button id="redoBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-rotate-right w-4 text-slate-400"></i>Redo <span class="ml-auto text-[10px] text-slate-500">Ctrl+Shift+Z</span></button>
                 <div class="border-t border-slate-800 my-1"></div>
                 <button id="exportJsonBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-download w-4 text-slate-400"></i>Export campaign</button>
                 <label class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-upload w-4 text-slate-400"></i>Import…<input type="file" id="importJsonInput" accept=".json" class="hidden"></label>
@@ -204,6 +225,10 @@
             <button id="modeErase" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-eraser text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Erase a wall, door or light</span>
+            </button>
+            <button id="modePaint" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-paint-roller text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Paint floors: click or drag over squares</span>
             </button>
             <button id="railVision" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-eye text-lg"></i>
@@ -554,8 +579,9 @@
                     <h4 class="font-cinzel text-xs font-bold text-amber-400 tracking-wider flex justify-between"><span>Initiative</span><span id="initRound" class="font-sans text-slate-400"></span></h4>
                     <div id="initList" class="space-y-1"></div>
                     <div id="initDmControls" class="grid grid-cols-2 gap-1.5 pt-1">
+                        <button id="initCallBtn" class="col-span-2 text-xs py-1.5 rounded bg-amber-900/40 border border-amber-700 hover:border-amber-400 text-amber-100 font-semibold"><i class="fa-solid fa-bullhorn mr-1"></i>Call for initiative (PCs roll from their sheets)</button>
                         <button id="initAddTokens" class="col-span-2 text-xs py-1.5 rounded bg-slate-900 border border-slate-700 hover:border-amber-500">Add everyone on this battle map</button>
-                        <button id="initAddName" class="text-xs py-1.5 rounded bg-slate-900 border border-slate-700 hover:border-amber-500">Add by name…</button>
+                        <button id="initAddName" class="text-xs py-1.5 rounded bg-slate-900 border border-slate-700 hover:border-amber-500">Add NPC by name…</button>
                         <button id="initSort" class="text-xs py-1.5 rounded bg-slate-900 border border-slate-700 hover:border-amber-500">Sort</button>
                         <button id="initNext" class="text-xs py-1.5 rounded bg-amber-700 hover:bg-amber-600 text-white font-semibold">Next turn ▶</button>
                         <button id="initClear" class="text-xs py-1.5 rounded bg-slate-900 border border-slate-700 hover:border-red-500 text-slate-300">End combat</button>
@@ -637,6 +663,8 @@
                 set(path, v) { const t = read(); setIn(t, path, v); write(t); },
                 push(path, v) { const id = 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); this.set(path + '/' + id, v); return id; },
                 remove(path) { this.set(path, null); },
+                // fn(current) -> new value, or undefined to leave it; resolves true if written
+                txn(path, fn) { const t = read(), v = fn(getIn(t, path) ?? null); if (v === undefined) return Promise.resolve(false); setIn(t, path, v); write(t); return Promise.resolve(true); },
                 on(path, cb) { const sb = { path, cb }; subs.add(sb); cb(getIn(read(), path) ?? null); return () => subs.delete(sb); }
             };
         })();
@@ -652,6 +680,7 @@
             set(path, v) { return this.ref(path).set(v).catch(fbWriteFailed); },
             push(path, v) { const r = this.ref(path).push(); r.set(v).catch(fbWriteFailed); return r.key; },
             remove(path) { return this.ref(path).remove(); },
+            txn(path, fn) { return this.ref(path).transaction(fn).then(r => r.committed).catch(e => { fbWriteFailed(e); return false; }); },
             on(path, cb) { const r = this.ref(path); const h = (snap) => cb(snap.val()); r.on('value', h, err => showStatus('Firebase read failed: ' + err.message)); return () => r.off('value', h); }
         };
         const Live = rtdb ? FbRemote : LocalRemote;
@@ -961,10 +990,50 @@
             FbRemote.set('campaign', clean);
             campSent = partsOf(clean, CAMP_CATS, ['settings', 'version']);
         }
+        // ---- Undo / redo (DM): a snapshot of the campaign data before each saved change ----
+        // Changes inside one save delay (300 ms) count as one step; moving around the maps doesn't.
+        const undoStack = [], redoStack = [];
+        let undoBase = null;
+        const undoSnap = () => JSON.stringify({ settings: db.settings, things: db.things, links: db.links, maps: db.maps, battles: db.battles });
+        function recordUndo() {
+            if (PLAYER) return;
+            const now = undoSnap();
+            if (undoBase !== null && now !== undoBase) { undoStack.push(undoBase); if (undoStack.length > 60) undoStack.shift(); redoStack.length = 0; }
+            undoBase = now;
+        }
+        function resetUndo() { undoStack.length = redoStack.length = 0; undoBase = PLAYER ? null : undoSnap(); }
+        function undoRedo(redo) {
+            if (PLAYER) return;
+            if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; recordUndo(); }
+            const from = redo ? redoStack : undoStack, to = redo ? undoStack : redoStack;
+            if (!from.length) { showStatus(redo ? 'Nothing to redo' : 'Nothing to undo'); return; }
+            to.push(undoSnap());
+            const snap = from.pop();
+            Object.assign(db, JSON.parse(snap));
+            undoBase = snap;
+            // token positions also live on the live channel, which wins over the saved ones
+            for (const bid of Object.keys(live.tokens || {})) {
+                const pos = Object.fromEntries(Object.entries(db.battles[bid]?.tokens || {}).map(([tid, t]) => [tid, { x: t.x, y: t.y }]));
+                live.tokens[bid] = pos;
+                Live.set(livePath('tokens/' + bid), Object.keys(pos).length ? pos : null);
+            }
+            if (ui.selection?.type === 'thing' && !db.things[ui.selection.id]) select(null);
+            if (db.view.battleId && !db.things[db.view.battleId]) db.view.battleId = null;
+            ui.vision = null; wallChain = null; editPreview = null;
+            changed();
+            showStatus(redo ? 'Redone' : 'Undone');
+        }
+        document.addEventListener('keydown', (e) => {
+            if (PLAYER || !(e.ctrlKey || e.metaKey) || e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+            const k = e.key.toLowerCase();
+            if (k === 'z' || k === 'y') { e.preventDefault(); undoRedo(k === 'y' || e.shiftKey); }
+        });
         function save() {
             clearTimeout(saveTimer);
             saveTimer = setTimeout(() => {
+                saveTimer = null;
                 if (PLAYER) { saveParty(); return; }
+                recordUndo();
                 if (USE_FB && rtdb && campReady) syncCampaign();
                 try { localStorage.setItem(SAVE_KEY, JSON.stringify(db)); }
                 catch (e) { console.warn('Autosave failed', e); }
@@ -1187,9 +1256,24 @@
         const dd2vttCache = new Map();  // file name -> { img, walls, doors, lights, ppg, w, h }
         // Only returns a battle map that's already been opened (no loading, no parsing)
         const dd2vttLoaded = (name) => { const v = dd2vttCache.get(name); return v && typeof v.then !== 'function' ? v : null; };
+        // A blank battle map has no file: traits.dd2vtt = 'blank:<cols>x<rows>', drawn here in every browser
+        const blankSize = (name) => { const m = /^blank:(\d+)x(\d+)$/.exec(name || ''); return m ? { cols: +m[1], rows: +m[2] } : null; };
+        function blankScene({ cols, rows }) {
+            const ppg = 70, c = document.createElement('canvas');
+            c.width = cols * ppg; c.height = rows * ppg;
+            const x = c.getContext('2d');
+            x.fillStyle = '#16181d'; x.fillRect(0, 0, c.width, c.height);
+            // faint mottling so an unpainted floor isn't flat
+            for (let i = 0; i < cols * rows * 3; i++) { x.fillStyle = `rgba(${Math.random() < .5 ? '255,255,255' : '0,0,0'},${(Math.random() * .035).toFixed(3)})`; const r = 8 + Math.random() * 40; x.beginPath(); x.arc(Math.random() * c.width, Math.random() * c.height, r, 0, Math.PI * 2); x.fill(); }
+            const img = new Image();
+            img.src = c.toDataURL('image/jpeg', 0.8);
+            return { img, ppg, w: c.width, h: c.height, walls: [], doors: [], lights: [], blank: true };
+        }
         async function loadDd2vtt(name) {
             if (!name) return null;
             if (dd2vttCache.has(name)) return dd2vttCache.get(name);
+            const bs = blankSize(name);
+            if (bs) { const sc = blankScene(bs); await sc.img.decode().catch(() => {}); dd2vttCache.set(name, sc); return sc; }
             const blob = (await getFile(name)) || (await fileFromFolder(name));
             if (!blob) return null;
             const j = JSON.parse(await blob.text());
@@ -1248,9 +1332,10 @@
 
         // ---- Wall and door swatches (js/swatches.js) ----
         const SWATCHES = window.GEEZ_SWATCHES || { wall: [], door: [] };
+        SWATCHES.floor ||= [];
         const SWATCH_KEY = 'geezvtt.swatch';
         const swatchOf = (kind, id) => SWATCHES[kind].find(s => s.id === id) || SWATCHES[kind][0] || { id: '', color: kind === 'door' ? '#7a4e2a' : '#6b6b68' };
-        ui.swatch = (() => { try { return { wall: swatchOf('wall').id, door: swatchOf('door').id, ...JSON.parse(localStorage.getItem(SWATCH_KEY) || '{}') }; } catch { return { wall: swatchOf('wall').id, door: swatchOf('door').id }; } })();
+        ui.swatch = (() => { try { return { wall: swatchOf('wall').id, door: swatchOf('door').id, floor: SWATCHES.floor[0]?.id || '', ...JSON.parse(localStorage.getItem(SWATCH_KEY) || '{}') }; } catch { return { wall: swatchOf('wall').id, door: swatchOf('door').id }; } })();
         const swatchImgs = new Map();
         function swatchImg(src) {
             if (!swatchImgs.has(src)) {
@@ -1270,12 +1355,14 @@
             return pat;
         }
         function renderSwatchPanel() {
-            const panel = $('swatchPanel'), kind = ui.mode === 'wall' ? 'wall' : ui.mode === 'door' ? 'door' : null;
+            const panel = $('swatchPanel'), kind = { wall: 'wall', door: 'door', paint: 'floor' }[ui.mode] || null;
             if (!panel) return;
             if (!kind || PLAYER || db.view.level !== 'VTT' || !SWATCHES[kind].length) { panel.style.display = 'none'; return; }
             panel.style.display = 'block';
-            panel.innerHTML = `<div style="font-size:11px;color:#94a3b8;margin:0 2px 6px">${kind === 'wall' ? 'Wall' : 'Door'} material</div><div style="display:flex;flex-wrap:wrap;gap:6px">` +
-                SWATCHES[kind].map(sw => `<button data-swatch="${esc(sw.id)}" title="${esc(sw.name)}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:4px;border-radius:8px;cursor:pointer;background:#1e293b;color:#e2e8f0;font-size:10px;border:2px solid ${ui.swatch[kind] === sw.id ? '#f59e0b' : '#334155'}">` +
+            // floors get an eraser swatch first (id '')
+            const list = kind === 'floor' ? [{ id: '', name: 'Erase', color: 'repeating-linear-gradient(45deg,#334155 0 6px,#1e293b 6px 12px)' }, ...SWATCHES.floor] : SWATCHES[kind];
+            panel.innerHTML = `<div style="font-size:11px;color:#94a3b8;margin:0 2px 6px">${{ wall: 'Wall', door: 'Door', floor: 'Floor' }[kind]} material</div><div style="display:flex;flex-wrap:wrap;gap:6px;max-width:${kind === 'floor' ? 280 : 400}px">` +
+                list.map(sw => `<button data-swatch="${esc(sw.id)}" title="${esc(sw.name)}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:4px;border-radius:8px;cursor:pointer;background:#1e293b;color:#e2e8f0;font-size:10px;border:2px solid ${ui.swatch[kind] === sw.id ? '#f59e0b' : '#334155'}">` +
                     `<span style="display:block;width:44px;height:44px;border-radius:5px;background:${esc(sw.color)}${sw.texture ? ` url('${esc(sw.texture)}') center/cover` : ''}"></span>${esc(sw.name)}</button>`).join('') + '</div>';
             panel.querySelectorAll('[data-swatch]').forEach(b => b.onclick = (e) => {
                 e.stopPropagation();
@@ -1595,7 +1682,7 @@
         function setLevel(level) {
             db.view.level = level;
             if (ui.selection?.type !== 'thing') ui.selection = null;
-            if (level !== 'WORLD' && level !== 'LOCATION' && ui.mode !== 'pan' && !(['ruler', 'ping', 'wall', 'door', 'light', 'erase'].includes(ui.mode) && level === 'VTT')) setMode('pan');
+            if (level !== 'WORLD' && level !== 'LOCATION' && ui.mode !== 'pan' && !(['ruler', 'ping', 'wall', 'door', 'light', 'erase', 'paint'].includes(ui.mode) && level === 'VTT')) setMode('pan');
             ui.ruler = null; drawRuler();
             const L = LEVELS[level];
             Object.values(LEVELS).forEach(x => $(x.nav).className = NAV_OFF);
@@ -2140,6 +2227,19 @@
             const g = s.ppg;
             vttCtx.clearRect(0, 0, vttVectorCanvas.width, vttVectorCanvas.height);
             vttCtx.save();
+            // painted floor squares (battles[id].edits.paint = { 'col_row': floor swatch id })
+            for (const [k, id] of Object.entries(db.battles[battleId]?.edits?.paint || {})) {
+                const [cx, cy] = k.split('_').map(Number);
+                vttCtx.fillStyle = swatchPaint('floor', id, g);
+                vttCtx.fillRect(cx * g, cy * g, g + 0.5, g + 0.5);
+            }
+            if (s.blank) {
+                vttCtx.strokeStyle = 'rgba(203,213,225,.13)'; vttCtx.lineWidth = 1;
+                vttCtx.beginPath();
+                for (let x = 0; x <= s.w; x += g) { vttCtx.moveTo(x + .5, 0); vttCtx.lineTo(x + .5, s.h); }
+                for (let y = 0; y <= s.h; y += g) { vttCtx.moveTo(0, y + .5); vttCtx.lineTo(s.w, y + .5); }
+                vttCtx.stroke();
+            }
             vttCtx.lineCap = 'round';
             const line = (o) => { vttCtx.beginPath(); vttCtx.moveTo(o.x1 * g, o.y1 * g); vttCtx.lineTo(o.x2 * g, o.y2 * g); vttCtx.stroke(); };
             // walls and doors the DM drew aren't in the map image: draw them in their swatch
@@ -2186,6 +2286,14 @@
                 [editPreview.a, editPreview.b].forEach(p2 => { markerCtx.beginPath(); markerCtx.arc(p2.x * g, p2.y * g, Math.max(3, g / 16), 0, Math.PI * 2); markerCtx.fill(); });
                 markerCtx.restore();
             }
+        }
+        function paintAt(bid, gx, gy) {
+            const s = ui.scene, cx = Math.floor(gx), cy = Math.floor(gy);
+            if (!s || cx < 0 || cy < 0 || cx >= Math.ceil(s.w / s.ppg) || cy >= Math.ceil(s.h / s.ppg)) return;
+            const paint = (editsOf(bid).paint ||= {}), k = `${cx}_${cy}`, id = ui.swatch.floor || '';
+            if ((paint[k] || '') === id) return;
+            if (id) paint[k] = id; else delete paint[k];
+            save(); drawScene(s, bid);
         }
         function endWallChain() { wallChain = null; editPreview = null; drawEditPreview(); }
         function eraseAt(bid, gx, gy) {
@@ -2269,7 +2377,15 @@
                         if (!h || (PLAYER && flags.hideHp)) return '';
                         const pct = h.max ? Math.max(0, Math.min(1, h.hp / h.max)) : null;
                         const col = pct === null ? '#ef4444' : pct > .5 ? '#4a9a4a' : pct > .25 ? '#caca30' : '#cc3030';
-                        return `<span class="absolute font-mono px-1 rounded-full whitespace-nowrap pointer-events-none" style="top:-6px;right:-6px;font-size:${Math.max(8, baseSize / 8)}px;background:#1c0a0a;color:#fecaca;border:1px solid ${col}" title="${h.live ? 'Live from character sheet' : 'HP'}">${esc(h.hp)}${h.max ? '/' + esc(h.max) : ''}</span>`
+                        return `<span class="absolute font-mono px-1 rounded-full whitespace-nowrap pointer-events-none" style="top:-6px;right:-6px;font-size:${Math.max(8, baseSize / 8)}px;background:#1c0a0a;color:#fecaca;border:1px solid ${col}" title="${h.live ? 'Live from character sheet' : 'HP'}${h.temp ? ` (+${esc(h.temp)} temp)` : ''}">${esc(h.hp)}${h.temp ? `<span style="color:#7dd3fc">+${esc(h.temp)}</span>` : ''}${h.max ? '/' + esc(h.max) : ''}</span>`
+                             + (h.live && Number(h.hp) <= 0 ? (() => {
+                                 // death saves from the sheet: green successes, red failures
+                                 const ds = h.saves || {}, ok = clamp(+ds.success || 0, 0, 3), bad = clamp(+ds.fail || 0, 0, 3), d = Math.max(6, baseSize / 10);
+                                 const pip = (on, col) => `<span style="width:${d}px;height:${d}px;border-radius:9999px;border:1px solid #000;background:${on ? col : 'rgba(15,23,42,.8)'}"></span>`;
+                                 const inner = bad >= 3 ? '<span style="font-size:' + Math.max(10, baseSize / 5) + 'px">💀</span>' : ok >= 3 ? '<span class="text-emerald-300 font-semibold" style="font-size:' + Math.max(8, baseSize / 9) + 'px">stable</span>'
+                                     : [0, 1, 2].map(i => pip(i < ok, '#22c55e')).join('') + '<span style="width:3px"></span>' + [0, 1, 2].map(i => pip(i < bad, '#ef4444')).join('');
+                                 return `<span class="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1 py-0.5 rounded-full pointer-events-none" style="top:-${d + 10}px;background:rgba(2,6,23,.85);border:1px solid #475569" title="Death saves: ${ok} success, ${bad} fail">${inner}</span>`;
+                             })() : '')
                              + (pct !== null ? `<span class="absolute left-[8%] pointer-events-none rounded" style="bottom:-${Math.max(9, baseSize / 7) + 14}px;width:84%;height:${Math.max(3, baseSize / 18)}px;background:rgba(0,0,0,.55)"><span class="block h-full rounded" style="width:${pct * 100}%;background:${col}"></span></span>` : '');
                     })()}`;
                 dragElement(el, {
@@ -2488,7 +2604,7 @@
         }
         function hpOf(t) {
             const c = sheetFor(t)?.combat;
-            if (c && c.hp_current !== undefined) return { hp: c.hp_current, max: c.hp_max, live: true };
+            if (c && c.hp_current !== undefined) return { hp: c.hp_current, max: c.hp_max, temp: Number(c.temp_hp) || 0, saves: c.death_saves || null, live: true };
             const hp = t?.traits?.hp;
             return hp === undefined || hp === null || hp === '' ? null : { hp, max: null, live: false };
         }
@@ -2513,7 +2629,8 @@
                 Live.on(livePath('dmAt'), (v) => onDmAt(v)),
                 Live.on(livePath('session'), (v) => { liveSession = { lockMove: false, lockPings: false, ...(v || {}) }; renderSessionButtons(); if (db.view.level === 'VTT' && ui.scene) renderView(); }),
                 Live.on(livePath('presence'), (v) => { presence = v || {}; renderPresence(); }),
-                Live.on(livePath('handouts'), (v) => onHandouts(v || {}))
+                Live.on(livePath('handouts'), (v) => onHandouts(v || {})),
+                Live.on(livePath('rollcall'), onCall)
             ];
         }
 
@@ -2603,7 +2720,7 @@
             const terms = e.match(/[+-]?[^+-]+/g);
             if (!terms) throw new Error('bad');
             let total = 0, nat = null, first = null;
-            const parts = [];
+            const parts = [], dice = [];
             for (const raw of terms) {
                 const sign = raw[0] === '-' ? -1 : 1;
                 const t = raw.replace(/^[+-]/, '');
@@ -2614,12 +2731,14 @@
                     if (n < 1 || n > 100 || faces < 2 || faces > 1000) throw new Error('bad');
                     if (mode && faces === 20 && n === 1) {
                         const a = rollDie(20), b = rollDie(20), k = mode === 'adv' ? Math.max(a, b) : Math.min(a, b);
+                        dice.push(a === k ? { s: 20, v: a } : { s: 20, v: a, drop: true }, a === k ? { s: 20, v: b, drop: true } : { s: 20, v: b });
                         first ||= { sides: 20, result: k };
                         total += sign * k; nat = nat ?? k;
                         parts.push(`${pre}[${a}, ${b} → ${k}]`);
                         mode = null;
                     } else {
                         const rs = Array.from({ length: n }, () => rollDie(faces));
+                        rs.forEach(v => dice.push({ s: faces, v }));
                         first ||= { sides: faces, result: rs[0] };
                         if (faces === 20 && n === 1) nat = nat ?? rs[0];
                         total += sign * rs.reduce((x, y) => x + y, 0);
@@ -2630,7 +2749,7 @@
                     parts.push(`${pre}${t}`);
                 } else throw new Error('bad');
             }
-            return { total, detail: parts.join(''), nat, first };
+            return { total, detail: parts.join(''), nat, first, dice };
         }
         // ---- The big animated roll everyone sees (ported from the old dice.js) ----
         const rollQueue = [];
@@ -2639,10 +2758,29 @@
             rollQueue.push(r);
             if (!rollBusy) nextRoll();
         }
+        // Rolls that carry their dice are thrown in 3D (js/dice3d.js); without WebGL/the CDN, or for old rolls, the flat box shows them.
+        let tray3d = null, tray3dP = null, tray3dFailed = false;
+        function getTray3d() {
+            if (tray3d || tray3dFailed) return Promise.resolve(tray3d);
+            return (tray3dP ||= import('./js/dice3d.js').then(m => m.createDiceTray3D($('dice3dLayer'))).then(t => (tray3d = t))
+                .catch(e => { console.warn('3D dice unavailable, using flat dice', e); tray3dFailed = true; return null; }));
+        }
         function nextRoll() {
             const r = rollQueue.shift();
             if (!r) { rollBusy = false; return; }
             rollBusy = true;
+            if (!Array.isArray(r.dice) || !r.dice.length) { flatRoll(r); return; }
+            getTray3d().then(tray => {
+                if (!tray) { flatRoll(r); return; }
+                let done = false;
+                const finish = () => { if (done) return; done = true; setTimeout(() => { tray.clear(); nextRoll(); }, rollQueue.length ? 1200 : 3200); };
+                tray.clear();
+                tray.throwGroup([{ dice: r.dice, color: pingColor(r.by), label: `${r.by}${r.private ? ' (private)' : ''} · ${r.expr}`, total: r.total, sub: r.detail,
+                    cls: r.nat === 20 ? 'crit' : r.nat === 1 ? 'bad' : '' }]).then(finish, finish);
+                setTimeout(finish, 9000);   // never let a stuck throw block the queue
+            });
+        }
+        function flatRoll(r) {
             const box = $('rollShow'), num = $('rollNum');
             box.classList.remove('hidden');
             box.style.borderColor = r.nat === 20 ? '#10b981' : r.nat === 1 ? '#dc2626' : '';
@@ -2673,7 +2811,7 @@
         function doRoll(expr) {
             let r;
             try { r = rollExpr(expr); } catch { showStatus(`Couldn't read "${expr}". Try 1d20+5, 2d6+3 or 1d20 adv.`); return; }
-            const entry = { by: whoAmI(), expr: expr || '1d20', detail: r.detail, total: r.total, nat: r.nat ?? null, ts: Date.now() };
+            const entry = { by: whoAmI(), expr: expr || '1d20', detail: r.detail, total: r.total, nat: r.nat ?? null, dice: r.dice.slice(0, 20), ts: Date.now() };
             if ($('dicePrivate').checked) { privateRolls.push({ ...entry, private: true }); renderRolls(); showRoll({ ...entry, private: true }); return entry; }
             Live.push(livePath('rolls'), entry);
             // the old pages watch dice/last, so single-die results show there too
@@ -2701,14 +2839,151 @@
         $('diceRollBtn').onclick = () => doRoll($('diceExpr').value.trim());
         $('diceExpr').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRoll($('diceExpr').value.trim()); });
 
+        // ---- roll calls (js/rollcall.js: the DM calls, each player rolls from their own sheet) ----
+        let RC = null, call = null, callHidden = false, callOpt = { mode: null, extras: {}, other: 0 }, callKind = 'init';
+        import('./js/rollcall.js').then(m => { RC = m; renderCall(); }).catch(() => console.info('js/rollcall.js not found: roll calls are off'));
+        const rcApi = { txn: (p, fn) => Live.txn(livePath(p), fn), update: (p, o) => Live.update(livePath(p), o), push: (p, o) => Live.push(livePath(p), o) };
+        // The campaign's PCs, one per character: { rid, name, thing, sheet }
+        function callPcs() {
+            const seen = new Set(), out = [];
+            for (const t of Object.values(db.things)) {
+                if (t.type !== 'npc' || !t.traits?.pc || (t.campaign && t.campaign !== liveCamp())) continue;
+                const rid = t.traits.charId || t.id;
+                if (seen.has(rid)) continue;
+                seen.add(rid); out.push({ rid, name: t.name, thing: t, sheet: sheetFor(t) });
+            }
+            return out.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        const myCallPc = () => PLAYER && playerName ? callPcs().find(p => p.name === playerName) || null : null;
+        function onCall(v) {
+            if (v && (!call || call.id !== v.id)) { callHidden = false; callOpt = { mode: null, extras: {}, other: 0 }; }
+            call = v || null;
+            renderCall();
+        }
+        async function answerFor(pc, opts = {}) {
+            const res = await RC.answerCall(rcApi, call, pc.rid, { name: pc.name, charId: pc.thing.traits.charId || null, c: pc.sheet, by: pc.name, ...opts });
+            // a PC without a linked sheet still goes into the initiative order, by its card
+            if (res && call.kind === 'init' && !pc.thing.traits.charId) Live.update(livePath('initiative/rows'), { ['pc_' + pc.thing.id]: { name: pc.name, thingId: pc.thing.id, init: res.total } });
+            if (!res) showStatus('Someone already rolled that one.');
+        }
+        function renderCall() {
+            const panel = $('callPanel'), pill = $('callPill');
+            if (!RC || !call?.open) { panel.classList.add('hidden'); pill.classList.add('hidden'); return; }
+            const title = RC.callTitle(call);
+            panel.classList.toggle('hidden', callHidden); pill.classList.toggle('hidden', !callHidden);
+            pill.textContent = `🎲 ${title} — tap to open`;
+            if (callHidden) return;
+            const results = call.results || {}, dcShown = call.dc && (!PLAYER || call.showDc);
+            const rows = [...Object.entries(call.to || {}).map(([rid, name]) => ({ rid, name, r: results[rid] })),
+                ...Object.entries(results).filter(([rid]) => !call.to?.[rid]).map(([rid, r]) => ({ rid, name: r.name, r }))];
+            rows.sort((a, b) => (b.r ? 1 : 0) - (a.r ? 1 : 0) || (call.kind === 'init' ? (b.r?.total ?? 0) - (a.r?.total ?? 0) : 0));
+            const modeTxt = call.mode === 'adv' ? ' · advantage' : call.mode === 'dis' ? ' · disadvantage' : '';
+            let html = `<div class="flex items-start gap-2"><div class="flex-1"><div class="text-[10px] uppercase tracking-wider text-slate-400">${call.kind === 'init' ? 'Roll for' : 'The DM calls for'}</div>
+                <div class="font-cinzel font-bold text-amber-200 text-base leading-tight">${esc(title)}</div>
+                <div class="text-[11px] text-slate-400">${dcShown ? `DC ${esc(call.dc)}${call.showDc ? '' : ' (hidden)'}` : ''}${esc(modeTxt)}</div></div>
+                <button data-call="hide" class="text-slate-400 hover:text-white px-1" title="Minimise"><i class="fa-solid fa-minus"></i></button></div>
+                <div class="space-y-1">${rows.map(({ name, r }) => {
+                    const pass = dcShown ? RC.passed(call, r) : null;
+                    return `<div class="flex items-center gap-2 rounded-lg px-2 py-1 text-xs ${r ? 'bg-slate-900' : 'bg-slate-900/40 text-slate-500'}">
+                        <span class="flex-1 truncate" style="${r ? `color:${pingColor(name)}` : ''}">${esc(name)}</span>
+                        ${r?.nat === 20 ? '<span class="text-emerald-400 text-[10px]">nat 20</span>' : r?.nat === 1 ? '<span class="text-red-400 text-[10px]">nat 1</span>' : ''}
+                        ${pass === true ? '<span class="text-emerald-400">✔</span>' : pass === false ? '<span class="text-red-400">✘</span>' : ''}
+                        <span class="font-mono font-bold ${r ? 'text-white' : ''}" title="${esc(r?.detail || '')}">${r ? esc(r.total) : 'waiting…'}</span></div>`;
+                }).join('') || '<div class="text-xs text-slate-500">No one called.</div>'}</div>`;
+            const me = myCallPc();
+            if (me && call.to?.[me.rid] && !results[me.rid]) {
+                const { mod, parts } = RC.callMod(me.sheet, call), mode = callOpt.mode || call.mode || 'normal';
+                const chip = (on) => `px-2 py-1 rounded-full border text-[11px] ${on ? 'border-amber-500 bg-amber-900/50 text-amber-100' : 'border-slate-700 text-slate-300'}`;
+                html += `<div class="border-t border-slate-800 pt-2 space-y-2"><div class="text-[11px] text-slate-400">Your roll: <b class="text-slate-100">${mode === 'normal' ? '1d20' : '2d20'} ${esc(RC.sgn(mod))}</b> · ${esc(parts.map(([l, v]) => `${l} ${RC.sgn(v)}`).join(' · ') || 'no modifier')}</div>
+                    <div class="flex gap-1">${[['normal', 'Normal'], ['adv', 'Advantage'], ['dis', 'Disadvantage']].map(([m, l]) => `<button data-mode="${m}" class="flex-1 ${chip(mode === m)}">${l}</button>`).join('')}</div>
+                    <div class="flex flex-wrap gap-1">${RC.EXTRAS.map(([k, l, d]) => `<button data-extra="${k}" class="${chip(callOpt.extras[k])}">${l} +1d${k === 'bardic' ? (callOpt.extras.bardicDie || d) : d}</button>`).join('')}</div>
+                    <div class="flex items-center gap-2 text-xs">${callOpt.extras.bardic ? `<select id="callBardic" class="bg-slate-900 border border-slate-700 rounded p-1">${[6, 8, 10, 12].map(d => `<option value="${d}" ${+(callOpt.extras.bardicDie || 6) === d ? 'selected' : ''}>Bardic d${d}</option>`).join('')}</select>` : ''}
+                        <span class="text-slate-400">Other</span><input id="callOther" type="number" value="${esc(callOpt.other || 0)}" class="w-14 bg-slate-900 border border-slate-700 rounded p-1"></div>
+                    <button data-call="roll" class="w-full py-2 rounded-xl bg-amber-700 hover:bg-amber-600 text-white font-bold tracking-wider">ROLL</button></div>`;
+            } else if (PLAYER) html += `<div class="text-[11px] text-slate-500 border-t border-slate-800 pt-2">${me && results[me.rid] ? `You rolled <b class="text-amber-200">${esc(results[me.rid].total)}</b>.` : me ? 'Not your roll — watching.' : 'Pick your character to roll.'}</div>`;
+            if (!PLAYER) {
+                const pcs = callPcs(), missing = Object.entries(call.to || {}).filter(([rid]) => !results[rid]);
+                html += `<div class="border-t border-slate-800 pt-2 space-y-1.5">
+                    ${missing.length ? `<div class="flex flex-wrap gap-1">${missing.map(([rid, name]) => `<button data-rollfor="${esc(rid)}" class="px-2 py-1 rounded-full border border-slate-700 text-[11px] text-slate-300 hover:border-amber-500">Roll for ${esc(name)}</button>`).join('')}</div>` : ''}
+                    <button data-call="close" class="w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold">Close for everyone</button></div>`;
+                void pcs;
+            }
+            panel.innerHTML = html;
+        }
+        $('callPanel').addEventListener('click', async (e) => {
+            const b = e.target.closest('button'); if (!b || !call || !RC) return;
+            if (b.dataset.call === 'hide') { callHidden = true; renderCall(); return; }
+            if (b.dataset.mode) { callOpt.mode = b.dataset.mode; renderCall(); return; }
+            if (b.dataset.extra) { callOpt.extras[b.dataset.extra] = !callOpt.extras[b.dataset.extra]; renderCall(); return; }
+            if (b.dataset.call === 'roll') {
+                const me = myCallPc(); if (!me) return;
+                b.disabled = true;
+                callOpt.other = parseInt($('callOther')?.value, 10) || 0;
+                await answerFor(me, { mode: callOpt.mode || call.mode || 'normal', extras: callOpt.extras, other: callOpt.other });
+                return;
+            }
+            if (b.dataset.rollfor && !PLAYER) {
+                const pc = callPcs().find(p => p.rid === b.dataset.rollfor);
+                if (pc) await answerFor(pc, { mode: call.mode || 'normal' });
+                else await RC.answerCall(rcApi, call, b.dataset.rollfor, { name: call.to[b.dataset.rollfor] });
+                return;
+            }
+            if (b.dataset.call === 'close' && !PLAYER) Live.update(livePath('rollcall'), { open: false });
+        });
+        $('callPanel').addEventListener('change', (e) => {
+            if (e.target.id === 'callBardic') { callOpt.extras.bardicDie = +e.target.value; renderCall(); }
+            if (e.target.id === 'callOther') callOpt.other = parseInt(e.target.value, 10) || 0;
+        });
+        $('callPill').onclick = () => { callHidden = false; renderCall(); };
+        // DM: the call dialog
+        function setCallKind(kind) {
+            callKind = kind;
+            $('callKinds').innerHTML = [['init', 'Initiative'], ['save', 'Save'], ['skill', 'Skill'], ['ability', 'Ability'], ['custom', 'Custom']].map(([k, l]) =>
+                `<button data-kind="${k}" class="px-2.5 py-1 rounded-full border text-xs ${k === kind ? 'border-amber-500 bg-amber-900/50 text-amber-100' : 'border-slate-700 text-slate-300'}">${l}</button>`).join('');
+            const sel = $('callKey');
+            if (kind === 'save' || kind === 'ability') sel.innerHTML = Object.entries(RC.ABIL).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+            else if (kind === 'skill') sel.innerHTML = RC.SKILLS.map(([k, l, a]) => `<option value="${k}">${l} (${a.toUpperCase()})</option>`).join('');
+            sel.classList.toggle('hidden', kind === 'init' || kind === 'custom');
+            $('callDc').disabled = kind === 'init';
+        }
+        function openCallModal(kind = callKind) {
+            if (!RC) { showStatus('Roll calls need js/rollcall.js next to this page.'); return; }
+            const pcs = callPcs();
+            $('callTargets').innerHTML = pcs.map(p => `<label class="flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 cursor-pointer"><input type="checkbox" class="callPc accent-amber-500" value="${esc(p.rid)}" checked> ${esc(p.name)}${p.sheet ? '' : ' <span class="text-slate-500">(no sheet)</span>'}</label>`).join('')
+                || '<span class="text-slate-500">No PCs in this campaign yet (import them from GeezSheets).</span>';
+            setCallKind(kind);
+            $('callModal').classList.remove('hidden');
+        }
+        function sendCall(kind, rids) {
+            const pcs = callPcs().filter(p => rids.includes(p.rid));
+            if (!pcs.length) { showStatus('Tick at least one character'); return false; }
+            Live.set(livePath('rollcall'), RC.newCall({ kind, key: $('callKey').value, title: kind === 'init' ? '' : $('callTitle').value, dc: $('callDc').value, showDc: $('callShowDc').checked,
+                mode: $('callMode').value, to: Object.fromEntries(pcs.map(p => [p.rid, p.name])) }));
+            return true;
+        }
+        $('callKinds').addEventListener('click', (e) => { const b = e.target.closest('[data-kind]'); if (b) setCallKind(b.dataset.kind); });
+        $('callCancel').onclick = () => $('callModal').classList.add('hidden');
+        $('callSend').onclick = () => {
+            if (sendCall(callKind, [...document.querySelectorAll('.callPc:checked')].map(c => c.value))) { $('callModal').classList.add('hidden'); $('callTitle').value = ''; }
+        };
+        $('callRollBtn').onclick = () => { closeMenus(); openCallModal(); };
+        // Initiative: call every PC in the campaign at once; NPCs go in by hand
+        $('initCallBtn').onclick = () => {
+            if (!RC) { showStatus('Roll calls need js/rollcall.js next to this page.'); return; }
+            if (!live.init) saveInit({ rows: {}, round: 1 });
+            $('callMode').value = 'normal';
+            if (sendCall('init', callPcs().map(p => p.rid))) showStatus('Initiative called: PCs roll from their sheets, add NPCs by name.');
+        };
+
         // ---- initiative ----
+        // Rows the sheets write (pc_<charId>) carry a charId: find that PC's card for its token
+        const thingOfRow = (r) => r?.thingId || (r?.charId && Object.keys(db.things).find(id => db.things[id].traits?.pc && db.things[id].traits?.charId === r.charId)) || null;
         function initRows() {
-            return Object.entries(live.init?.rows || {}).map(([id, r]) => ({ id, ...r }))
+            return Object.entries(live.init?.rows || {}).map(([id, r]) => ({ id, ...r, thingId: thingOfRow(r) }))
                 .sort((a, b) => (parseFloat(b.init) || -99) - (parseFloat(a.init) || -99) || String(a.name).localeCompare(String(b.name)));
         }
         function currentTurnThing() {
-            const row = live.init?.rows?.[live.init?.turn];
-            return row?.thingId || null;
+            return thingOfRow(live.init?.rows?.[live.init?.turn]);
         }
         function initDisplayName(r) {
             if (!PLAYER) return r.name;
@@ -2745,7 +3020,7 @@
             if (db.view.level !== 'VTT' || !tokens) { showStatus('Open a battle map first.'); return; }
             const init = live.init || { rows: {}, round: 1 };
             init.rows ||= {};
-            const have = new Set(Object.values(init.rows).map(r => r.thingId));
+            const have = new Set(initRows().map(r => r.thingId));
             for (const tid of Object.keys(tokens)) {
                 const t = db.things[tid];
                 if (!t || have.has(tid)) continue;
@@ -2756,8 +3031,10 @@
         $('initAddName').onclick = () => {
             const name = prompt('Name to add to initiative:');
             if (!name || !name.trim()) return;
+            const v = prompt(`Initiative for ${name.trim()} (blank = roll a d20):`, '');
+            if (v === null) return;
             const init = live.init || { rows: {}, round: 1 };
-            (init.rows ||= {})[uid('i')] = { name: name.trim(), init: '' };
+            (init.rows ||= {})[uid('i')] = { name: name.trim(), init: v.trim() === '' ? rollDie(20) : (Number(v) || 0) };
             saveInit(init);
         };
         $('initSort').onclick = () => { if (live.init) { live.init.turn = initRows()[0]?.id || null; saveInit(live.init); } };
@@ -3045,7 +3322,7 @@
             const p = toContent(e.clientX, e.clientY);
             if (ui.mode === 'ping' && level !== 'DM_BOARD' && ui.loaded) { if (PLAYER && liveSession.lockPings) { showStatus('The DM has paused pings'); return; } sendPing(p.x, p.y); return; }
             if (level === 'WORLD' && ui.mode === 'pan' && window.WorldDM && !hitMarker(p.x, p.y) && WorldDM.click(p.x, p.y)) return;
-            if (!PLAYER && level === 'VTT' && ui.scene && db.view.battleId && ['wall', 'door', 'light', 'erase'].includes(ui.mode)) {
+            if (!PLAYER && level === 'VTT' && ui.scene && db.view.battleId && ['wall', 'door', 'light', 'erase', 'paint'].includes(ui.mode)) {
                 const bid = db.view.battleId, g = ui.scene.ppg, gx = p.x / g, gy = p.y / g;
                 const ed = editsOf(bid);
                 if (ui.mode === 'wall') {
@@ -3078,6 +3355,12 @@
                         save(); drawScene(ui.scene, bid);
                         showStatus('Light added. Drag it to move; erase tool removes it.');
                     }
+                    return;
+                }
+                if (ui.mode === 'paint') {
+                    viewport.setPointerCapture(e.pointerId);
+                    drag = { kind: 'paint', sx: e.clientX, sy: e.clientY, moved: true };
+                    paintAt(bid, gx, gy);
                     return;
                 }
                 if (ui.mode === 'erase') {
@@ -3190,6 +3473,7 @@
             if (!drag) return;
             if (drag.kind === 'ruler') { ui.ruler.b = toContent(e.clientX, e.clientY); drawRuler(); return; }
             if (drag.kind === 'doorDraw' && editPreview) { const p2 = toContent(e.clientX, e.clientY), g = ui.scene.ppg; editPreview.b = { x: snapG(p2.x / g, e), y: snapG(p2.y / g, e) }; drag.moved = true; drawEditPreview(); return; }
+            if (drag.kind === 'paint') { const p2 = toContent(e.clientX, e.clientY), g = ui.scene.ppg; paintAt(db.view.battleId, p2.x / g, p2.y / g); return; }
             if (drag.kind === 'lightMove') { const p2 = toContent(e.clientX, e.clientY), g = ui.scene.ppg, l = editsOf(db.view.battleId).addLights[drag.key]; if (l) { l.x = +(p2.x / g).toFixed(3); l.y = +(p2.y / g).toFixed(3); drag.moved = true; drawScene(ui.scene, db.view.battleId); } return; }
             const dist = Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy);
             if (dist > 4) drag.moved = true;
@@ -3297,7 +3581,7 @@
         const MODE_OFF = 'mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group';
         function setMode(mode) {
             const isMap = db.view.level === 'WORLD' || db.view.level === 'LOCATION';
-            const rulerOk = ((mode === 'ruler' || mode === 'ping') && db.view.level !== 'DM_BOARD') || (['wall', 'door', 'light', 'erase'].includes(mode) && db.view.level === 'VTT' && !PLAYER);
+            const rulerOk = ((mode === 'ruler' || mode === 'ping') && db.view.level !== 'DM_BOARD') || (['wall', 'door', 'light', 'erase', 'paint'].includes(mode) && db.view.level === 'VTT' && !PLAYER);
             if (wallChain && mode !== 'wall') endWallChain();
             if (mode !== 'pan' && !isMap && !rulerOk) { showStatus('Markers and tiles work on the world and location maps.'); return; }
             if (PLAYER && !['pan', 'ruler', 'ping'].includes(mode)) return;
@@ -3314,7 +3598,7 @@
             ui.mode = mode;
             $('modeRuler').className = mode === 'ruler' ? MODE_ON : MODE_OFF;
             $('modePing').className = mode === 'ping' ? MODE_ON : MODE_OFF;
-            ['wall', 'door', 'light', 'erase'].forEach(m => { const el = $('mode' + m[0].toUpperCase() + m.slice(1)); if (el) el.className = mode === m ? MODE_ON : MODE_OFF; });
+            ['wall', 'door', 'light', 'erase', 'paint'].forEach(m => { const el = $('mode' + m[0].toUpperCase() + m.slice(1)); if (el) el.className = mode === m ? MODE_ON : MODE_OFF; });
             if (db.view.level === 'VTT' && ui.scene && !PLAYER) drawScene(ui.scene, db.view.battleId);
             renderSwatchPanel();
             $('modePan').className = mode === 'pan' ? MODE_ON : MODE_OFF;
@@ -3326,7 +3610,7 @@
             viewport.classList.toggle('placing', mode !== 'pan');
             const map = currentMap();
             if (map && ui.loaded) drawGrid(map);
-            showStatus({ pan: 'Drag to pan, click to select, drag markers to move them. Right-click to ping.', marker: 'Click the map to place a marker', tile: 'Click a grid square to add notes to it', road: 'Click two markers to connect them with a road', ruler: 'Drag to measure. Esc clears it.', ping: 'Click the map to ping it for everyone.', wall: 'Click to start a wall, keep clicking to chain it. Double-click, right-click or Esc to finish. Hold Alt to place freely.', door: 'Drag from one end of the doorway to the other.', light: 'Click to add a light; drag a light to move it.', erase: 'Click a wall, door or light to remove it.' }[mode]);
+            showStatus({ pan: 'Drag to pan, click to select, drag markers to move them. Right-click to ping.', marker: 'Click the map to place a marker', tile: 'Click a grid square to add notes to it', road: 'Click two markers to connect them with a road', ruler: 'Drag to measure. Esc clears it.', ping: 'Click the map to ping it for everyone.', wall: 'Click to start a wall, keep clicking to chain it. Double-click, right-click or Esc to finish. Hold Alt to place freely.', door: 'Drag from one end of the doorway to the other.', light: 'Click to add a light; drag a light to move it.', erase: 'Click a wall, door or light to remove it.', paint: 'Click or drag over squares to paint the floor. Pick Erase to clear squares.' }[mode]);
         }
         $('modePan').onclick = () => setMode('pan');
         $('modeMarker').onclick = () => setMode('marker');
@@ -3334,7 +3618,7 @@
         $('modeRoad').onclick = () => setMode('road');
         $('modeRuler').onclick = () => setMode(ui.mode === 'ruler' ? 'pan' : 'ruler');
         $('modePing').onclick = () => setMode(ui.mode === 'ping' ? 'pan' : 'ping');
-        ['wall', 'door', 'light', 'erase'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
+        ['wall', 'door', 'light', 'erase', 'paint'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
         $('diceToolBtn').onclick = () => {
             const pop = $('dicePop');
             pop.classList.toggle('hidden');
@@ -3805,13 +4089,25 @@
             $('locColor').value = locColor(t);
             const box = $('locLinkBox');
             if (cat === 'battlemap') {
-                const f = t.traits?.dd2vtt;
+                const f = t.traits?.dd2vtt, bs = blankSize(f);
                 box.innerHTML = `
                     <label class="text-[10px] text-slate-400 block">dd2vtt file</label>
-                    <div class="text-xs truncate ${f ? 'text-slate-200' : 'text-slate-500'}">${f ? esc(f) : 'None attached'}</div>
+                    <div class="text-xs truncate ${f ? 'text-slate-200' : 'text-slate-500'}">${bs ? `Blank grid ${bs.cols} × ${bs.rows}` : f ? esc(f) : 'None attached'}</div>
                     <button id="attachDd2vttBtn" class="${BTN_GHOST}"><i class="fa-solid fa-upload"></i>${f ? 'Replace dd2vtt' : 'Attach dd2vtt'}</button>
+                    <button id="blankGridBtn" class="${BTN_GHOST}"><i class="fa-solid fa-table-cells"></i>${bs ? 'Resize blank grid' : 'Blank grid (draw your own)'}</button>
                     <button id="launchVttBtn" class="${BTN_VTT}" ${f ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'}><i class="fa-solid fa-dungeon"></i>Open in VTT</button>${placeBtn}`;
                 $('attachDd2vttBtn').onclick = () => $('dd2vttInput').click();
+                $('blankGridBtn').onclick = () => {
+                    if (f && !bs && !confirm(`Replace ${f} with a blank grid? Tokens stay; walls and paint you drew stay too.`)) return;
+                    const ans = prompt('Grid size in squares, width x height (max 60 x 60):', bs ? `${bs.cols}x${bs.rows}` : '30x20');
+                    const m = /^\s*(\d+)\s*[x×*, ]\s*(\d+)\s*$/i.exec(ans || '');
+                    if (!m) return;
+                    const cols = clamp(+m[1], 2, 60), rows = clamp(+m[2], 2, 60);
+                    t.traits.dd2vtt = `blank:${cols}x${rows}`;
+                    db.battles[t.id] ||= { tokens: {} };
+                    changed();
+                    showStatus(`Blank ${cols} × ${rows} grid ready. Open it in the VTT and draw walls, doors, lights and floors.`);
+                };
                 if (f) $('launchVttBtn').onclick = () => openBattle(t.id);
             } else {
                 const child = t.traits?.childMap && db.maps[t.traits.childMap];
@@ -4922,6 +5218,8 @@
         // ---- Header menus ----
         function closeMenus(except) { ['sessionMenu', 'moreMenu'].forEach(id => { if (id !== except) $(id).classList.add('hidden'); }); }
         $('sessionMenuBtn').onclick = (e) => { e.stopPropagation(); closeMenus('sessionMenu'); $('sessionMenu').classList.toggle('hidden'); };
+        $('undoBtn').onclick = () => { closeMenus(); undoRedo(false); };
+        $('redoBtn').onclick = () => { closeMenus(); undoRedo(true); };
         $('moreMenuBtn').onclick = (e) => { e.stopPropagation(); closeMenus('moreMenu'); $('moreMenu').classList.toggle('hidden'); };
         document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#sessionMenu, #sessionMenuBtn, #moreMenu, #moreMenuBtn')) closeMenus(); });
         ['sessionMenu', 'moreMenu'].forEach(id => $(id).addEventListener('click', (e) => { if (e.target.closest('button') && !e.target.closest('label')) setTimeout(() => closeMenus(), 0); }));
@@ -4947,7 +5245,7 @@
             const show = (id, on) => { const el = $(id); if (el) el.style.display = on ? '' : 'none'; };
             show('modeMarker', !PLAYER && isMap); show('modeTile', !PLAYER && isMap); show('modeRoad', !PLAYER && isMap);
             show('modeRuler', onMap); show('modePing', onMap); show('diceToolBtn', true);
-            ['modeWall', 'modeDoor', 'modeLight', 'modeErase', 'railVision', 'railForget', 'railDivider3'].forEach(id => show(id, !PLAYER && lv === 'VTT'));
+            ['modeWall', 'modeDoor', 'modeLight', 'modeErase', 'modePaint', 'railVision', 'railForget', 'railDivider3'].forEach(id => show(id, !PLAYER && lv === 'VTT'));
             renderSwatchPanel();
             const rv = $('railVision'), vm = visionMode(db.view.battleId);
             if (rv) { rv.querySelector('i').className = `fa-solid ${VISION_ICON[vm]} text-lg`; rv.classList.toggle('text-amber-400', vm !== 'bright'); rv.querySelector('span').textContent = VISION_LABEL[vm] + ' (click to change)'; }
@@ -5181,6 +5479,7 @@
                     const view = db.view;
                     db = normalize({ ...val, view });
                     try { localStorage.setItem(SAVE_KEY, JSON.stringify(db)); } catch {}
+                    resetUndo();
                     rerenderAll();
                 });
             } else {
@@ -5216,6 +5515,7 @@
 
         window.addEventListener('resize', () => applyTransform());
         setMode('pan');
+        resetUndo();
         $('fogLabel').textContent = FOG_LABEL[fogMode()];
         
         setLevel(db.view.level || 'DM_BOARD');

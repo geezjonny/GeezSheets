@@ -273,9 +273,12 @@ body.embed .state-screen{min-height:60vh}
 .roll-show .who{font-size:12px;font-weight:600;color:var(--gold)}
 .roll-show .num{font-size:48px;font-weight:700;line-height:1.1;color:var(--text)}
 .roll-show .what{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.temp-badge input{background:transparent;color:inherit;border:0;border-bottom:1px solid currentColor;font:inherit;text-align:center;padding:0 2px}.death-panel{padding:8px}.death-panel:empty{display:none}.death-panel button{min-height:32px;margin:3px}.call-banner{margin:12px;padding:12px;border:2px solid var(--gold);border-radius:12px;background:var(--panel2)}.call-banner button,.call-banner select,.call-banner input{min-height:36px;margin:4px;max-width:100%}.call-banner fieldset{padding:8px;min-width:0}.call-options{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
+<div id="dice3dOverlay" style="position:fixed;inset:0;pointer-events:none;z-index:9999"></div>
+<div id="rollCall" class="call-banner" hidden aria-live="polite"></div>
 
 <div class="header">
   <div class="brand">♞ GeezVTT</div>
@@ -335,7 +338,8 @@ body.embed .state-screen{min-height:60vh}
 
 <script type="module">
 // Same Firebase project/config as the VTT (js/rodeo-firebase.js)
-import { db, ref, get, set, update, remove, push, onValue } from "./js/rodeo-firebase.js";
+import { callTitle, callMod, answerCall, EXTRAS, passed, sgn } from './js/rollcall.js';
+import { db, ref, get, set, update, remove, push, onValue, runTransaction } from "./js/rodeo-firebase.js";
 const $   = id => document.getElementById(id);
 const GM_KEY = "jonny";
 const PARAMS = new URLSearchParams(location.search);
@@ -461,10 +465,11 @@ function spellLevelLabel(lvl) {
 function esc(str) {
   return String(str)
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
 // ── Card builder ──────────────────────────────────────────────────────────────
+const jsarg = v => esc(JSON.stringify(String(v)));
 function buildCard(char) {
   const c=char.combat||{}, st=char.stats||{}, sp=char.spellcasting||null, sk=char.skills||{};
   const conds    = c.conditions||[];
@@ -478,10 +483,10 @@ function buildCard(char) {
 
   const abilityBoxes = ABILITY_KEYS.map(k => {
     const score = st[k]??10;
-    return `<div class="ab-box"><div class="ab-name">${ABILITY_LABELS[k]}</div><div class="ab-score">${score}</div><div class="ab-mod">${mod(score)}</div></div>`;
+    return `<div class="ab-box"><div class="ab-name">${ABILITY_LABELS[k]}</div><div class="ab-score">${esc(score)}</div><div class="ab-mod">${esc(mod(score))}</div></div>`;
   }).join('');
 
-  const condPills = conds.map(cd=>`<div class="cond-pill">${cd}</div>`).join('');
+  const condPills = conds.map(cd=>`<div class="cond-pill">${esc(cd)}</div>`).join('');
 
   // ── Weapons ────────────────────────────────────────────────────────────────
   const attacks = char.attacks||[];
@@ -495,32 +500,32 @@ function buildCard(char) {
       const notes    = [a.properties,a.notes].filter(Boolean).join(' · ');
       return `<div class="weapon-item">
         <div class="weapon-top">
-          <div class="weapon-name">${a.name||'Unnamed'}</div>
-          ${dmgType?`<div class="weapon-type">${dmgType}</div>`:''}
+          <div class="weapon-name">${esc(a.name||'Unnamed')}</div>
+          ${dmgType?`<div class="weapon-type">${esc(dmgType)}</div>`:''}
         </div>
         <div class="weapon-stats">
-          <div class="wstat"><div class="wstat-label">Attack</div><div class="wstat-val">${atkBonus}</div></div>
-          <div class="wstat"><div class="wstat-label">Damage</div><div class="wstat-val">${dmgFull}</div></div>
-          ${range?`<div class="wstat"><div class="wstat-label">Range</div><div class="wstat-val">${range}</div></div>`:''}
+          <div class="wstat"><div class="wstat-label">Attack</div><div class="wstat-val">${esc(atkBonus)}</div></div>
+          <div class="wstat"><div class="wstat-label">Damage</div><div class="wstat-val">${esc(dmgFull)}</div></div>
+          ${range?`<div class="wstat"><div class="wstat-label">Range</div><div class="wstat-val">${esc(range)}</div></div>`:''}
         </div>
         ${notes?`<div class="weapon-notes">${esc(notes)}</div>`:''}
       </div>`;
     }).join('');
-    weaponPanelHtml = `<div class="expand-panel" id="wp-${char.id}"><div class="weapon-list">${weaponItems}</div></div>`;
+    weaponPanelHtml = `<div class="expand-panel" id="wp-${esc(char.id)}"><div class="weapon-list">${weaponItems}</div></div>`;
   }
   
   // ── Inventory (filled in live by watchInventory) ─────────────────────────
   const invEntries   = inventoryEntries(char.inventory);
   const hasInventory = IS_GM || invEntries.length > 0;
-  const inventoryPanelHtml = `<div class="expand-panel" id="inv-${char.id}">${inventoryInnerHtml(char.id, invEntries)}</div>`;
+  const inventoryPanelHtml = `<div class="expand-panel" id="inv-${esc(char.id)}">${inventoryInnerHtml(char.id, invEntries)}</div>`;
 
   // ── Spells — descriptions now from spells.json ─────────────────────────────
   let spellPanelHtml = '', hasSpells = false;
   if (sp) {
     const spMetaHtml = [
-      sp.ability?`Ability: <span>${sp.ability.toUpperCase()}</span>`:null,
-      sp.spell_save_dc?`DC <span>${sp.spell_save_dc}</span>`:null,
-      sp.spell_attack_bonus!=null?`Atk <span>${fmtBonus(sp.spell_attack_bonus)}</span>`:null,
+      sp.ability?`Ability: <span>${esc(sp.ability.toUpperCase())}</span>`:null,
+      sp.spell_save_dc?`DC <span>${esc(sp.spell_save_dc)}</span>`:null,
+      sp.spell_attack_bonus!=null?`Atk <span>${esc(fmtBonus(sp.spell_attack_bonus))}</span>`:null,
     ].filter(Boolean).map(s=>`<div class="sp-meta-item">${s}</div>`).join('');
 
     let slotRowsHtml = '';
@@ -528,7 +533,7 @@ function buildCard(char) {
       const maxS = sp.slots?.[String(lvl)]??sp.slots?.[lvl]??0; if(!maxS)continue;
       const usedS= sp.slots_used?.[String(lvl)]??sp.slots_used?.[lvl]??0;
       let pips = '';
-      for (let i=0; i<maxS; i++) pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${char.id}" data-lvl="${lvl}" data-idx="${i}" data-max="${maxS}" onclick="window.toggleSlot(this)"></div>`;
+      for (let i=0; i<maxS; i++) pips+=`<div class="slot-pip${i<usedS?' used':''}" data-charid="${esc(char.id)}" data-lvl="${lvl}" data-idx="${i}" data-max="${esc(maxS)}" onclick="window.toggleSlot(this)"></div>`;
       slotRowsHtml += `<div class="slot-level-row"><div class="slot-level-label">${spellLevelLabel(lvl)}</div><div class="slot-pips">${pips}</div></div>`;
     }
 
@@ -544,7 +549,7 @@ function buildCard(char) {
         ? `<div class="spell-tip"><span class="spell-tip-text">✦ ${esc(s.beginner_tip)}</span></div>` : '';
       const levelTag = (s.level===0||s.prepared_type==='cantrip') ? 'Cantrip' : spellLevelLabel(s.level||1);
       return `<div class="spell-item">
-        <div class="spell-item-top"><span class="spell-name">${esc(s.name)}</span><span class="spell-level-tag">${levelTag}</span></div>
+        <div class="spell-item-top"><span class="spell-name">${esc(s.name)}</span><span class="spell-level-tag">${esc(levelTag)}</span></div>
         ${desc?`<div class="spell-desc">${esc(desc)}</div>`:''}
         ${meta}
         ${tipHtml}
@@ -555,7 +560,7 @@ function buildCard(char) {
     const preparedHtml = prepared.map(renderSpellItem).join('');
 
     hasSpells = !!(cantrips.length||prepared.length||slotRowsHtml);
-    spellPanelHtml = `<div class="expand-panel" id="sp-${char.id}">
+    spellPanelHtml = `<div class="expand-panel" id="sp-${esc(char.id)}">
       ${spMetaHtml?`<div class="sp-meta">${spMetaHtml}</div>`:''}
       ${slotRowsHtml?`<div class="slot-levels">${slotRowsHtml}</div>`:''}
       ${cantrips.length?`<div class="sp-section-title">Cantrips</div><div class="spell-list">${cantripHtml}</div>`:''}
@@ -570,7 +575,7 @@ function buildCard(char) {
     const base  = Math.floor(((st[s.stat]??10)-10)/2);
     const bonus = data.bonus!=null ? data.bonus : (base+(data.proficient?profBonus:0)+(data.expertise?profBonus:0));
     const cls   = data.expertise?'expert':data.proficient?'prof':'';
-    return `<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${fmtBonus(bonus)}</span></div>`;
+    return `<div class="skill-row-item ${cls}"><span class="skill-name">${s.label}</span><span class="skill-val">${esc(fmtBonus(bonus))}</span></div>`;
   }).join('');
 
   // ── Ability cards — charge pips for kind:"charge", plain card otherwise ──────
@@ -579,7 +584,7 @@ function buildCard(char) {
     if(ab.kind==='charge' && ab.max) {
       const used = ab.max - (ab.current??ab.max);
       const meta = [ab.die?`${ab.die}`:null, ab.recharge?`recharge: ${ab.recharge}`:null].filter(Boolean).join(' · ');
-      const pips = Array.from({length:ab.max},(_,i)=>`<div class="charge-pip${i<used?' used':''}" data-charid="${char.id}" data-abkey="${abKey}" data-idx="${i}" data-max="${ab.max}" onclick="window.toggleCharge(this)"></div>`).join('');
+      const pips = Array.from({length:ab.max},(_,i)=>`<div class="charge-pip${i<used?' used':''}" data-charid="${esc(char.id)}" data-abkey="${esc(abKey)}" data-idx="${i}" data-max="${esc(ab.max)}" onclick="window.toggleCharge(this)"></div>`).join('');
       return `<div class="ability-charge">
         <div class="ability-charge-top">
           <span class="ability-charge-name">${esc(ab.label)}</span>
@@ -603,7 +608,7 @@ function buildCard(char) {
     const base  = Math.floor(((st[k]??10)-10)/2);
     const isProficient = saveProfList.includes(k);
     const bonus = base + (isProficient ? profBonus : 0);
-    return `<div class="save-row-item${isProficient?' prof':''}"><span class="skill-name">${ABILITY_LABELS[k]}</span><span class="skill-val">${fmtBonus(bonus)}</span></div>`;
+    return `<div class="save-row-item${isProficient?' prof':''}"><span class="skill-name">${ABILITY_LABELS[k]}</span><span class="skill-val">${esc(fmtBonus(bonus))}</span></div>`;
   }).join('');
 
   // ── Senses ─────────────────────────────────────────────────────────────────
@@ -612,10 +617,10 @@ function buildCard(char) {
     if(v==null||v===false||v==='') return '';
     const label = k.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
     const val   = typeof v==='number'?` ${v} ft`:(v===true?'':` ${v}`);
-    return `<div class="sense-pill">${label}${val}</div>`;
+    return `<div class="sense-pill">${esc(label)}${esc(val)}</div>`;
   }).join('');
 
-  const skillPanelHtml = `<div class="expand-panel" id="sk-${char.id}">
+  const skillPanelHtml = `<div class="expand-panel" id="sk-${esc(char.id)}">
     <div class="sp-section-title">Saving Throws</div>
     <div class="save-grid">${saveRowsHtml}</div>
     ${sensePills?`<div class="sp-section-title">Senses</div><div class="senses-block">${sensePills}</div>`:''}
@@ -626,7 +631,7 @@ function buildCard(char) {
   </div>`;
 
   const hasTip = !!char.beginner_tip;
-  const tipPanelHtml = hasTip?`<div class="expand-panel" id="tg-${char.id}">
+  const tipPanelHtml = hasTip?`<div class="expand-panel" id="tg-${esc(char.id)}">
     <div class="combat-guide-wrap"><div class="combat-guide">${esc(char.beginner_tip)}</div></div>
   </div>`:'';
 
@@ -637,25 +642,27 @@ function buildCard(char) {
       <div class="char-name">${esc(char.name||'Unnamed')}</div>
       <div class="char-sub">${esc(subLine)}</div>
       ${char.combat_role?`<div class="char-role-badge">${esc(char.combat_role)}</div>`:''}
-      <div><span class="rested-pill" id="rested-${char.id}" style="display:none" title="+1d4 to each roll in GeezVTT until used up"></span></div>
+      <div><span class="rested-pill" id="rested-${esc(char.id)}" style="display:none" title="+1d4 to each roll in GeezVTT until used up"></span></div>
       <div class="hp-row">
         <div class="hp-label">HP</div>
-        <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${char.id}" style="width:${Math.round(hpPct*100)}%;background:${hpColor(hpCur,hpMax)}"></div></div>
-        <div class="hp-val" id="hpval-${char.id}">${hpCur} / ${hpMax}</div>
-        ${tempHp?`<div class="temp-badge">+${tempHp} tmp</div>`:''}
+        <div class="hp-bar-wrap"><div class="hp-bar" id="hpbar-${esc(char.id)}" style="width:${esc(Math.round(hpPct*100))}%;background:${hpColor(hpCur,hpMax)}"></div></div>
+        <div class="hp-val" id="hpval-${esc(char.id)}">${esc(hpCur)} / ${esc(hpMax)}</div>
+        <label class="temp-badge">Temp <input aria-label="Temporary HP" id="temp-${esc(char.id)}" type="number" min="0" value="${esc(tempHp)}" style="width:42px" onchange="window.setTemp(this)"></label>
       </div>
       <div class="hp-controls">
-        <input class="hp-delta" id="hpdelta-${char.id}" type="number" min="1" placeholder="amount"/>
-        <button class="hp-btn heal" onclick="window.adjustHp('${char.id}',true)">+ Heal</button>
-        <button class="hp-btn dmg"  onclick="window.adjustHp('${char.id}',false)">&#8722; Dmg</button>
+        <input class="hp-delta" id="hpdelta-${esc(char.id)}" type="number" min="1" placeholder="amount"/>
+        <button class="hp-btn heal" onclick="window.adjustHp(${jsarg(char.id)},true)">+ Heal</button>
+        <button class="hp-btn dmg"  onclick="window.adjustHp(${jsarg(char.id)},false)">&#8722; Dmg</button>
       </div>
     </div>
+    <div id="death-${esc(char.id)}" class="death-panel">${deathHtml(char.id,c)}</div>
+    <button class="panel-btn" data-charid="${esc(char.id)}" onclick="window.rollInitiative(this.dataset.charid)">Roll initiative</button>
     <div class="stats-row">
-      <div class="stat-cell"><div class="stat-label">AC</div><div class="stat-val">${c.ac??'—'}</div></div>
-      <div class="stat-cell"><div class="stat-label">Speed</div><div class="stat-val">${c.speed??30}</div></div>
-      <div class="stat-cell"><div class="stat-label">Init</div><div class="stat-val">${fmtBonus(initBonus)}</div></div>
-      <div class="stat-cell"><div class="stat-label">Prof</div><div class="stat-val">+${profBonus}</div></div>
-      <div class="stat-cell"><div class="stat-label">Perc</div><div class="stat-val">${passPerc}</div></div>
+      <div class="stat-cell"><div class="stat-label">AC</div><div class="stat-val">${esc(c.ac??'—')}</div></div>
+      <div class="stat-cell"><div class="stat-label">Speed</div><div class="stat-val">${esc(c.speed??30)}</div></div>
+      <div class="stat-cell"><div class="stat-label">Init</div><div class="stat-val">${esc(fmtBonus(initBonus))}</div></div>
+      <div class="stat-cell"><div class="stat-label">Prof</div><div class="stat-val">+${esc(profBonus)}</div></div>
+      <div class="stat-cell"><div class="stat-label">Perc</div><div class="stat-val">${esc(passPerc)}</div></div>
     </div>
     ${(()=>{
       const eq=char.equipped||{}; const parts=[];
@@ -667,21 +674,21 @@ function buildCard(char) {
     ${(()=>{
       const cp=char.coin_purse; if(!cp) return '';
       const coins=[];
-      coins.push(`<div class="coin pp">◈ ${cp.pp??0}pp</div>`);
-      coins.push(`<div class="coin gp">◉ ${cp.gp??0}gp</div>`);
-      coins.push(`<div class="coin ep">◈ ${cp.ep??0}ep</div>`);
-      coins.push(`<div class="coin sp">◎ ${cp.sp??0}sp</div>`);
-      coins.push(`<div class="coin cp">○ ${cp.cp??0}cp</div>`);
+      coins.push(`<div class="coin pp">◈ ${esc(cp.pp??0)}pp</div>`);
+      coins.push(`<div class="coin gp">◉ ${esc(cp.gp??0)}gp</div>`);
+      coins.push(`<div class="coin ep">◈ ${esc(cp.ep??0)}ep</div>`);
+      coins.push(`<div class="coin sp">◎ ${esc(cp.sp??0)}sp</div>`);
+      coins.push(`<div class="coin cp">○ ${esc(cp.cp??0)}cp</div>`);
       return `<div class="coin-row"><span class="coin-label">💰</span>${coins.join('')}</div>`;
     })()}
     <div class="ability-grid">${abilityBoxes}</div>
     ${condPills?`<div class="conditions-row">${condPills}</div>`:''}
     <div class="card-footer">
-      ${hasTip?`<button class="panel-btn tip-btn" id="tgbtn-${char.id}" onclick="window.togglePanel('tg-${char.id}','tgbtn-${char.id}')">✦ Combat Guide <span class="chevron">▾</span></button>`:''}
-      ${hasWeapons?`<button class="panel-btn weapon-btn" id="wpbtn-${char.id}" onclick="window.togglePanel('wp-${char.id}','wpbtn-${char.id}')">⚔ Weapons &amp; Attacks <span class="chevron">▾</span></button>`:''}
-      <button class="panel-btn skill-btn" id="skbtn-${char.id}" onclick="window.togglePanel('sk-${char.id}','skbtn-${char.id}')">📋 Skills &amp; Feats <span class="chevron">▾</span></button>
-      ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${char.id}" onclick="window.togglePanel('sp-${char.id}','spbtn-${char.id}')">✨ Spells &amp; Cantrips <span class="chevron">▾</span></button>`:''}
-      <button class="panel-btn inv-btn" id="invbtn-${char.id}" style="${hasInventory?'':'display:none'}" onclick="window.togglePanel('inv-${char.id}','invbtn-${char.id}')">🎒 Inventory <span class="inv-count" id="invcount-${char.id}">${invEntries.length?`(${invEntries.length})`:''}</span><span class="chevron">▾</span></button>
+      ${hasTip?`<button class="panel-btn tip-btn" id="tgbtn-${esc(char.id)}" onclick="window.togglePanel(${jsarg(`tg-${char.id}`)},${jsarg(`tgbtn-${char.id}`)})">✦ Combat Guide <span class="chevron">▾</span></button>`:''}
+      ${hasWeapons?`<button class="panel-btn weapon-btn" id="wpbtn-${esc(char.id)}" onclick="window.togglePanel(${jsarg(`wp-${char.id}`)},${jsarg(`wpbtn-${char.id}`)})">⚔ Weapons &amp; Attacks <span class="chevron">▾</span></button>`:''}
+      <button class="panel-btn skill-btn" id="skbtn-${esc(char.id)}" onclick="window.togglePanel(${jsarg(`sk-${char.id}`)},${jsarg(`skbtn-${char.id}`)})">📋 Skills &amp; Feats <span class="chevron">▾</span></button>
+      ${hasSpells?`<button class="panel-btn spell-btn" id="spbtn-${esc(char.id)}" onclick="window.togglePanel(${jsarg(`sp-${char.id}`)},${jsarg(`spbtn-${char.id}`)})">✨ Spells &amp; Cantrips <span class="chevron">▾</span></button>`:''}
+      <button class="panel-btn inv-btn" id="invbtn-${esc(char.id)}" style="${hasInventory?'':'display:none'}" onclick="window.togglePanel(${jsarg(`inv-${char.id}`)},${jsarg(`invbtn-${char.id}`)})">🎒 Inventory <span class="inv-count" id="invcount-${esc(char.id)}">${invEntries.length?`(${invEntries.length})`:''}</span><span class="chevron">▾</span></button>
     </div>
     ${tipPanelHtml}
     ${weaponPanelHtml}
@@ -705,11 +712,10 @@ function inventoryInnerHtml(charId, entries, freshKeys = new Set()) {
     const rarity   = apiItem?.rarity?.name?.toLowerCase().replace(/\s+/g,'-') ?? null;
     const rarityClass = rarity && rarity!=='none' ? ` inv-rarity-${rarity}` : '';
     const qty = Number(item.qty ?? 1) || 1;
-    const k = esc(key);
     const qtyHtml = IS_GM
-      ? `<span style="display:flex;align-items:center;gap:4px"><button class="inv-qbtn" onclick="window.invQty('${charId}','${k}',-1)">−</button><span class="inv-qty">×${qty}</span><button class="inv-qbtn" onclick="window.invQty('${charId}','${k}',1)">+</button><button class="inv-x" title="Remove" onclick="window.invRemove('${charId}','${k}')">✕</button></span>`
-      : (qty > 1 ? `<span class="inv-qty">×${qty}</span>` : '');
-    return `<div class="inv-item${rarityClass}${freshKeys.has(key) ? ' new' : ''}">
+      ? `<span style="display:flex;align-items:center;gap:4px"><button class="inv-qbtn" onclick="window.invQty(${jsarg(charId)},${jsarg(key)},-1)">−</button><span class="inv-qty">×${esc(qty)}</span><button class="inv-qbtn" onclick="window.invQty(${jsarg(charId)},${jsarg(key)},1)">+</button><button class="inv-x" title="Remove" onclick="window.invRemove(${jsarg(charId)},${jsarg(key)})">✕</button></span>`
+      : (qty > 1 ? `<span class="inv-qty">×${esc(qty)}</span>` : '');
+    return `<div class="inv-item${esc(rarityClass)}${freshKeys.has(key) ? ' new' : ''}">
       <div class="inv-item-top"><span class="inv-name">${esc(item.name)}</span>${qtyHtml}</div>
       ${category ? `<span class="inv-cat">${esc(category)}</span>` : ''}
       ${desc     ? `<div class="inv-desc">${esc(desc)}</div>` : ''}
@@ -718,9 +724,9 @@ function inventoryInnerHtml(charId, entries, freshKeys = new Set()) {
   }).join('');
   const empty = !entries.length ? `<div class="empty-panel">Nothing carried.</div>` : '';
   const add = IS_GM ? `<div class="inv-add">
-      <input id="invadd-${charId}" list="itemNames" placeholder="Add item…" style="flex:1" onkeydown="if(event.key==='Enter')window.invAddQuick('${charId}')">
-      <input id="invaddq-${charId}" type="number" min="1" value="1" style="width:46px">
-      <button class="btn primary" style="height:28px;padding:0 9px" onclick="window.invAddQuick('${charId}')">+</button>
+      <input id="invadd-${esc(charId)}" list="itemNames" placeholder="Add item…" style="flex:1" onkeydown="if(event.key==='Enter')window.invAddQuick(${jsarg(charId)})">
+      <input id="invaddq-${esc(charId)}" type="number" min="1" value="1" style="width:46px">
+      <button class="btn primary" style="height:28px;padding:0 9px" onclick="window.invAddQuick(${jsarg(charId)})">+</button>
     </div>` : '';
   return items + empty + add;
 }
@@ -823,11 +829,14 @@ window.adjustHp = async function(charId, isHeal) {
   const delta = parseInt(deltaEl?.value,10)||1;
   if(!deltaEl||delta<=0)return;
   try {
-    const snap = await get(ref(db,`characters/pcs/${charId}/combat`)); if(!snap.exists())return;
-    const c=snap.val(), max=c.hp_max??1;
-    let cur = c.hp_current??0;
-    cur = isHeal ? Math.min(max,cur+delta) : Math.max(0,cur-delta);
-    await update(ref(db,`characters/pcs/${charId}/combat`),{hp_current:cur});
+    await runTransaction(ref(db,`characters/pcs/${charId}/combat`), c => {
+      if(!c)return c;
+      const cur=Number(c.hp_current)||0, tmp=Math.max(0,Number(c.temp_hp)||0);
+      const hp=isHeal?Math.min(Number(c.hp_max)||1,cur+delta):Math.max(0,cur-Math.max(0,delta-tmp));
+      const saves={success:count(c.death_saves?.success),fail:count(c.death_saves?.fail)};
+      if(!isHeal && cur===0)saves.fail=count(saves.fail+1);
+      return {...c,hp_current:hp,temp_hp:isHeal?tmp:Math.max(0,tmp-delta),death_saves:hp>0?{success:0,fail:0}:saves};
+    });
     deltaEl.value='';
   } catch(e) { console.error('HP save failed:',e); }
 };
@@ -838,14 +847,92 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Live HP watcher ───────────────────────────────────────────────────────────
+const count=v=>Math.max(0,Math.min(3,Math.trunc(Number(v)||0)));
+function deathHtml(id,c) {
+ if(Number(c.hp_current)!==0)return '';
+ const d=c.death_saves||{};
+ return ['success','fail'].map(k=>`<div>${k} ${[1,2,3].map(n=>`<button data-id="${esc(id)}" data-kind="${k}" data-n="${n}" aria-label="${k} ${n}" aria-pressed="${count(d[k])>=n}" onclick="window.deathPip(this)">${count(d[k])>=n?'&#9679;':'&#9675;'}</button>`).join('')}</div>`).join('')+`<b>${count(d.fail)===3?'Dead':count(d.success)===3?'Stable':''}</b><button data-id="${esc(id)}" onclick="window.rollDeath(this.dataset.id)">Roll death save</button>`;
+}
+window.setTemp=el=>set(ref(db,`characters/pcs/${el.id.slice(5)}/combat/temp_hp`),Math.max(0,Math.trunc(Number(el.value)||0))).catch(console.error);
+window.deathPip=el=>runTransaction(ref(db,`characters/pcs/${el.dataset.id}/combat`),c=>{
+ if(!c||Number(c.hp_current)!==0)return;
+ const d=c.death_saves||{},k=el.dataset.kind,n=Number(el.dataset.n);
+ return {...c,death_saves:{success:count(d.success),fail:count(d.fail),[k]:count(d[k])>=n?n-1:n}};
+}).catch(console.error);
+function liveApi(camp=Dice.camp) {
+ if(!camp)throw new Error('No game open.');
+ const r=p=>ref(db,`geezvtt/live/${camp}/${p}`);
+ return {txn:(p,fn)=>runTransaction(r(p),fn).then(r=>r.committed),update:(p,o)=>update(r(p),o),push:(p,o)=>push(r(p),o)};
+}
+async function logPcRoll(pc,expr,r,camp) {
+ const entry={by:pc.name,char:pc.id,expr,detail:r.detail,total:r.total,nat:r.nat??null,dice:r.dice,ts:Date.now()};
+ if(camp)await liveApi(camp).push('rolls',entry);if(!EMBED||!camp)Dice.showRoll(entry);   // inside the VTT, the VTT shows it
+}
+window.rollDeath=async id=>{
+ const pc=allPcs.find(c=>c.id===id);if(!pc)return;
+ const camp=Dice.camp,r=Dice.rollExpr('1d20');
+ try {
+  const result=await runTransaction(ref(db,`characters/pcs/${id}/combat`),c=>{
+   if(!c||Number(c.hp_current)!==0||count(c.death_saves?.fail)===3||count(c.death_saves?.success)===3)return;
+   if(r.nat===20)return {...c,hp_current:1,death_saves:{success:0,fail:0}};
+   const d={success:count(c.death_saves?.success),fail:count(c.death_saves?.fail)},k=r.nat>=10?'success':'fail';
+   d[k]=count(d[k]+(r.nat===1?2:1));return {...c,death_saves:d};
+  });if(result.committed)await logPcRoll(pc,'Death Save',r,camp);
+ }catch(e){toast(esc(e.message));}
+};
+window.rollInitiative=async id=>{
+ const pc=allPcs.find(c=>c.id===id);if(!pc)return;
+ try {
+  if(activeCall?.open&&activeCall.kind==='init'&&Object.hasOwn(activeCall.to||{},id)) {
+   const f=[...$('rollCall').querySelectorAll('fieldset')].find(f=>f.dataset.id===id);if(f)await submitCall(f);return;
+  }
+  const camp=Dice.camp,api=liveApi(camp),bonus=callMod(pc,{kind:'init'}).mod,r=Dice.rollExpr(`1d20${bonus>=0?'+':''}${bonus}`);
+  await api.update('initiative/rows',{['pc_'+id]:{name:pc.name,charId:id,init:r.total}});await logPcRoll(pc,'Initiative',r,camp);
+ }catch(e){toast(esc(e.message));}
+};
+let activeCall=null,callUnsub=null,callPrefs={};
+function followCalls(camp) {
+ callUnsub?.();activeCall=null;callPrefs={};renderCall();
+ if(camp)callUnsub=onValue(ref(db,`geezvtt/live/${camp}/rollcall`),snap=>{
+  const c=snap.val();if(c?.id!==activeCall?.id)callPrefs={};activeCall=c;renderCall();
+ });
+}
+function renderCall() {
+ const box=$('rollCall'),call=activeCall,targets=allPcs.filter(c=>Object.hasOwn(call?.to||{},c.id)&&$(`card-${c.id}`));
+ box.hidden=!call?.open||!targets.length;if(box.hidden){box.replaceChildren();return;}
+ box.innerHTML=`<h3>${esc(callTitle(call))}${call.showDc&&call.dc?` DC ${esc(call.dc)}`:''}</h3>`+targets.map(pc=>{
+  const result=call.results?.[pc.id],m=callMod(pc,call),prefs=callPrefs[pc.id]||{};
+  if(result)return `<p>${esc(pc.name)}: <b>${esc(result.total)}</b></p>`;
+  return `<fieldset data-id="${esc(pc.id)}"><legend>${esc(pc.name)}</legend><div>${m.parts.map(([k,n])=>`${esc(k)} ${esc(sgn(n))}`).join(' / ')} = ${esc(sgn(m.mod))}</div><div class="call-options">${['normal','adv','dis'].map(mode=>`<label><input type="radio" name="mode-${esc(pc.id)}" value="${mode}" ${(prefs.mode||call.mode||'normal')===mode?'checked':''}>${mode==='adv'?'Advantage':mode==='dis'?'Disadvantage':'Normal'}</label>`).join('')}</div><div class="call-options">${EXTRAS.map(([k,label])=>`<label><input type="checkbox" data-extra="${k}" ${prefs.extras?.[k]?'checked':''}>${esc(label)}</label>`).join('')}<select data-bardic aria-label="Bardic die">${[6,8,10,12].map(n=>`<option value="${n}" ${Number(prefs.extras?.bardicDie||6)===n?'selected':''}>d${n}</option>`).join('')}</select><label>Other <input data-other type="number" value="${esc(prefs.other||0)}" style="width:70px"></label></div><button class="hp-btn heal" onclick="window.answerSheetCall(this)">ROLL</button><span data-error></span></fieldset>`;
+ }).join('')+Object.values(call.results||{}).map(r=>`<p>${esc(r.name)}: <b>${esc(r.total)}</b>${call.showDc&&passed(call,r)!==null?(passed(call,r)?' Pass':' Fail'):''}</p>`).join('');
+ box.querySelectorAll('fieldset').forEach(f=>f.onchange=()=>{callPrefs[f.dataset.id]=callOptions(f);});
+}
+function callOptions(f) {
+ const extras={bardicDie:Number(f.querySelector('[data-bardic]').value)};
+ f.querySelectorAll('[data-extra]').forEach(el=>extras[el.dataset.extra]=el.checked);
+ return {mode:f.querySelector('input[type=radio]:checked')?.value||'normal',extras,other:Number(f.querySelector('[data-other]').value)||0};
+}
+async function submitCall(f) {
+ const id=f.dataset.id,pc=allPcs.find(c=>c.id===id),call=activeCall;if(!pc||!call?.open)return;
+ const btn=f.querySelector('button');btn.disabled=true;
+ try {const r=await answerCall(liveApi(),call,id,{name:pc.name,charId:id,c:pc,...callOptions(f)});if(r&&!EMBED)Dice.showRoll({...r,by:pc.name,expr:callTitle(call)});}
+ catch(e){f.querySelector('[data-error]').textContent=e.message;}finally{btn.disabled=false;}
+}
+window.answerSheetCall=btn=>submitCall(btn.closest('fieldset'));
+
+const combatUnsubs = {};
 function watchCharacter(charId) {
-  onValue(ref(db,`characters/pcs/${charId}/combat`), snap => {
+  combatUnsubs[charId]?.();
+  combatUnsubs[charId] = onValue(ref(db,`characters/pcs/${charId}/combat`), snap => {
     if(!snap.exists())return;
     const c=snap.val(), hpCur=c.hp_current??0, hpMax=c.hp_max??1;
     const pct=Math.max(0,Math.min(1,hpCur/hpMax));
     const bar=$(`hpbar-${charId}`), val=$(`hpval-${charId}`);
     if(bar){bar.style.width=Math.round(pct*100)+'%';bar.style.backgroundColor=hpColor(hpCur,hpMax);}
-    if(val)val.textContent=`${hpCur} / ${hpMax}`;
+    const pc=allPcs.find(p=>p.id===charId); if(pc)pc.combat=c;
+    const tmp=$(`temp-${charId}`); if(tmp && document.activeElement!==tmp)tmp.value=c.temp_hp??0;
+    const death=$(`death-${charId}`); if(death)death.innerHTML=deathHtml(charId,c);
+    if(val)val.textContent=`${esc(hpCur)} / ${esc(hpMax)}`;
   });
 }
 
@@ -862,7 +949,7 @@ function watchInventory(charId) {
       const old = prev[k];
       if (!old || (Number(it.qty ?? 1) || 1) > old) {
         fresh.add(k);
-        if (!IS_GM) toast(`🎒 <b>${esc(allPcs.find(c => c.id === charId)?.name || '')}</b> received <b>${esc(it.name)}</b>${old ? ` (now ×${it.qty})` : ''}`);
+        if (!IS_GM) toast(`🎒 <b>${esc(allPcs.find(c => c.id === charId)?.name || '')}</b> received <b>${esc(it.name)}</b>${old ? ` (now ×${esc(it.qty)})` : ''}`);
       }
     }
     invSeen[charId] = Object.fromEntries(entries.map(([k, it]) => [k, Number(it.qty ?? 1) || 1]));
@@ -898,6 +985,7 @@ function renderCards(campaign) {
     return;
   }
   for(const pc of filtered){wrap.appendChild(buildCard(pc));watchCharacter(pc.id);watchInventory(pc.id);watchBuffs(pc.id);}
+  renderCall();
 }
 
 async function loadParty() {
@@ -952,7 +1040,7 @@ const Dice = (() => {
     if (/^[+-]\d+$/.test(e)) e = '1d20' + e;
     const terms = e.match(/[+-]?[^+-]+/g);
     if (!terms) throw new Error('bad');
-    let total = 0, nat = null, first = null;
+    let total = 0, nat = null, first = null; const dice = [];
     const parts = [];
     for (const raw of terms) {
       const sign = raw[0] === '-' ? -1 : 1;
@@ -964,12 +1052,14 @@ const Dice = (() => {
         if (n < 1 || n > 100 || faces < 2 || faces > 1000) throw new Error('bad');
         if (mode && faces === 20 && n === 1) {
           const a = rollDie(20), b = rollDie(20), k = mode === 'adv' ? Math.max(a, b) : Math.min(a, b);
+          dice.push({s:20,v:a,...(a!==k?{drop:true}:{})},{s:20,v:b,...(a===k?{drop:true}:{})});
           first ||= { sides: 20, result: k };
           total += sign * k; nat = nat ?? k;
           parts.push(`${pre}[${a}, ${b} → ${k}]`);
           mode = null;
         } else {
           const rs = Array.from({ length: n }, () => rollDie(faces));
+          dice.push(...rs.map(v=>({s:faces,v})));
           first ||= { sides: faces, result: rs[0] };
           if (faces === 20 && n === 1) nat = nat ?? rs[0];
           total += sign * rs.reduce((x, y) => x + y, 0);
@@ -980,15 +1070,22 @@ const Dice = (() => {
         parts.push(`${pre}${t}`);
       } else throw new Error('bad');
     }
-    return { total, detail: parts.join(''), nat, first };
+    return { total, detail: parts.join(''), nat, first, dice };
   }
 
   // The big animated roll (same as index.html's)
   function showRoll(r) { rollQueue.push(r); if (!rollBusy) nextRoll(); }
-  function nextRoll() {
+  let trayPromise;
+  async function nextRoll() {
     const r = rollQueue.shift();
     if (!r) { rollBusy = false; return; }
     rollBusy = true;
+    if(r.dice?.length)try {
+      trayPromise ||= import('./js/dice3d.js').then(m=>m.createDiceTray3D($('dice3dOverlay')));
+      const tray=await trayPromise;
+      await tray.throwGroup([{dice:r.dice,color:'#34d399',label:r.by,total:r.total,sub:r.detail,cls:r.nat===20?'crit':r.nat===1?'bad':''}]);
+      setTimeout(()=>{try{tray.clear();}catch{} nextRoll();},rollQueue.length?1200:3000); return;
+    } catch { $('dice3dOverlay').replaceChildren(); trayPromise=null; }
     const box = $('rollShow'), num = $('rollNum');
     box.hidden = false;
     box.style.borderColor = r.nat === 20 ? '#10b981' : r.nat === 1 ? '#dc2626' : '';
@@ -1020,7 +1117,7 @@ const Dice = (() => {
     let r;
     try { r = rollExpr(expr); } catch { toastDice(`Couldn't read "${expr}". Try 1d20+5, 2d6+3 or 1d20 adv.`); return; }
     const w = who();
-    const entry = { by: w.name, expr: expr || '1d20', detail: r.detail, total: r.total, nat: r.nat ?? null, ts: Date.now() };
+    const entry = { by: w.name, expr: expr || '1d20', detail: r.detail, total: r.total, nat: r.nat ?? null, dice:r.dice, ts: Date.now() };
     if (w.id) entry.char = w.id;
     if ($('dicePrivate').checked || !camp) {
       privateRolls.push({ ...entry, private: true }); renderLog(); showRoll({ ...entry, private: true });
@@ -1059,19 +1156,19 @@ const Dice = (() => {
     if (allPcs.some(c => c.id === keep)) sel.value = keep;
   }
 
-  async function follow() {
-    if (!camp) {
-      const s = await get(ref(db, `${LIVE_ROOT}/_dmCampaign`)).catch(() => null);
-      camp = s?.val()?.id || null;
-      $('diceWhere').textContent = s?.val()?.name || (camp ? camp : 'no game open');
-    } else $('diceWhere').textContent = camp;
-    unsub?.();
-    if (camp) unsub = onValue(ref(db, `${LIVE_ROOT}/${camp}/rolls`), snap => { rolls = snap.val() || {}; renderLog(); });
-    renderLog();
+  function follow() {
+    const move = (id,name) => {
+      camp=id; $('diceWhere').textContent=name || camp || 'no game open';
+      unsub?.(); rolls={}; followCalls(camp);
+      if(camp)unsub=onValue(ref(db,`${LIVE_ROOT}/${camp}/rolls`),snap=>{rolls=snap.val()||{};renderLog();});
+      renderLog();
+    };
+    if(PARAMS.get('live'))move(PARAMS.get('live'));
+    else onValue(ref(db,`${LIVE_ROOT}/_dmCampaign`),snap=>move(snap.val()?.id||null,snap.val()?.name));
   }
 
   function init() {
-    if (EMBED) { $('diceFab').style.display = 'none'; return; }   // the VTT has its own dice
+    if (EMBED) { $('diceFab').style.display = 'none'; follow(); return; }   // the VTT has its own dice
     const panel = $('dicePanel'), fab = $('diceFab');
     fab.onclick = () => {
       const open = panel.classList.toggle('closed') === false;
@@ -1087,7 +1184,7 @@ const Dice = (() => {
     $('diceWho').onchange = () => { try { localStorage.setItem(WHO_KEY, $('diceWho').value); } catch {} };
     follow();
   }
-  return { init, roll: doRoll };
+  return { init, roll: doRoll, get camp(){return camp;}, rollExpr, showRoll };
 })();
 window.rollDice = Dice.roll;
 Dice.init();
