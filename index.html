@@ -8,6 +8,7 @@
     <!-- Firebase: the same project and SDK version as every other GeezSheets page (js/geez-config.js, js/rodeo-firebase.js) -->
     <script src="js/geez-config.js"></script>
     <script src="js/swatches.js"></script>
+    <script src="audio/library.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-database-compat.js"></script>
     <style>
@@ -81,6 +82,8 @@
         <div id="handoutBody" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm text-slate-300"></div>
     </div>
 </div>
+<div id="audioBoard" class="hidden fixed top-16 right-4 w-[22rem] max-w-[calc(100vw-32px)] max-h-[calc(100vh-96px)] overflow-y-auto rounded-2xl border border-sky-700/60 bg-slate-950/95 shadow-2xl p-3 text-sm space-y-3" style="z-index:67"></div>
+<button id="soundUnlock" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full border border-sky-500 bg-sky-900/90 text-sky-50 text-sm font-semibold shadow-2xl" style="z-index:110"><i class="fa-solid fa-volume-high mr-1.5"></i>Tap to hear the DM's music &amp; sounds</button>
 <div id="callModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center p-4" style="z-index:75">
     <div class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-amber-700/50 bg-slate-950 shadow-2xl p-4 space-y-3 text-sm">
         <div class="flex items-center"><span class="font-cinzel font-bold text-amber-200 flex-1">Call for a roll</span><button id="callCancel" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
@@ -135,6 +138,12 @@
             <i class="fa-solid fa-user"></i><span id="playerNameLabel">Choose character</span>
         </button>
 
+        <!-- Sound: everyone's own volume; the DM also opens the sound board from here -->
+        <div class="relative">
+            <button id="soundBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Sound"><i class="fa-solid fa-volume-high"></i></button>
+            <div id="soundMenu" class="hidden absolute right-0 top-10 w-64 p-3 rounded-xl border border-slate-700 bg-slate-950/95 shadow-2xl space-y-2 text-xs text-slate-300"></div>
+        </div>
+
         <!-- Session menu -->
         <div class="relative">
             <button id="sessionMenuBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold py-1.5 px-3 rounded-lg border border-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-dice-d20 text-amber-400"></i><span class="hidden sm:inline">Session</span><i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i></button>
@@ -142,6 +151,7 @@
                 <button id="shareLocBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-bullhorn w-4 text-rose-400"></i>Share my location</button>
                 <button id="pullBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-person-walking-arrow-right w-4 text-rose-400"></i>Pull everyone here</button>
                 <button id="callRollBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-dice-d20 w-4 text-amber-400"></i>Call for a roll…</button>
+                <button id="audioBoardBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-music w-4 text-sky-400"></i>Music &amp; sounds…</button>
                 <button id="handoutBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-scroll w-4 text-amber-400"></i>Handouts</button>
                 <div id="sessionDmOnly" class="border-t border-slate-800 my-1"></div>
                 <button id="lockMoveBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-lock-open w-4 text-slate-400"></i><span>Lock token movement</span></button>
@@ -684,6 +694,9 @@
             on(path, cb) { const r = this.ref(path); const h = (snap) => cb(snap.val()); r.on('value', h, err => showStatus('Firebase read failed: ' + err.message)); return () => r.off('value', h); }
         };
         const Live = rtdb ? FbRemote : LocalRemote;
+        let serverOffset = 0;   // Firebase's estimate of (server clock - this clock), so music lines up between browsers
+        if (rtdb) rtdb.ref('.info/serverTimeOffset').on('value', (snap) => { serverOffset = snap.val() || 0; });
+        const serverNow = () => Date.now() + serverOffset;
 
         // Stable text form (sorted keys, no empties) to tell whether two copies really differ.
         function stable(v) {
@@ -2630,7 +2643,8 @@
                 Live.on(livePath('session'), (v) => { liveSession = { lockMove: false, lockPings: false, ...(v || {}) }; renderSessionButtons(); if (db.view.level === 'VTT' && ui.scene) renderView(); }),
                 Live.on(livePath('presence'), (v) => { presence = v || {}; renderPresence(); }),
                 Live.on(livePath('handouts'), (v) => onHandouts(v || {})),
-                Live.on(livePath('rollcall'), onCall)
+                Live.on(livePath('rollcall'), onCall),
+                Live.on(livePath('audio'), (v) => Sound.apply(v || {}))
             ];
         }
 
@@ -2769,6 +2783,7 @@
             const r = rollQueue.shift();
             if (!r) { rollBusy = false; return; }
             rollBusy = true;
+            Sound.dice();
             if (!Array.isArray(r.dice) || !r.dice.length) { flatRoll(r); return; }
             getTray3d().then(tray => {
                 if (!tray) { flatRoll(r); return; }
@@ -2838,6 +2853,254 @@
         });
         $('diceRollBtn').onclick = () => doRoll($('diceExpr').value.trim());
         $('diceExpr').addEventListener('keydown', (e) => { if (e.key === 'Enter') doRoll($('diceExpr').value.trim()); });
+
+        // ---- Music & sounds the DM pushes (live/<campaign>/audio) ----
+        //   music = { src, name, loop, vol, at }   at = server time it started, so late joiners skip ahead
+        //   amb   = { <ambience id>: volume }      synthesized loops from js/sfx.js, layered
+        //   sfx   = { <push id>: { id | src, vol, ts } }   one-shots; anything older than a few seconds is ignored
+        // Each browser keeps its own volumes (localStorage). Browsers only play sound after a tap, hence soundUnlock.
+        const Sound = (() => {
+            const PREF_KEY = 'geezvtt.sound';
+            let prefs = { vol: 0.8, music: 0.8, amb: 0.8, sfx: 1, mute: false };
+            try { prefs = { ...prefs, ...JSON.parse(localStorage.getItem(PREF_KEY) || '{}') }; } catch {}
+            const LIB = { music: [], ambience: [], sfx: [], ...(window.GEEZ_AUDIO || {}) };
+            // recordings that stand in for a synthesized sound of the same kind
+            const replaced = new Set([...LIB.ambience, ...LIB.sfx].map(d => d.replaces).filter(Boolean));
+            const ambDefs = () => [...LIB.ambience.map(d => ({ ...d, rec: true })), ...(mod?.AMBIENCE || []).filter(a => !replaced.has(a.id))];
+            let state = {}, ctx = null, mod = null, modP = null, ambBus = null, sfxBus = null, blocked = false;
+            const el = new Audio(); el.preload = 'auto';
+            let musicKey = null;
+            const ambs = {};             // id -> { handle, vol }
+            const seen = new Set();
+            const startedAt = Date.now();
+            const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch {} };
+            const level = (k) => (prefs.mute ? 0 : prefs.vol * prefs[k]);
+            function loadMod() { return mod ? Promise.resolve(mod) : (modP ||= import('./js/sfx.js').then(m => (mod = m)).catch(e => { console.warn('js/sfx.js not found: no built-in sounds', e); modP = null; return null; })); }
+            function ensureCtx() {
+                if (!ctx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (!AC) return null;
+                    ctx = new AC();
+                    ambBus = ctx.createGain(); sfxBus = ctx.createGain();
+                    ambBus.connect(ctx.destination); sfxBus.connect(ctx.destination);
+                    setBusLevels();
+                }
+                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+                return ctx;
+            }
+            function setBusLevels() {
+                if (ambBus) ambBus.gain.setTargetAtTime(level('amb'), ctx.currentTime, 0.1);
+                if (sfxBus) sfxBus.gain.setTargetAtTime(level('sfx'), ctx.currentTime, 0.05);
+                el.volume = clamp((state.music?.vol ?? 1) * level('music'), 0, 1);
+            }
+            function setBlocked(b) {
+                blocked = b;
+                $('soundUnlock').classList.toggle('hidden', !b || !hasSound());
+            }
+            const hasSound = () => !!(state.music?.src || Object.keys(state.amb || {}).length);
+            // first tap anywhere unlocks audio for this page
+            function unlock() {
+                ensureCtx();
+                if (state.music?.src && el.paused) syncMusic(true);
+                applyAmb();
+                if (ctx?.state === 'running') setBlocked(false);
+            }
+            ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, unlock, { capture: true }));
+            $('soundUnlock').onclick = unlock;
+
+            function syncMusic(force = false) {
+                const m = state.music;
+                if (!m?.src) { musicKey = null; el.pause(); el.removeAttribute('src'); el.load(); return; }
+                const key = m.src + '|' + m.at;
+                el.loop = !!m.loop;
+                el.volume = clamp((m.vol ?? 1) * level('music'), 0, 1);
+                if (key === musicKey && !force) return;
+                musicKey = key;
+                const seek = () => {
+                    let t = Math.max(0, (serverNow() - (m.at || serverNow())) / 1000);
+                    if (isFinite(el.duration) && el.duration > 0) {
+                        if (m.loop) t %= el.duration;
+                        else if (t >= el.duration) { el.pause(); return; }
+                    }
+                    try { el.currentTime = t; } catch {}
+                    el.play().then(() => setBlocked(false)).catch(() => setBlocked(true));
+                };
+                if (el.getAttribute('src') !== m.src) { el.src = m.src; el.addEventListener('loadedmetadata', seek, { once: true }); el.load(); }
+                else seek();
+            }
+            el.addEventListener('error', () => { if (state.music?.src && !PLAYER) showStatus(`Couldn't play ${state.music.name || state.music.src}`); });
+
+            // Recorded files are decoded once per browser. MP3 pads the start and end with silence,
+            // which would tick at every loop, so that's trimmed off.
+            const bufs = new Map();
+            function loadBuf(src) {
+                if (!bufs.has(src)) bufs.set(src, fetch(src).then(r => { if (!r.ok) throw new Error(r.status + ' ' + src); return r.arrayBuffer(); })
+                    .then(b => ctx.decodeAudioData(b)).then(trimSilence).catch(e => { bufs.delete(src); throw e; }));
+                return bufs.get(src);
+            }
+            function trimSilence(b) {
+                const chans = [...Array(b.numberOfChannels)].map((_, i) => b.getChannelData(i));
+                const loud = (i) => chans.some(c => Math.abs(c[i]) > 1e-4);
+                let a = 0, z = b.length - 1;
+                while (a < z && !loud(a)) a++;
+                while (z > a && !loud(z)) z--;
+                if (a < 64 && b.length - 1 - z < 64) return b;
+                const out = ctx.createBuffer(b.numberOfChannels, z - a + 1, b.sampleRate);
+                chans.forEach((c, i) => out.copyToChannel(c.subarray(a, z + 1), i));
+                return out;
+            }
+            function startFileAmb(def, vol) {
+                const g = ctx.createGain(); g.gain.value = 0; g.connect(ambBus);
+                let stopped = false, src = null, timer = null;
+                const fade = (v, sec) => { const t = ctx.currentTime; g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(v, t + sec); };
+                const fail = (e) => { console.warn('Sound not loaded', e); if (!PLAYER) showStatus(`Couldn't load ${def.name}`); };
+                if (def.chain) {
+                    // short clips one after another, random order, a short pause between
+                    const next = () => {
+                        if (stopped) return;
+                        loadBuf(def.chain[Math.floor(Math.random() * def.chain.length)]).then(b => {
+                            if (stopped) return;
+                            src = ctx.createBufferSource(); src.buffer = b; src.connect(g);
+                            src.onended = () => { timer = setTimeout(next, 400 + Math.random() * 2500); };
+                            src.start();
+                        }, fail);
+                    };
+                    next();
+                } else loadBuf(def.src).then(b => {
+                    if (stopped) return;
+                    src = ctx.createBufferSource(); src.buffer = b; src.loop = true; src.connect(g);
+                    src.start(0, Math.random() * b.duration);
+                }, fail);
+                fade(vol, 2);
+                return {
+                    setVolume(v, sec = 0.5) { fade(v, sec); },
+                    stop(sec = 2) { stopped = true; clearTimeout(timer); fade(0, sec); setTimeout(() => { try { src?.stop(); } catch {} g.disconnect(); }, sec * 1000 + 100); }
+                };
+            }
+            function playFile(src, vol = 1) {
+                if (!ensureCtx() || ctx.state !== 'running') { const a = new Audio(src); a.volume = clamp(vol * level('sfx'), 0, 1); a.play().catch(() => setBlocked(true)); return; }
+                loadBuf(src).then(b => { const g = ctx.createGain(); g.gain.value = vol; g.connect(sfxBus); const n = ctx.createBufferSource(); n.buffer = b; n.connect(g); n.onended = () => g.disconnect(); n.start(); }, e => console.warn('Sound not loaded', e));
+            }
+            function applyAmb() {
+                const want = state.amb || {};
+                for (const [id, a] of Object.entries(ambs)) if (!(id in want)) { a.handle?.stop(2); delete ambs[id]; }
+                if (!Object.keys(want).length) return;
+                if (!ensureCtx()) return;
+                if (ctx.state !== 'running') { setBlocked(true); return; }
+                loadMod().then(m => {
+                    for (const [id, vol] of Object.entries(state.amb || {})) {
+                        const a = ambs[id];
+                        if (a) { if (a.vol !== vol) { a.vol = vol; a.handle.setVolume(vol); } continue; }
+                        const rec = LIB.ambience.find(d => d.id === id);
+                        if (rec) ambs[id] = { vol, handle: startFileAmb(rec, vol) };
+                        else if (m) ambs[id] = { vol, handle: m.startAmbience(ctx, ambBus, id, { volume: vol }) };
+                    }
+                });
+            }
+            function applySfx() {
+                for (const [k, fx] of Object.entries(state.sfx || {})) {
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    if (!fx || (fx.ts || 0) < startedAt - 2000 || serverNow() - (fx.ts || 0) > 5000) continue;
+                    play(fx);
+                }
+            }
+            function play(fx) {
+                if (fx.src) { playFile(fx.src, fx.vol ?? 1); return; }
+                if (!ensureCtx()) return;
+                if (ctx.state !== 'running') { setBlocked(true); return; }
+                loadMod().then(m => m?.playSfx(ctx, sfxBus, fx.id, { volume: fx.vol ?? 1 }));
+            }
+            function apply(v) {
+                state = v || {};
+                syncMusic(); applyAmb(); applySfx(); setBusLevels();
+                setBlocked(blocked && hasSound());
+                renderBoard(); renderSoundMenu();
+            }
+
+            // ---- DM: the sound board ----
+            const W = (p, v) => Live.set(livePath('audio/' + p), v);
+            function playMusic(src, name, loop = true) { W('music', { src, name: name || src.split('/').pop(), loop, vol: state.music?.vol ?? 0.7, at: serverNow() }); }
+            function pushSfx(fx) {
+                const id = Live.push(livePath('audio/sfx'), { ...fx, vol: fx.vol ?? 1, ts: serverNow() });
+                setTimeout(() => Live.remove(livePath('audio/sfx/' + id)), 8000);
+            }
+            const chip = (on) => `px-2 py-1 rounded-lg border text-[11px] flex items-center gap-1.5 ${on ? 'border-sky-400 bg-sky-900/50 text-sky-100' : 'border-slate-700 text-slate-300 hover:border-sky-600'}`;
+            function renderBoard() {
+                const box = $('audioBoard');
+                if (PLAYER || box.classList.contains('hidden')) return;
+                const m = state.music, amb = state.amb || {};
+                const AMB = ambDefs();
+                const SFX = [...LIB.sfx.map((f, i) => ({ key: 'lib:' + i, name: f.name, icon: f.icon || 'file-audio', rec: true })),
+                    ...(mod?.SFX || []).filter(f => !replaced.has(f.id)).map(f => ({ key: 'id:' + f.id, name: f.name, icon: f.icon }))];
+                box.innerHTML = `<div class="flex items-center"><span class="font-cinzel font-bold text-sky-200 flex-1"><i class="fa-solid fa-music mr-1.5"></i>Music &amp; sounds</span>
+                        <button data-a="stopall" class="text-[11px] px-2 py-1 rounded border border-slate-700 hover:border-red-500 mr-2">Stop all</button>
+                        <button data-a="close" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button></div>
+                    <section class="space-y-1.5"><div class="text-[11px] uppercase tracking-wider text-slate-400">Music</div>
+                        ${m?.src ? `<div class="flex items-center gap-2 bg-slate-900 rounded-lg px-2 py-1.5 text-xs"><i class="fa-solid fa-compact-disc text-sky-400 ${ctx?.state === 'running' && !el.paused ? 'fa-spin' : ''}"></i><span class="flex-1 truncate">${esc(m.name)}</span>
+                            <input data-a="mvol" type="range" min="0" max="1" step="0.05" value="${esc(m.vol ?? 0.7)}" class="w-20 accent-sky-500" title="Volume for everyone">
+                            <button data-a="mstop" class="text-slate-400 hover:text-red-400" title="Stop"><i class="fa-solid fa-stop"></i></button></div>` : '<div class="text-[11px] text-slate-500">Nothing playing.</div>'}
+                        ${LIB.music.length ? `<div class="flex flex-wrap gap-1">${LIB.music.map((t, i) => `<button data-music="${i}" class="${chip(m?.src === t.src)}"><i class="fa-solid fa-play text-[9px]"></i>${esc(t.name)}</button>`).join('')}</div>`
+                            : '<div class="text-[11px] text-slate-500">Add tracks to <code>audio/library.js</code>, or paste a link:</div>'}
+                        <div class="flex gap-1"><input id="audioUrl" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded p-1.5 text-xs" placeholder="https://…/track.mp3">
+                            <label class="flex items-center gap-1 text-[11px] text-slate-400"><input id="audioLoop" type="checkbox" checked class="accent-sky-500">loop</label>
+                            <button data-a="url" class="px-2 rounded bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold">Play</button></div>
+                    </section>
+                    <section class="space-y-1.5"><div class="text-[11px] uppercase tracking-wider text-slate-400">Ambience <span class="normal-case tracking-normal text-slate-500">(tap to layer)</span></div>
+                        <div class="flex flex-wrap gap-1">${AMB.map(a => `<button data-amb="${esc(a.id)}" class="${chip(a.id in amb)}" title="${a.rec ? 'Recording' : 'Synthesized'}"><i class="fa-solid fa-${esc(a.icon || 'wave-square')}"></i>${esc(a.name)}${a.rec ? '' : '<span class="text-[9px] text-slate-500">✦</span>'}</button>`).join('') || '<span class="text-[11px] text-slate-500">Loading…</span>'}</div>
+                        ${Object.keys(amb).map(id => `<div class="flex items-center gap-2 text-[11px]"><span class="w-20 truncate text-slate-400">${esc(AMB.find(a => a.id === id)?.name || id)}</span><input data-ambvol="${esc(id)}" type="range" min="0" max="1" step="0.05" value="${esc(amb[id])}" class="flex-1 accent-sky-500"></div>`).join('')}
+                    </section>
+                    <section class="space-y-1.5"><div class="text-[11px] uppercase tracking-wider text-slate-400">Sound effects</div>
+                        <div class="grid grid-cols-3 gap-1">${SFX.map(f => `<button data-sfx="${esc(f.key)}" class="${chip(false)} justify-center" title="${esc(f.name)}${f.rec ? '' : ' (synthesized)'}"><i class="fa-solid fa-${esc(f.icon || 'bolt')}"></i><span class="truncate">${esc(f.name)}</span>${f.rec ? '' : '<span class="text-[9px] text-slate-500">✦</span>'}</button>`).join('') || '<span class="text-[11px] text-slate-500 col-span-3">Loading…</span>'}</div>
+                    </section>
+                    <div class="text-[10px] text-slate-500">✦ = synthesized, the rest are recordings. Players hear this on their own devices (they may need to tap once). Your own volume is under <i class="fa-solid fa-volume-high"></i>.</div>`;
+            }
+            $('audioBoard').addEventListener('click', (e) => {
+                const b = e.target.closest('button'); if (!b) return;
+                if (b.dataset.a === 'close') { $('audioBoard').classList.add('hidden'); return; }
+                ensureCtx();
+                if (b.dataset.a === 'stopall') { Live.set(livePath('audio'), null); return; }
+                if (b.dataset.a === 'mstop') { W('music', null); return; }
+                if (b.dataset.a === 'url') { const u = $('audioUrl').value.trim(); if (!/^(https?:\/\/|audio\/)/i.test(u)) { showStatus('Paste a direct link to an audio file (https://…/file.mp3)'); return; } playMusic(u, null, $('audioLoop').checked); return; }
+                if (b.dataset.music) { const t = LIB.music[+b.dataset.music]; if (t) playMusic(t.src, t.name, t.loop !== false); return; }
+                if (b.dataset.amb) { const id = b.dataset.amb; W('amb/' + id, id in (state.amb || {}) ? null : 0.6); return; }
+                if (b.dataset.sfx) {
+                    const [kind, v] = b.dataset.sfx.split(/:(.*)/);
+                    const d = kind === 'lib' && LIB.sfx[+v];
+                    // a sound with variants: pick one here, so everyone hears the same take
+                    pushSfx(kind === 'id' ? { id: v } : { src: d.srcs ? d.srcs[Math.floor(Math.random() * d.srcs.length)] : d.src });
+                }
+            });
+            $('audioBoard').addEventListener('change', (e) => {
+                if (e.target.dataset.a === 'mvol' && state.music) W('music/vol', +e.target.value);
+                if (e.target.dataset.ambvol) W('amb/' + e.target.dataset.ambvol, +e.target.value);
+            });
+            $('audioBoardBtn').onclick = () => { closeMenus(); openBoard(); };
+            function openBoard() { ensureCtx(); $('audioBoard').classList.remove('hidden'); renderBoard(); loadMod().then(renderBoard); }
+
+            // ---- everyone: own volume ----
+            function renderSoundMenu() {
+                const box = $('soundMenu');
+                $('soundBtn').innerHTML = `<i class="fa-solid ${prefs.mute ? 'fa-volume-xmark text-rose-400' : hasSound() ? 'fa-volume-high text-sky-300' : 'fa-volume-high'}"></i>`;
+                if (box.classList.contains('hidden')) return;
+                const row = (k, l) => `<label class="flex items-center gap-2"><span class="w-16">${l}</span><input data-pref="${k}" type="range" min="0" max="1" step="0.05" value="${prefs[k]}" class="flex-1 accent-sky-500"></label>`;
+                box.innerHTML = `<div class="flex items-center justify-between"><span class="font-semibold text-slate-200">Your volume</span>
+                        <label class="flex items-center gap-1"><input data-pref="mute" type="checkbox" ${prefs.mute ? 'checked' : ''} class="accent-rose-500">Mute</label></div>
+                    ${row('vol', 'Master')}${row('music', 'Music')}${row('amb', 'Ambience')}${row('sfx', 'Effects')}
+                    <div class="text-[10px] text-slate-500">${state.music?.src ? `Now playing: ${esc(state.music.name)}` : 'The DM isn\'t playing music.'}</div>
+                    ${PLAYER ? '' : '<button id="soundOpenBoard" class="w-full py-1.5 rounded-lg bg-sky-800 hover:bg-sky-700 text-white font-semibold">Open the sound board</button>'}`;
+                box.querySelectorAll('[data-pref]').forEach(inp => inp.oninput = () => { prefs[inp.dataset.pref] = inp.type === 'checkbox' ? inp.checked : +inp.value; savePrefs(); setBusLevels(); $('soundBtn').innerHTML = `<i class="fa-solid ${prefs.mute ? 'fa-volume-xmark text-rose-400' : 'fa-volume-high text-sky-300'}"></i>`; });
+                if ($('soundOpenBoard')) $('soundOpenBoard').onclick = () => { box.classList.add('hidden'); openBoard(); };
+            }
+            $('soundBtn').onclick = (e) => { e.stopPropagation(); closeMenus(); $('soundMenu').classList.toggle('hidden'); renderSoundMenu(); };
+            $('soundMenu').addEventListener('click', (e) => e.stopPropagation());
+            document.addEventListener('click', () => $('soundMenu').classList.add('hidden'));
+            if (PLAYER) $('audioBoardBtn').style.display = 'none';
+            renderSoundMenu();
+            // each screen plays the dice sound itself when it shows a roll
+            const dice = () => { if (LIB.diceSound && !prefs.mute) playFile(LIB.diceSound, 0.8); };
+            return { apply, play, dice, get state() { return state; }, get ctx() { return ctx; }, get music() { return el; } };
+        })();
 
         // ---- roll calls (js/rollcall.js: the DM calls, each player rolls from their own sheet) ----
         let RC = null, call = null, callHidden = false, callOpt = { mode: null, extras: {}, other: 0 }, callKind = 'init';
