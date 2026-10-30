@@ -329,7 +329,7 @@ body.embed .state-screen{min-height:60vh}
     <button data-die="4">d4</button><button data-die="6">d6</button><button data-die="8">d8</button><button data-die="10">d10</button><button data-die="12">d12</button><button data-die="20" class="d20">d20</button><button data-die="100">d%</button>
   </div>
   <div class="dice-row"><input id="diceExpr" placeholder="1d20+5 adv, 2d6+3, 8d6" autocomplete="off" spellcheck="false"><button id="diceRollBtn">Roll</button></div>
-  <label class="dice-private"><input type="checkbox" id="dicePrivate"> Roll privately (only you see it)</label>
+  <label class="dice-private" id="dicePrivateWrap" style="display:none"><input type="checkbox" id="dicePrivate"> Roll privately (only you see it)</label>
   <div id="diceLog" class="dice-log"></div>
 </div>
 <div id="rollShow" class="roll-show" hidden><div id="rollWho" class="who"></div><div id="rollNum" class="num">–</div><div id="rollWhat" class="what"></div></div>
@@ -344,6 +344,7 @@ const $   = id => document.getElementById(id);
 const GM_KEY = "jonny";
 const PARAMS = new URLSearchParams(location.search);
 const IS_GM  = PARAMS.get("gm") === GM_KEY;
+if (IS_GM) document.getElementById('dicePrivateWrap').style.display = '';
 const ONLY   = PARAMS.get("char");          // sheet.html?char=<id> shows just that character
 const EMBED  = PARAMS.has("embed");         // inside the VTT's sheet panel
 if (ONLY) document.body.classList.add("single");
@@ -1119,7 +1120,8 @@ const Dice = (() => {
     const w = who();
     const entry = { by: w.name, expr: expr || '1d20', detail: r.detail, total: r.total, nat: r.nat ?? null, dice:r.dice, ts: Date.now() };
     if (w.id) entry.char = w.id;
-    if ($('dicePrivate').checked || !camp) {
+    // only the DM rolls in secret; players' rolls always go to the whole table
+    if ((IS_GM && $('dicePrivate').checked) || !camp) {
       privateRolls.push({ ...entry, private: true }); renderLog(); showRoll({ ...entry, private: true });
       if (!camp) toastDice('Not connected to a game: only you saw that.');
       return;
