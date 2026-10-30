@@ -242,6 +242,37 @@ body.embed .state-screen{min-height:60vh}
 .charge-pip{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--gold-dim);background:rgba(52,211,153,.2);cursor:pointer;transition:all .12s;flex-shrink:0}
 .charge-pip:hover{transform:scale(1.15)}
 .charge-pip.used{background:rgba(255,255,255,.04);border-color:var(--border)}
+/* ── Dice (ported from index.html's roller) ── */
+.dice-fab{position:fixed;right:16px;bottom:16px;z-index:120;width:52px;height:52px;border-radius:50%;border:1px solid var(--gold-dim);background:var(--panel2);color:var(--text);font-size:24px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.dice-fab:hover{border-color:var(--gold)}
+.dice-panel{position:fixed;right:16px;bottom:78px;z-index:120;width:min(320px,calc(100vw - 32px));max-height:calc(100vh - 140px);overflow-y:auto;background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);transform-origin:bottom right;transition:transform .16s ease,opacity .16s ease}
+.dice-panel.closed{transform:translateY(12px) scale(.96);opacity:0;pointer-events:none}
+.dice-panel h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.dice-panel h4 span{color:var(--dim);font-weight:400;letter-spacing:0;text-transform:none}
+.dice-dice{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px}
+.dice-dice button{padding:6px 0;border-radius:6px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;cursor:pointer}
+.dice-dice button:hover{border-color:var(--gold)}
+.dice-dice button.d20{border-color:var(--gold-dim);background:rgba(5,150,105,.18)}
+.dice-row{display:flex;gap:6px;margin-bottom:8px}
+.dice-row input,.dice-row select{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:6px 8px;outline:none}
+.dice-row select{font-family:var(--font)}
+.dice-row input:focus,.dice-row select:focus{border-color:var(--gold-dim)}
+.dice-row button{padding:0 12px;border-radius:6px;border:none;background:var(--gold-dim);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
+.dice-row button:hover{background:var(--gold)}
+.dice-private{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dim);margin-bottom:8px}
+.dice-log{display:flex;flex-direction:column;gap:6px}
+.dice-log .r{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:12px}
+.dice-log .r.n20{border-color:#10b981}.dice-log .r.n1{border-color:#dc2626}
+.dice-log .top{display:flex;justify-content:space-between;align-items:baseline}
+.dice-log .who{font-weight:600}.dice-log .who small{color:var(--dim);font-weight:400}
+.dice-log .tot{font-family:var(--mono);font-size:17px;font-weight:700;color:#fff}
+.dice-log .det{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.dice-log .empty{font-size:11px;color:var(--dim)}
+.roll-show{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:130;min-width:200px;padding:10px 24px;border-radius:16px;border:2px solid rgba(5,150,105,.7);background:rgba(15,23,42,.96);box-shadow:0 10px 30px rgba(0,0,0,.6);text-align:center;pointer-events:none}
+.roll-show[hidden]{display:none}
+.roll-show .who{font-size:12px;font-weight:600;color:var(--gold)}
+.roll-show .num{font-size:48px;font-weight:700;line-height:1.1;color:var(--text)}
+.roll-show .what{font-family:var(--mono);font-size:11px;color:var(--dim)}
 </style>
 </head>
 <body>
@@ -286,6 +317,19 @@ body.embed .state-screen{min-height:60vh}
 </div>
 <datalist id="itemNames"></datalist>
 <div id="toasts"></div>
+
+<button id="diceFab" class="dice-fab" title="Dice" aria-expanded="false" aria-controls="dicePanel">🎲</button>
+<div id="dicePanel" class="dice-panel closed" role="dialog" aria-label="Dice">
+  <h4>Dice <span id="diceWhere"></span></h4>
+  <div class="dice-row" id="diceWhoRow"><select id="diceWho" aria-label="Who is rolling"></select></div>
+  <div class="dice-dice">
+    <button data-die="4">d4</button><button data-die="6">d6</button><button data-die="8">d8</button><button data-die="10">d10</button><button data-die="12">d12</button><button data-die="20" class="d20">d20</button><button data-die="100">d%</button>
+  </div>
+  <div class="dice-row"><input id="diceExpr" placeholder="1d20+5 adv, 2d6+3, 8d6" autocomplete="off" spellcheck="false"><button id="diceRollBtn">Roll</button></div>
+  <label class="dice-private"><input type="checkbox" id="dicePrivate"> Roll privately (only you see it)</label>
+  <div id="diceLog" class="dice-log"></div>
+</div>
+<div id="rollShow" class="roll-show" hidden><div id="rollWho" class="who"></div><div id="rollNum" class="num">–</div><div id="rollWhat" class="what"></div></div>
 
 <script src="js/geez-config.js"></script>
 
@@ -887,6 +931,166 @@ async function loadParty() {
   }
 }
 loadParty();
+
+// ── Dice (ported from index.html's roller) ────────────────────────────────────
+// Rolls go to geezvtt/live/<campaign>/rolls like the VTT's own dice, so the VTT and Grimhold
+// see them. Campaign: ?live=<world id>, else the one the DM has open.
+const Dice = (() => {
+  const LIVE_ROOT = 'geezvtt/live';
+  const WHO_KEY = 'geezsheets.diceWho';
+  let camp = PARAMS.get('live') || null, rolls = {}, unsub = null;
+  const privateRolls = [];
+  const rollQueue = []; let rollBusy = false;
+
+  function rollDie(n) { const a = new Uint32Array(1); crypto.getRandomValues(a); return 1 + Math.floor(a[0] / 4294967296 * n); }
+  function rollExpr(expr) {
+    let e = String(expr || '').toLowerCase().replace(/\s+/g, '');
+    let mode = null;
+    if (/(adv|advantage)$/.test(e)) { mode = 'adv'; e = e.replace(/(adv|advantage)$/, ''); }
+    else if (/(dis|disadvantage)$/.test(e)) { mode = 'dis'; e = e.replace(/(dis|disadvantage)$/, ''); }
+    if (!e) e = '1d20';
+    if (/^[+-]\d+$/.test(e)) e = '1d20' + e;
+    const terms = e.match(/[+-]?[^+-]+/g);
+    if (!terms) throw new Error('bad');
+    let total = 0, nat = null, first = null;
+    const parts = [];
+    for (const raw of terms) {
+      const sign = raw[0] === '-' ? -1 : 1;
+      const t = raw.replace(/^[+-]/, '');
+      const m = /^(\d*)d(\d+|%)$/.exec(t);
+      const pre = parts.length ? (sign < 0 ? ' − ' : ' + ') : (sign < 0 ? '−' : '');
+      if (m) {
+        const n = +(m[1] || 1), faces = m[2] === '%' ? 100 : +m[2];
+        if (n < 1 || n > 100 || faces < 2 || faces > 1000) throw new Error('bad');
+        if (mode && faces === 20 && n === 1) {
+          const a = rollDie(20), b = rollDie(20), k = mode === 'adv' ? Math.max(a, b) : Math.min(a, b);
+          first ||= { sides: 20, result: k };
+          total += sign * k; nat = nat ?? k;
+          parts.push(`${pre}[${a}, ${b} → ${k}]`);
+          mode = null;
+        } else {
+          const rs = Array.from({ length: n }, () => rollDie(faces));
+          first ||= { sides: faces, result: rs[0] };
+          if (faces === 20 && n === 1) nat = nat ?? rs[0];
+          total += sign * rs.reduce((x, y) => x + y, 0);
+          parts.push(`${pre}[${rs.join(', ')}]`);
+        }
+      } else if (/^\d+$/.test(t)) {
+        total += sign * +t;
+        parts.push(`${pre}${t}`);
+      } else throw new Error('bad');
+    }
+    return { total, detail: parts.join(''), nat, first };
+  }
+
+  // The big animated roll (same as index.html's)
+  function showRoll(r) { rollQueue.push(r); if (!rollBusy) nextRoll(); }
+  function nextRoll() {
+    const r = rollQueue.shift();
+    if (!r) { rollBusy = false; return; }
+    rollBusy = true;
+    const box = $('rollShow'), num = $('rollNum');
+    box.hidden = false;
+    box.style.borderColor = r.nat === 20 ? '#10b981' : r.nat === 1 ? '#dc2626' : '';
+    $('rollWho').textContent = `${r.by}${r.private ? ' (private)' : ''} rolled`;
+    $('rollWhat').textContent = r.expr;
+    num.style.opacity = '.55';
+    const faces = Math.max(2, parseInt(String(r.expr).match(/d(\d+)/)?.[1]) || 20);
+    let ticks = 0;
+    const timer = setInterval(() => {
+      ticks++;
+      num.textContent = Math.ceil(Math.random() * faces * (Math.abs(r.total) > faces ? Math.max(1, Math.round(Math.abs(r.total) / faces)) : 1));
+      if (ticks >= 18) {
+        clearInterval(timer);
+        num.style.opacity = '1';
+        num.textContent = r.total;
+        $('rollWhat').innerHTML = `${esc(r.expr)}: ${esc(r.detail)}${r.nat === 20 ? ' · <b style="color:#34d399">NAT 20</b>' : r.nat === 1 ? ' · <b style="color:#f87171">NAT 1</b>' : ''}`;
+        setTimeout(() => { box.hidden = true; nextRoll(); }, rollQueue.length ? 1200 : 3800);
+      }
+    }, 60);
+  }
+
+  function who() {
+    if (ONLY) { const c = allPcs[0]; return c ? { name: c.name, id: c.id } : { name: 'Player', id: null }; }
+    const id = $('diceWho').value, c = allPcs.find(p => p.id === id);
+    return c ? { name: c.name, id: c.id } : { name: 'Player', id: null };
+  }
+
+  function doRoll(expr) {
+    let r;
+    try { r = rollExpr(expr); } catch { toastDice(`Couldn't read "${expr}". Try 1d20+5, 2d6+3 or 1d20 adv.`); return; }
+    const w = who();
+    const entry = { by: w.name, expr: expr || '1d20', detail: r.detail, total: r.total, nat: r.nat ?? null, ts: Date.now() };
+    if (w.id) entry.char = w.id;
+    if ($('dicePrivate').checked || !camp) {
+      privateRolls.push({ ...entry, private: true }); renderLog(); showRoll({ ...entry, private: true });
+      if (!camp) toastDice('Not connected to a game: only you saw that.');
+      return;
+    }
+    push(ref(db, `${LIVE_ROOT}/${camp}/rolls`), entry).catch(e => toastDice('Roll not sent: ' + e.message));
+    showRoll(entry);
+    // the old pages watch dice/last, so single-die results show there too
+    if (r.first) set(ref(db, 'dice/last'), { sides: r.first.sides, result: r.first.result, roller: entry.by, t: entry.ts }).catch(() => {});
+    // keep the shared log short (same as the VTT)
+    const keys = Object.entries(rolls).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0)).map(([k]) => k);
+    keys.slice(0, Math.max(0, keys.length - 40)).forEach(k => remove(ref(db, `${LIVE_ROOT}/${camp}/rolls/${k}`)));
+  }
+
+  function renderLog() {
+    const all = [...Object.values(rolls || {}), ...privateRolls].filter(Boolean).sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 20);
+    $('diceLog').innerHTML = all.length ? all.map(r => `
+      <div class="r ${r.nat === 20 ? 'n20' : r.nat === 1 ? 'n1' : ''}">
+        <div class="top"><span class="who">${esc(r.by)}${r.private ? ' <small>(private)</small>' : ''}</span><span class="tot">${esc(r.total)}</span></div>
+        <div class="det">${esc(r.expr)}: ${esc(r.detail)}${r.nat === 20 ? ' · <b style="color:#34d399">NAT 20</b>' : r.nat === 1 ? ' · <b style="color:#f87171">NAT 1</b>' : ''}</div>
+      </div>`).join('') : '<div class="empty">No rolls yet.</div>';
+  }
+
+  function toastDice(msg) {
+    const t = document.createElement('div');
+    t.className = 'toast'; t.textContent = msg;
+    $('toasts').appendChild(t); setTimeout(() => t.remove(), 3500);
+  }
+
+  function fillWho() {
+    const row = $('diceWhoRow'), sel = $('diceWho');
+    if (ONLY) { row.style.display = 'none'; return; }
+    const keep = sel.value || localStorage.getItem(WHO_KEY) || '';
+    sel.innerHTML = allPcs.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    if (allPcs.some(c => c.id === keep)) sel.value = keep;
+  }
+
+  async function follow() {
+    if (!camp) {
+      const s = await get(ref(db, `${LIVE_ROOT}/_dmCampaign`)).catch(() => null);
+      camp = s?.val()?.id || null;
+      $('diceWhere').textContent = s?.val()?.name || (camp ? camp : 'no game open');
+    } else $('diceWhere').textContent = camp;
+    unsub?.();
+    if (camp) unsub = onValue(ref(db, `${LIVE_ROOT}/${camp}/rolls`), snap => { rolls = snap.val() || {}; renderLog(); });
+    renderLog();
+  }
+
+  function init() {
+    if (EMBED) { $('diceFab').style.display = 'none'; return; }   // the VTT has its own dice
+    const panel = $('dicePanel'), fab = $('diceFab');
+    fab.onclick = () => {
+      const open = panel.classList.toggle('closed') === false;
+      fab.setAttribute('aria-expanded', open);
+      if (open) { fillWho(); $('diceExpr').focus({ preventScroll: true }); }
+    };
+    document.querySelectorAll('#dicePanel [data-die]').forEach(b => b.onclick = () => {
+      const mod = ($('diceExpr').value.match(/[+-]\s*\d+\s*$/) || [''])[0].replace(/\s/g, '');
+      doRoll(`1d${b.dataset.die === '100' ? '%' : b.dataset.die}${mod}`);
+    });
+    $('diceRollBtn').onclick = () => doRoll($('diceExpr').value.trim());
+    $('diceExpr').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doRoll($('diceExpr').value.trim()); } });
+    $('diceWho').onchange = () => { try { localStorage.setItem(WHO_KEY, $('diceWho').value); } catch {} };
+    follow();
+  }
+  return { init, roll: doRoll };
+})();
+window.rollDice = Dice.roll;
+Dice.init();
 </script>
 
 <script type="module">
