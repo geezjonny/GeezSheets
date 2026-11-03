@@ -251,6 +251,10 @@
                 <i class="fa-solid fa-hammer text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Build: rooms, floors, walls, doors, objects, traps (B)</span>
             </button>
+            <button id="modeDraft" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" title="Draft rooms (D)">
+                <i class="fa-solid fa-drafting-compass text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-30">Draft rooms (D)</span>
+            </button>
             <button id="modeRoom" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-vector-square text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Rooms: highlight squares, Enter builds floor, walls and a door</span>
@@ -858,7 +862,7 @@
             }
             for (const [bid, b] of Object.entries(src.battles || {})) {
                 if (!c.things[bid]) continue;
-                c.battles[bid] = { tokens: { ...b.tokens }, doors: { ...(b.doors || {}) }, ...(b.edits ? { edits: JSON.parse(JSON.stringify(b.edits)) } : {}), ...(b.vision === false ? { vision: false } : {}), ...(b.light ? { light: b.light } : {}) };
+                c.battles[bid] = { tokens: { ...b.tokens }, doors: { ...(b.doors || {}) }, ...(b.edits ? { edits: JSON.parse(JSON.stringify(b.edits)) } : {}), ...(b.vision === false ? { vision: false } : {}), ...(b.light ? { light: b.light } : {}), ...(b.time ? {time:b.time} : {}), ...(b.weather ? {weather:b.weather} : {}) };
                 for (const tid of Object.keys(b.tokens || {})) {
                     if (c.things[tid] || !src.things[tid]) continue;
                     const pc = src.things[tid].traits?.pc || /^PC\b/.test(src.things[tid].traits?.role || '');
@@ -1051,7 +1055,8 @@
             undoBase = snap;
             // token positions also live on the live channel, which wins over the saved ones
             for (const bid of Object.keys(live.tokens || {})) {
-                const pos = Object.fromEntries(Object.entries(db.battles[bid]?.tokens || {}).map(([tid, t]) => [tid, { x: t.x, y: t.y }]));
+                if (db.things[bid]?.traits?.table3d || (bid === db.view.battleId && GH?.meta())) continue;
+                const pos = Object.fromEntries(Object.entries(db.battles[bid]?.tokens || {}).map(([tid, t]) => [tid, { x: t.x, y: t.y, f:t.f || 0, ...(t.light ? {light:t.light} : {}) }]));
                 live.tokens[bid] = pos;
                 Live.set(livePath('tokens/' + bid), Object.keys(pos).length ? pos : null);
             }
@@ -1086,6 +1091,24 @@
             if (!keepInspector) refreshInspector();
         }
 
+        let GH = null, GH_API = null, DT = null;
+        import('./js/table3d-layer.js').then(m => {
+            GH_API = m;
+            ui.doorKind ||= m.DOOR_KINDS.includes(ui.swatch.door) ? ui.swatch.door : 'wood';
+            GH = m.createBridge({ db: () => db, ui, player: PLAYER, live: Live, camp: liveCamp, path: livePath,
+                moves: bid => live.tokens[bid] || {}, name: () => playerName, locked: () => liveSession.lockMove,
+                render: () => renderView(), changed, avatar: initialsAvatar, propDef, propImg, paint: swatchPaint,
+                swatch: swatchOf, swatchImg, wrapper: mapWrapper, viewport, content: toContent, edits: editsOf,
+                uid: p => uid(p), esc: v => esc(v), move: moveToken, status: showStatus });
+            renderView();
+        }).catch(e => console.error('GeezTabletop bridge failed', e));
+        const battleTokens = bid => GH ? GH.tokens(bid) : db.battles[bid]?.tokens || {};
+        const battleThing = (tid, bid) => db.things[tid] || GH?.token(tid, bid);
+        const floorMatches = p => !GH || GH.onFloor(p);
+        const floorEdits = bid => {
+            const root = db.battles[bid]?.edits || {}, ed = GH?.meta() && GH.floor() !== 0 ? root.floors?.[GH.floor()] || {} : root;
+            return Object.fromEntries(Object.entries(ed).map(([k,v]) => [k, v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([,o]) => o?.f === undefined || floorMatches(o))) : v]));
+        };
         const uid = (p) => p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
         const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
@@ -1378,7 +1401,7 @@
         function swatchImg(src) {
             if (!swatchImgs.has(src)) {
                 const img = new Image();
-                img.onload = () => { if (db.view.level === 'VTT' && ui.scene) drawScene(ui.scene, db.view.battleId); };
+                img.onload = () => { GH?.invalidate(); if (db.view.level === 'VTT' && ui.scene) drawScene(ui.scene, db.view.battleId); };
                 img.src = src;
                 swatchImgs.set(src, img);
             }
@@ -1402,9 +1425,11 @@
             panel.innerHTML = `<div style="font-size:11px;color:#94a3b8;margin:0 2px 6px">${{ wall: 'Wall', door: 'Door', floor: 'Floor' }[kind]} material</div><div style="display:flex;flex-wrap:wrap;gap:6px;max-width:${kind === 'floor' ? 280 : 400}px">` +
                 list.map(sw => `<button data-swatch="${esc(sw.id)}" title="${esc(sw.name)}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:4px;border-radius:8px;cursor:pointer;background:#1e293b;color:#e2e8f0;font-size:10px;border:2px solid ${ui.swatch[kind] === sw.id ? '#f59e0b' : '#334155'}">` +
                     `<span style="display:block;width:44px;height:44px;border-radius:5px;background:${esc(sw.color)}${sw.texture ? ` url('${esc(sw.texture)}') center/cover` : ''}"></span>${esc(sw.name)}</button>`).join('') + '</div>';
+            if (kind === 'door' && GH_API) { panel.insertAdjacentHTML('beforeend', '<label class="text-xs">Kind <select id="doorKind" class="bg-slate-900 border border-slate-700 rounded mt-2">' + GH_API.DOOR_KINDS.map(k => `<option ${k === (ui.doorKind || 'wood') ? 'selected' : ''}>${k}</option>`).join('') + '</select></label>'); panel.querySelector('#doorKind').onchange = e => { ui.doorKind = e.target.value; }; }
             panel.querySelectorAll('[data-swatch]').forEach(b => b.onclick = (e) => {
                 e.stopPropagation();
                 ui.swatch[kind] = b.dataset.swatch;
+                if (kind === 'door' && GH_API?.DOOR_KINDS.includes(b.dataset.swatch)) ui.doorKind = b.dataset.swatch;
                 try { localStorage.setItem(SWATCH_KEY, JSON.stringify(ui.swatch)); } catch {}
                 renderSwatchPanel();
                 if (kind === 'floor') { drawEditPreview(); renderPaintBar(); }
@@ -1721,7 +1746,7 @@
         function setLevel(level) {
             db.view.level = level;
             if (ui.selection?.type !== 'thing') ui.selection = null;
-            if (level !== 'WORLD' && level !== 'LOCATION' && ui.mode !== 'pan' && !(['ruler', 'ping', 'wall', 'door', 'light', 'erase', 'paint'].includes(ui.mode) && level === 'VTT')) setMode('pan');
+            if (level !== 'WORLD' && level !== 'LOCATION' && ui.mode !== 'pan' && !(['draft', 'ruler', 'ping', 'wall', 'door', 'light', 'erase', 'paint'].includes(ui.mode) && level === 'VTT')) setMode('pan');
             ui.ruler = null; drawRuler();
             const L = LEVELS[level];
             Object.values(LEVELS).forEach(x => $(x.nav).className = NAV_OFF);
@@ -1855,8 +1880,11 @@
 
         let renderSeq = 0;
         async function renderView(newView = false) {
+            DT?.draw();
             const seq = ++renderSeq;
             const level = db.view.level;
+            GH?.controls(); GH?.startWeather();
+            mapWrapper.querySelectorAll('[data-ping-floor]').forEach(el => { if (level !== 'VTT' || !floorMatches({f:Number(el.dataset.pingFloor)})) el.remove(); });
             renderToolHint();
             emptyState.classList.add('hidden');
 
@@ -1872,20 +1900,24 @@
             if (level === 'VTT') {
                 const bt = db.things[db.view.battleId];
                 if (!bt) { clearCanvases(); showEmpty('No battle map open', 'On a location map, select a battle map marker and press Open in VTT, or double-click it.', false); return; }
-                if (!bt.traits?.dd2vtt) { clearCanvases(); showEmpty(`${bt.name} has no dd2vtt yet`, 'Select its marker on the location map and attach a dd2vtt file.', false); return; }
-                const scene = await loadDd2vtt(bt.traits.dd2vtt);
+                GH?.watch(bt.id);
+                GH?.controls();
+                const grimScene = GH?.scene();
+                if (!grimScene && !bt.traits?.table3d && !bt.traits?.dd2vtt) { clearCanvases(); showEmpty(`${bt.name} has no dd2vtt yet`, 'Select its marker on the location map and attach a dd2vtt file.', false); return; }
+                const scene = grimScene || (bt.traits?.table3d && !bt.traits.dd2vtt ? await loadDd2vtt('blank:20x20') : await loadDd2vtt(bt.traits.dd2vtt));
                 if (seq !== renderSeq) return;
                 if (!scene) { clearCanvases(); showEmpty(`Can't find ${bt.traits.dd2vtt}`, PLAYER ? 'Ask the DM to put a copy of this file in the battlemap/ folder.' : 'Put a copy in the battlemap/ folder next to this page (same file name), or attach it again from the battle map card.', false); return; }
                 if (ui.size.w !== scene.w || ui.size.h !== scene.h) setCanvasSize(scene.w, scene.h);
                 mapCtx.drawImage(scene.img, 0, 0);
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
                 markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
-                ui.scene = scene;
+                ui.scene = scene; GH?.startWeather();
                 drawScene(scene, bt.id);
                 const vis = partyVision(scene, bt.id);
                 ui.vision = vis;
                 drawVision(scene, vis, bt.id);
                 if (!PLAYER) { checkTraps(bt.id); drawEditPreview(); }
+                GH?.roofs(markerCtx, scene, viewerTokens(scene, bt.id));
                 renderTokens(bt.id, scene);
                 ui.loaded = true;
                 if (newView && !cam().fitted) fitView(); else applyTransform();
@@ -2268,8 +2300,9 @@
             const g = s.ppg;
             vttCtx.clearRect(0, 0, vttVectorCanvas.width, vttVectorCanvas.height);
             vttCtx.save();
+            GH?.drawBase(vttCtx, s);
             // painted floor squares (battles[id].edits.paint = { 'col_row': floor swatch id })
-            for (const [k, id] of Object.entries(db.battles[battleId]?.edits?.paint || {})) {
+            for (const [k, id] of Object.entries(floorEdits(battleId).paint || {})) {
                 const [cx, cy] = k.split('_').map(Number);
                 vttCtx.fillStyle = swatchPaint('floor', id, g);
                 vttCtx.fillRect(cx * g, cy * g, g + 0.5, g + 0.5);
@@ -2281,13 +2314,15 @@
                 for (let y = 0; y <= s.h; y += g) { vttCtx.moveTo(0, y + .5); vttCtx.lineTo(s.w, y + .5); }
                 vttCtx.stroke();
             }
+            GH?.annotations(vttCtx, floorEdits(battleId), g);
             drawProps(battleId, g);
             vttCtx.lineCap = 'round';
             const line = (o) => { vttCtx.beginPath(); vttCtx.moveTo(o.x1 * g, o.y1 * g); vttCtx.lineTo(o.x2 * g, o.y2 * g); vttCtx.stroke(); };
             // walls and doors the DM drew aren't in the map image: draw them in their swatch
             vttCtx.lineCap = 'square';
             walls.forEach(w => { if (w.src !== 'add') return; vttCtx.strokeStyle = swatchPaint('wall', w.mat, g); vttCtx.lineWidth = g * 0.25; line(w); });
-            doors.forEach(d => { if (d.src !== 'add' || !d.closed) return; vttCtx.strokeStyle = swatchPaint('door', d.mat, g); vttCtx.lineWidth = g * 0.22; line(d); });
+            doors.forEach(d => { if (d.src !== 'dd') GH?.drawDoor(vttCtx, d, g); });
+            GH?.atmosphere(vttCtx, s, sceneLights(s, battleId));
             vttCtx.lineCap = 'round';
             if (PLAYER) {
                 // players only see doors (open ones faintly), never the wall lines
@@ -2314,6 +2349,7 @@
         const snapG = (v, e) => (e?.altKey ? +v.toFixed(3) : Math.round(v * 2) / 2);
         let wallChain = null, editPreview = null;
         function drawEditPreview() {
+            DT?.draw();
             if (PLAYER || db.view.level !== 'VTT' || !ui.scene) return;
             markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
             const g = ui.scene.ppg;
@@ -2413,6 +2449,8 @@
             const bar = $('paintBar');
             if (!bar) return;
             renderTrapPanel();
+            if (DT?.renderBar()) return;
+            bar.style.flexWrap = ''; bar.style.gap = ''; bar.style.alignItems = '';
             const mode = ui.mode;
             if (PLAYER || !ADD_REMOVE[mode] || db.view.level !== 'VTT' || !ui.scene) { bar.style.display = 'none'; return; }
             const n = paintPlan.size, rem = ui.erase;
@@ -2484,6 +2522,23 @@
             showStatus(`${id ? 'Painted' : 'Erased'} ${n} square${n === 1 ? '' : 's'}${walls ? ` and drew ${walls} wall${walls === 1 ? '' : 's'}` : ''}. Ctrl+Z undoes it.`);
         }
 
+        // Draft sketches are local-only; Build writes the same battle edit parts as the other tools.
+        if (!PLAYER) import('./js/draft-tool.js').then(m => {
+            DT = m.createDraftTool({ wrapper: mapWrapper, viewport, bar: $('paintBar'), content: toContent,
+                context: () => ({ visible: !PLAYER && db.view.level === 'VTT' && !!ui.scene && !!db.view.battleId,
+                    campaign: liveCamp(), bid: db.view.battleId, floor: GH?.floor() || 0, mode: ui.mode,
+                    w: ui.scene?.w, h: ui.scene?.h, ppg: ui.scene?.ppg, ...gridSize(ui.scene || {w:0,h:0,ppg:1}) }),
+                edits: () => { const root = db.battles[db.view.battleId]?.edits || {};
+                    return GH?.meta() && GH.floor() !== 0 ? root.floors?.[GH.floor()] || {} : root; }, status: showStatus,
+                buildOptions: () => { const geo = sceneGeometry(ui.scene, db.view.battleId);
+                    return { baseWalls: geo.walls, baseDoors: geo.doors, basePaint: GH?.layer()?.paint, newKey: p => uid(p),
+                        occupied: m.occupiedProps([...Object.values(GH?.layer()?.props || {}), ...Object.values(floorEdits(db.view.battleId).props || {})], propDef) }; },
+                apply: result => { recordUndo(); Object.assign(editsOf(db.view.battleId), result); ui.vision = null;
+                    recordUndo(); changed({ keepInspector: true }); }
+            });
+            DT.draw(); renderPaintBar();
+        }).catch(e => console.error('Draft tool failed', e));
+
         // ---- godot-style building (js/build-tools.js does the grid maths): rooms, floor brush/fill, grid walls, doors in walls ----
         let BT = null;
         import('./js/build-tools.js').then(m => { BT = m; renderPaintBar(); }).catch(() => console.info('js/build-tools.js not found: room tools are off'));
@@ -2532,7 +2587,7 @@
             } else {
                 const st = roomStyle(), before = new Set(Object.keys(geo.doors));
                 const r = BT.buildRoom(paintPlan, { floor: st.floor, wall: st.wall, door: ui.roomDoor, ...geo, bounds: gridSize(ui.scene), newKey: () => uid('w') });
-                for (const [k, d] of Object.entries(r.doors)) if (!before.has(k)) d.mat = ui.swatch.door;
+                for (const [k, d] of Object.entries(r.doors)) if (!before.has(k)) { d.mat = ui.swatch.door; d.kind = ui.doorKind || 'wood'; }
                 Object.assign(ed, { paint: r.paint, addWalls: r.walls, addDoors: r.doors });
                 msg = `Built a ${st.name} room (${n} squares)${r.door ? ' with a door' : ''}`;
             }
@@ -2579,20 +2634,23 @@
         // ---- traps (DM only): battles[id].traps = { id: { name, cells: ['col_row'], who, once, armed, damage, save, door, doorAction, ping, sound, notes } }
         // They sit outside battles[id].edits, so the players' copy of the map never has them.
         let trapSel = null, trapPickDoor = false;
-        const trapsOf = (bid) => db.battles[bid]?.traps || {};
+        const allTrapsOf = bid => ({ ...(db.battles[bid]?.traps || {}), ...(!PLAYER ? GH?.traps() || {} : {}) });
+        const trapsOf = bid => Object.fromEntries(Object.entries(allTrapsOf(bid)).filter(([,t]) => floorMatches(t)));
+        function saveBridgeTraps(bid) { if (PLAYER || !GH) return; for (const [id,t] of Object.entries(allTrapsOf(bid))) if (GH.isTrap(id)) GH.saveTrap(id,t); }
         function trapAt(c) { const k = `${c.x}_${c.y}`; return Object.keys(trapsOf(db.view.battleId)).find(id => trapsOf(db.view.battleId)[id].cells?.includes(k)) || null; }
         function confirmTrap(addTo) {
             const bid = db.view.battleId;
             if (!paintPlan.size || !bid) return;
-            const traps = ((db.battles[bid] ||= { tokens: {} }).traps ||= {});
+            const own = ((db.battles[bid] ||= { tokens: {} }).traps ||= {}), traps = trapsOf(bid);
             if (ui.erase) {
-                for (const [id, t] of Object.entries(traps)) { t.cells = (t.cells || []).filter(k => !paintPlan.has(k)); if (!t.cells.length) delete traps[id]; }
+                for (const [id, t] of Object.entries(traps)) { t.cells = (t.cells || []).filter(k => !paintPlan.has(k)); if (!t.cells.length) { if (GH?.isTrap(id)) GH.saveTrap(id,null); else delete own[id]; delete traps[id]; } }
                 if (!traps[trapSel]) trapSel = null;
             } else if (addTo && traps[addTo]) traps[addTo].cells = [...new Set([...(traps[addTo].cells || []), ...paintPlan])];
             else {
                 trapSel = uid('trap');
-                traps[trapSel] = { name: `Trap ${Object.keys(traps).length + 1}`, cells: [...paintPlan], who: 'pcs', once: true, armed: true, damage: '2d10', save: 'DEX DC 13', door: '', doorAction: 'close', ping: true, sound: '', notes: '' };
+                own[trapSel] = { name: `Trap ${Object.keys(traps).length + 1}`, cells: [...paintPlan], f:GH?.floor() || 0, who: 'pcs', once: true, armed: true, damage: '2d10', save: 'DEX DC 13', door: '', doorAction: 'close', ping: true, sound: '', notes: '' };
             }
+            saveBridgeTraps(bid);
             paintPlan.clear();
             changed({ keepInspector: true });
             renderPaintBar(); drawEditPreview();
@@ -2642,18 +2700,20 @@
                     <input data-f="name" value="${esc(t.name)}" style="${inp};font-weight:700;font-size:14px"></div>
                 <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">${btn('fire', 'Set it off', true)}${t.armed ? '' : btn('arm', 'Re-arm')}${btn('del', 'Delete')}</div>
                 <div style="color:${t.armed ? '#fca5a5' : '#94a3b8'};margin-top:4px">${t.armed ? 'Armed' : 'Spent'} · ${t.cells?.length || 0} square${t.cells?.length === 1 ? '' : 's'}</div>
-                ${head('Goes off when')}${sel('who', [['pcs', 'A PC steps in'], ['anyone', 'Anyone steps in']])}${chk('once', "Only once (then it's spent)")}
+                ${head('Goes off when')}${sel('who', [['pcs', 'A PC steps in'], ['anyone', 'Anyone steps in'], ['monsters', 'A monster steps in']])}${chk('once', "Only once (then it's spent)")}
                 ${head('Save and damage')}<div style="display:flex;gap:5px"><input data-f="save" placeholder="DEX DC 13" value="${esc(t.save || '')}" style="${inp}"><input data-f="damage" placeholder="2d10" value="${esc(t.damage || '')}" style="${inp}"></div>
                 ${head('Then')}${door
                     ? `<div style="display:flex;gap:5px">${sel('doorAction', [['open', 'Open the door'], ['close', 'Slam the door shut'], ['toggle', 'Flip the door']])}${btn('unlink', 'Unlink')}</div>`
                     : btn('pick', trapPickDoor ? 'Click a door on the map (Esc)' : 'Link a door…')}
                 ${chk('ping', 'Ping the spot for everyone')}
                 <div style="margin-top:5px">${sel('sound', [['', 'No sound'], ...Sound.sfxChoices().map(o => [o.key, o.name])])}</div>
+                ${head('More actions')}<label>Reveal within cells <input data-f="reveal" type="number" min="0" value="${Number(t.reveal)||0}" style="${inp}"></label><input data-f="handout" placeholder="Handout id" value="${esc(t.handout||'')}" style="${inp}"><input data-f="map" placeholder="Battle id" value="${esc(t.map||'')}" style="${inp}"><input data-f="mapCell" placeholder="Arrival cell: x,y" value="${esc((t.mapCell||[]).join(','))}" style="${inp}">
                 ${head('Notes')}<textarea data-f="notes" rows="3" placeholder="What the players can spot, how to disarm it…" style="${inp};resize:vertical">${esc(t.notes || '')}</textarea>`;
             box.querySelectorAll('[data-f]').forEach(el => el.onchange = () => {
                 const f = el.dataset.f;
-                t[f] = el.type === 'checkbox' ? el.checked : f === 'name' ? (el.value.trim() || t.name) : el.value.trim();
+                t[f] = f === 'reveal' ? Math.max(0,Number(el.value)||0) : f === 'mapCell' ? el.value.split(',').map(Number).slice(0,2) : el.type === 'checkbox' ? el.checked : f === 'name' ? (el.value.trim() || t.name) : el.value.trim();
                 changed({ keepInspector: true });
+                saveBridgeTraps(bid);
                 if (f === 'name') drawEditPreview();
             });
             box.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
@@ -2661,10 +2721,10 @@
                 if (a === 'back') { trapSel = null; trapPickDoor = false; }
                 else if (a === 'fire') { fireTrap(bid, trapSel, null); return; }
                 else if (a === 'arm') { t.armed = true; changed({ keepInspector: true }); }
-                else if (a === 'del') { delete traps[trapSel]; trapSel = null; changed({ keepInspector: true }); }
+                else if (a === 'del') { if (GH?.isTrap(trapSel)) GH.saveTrap(trapSel,null); else delete db.battles[bid].traps[trapSel]; delete traps[trapSel]; trapSel = null; changed({ keepInspector: true }); }
                 else if (a === 'unlink') { t.door = ''; changed({ keepInspector: true }); }
                 else if (a === 'pick') { trapPickDoor = !trapPickDoor; if (trapPickDoor) showStatus('Click the door this trap opens or slams shut'); }
-                renderTrapPanel(); drawEditPreview();
+                saveBridgeTraps(bid); renderTrapPanel(); drawEditPreview();
             });
         }
         ['trapPanel', 'trapAlert'].forEach(id => $(id).addEventListener('pointerdown', (e) => e.stopPropagation()));
@@ -2672,41 +2732,78 @@
         const trapSeen = {};
         function checkTraps(bid) {
             if (PLAYER || bid !== db.view.battleId || !ui.scene) return;
-            const traps = trapsOf(bid), s = ui.scene, seen = (trapSeen[bid] ||= {});
-            for (const [tid, tk] of Object.entries(db.battles[bid]?.tokens || {})) {
-                const k = `${Math.floor(tk.x * s.w / s.ppg)}_${Math.floor(tk.y * s.h / s.ppg)}`;
+            const traps = allTrapsOf(bid), s = ui.scene, seen = (trapSeen[bid] ||= {});
+            for (const [tid, tk] of Object.entries(battleTokens(bid))) {
+                const k = `${Math.floor(tk.x * s.w / s.ppg)}_${Math.floor(tk.y * s.h / s.ppg)}`, f = Number(tk.f)||0;
                 const was = seen[tid];
-                seen[tid] = k;
-                if (!was || was === k) continue;
+                seen[tid] = {k,f};
+                if (!was || (was.k === k && was.f === f)) continue;
                 for (const [id, t] of Object.entries(traps)) {
-                    if (!t.armed || !t.cells?.includes(k) || t.cells.includes(was)) continue;
-                    if (t.who !== 'anyone' && !db.things[tid]?.traits?.pc) continue;
-                    setTimeout(() => fireTrap(bid, id, tid), 0);
+                    if ((Number(t.f)||0) !== f || !t.armed || !t.cells?.includes(k) || (was.f === f && t.cells.includes(was.k))) continue;
+                    const pc = !!battleThing(tid,bid)?.traits?.pc;
+                    if ((t.who === 'pcs' && !pc) || (t.who === 'monsters' && pc)) continue;
+                    setTimeout(() => { if (allTrapsOf(bid)[id]?.armed) fireTrap(bid, id, tid); }, 0);
                 }
             }
         }
         let trapAlertData = null;
         function fireTrap(bid, id, tid) {
-            const t = trapsOf(bid)[id], b = db.battles[bid];
+            const t = allTrapsOf(bid)[id], b = db.battles[bid];
             if (!t || !b) return;
+            const tf = Number(t.f)||0, rootEd = b.edits || {}, trapEd = tf === 0 ? rootEd : rootEd.floors?.[tf] || {};
             let roll = null;
             if (t.damage) try { roll = rollExpr(t.damage); } catch {}
-            const lines = [];
+            const lines = [], triggerName = tid ? battleThing(tid,bid)?.name : '';
             if (t.door) {
                 b.doors ||= {};
-                const open = t.doorAction === 'open' ? true : t.doorAction === 'close' ? false : b.doors[t.door] !== 'open';
-                b.doors[t.door] = open ? 'open' : 'closed';
+                const ownDoor = trapEd.addDoors?.[t.door];
+                const d = GH?.geometry(tf).doors.find(d => d.key === t.door) || (ownDoor ? {...ownDoor,closed:b.doors[t.door] !== 'open'} : sceneGeometry(ui.scene,bid).doors.find(d => d.key===t.door));
+                const open = t.doorAction === 'open' ? true : t.doorAction === 'close' ? false : d ? d.closed : b.doors[t.door] !== 'open';
+                if (d?.src==='table3d') GH.setDoor(d,open,tf); else if (!d || !GH_API || GH_API.doorRules(d.kind||d.mat).toggle) b.doors[t.door] = open ? 'open' : 'closed';
                 lines.push(`The door ${open ? 'swings open' : 'slams shut'}.`);
             }
             if (t.once) t.armed = false;
             if (t.ping && t.cells?.length && ui.scene && bid === db.view.battleId) {
                 const pts = t.cells.map(k => k.split('_').map(Number)), g = ui.scene.ppg;
-                sendPing((pts.reduce((a, p) => a + p[0], 0) / pts.length + 0.5) * g, (pts.reduce((a, p) => a + p[1], 0) / pts.length + 0.5) * g);
+                sendPing((pts.reduce((a, p) => a + p[0], 0) / pts.length + 0.5) * g, (pts.reduce((a, p) => a + p[1], 0) / pts.length + 0.5) * g, tf);
             }
             if (t.sound) Sound.pushKey(t.sound);
+            if (Number(t.reveal) > 0 && ui.scene) {
+                const cells = (t.cells || []).map(k => k.split('_').map(Number));
+                const near = (x,y) => cells.some(([cx,cy]) => Math.hypot(x-cx-.5,y-cy-.5) <= Number(t.reveal));
+                for (const [id,p] of Object.entries(battleTokens(bid))) if ((Number(p.f)||0) === tf && p.hidden && near(p.x*ui.scene.w/ui.scene.ppg,p.y*ui.scene.h/ui.scene.ppg)) {
+                    if (b.tokens[id]) b.tokens[id].hidden=false;
+                    Live.update(livePath(`tokens/${bid}/${id}`),{hidden:false});
+                }
+                for (const p of Object.values(trapEd.props || {})) if (near(p.x,p.y)) p.hidden=false;
+                // GeezTabletop props are live floor data; reveal only those within the effect.
+                for (const [id,p] of Object.entries(GH?.layer(tf)?.props || {})) if (p.hidden && near(p.x,p.y)) Live.set(livePath(`table3d/${bid}/floors/${tf}/props/${id}/hidden`),false);
+            }
+            if (t.handout && handouts[t.handout]) Live.set(livePath('handouts/'+t.handout),{...handouts[t.handout],ts:Date.now()});
+            saveBridgeTraps(bid);
+            if (t.map && db.things[t.map]) {
+                const dest = db.things[t.map], party = Object.entries(battleTokens(bid)).filter(([id]) => battleThing(id,bid)?.traits?.pc);
+                const sc = dd2vttLoaded(dest.traits?.dd2vtt), bs = blankSize(dest.traits?.dd2vtt);
+                const cols = sc ? sc.w/sc.ppg : bs?.cols, rows = sc ? sc.h/sc.ppg : bs?.rows;
+                const arrive = (sceneSize) => {
+                    if (!t.mapCell?.length || !sceneSize) return;
+                    for (const [id,p] of party) moveToken(t.map,id,{...p,x:(+t.mapCell[0]+.5)/sceneSize.x,y:(+t.mapCell[1]+.5)/sceneSize.y,f:0});
+                };
+                if (cols && rows) arrive({x:cols,y:rows});
+                else {
+                    let off, received = false;
+                    off=Live.on(livePath(`table3d/${t.map}/meta`),async m=>{
+                        if (received) return; received=true; queueMicrotask(()=>off?.());
+                        if(m?.size) arrive(m.size);
+                        else if(dest.traits?.dd2vtt) { const scene=await loadDd2vtt(dest.traits.dd2vtt); if(scene) arrive({x:scene.w/scene.ppg,y:scene.h/scene.ppg}); }
+                    });
+                }
+                Live.set(livePath('dmAt'),{chain:[...locationChain(t.map),t.map],level:'VTT',target:t.map,ts:Date.now()});
+                openBattle(t.map);
+            }
             ui.vision = null;
             changed({ keepInspector: true });
-            trapAlertData = { t, who: tid ? db.things[tid]?.name : '', roll, lines };
+            trapAlertData = { t, who: triggerName, roll, lines };
             renderTrapAlert(); renderTrapPanel();
         }
         function renderTrapAlert() {
@@ -2743,13 +2840,13 @@
         const propImgs = {};
         function propImg(d) {
             let im = propImgs[d.id];
-            if (!im) { im = propImgs[d.id] = new Image(); im.onload = () => { if (db.view.level === 'VTT' && ui.scene) drawScene(ui.scene, db.view.battleId); }; im.src = d.src; }
+            if (!im) { im = propImgs[d.id] = new Image(); im.onload = () => { GH?.invalidate(); if (db.view.level === 'VTT' && ui.scene) drawScene(ui.scene, db.view.battleId); }; im.src = d.src; }
             return im.complete && im.naturalWidth ? im : null;
         }
         ui.prop = kept('geezvtt.prop', PROPS[0]?.id || '');
         ui.propRot = 0; ui.propScatter = false; ui.propHidden = false; ui.propTag = '';
         let propSel = null;
-        const propsOf = (bid) => db.battles[bid]?.edits?.props || {};
+        const propsOf = (bid) => floorEdits(bid).props || {};
         // a footprint turned 90° swaps its width and height
         function propSize(o) {
             const d = propDef(o.p) || { w: 1, h: 1 }, turned = Math.round(((o.rot || 0) % 180 + 180) % 180) === 90, k = o.s || 1;
@@ -2800,7 +2897,7 @@
             drawScene(ui.scene, db.view.battleId);
         }
         function propKey(k) {
-            const props = propsOf(db.view.battleId), o = propSel && props[propSel], done = () => { ui.vision = null; changed({ keepInspector: true }); renderPropPanel(); };
+            const props = editsOf(db.view.battleId).props || {}, o = propSel && props[propSel], done = () => { ui.vision = null; changed({ keepInspector: true }); renderPropPanel(); };
             if (k === 'R') { if (o) { o.rot = (Math.round((o.rot || 0) / 90) * 90 + 90) % 360; Object.assign(o, propSnap(o.x, o.y, o)); done(); } else { ui.propRot = (ui.propRot + 90) % 360; renderPropPanel(); } return true; }
             if (k === 'H') { if (o) { if (o.hidden) delete o.hidden; else o.hidden = true; done(); } else { ui.propHidden = !ui.propHidden; renderPropPanel(); } return true; }
             if ((k === 'Delete' || k === 'Backspace') && o) { delete props[propSel]; propSel = null; done(); return true; }
@@ -2855,6 +2952,7 @@
         $('propPanel').addEventListener('pointerdown', (e) => e.stopPropagation());
         // ---- the battle-map tool rail, godot style: number keys, a hint for each tool, X to erase ----
         const VTT_TOOLS = [
+            { mode: 'draft', key: 'D', name: 'Draft', hint: 'Sketch typed rooms, then build the whole plan.', keys: 'Drag: room ? Shift-drag: extend ? Click: retype ? Right-drag: erase ? Enter: build ? Esc: clear' },
             { mode: 'pan', key: '1', name: 'Select', hint: 'Move tokens, open and close doors, look around.', keys: 'Drag: move · Middle-drag: pan · Click a door: open/close · Right-click: ping' },
             { mode: 'room', key: '2', name: 'Room', hint: 'Highlight the squares for a room, any shape, then build it: floor, walls and a door. Rooms that touch merge.', keys: 'Drag: highlight · Right-drag: unhighlight · Enter: build · Esc: clear · X: knock down instead · I: pick a floor' },
             { mode: 'paint', key: '3', name: 'Floor', hint: 'Lay floors: a rectangle, a brush, or fill an area.', keys: 'Drag: highlight · Right-drag: unhighlight · [ ]: brush size · Enter: paint · X: remove floor · I: pick a floor from the map' },
@@ -2869,7 +2967,7 @@
         ];
         const ERASE_MODES = ['room', 'paint', 'wall', 'door', 'trap', 'props'];
         // Build hides the building tools at the table and brings them back when you need them (B)
-        const BUILD_MODES = ['room', 'paint', 'wall', 'door', 'props', 'light', 'trap', 'erase'];
+        const BUILD_MODES = ['draft', 'room', 'paint', 'wall', 'door', 'props', 'light', 'trap', 'erase'];
         ui.build = kept('geezvtt.build', '0') === '1';
         ui.picking = false;          // the next click on the map picks a style (the I key, for touch screens)
         function setBuild(on) {
@@ -2946,14 +3044,16 @@
         }
 
         function renderTokens(battleId, scene) {
-            const tokens = db.battles[battleId]?.tokens || {};
+            const tokens = battleTokens(battleId);
             const liveMoves = live.tokens?.[battleId] || {};
             const baseSize = scene.ppg;
             const turnThing = currentTurnThing();
             for (const [npcId, storedPos] of Object.entries(tokens)) {
-                const n = db.things[npcId];
+                const n = battleThing(npcId, battleId);
                 if (!n) continue;
                 const pos = liveMoves[npcId] || storedPos;
+                if (!floorMatches(pos)) continue;
+                if (PLAYER && GH?.covered(pos.x * scene.w / scene.ppg, pos.y * scene.h / scene.ppg)) continue;
                 const flags = storedPos || {};
                 if (PLAYER && flags.hidden) continue;
                 // outside the party's sight: players don't see the creature
@@ -2994,7 +3094,7 @@
                 dragElement(el, {
                     onMove: !canMove ? () => {} : (x, y) => { el.style.left = (x - size / 2) + 'px'; el.style.top = (y - size / 2) + 'px'; },
                     onEnd: !canMove ? () => {} : (x, y) => moveToken(battleId, npcId, snapToCell(scene, x, y, tokenSize(n))),
-                    onClick: () => { if (!db.things[npcId]?.traits?.stub) select('thing', npcId); },
+                    onClick: () => { if (!db.things[npcId] && !PLAYER) GH?.inspectToken(npcId); else if (!db.things[npcId]?.traits?.stub) select('thing', npcId); },
                     startPos: () => { const p = (live.tokens?.[battleId] || {})[npcId] || tokens[npcId]; return { x: p.x * scene.w, y: p.y * scene.h }; }
                 });
                 tokensLayer.appendChild(el);
@@ -3022,10 +3122,10 @@
         // Walls, doors and lights of the open battle map in grid units: what the dd2vtt has,
         // minus anything you erased, plus anything you drew. Your edits live on the battle
         // (battles[id].edits) so the dd2vtt file itself never changes.
-        const editsOf = (battleId) => { const b = (db.battles[battleId] ||= { tokens: {} }); b.edits ||= {}; return b.edits; };
+        const editsOf = (battleId) => { const b = (db.battles[battleId] ||= { tokens: {} }); b.edits ||= {}; if (GH?.meta() && GH.floor() !== 0) return ((b.edits.floors ||= {})[GH.floor()] ||= {}); return b.edits; };
         function sceneGeometry(scene, battleId) {
             const g = scene.ppg;
-            const ed = db.battles[battleId]?.edits || {};
+            const ed = floorEdits(battleId);
             const hideW = ed.hideWalls || {}, hideD = ed.hideDoors || {};
             const walls = [];
             scene.walls.forEach((line, li) => { for (let i = 0; i < line.length - 1; i++) { const key = `${li}_${i}`; if (!hideW[key]) walls.push({ key, src: 'dd', x1: line[i].x / g, y1: line[i].y / g, x2: line[i + 1].x / g, y2: line[i + 1].y / g }); } });
@@ -3034,14 +3134,17 @@
             const doors = [];
             scene.doors.forEach(([a, b], i) => { if (a && b && !hideD[i]) doors.push({ id: 'd' + i, key: String(i), src: 'dd', x1: a.x / g, y1: a.y / g, x2: b.x / g, y2: b.y / g, closed: state[i] !== 'open' }); });
             Object.entries(ed.addDoors || {}).forEach(([key, d]) => doors.push({ id: key, key, src: 'add', ...d, closed: state[key] !== 'open' }));
+            if (GH?.meta()) { const gh = GH.geometry(); walls.push(...gh.walls.filter(w => !hideW[w.key])); doors.push(...gh.doors.filter(d => !hideD[d.key])); }
+            for (const d of doors) Object.assign(d, GH_API?.doorRules(d.kind || d.mat, !d.closed) || {});
             return { walls, doors };
         }
         function sceneLights(scene, battleId) {
-            const g = scene.ppg, ed = db.battles[battleId]?.edits || {}, hide = ed.hideLights || {};
+            const g = scene.ppg, ed = floorEdits(battleId), hide = ed.hideLights || {};
             const out = [];
             scene.lights.forEach((l, i) => { if (!hide[i]) out.push({ key: String(i), src: 'dd', x: l.x / g, y: l.y / g, range: l.r / g }); });
             Object.entries(ed.addLights || {}).forEach(([key, l]) => out.push({ key, src: 'add', ...l }));
             Object.entries(ed.props || {}).forEach(([key, o]) => { const d = propDef(o.p); if (d?.light && !hide['prop:' + key] && !(PLAYER && o.hidden)) out.push({ key: 'prop:' + key, src: 'prop', x: o.x, y: o.y, range: d.light.range || 4 }); });
+            out.push(...(GH?.lights() || []));
             return out;
         }
         const segDistG = (gx, gy, s2) => { const dx = s2.x2 - s2.x1, dy = s2.y2 - s2.y1, l2 = dx * dx + dy * dy || 1; const t = clamp(((gx - s2.x1) * dx + (gy - s2.y1) * dy) / l2, 0, 1); return Math.hypot(gx - (s2.x1 + t * dx), gy - (s2.y1 + t * dy)); };
@@ -3059,6 +3162,9 @@
         }
         function toggleDoorAt(battleId, i) {
             i = String(i);
+            const d = sceneGeometry(ui.scene, battleId).doors.find(d => d.key === i);
+            if (d && GH_API && !GH_API.doorRules(d.kind || d.mat).toggle) return;
+            if (d?.src === 'table3d') { GH.setDoor(d, d.closed); return; }
             const b = (db.battles[battleId] ||= { tokens: {} });
             b.doors ||= {};
             b.doors[i] = b.doors[i] === 'open' ? 'closed' : 'open';
@@ -3072,11 +3178,11 @@
         // Returns { dark, lights, views: [{ los, dv }] } with polygons in grid units, or null if off.
         const darkvisionOf = (t) => { const ft = parseFloat(sheetFor(t)?.senses?.darkvision ?? t?.traits?.darkvision); return ft > 0 ? ft / 5 : 0; };
         function viewerTokens(scene, battleId) {
-            const tokens = db.battles[battleId]?.tokens || {}, moves = live.tokens?.[battleId] || {};
+            const tokens = battleTokens(battleId), moves = live.tokens?.[battleId] || {};
             const pcs = [];
             for (const [tid, sp] of Object.entries(tokens)) {
-                const t = db.things[tid];
-                if (!t?.traits?.pc || sp?.hidden) continue;
+                const t = battleThing(tid, battleId);
+                if (!t?.traits?.pc || sp?.hidden || !floorMatches(moves[tid] || sp)) continue;
                 const p = moves[tid] || sp;
                 pcs.push({ t, x: p.x * scene.w / scene.ppg, y: p.y * scene.h / scene.ppg });
             }
@@ -3087,10 +3193,10 @@
             if (!GEO || !PLAYER) return null;
             const b = db.battles[battleId];
             if (b?.vision === false) return null;
-            const dark = b?.light === 'dark';
+            const dark = (GH?.meta()?.light || b?.light) === 'dark';
             const { walls, doors } = sceneGeometry(scene, battleId);
             if (!dark && !walls.length && !doors.length) return null;
-            const occ = GEO.activeOccluders(walls, doors);
+            const occ = GEO.activeOccluders(walls, doors.filter(d => d.sight !== false));
             const range = Math.hypot(scene.w, scene.h) / scene.ppg;
             const lights = dark ? sceneLights(scene, battleId).filter(l => l.range > 0).map(l => GEO.computeVisibilityPolygon(l.x, l.y, occ, l.range)) : [];
             const views = viewerTokens(scene, battleId).map(({ t, x, y }) => {
@@ -3159,7 +3265,7 @@
         // small PNG. The DM's "Forget explored areas" stamps session/exploredReset/<battle>;
         // a saved memory from before the latest stamp is thrown away.
         const explored = new Map();
-        const exploredKey = (battleId) => `geezvtt.explored.${PCAMP}.${battleId}.${playerName || 'party'}`;
+        const exploredKey = (battleId) => `geezvtt.explored.${PCAMP}.${battleId}.${GH?.floor() || 0}.${playerName || 'party'}`;
         function exploredFor(battleId) {
             const key = exploredKey(battleId), reset = liveSession.exploredReset?.[battleId] || 0;
             let ex = explored.get(key);
@@ -3220,6 +3326,7 @@
         const whoAmI = () => PLAYER ? (playerName || 'Player') : 'DM';
 
         function subscribeLive() {
+            GH?.reset();
             liveUnsubs.forEach(f => f());
             liveUnsubs = [
                 Live.on(livePath('tokens'), (v) => {
@@ -3242,9 +3349,17 @@
         // Every move goes through the live channel so the other screens see it at once;
         // the DM's copy of the campaign also keeps the position.
         function moveToken(battleId, thingId, pos) {
-            Live.update(livePath('tokens/' + battleId), { [thingId]: pos });
+            const before = battleTokens(battleId)[thingId] || {};
+            if (PLAYER && liveSession.lockMove) return;
+            if (battleId === db.view.battleId && before.x !== undefined && ui.scene && GEO && pos.f === undefined) {
+                const geo = sceneGeometry(ui.scene, battleId), g = ui.scene.ppg;
+                const blockers = [...geo.walls, ...geo.doors.filter(d => d.pass === false || (d.pass === undefined && d.closed))];
+                if (GEO.isPathBlocked(before.x * ui.scene.w/g, before.y * ui.scene.h/g, pos.x * ui.scene.w/g, pos.y * ui.scene.h/g, blockers, [])) { showStatus('The way is blocked'); renderView(); return; }
+            }
+            pos = { ...before, ...pos, f: pos.f ?? before.f ?? GH?.floor() ?? 0 };
+            Live.update(livePath('tokens/' + battleId + '/' + thingId), { x:pos.x, y:pos.y, f:pos.f, ...(!PLAYER && pos.light ? {light:pos.light} : {}) });
             const b = (db.battles[battleId] ||= { tokens: {} });
-            b.tokens[thingId] = { ...(b.tokens[thingId] || {}), x: pos.x, y: pos.y };
+            b.tokens[thingId] = { ...(b.tokens[thingId] || {}), ...pos };
             live.tokens[battleId] = { ...(live.tokens[battleId] || {}), [thingId]: pos };
             if (!PLAYER) save();
             renderView();
@@ -3255,7 +3370,7 @@
                 const b = db.battles[bid];
                 if (!b) continue;
                 for (const [tid, pos] of Object.entries(moves || {})) {
-                    if (b.tokens[tid] && (b.tokens[tid].x !== pos.x || b.tokens[tid].y !== pos.y)) { b.tokens[tid] = { ...b.tokens[tid], x: pos.x, y: pos.y }; dirty = true; }
+                    if (b.tokens[tid] && (b.tokens[tid].x !== pos.x || b.tokens[tid].y !== pos.y || b.tokens[tid].f !== pos.f || JSON.stringify(b.tokens[tid].light) !== JSON.stringify(pos.light))) { b.tokens[tid] = { ...b.tokens[tid], ...pos }; dirty = true; }
                 }
             }
             if (dirty) save();
@@ -3264,10 +3379,10 @@
         // ---- pings: right-click (or long-press) on a map ----
         const PING_COLORS = ['#f59e0b', '#22d3ee', '#a78bfa', '#34d399', '#f472b6', '#f87171'];
         function pingColor(name) { let h = 0; for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return name === 'DM' ? '#ef4444' : PING_COLORS[h % PING_COLORS.length]; }
-        function sendPing(x, y) {
+        function sendPing(x, y, f = GH?.floor() || 0) {
             if (!ui.loaded || !ui.size.w) return;
             if (PLAYER && liveSession.lockPings) { showStatus('The DM has paused pings'); return; }
-            const id = Live.push(livePath('pings'), { v: viewKey(), x: frac(x / ui.size.w), y: frac(y / ui.size.h), by: whoAmI(), ts: Date.now() });
+            const id = Live.push(livePath('pings'), { v: viewKey(), x: frac(x / ui.size.w), y: frac(y / ui.size.h), by: whoAmI(), f, ts: Date.now() });
             setTimeout(() => Live.remove(livePath('pings/' + id)), 5000);
         }
         function showPings(pings) {
@@ -3275,10 +3390,11 @@
             for (const [id, p] of Object.entries(pings)) {
                 if (seenPings.has(id)) continue;
                 seenPings.add(id);
-                if (!p || now - (p.ts || 0) > 6000 || p.v !== viewKey() || !ui.size.w) continue;
+                if (!p || (db.view.level === 'VTT' && !floorMatches(p)) || now - (p.ts || 0) > 6000 || p.v !== viewKey() || !ui.size.w) continue;
                 const c = pingColor(p.by);
                 const inv = 1 / cam().zoom;
                 const wrap = document.createElement('div');
+                if (db.view.level === 'VTT') wrap.dataset.pingFloor = String(GH?.floor() || 0);
                 wrap.style.cssText = `position:absolute;left:${p.x * ui.size.w}px;top:${p.y * ui.size.h}px;z-index:30;pointer-events:none;transform:scale(${inv});transform-origin:0 0;--c:${c}`;
                 wrap.innerHTML = `<div class="geez-ping"></div><div class="geez-ping-label">${esc(p.by)}</div>`;
                 mapWrapper.appendChild(wrap);
@@ -4254,8 +4370,8 @@
                     else showStatus('Right-click a door you added to wall it up (the eraser removes doors that came with the map)');
                     return;
                 }
-                const r = BT.cutDoor(ed.addWalls || {}, ed.addDoors || {}, at, ui.swatch.door, () => uid('dr'));
-                if (r) { ed.addWalls = r.walls; ed.addDoors = r.doors; ui.vision = null; changed({ keepInspector: true }); showStatus('Door added (closed). Open it with Select (1).'); return; }
+                const r = BT.cutDoor(ed.addWalls || {}, ed.addDoors || {}, at, ui.swatch.door, () => uid('dr'), ui.doorKind === 'double' ? 2 : 1);
+                if (r) { for (const d of Object.values(r.doors)) if (!Object.values(ed.addDoors || {}).some(old => old.x1 === d.x1 && old.y1 === d.y1 && old.x2 === d.x2 && old.y2 === d.y2)) { d.kind = ui.doorKind || 'wood'; d.f = GH?.floor() || 0; } ed.addWalls = r.walls; ed.addDoors = r.doors; ui.vision = null; changed({ keepInspector: true }); showStatus('Door added (closed). Open it with Select (1).'); return; }
                 // not on a wall you drew: drag out a free door as before
             }
             if (e.button !== 0 || e.target.closest('label, button, input')) return;
@@ -4451,7 +4567,7 @@
             if (drag.kind === 'ruler') { drag = null; return; }
             if (drag.kind === 'doorDraw') {
                 const pv = editPreview; drag = null; editPreview = null;
-                if (pv && (pv.a.x !== pv.b.x || pv.a.y !== pv.b.y)) { (editsOf(db.view.battleId).addDoors ||= {})[uid('dr')] = { x1: pv.a.x, y1: pv.a.y, x2: pv.b.x, y2: pv.b.y, mat: ui.swatch.door }; changed({ keepInspector: true }); showStatus('Door added (closed). Click it in the select tool to open it.'); }
+                if (pv && (pv.a.x !== pv.b.x || pv.a.y !== pv.b.y)) { (editsOf(db.view.battleId).addDoors ||= {})[uid('dr')] = { x1: pv.a.x, y1: pv.a.y, x2: pv.b.x, y2: pv.b.y, mat: ui.swatch.door, kind: ui.doorKind || 'wood', f: GH?.floor() || 0 }; changed({ keepInspector: true }); showStatus('Door added (closed). Click it in the select tool to open it.'); }
                 else drawEditPreview();
                 return;
             }
@@ -4566,7 +4682,7 @@
         const MODE_OFF = 'mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group';
         function setMode(mode) {
             const isMap = db.view.level === 'WORLD' || db.view.level === 'LOCATION';
-            const rulerOk = ((mode === 'ruler' || mode === 'ping') && db.view.level !== 'DM_BOARD') || (['wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].includes(mode) && db.view.level === 'VTT' && !PLAYER);
+            const rulerOk = ((mode === 'ruler' || mode === 'ping') && db.view.level !== 'DM_BOARD') || (['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].includes(mode) && db.view.level === 'VTT' && !PLAYER);
             if (wallChain && mode !== 'wall') endWallChain();
             if (mode !== 'pan' && !isMap && !rulerOk) { showStatus('Markers and tiles work on the world and location maps.'); return; }
             if (PLAYER && !['pan', 'ruler', 'ping'].includes(mode)) return;
@@ -4585,7 +4701,7 @@
             ui.mode = mode;
             $('modeRuler').className = mode === 'ruler' ? MODE_ON : MODE_OFF;
             $('modePing').className = mode === 'ping' ? MODE_ON : MODE_OFF;
-            ['wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].forEach(m => { const el = $('mode' + m[0].toUpperCase() + m.slice(1)); if (el) el.className = mode === m ? MODE_ON : MODE_OFF; });
+            ['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].forEach(m => { const el = $('mode' + m[0].toUpperCase() + m.slice(1)); if (el) el.className = mode === m ? MODE_ON : MODE_OFF; });
             renderToolHint();
             if (db.view.level === 'VTT' && ui.scene && !PLAYER) { drawScene(ui.scene, db.view.battleId); drawEditPreview(); }
             renderSwatchPanel(); renderPaintBar(); renderPropPanel();
@@ -4598,14 +4714,14 @@
             viewport.classList.toggle('placing', mode !== 'pan');
             const map = currentMap();
             if (map && ui.loaded) drawGrid(map);
-            showStatus({ pan: 'Drag to pan (middle-drag pans in every tool), click to select, drag markers to move them. Right-click to ping.', marker: 'Click the map to place a marker', tile: 'Click a grid square to add notes to it', road: 'Click two markers to connect them with a road', ruler: 'Drag to measure. Esc clears it.', ping: 'Click the map to ping it for everyone.', wall: 'Drag along the grid lines to build walls (right-drag removes, R for rectangles). Or click to chain walls freely.', door: 'Click a wall to put a door in it; right-click a door to wall it up. Drag off a wall for a free door.', room: 'Highlight the squares for a room, then Enter builds it.', props: 'Pick an object, then click the map to place it.', trap: 'Drag out the squares a trap covers, then Enter. Only you see traps.', light: 'Click to add a light; drag a light to move it.', erase: 'Click a wall, door or light to remove it.', paint: 'Pick a floor, drag to highlight squares (right-drag removes), then Paint (Enter).' }[mode]);
+            showStatus({ draft: 'Drag rooms, Shift-drag to extend, click to retype. Enter builds; Esc clears. Drafts stay on this browser.', pan: 'Drag to pan (middle-drag pans in every tool), click to select, drag markers to move them. Right-click to ping.', marker: 'Click the map to place a marker', tile: 'Click a grid square to add notes to it', road: 'Click two markers to connect them with a road', ruler: 'Drag to measure. Esc clears it.', ping: 'Click the map to ping it for everyone.', wall: 'Drag along the grid lines to build walls (right-drag removes, R for rectangles). Or click to chain walls freely.', door: 'Click a wall to put a door in it; right-click a door to wall it up. Drag off a wall for a free door.', room: 'Highlight the squares for a room, then Enter builds it.', props: 'Pick an object, then click the map to place it.', trap: 'Drag out the squares a trap covers, then Enter. Only you see traps.', light: 'Click to add a light; drag a light to move it.', erase: 'Click a wall, door or light to remove it.', paint: 'Pick a floor, drag to highlight squares (right-drag removes), then Paint (Enter).' }[mode]);
         }
         $('modePan').onclick = () => setMode('pan');
         // a tool's button again (or Esc) puts it away and goes back to Select
         ['marker', 'tile', 'road'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
         $('modeRuler').onclick = () => setMode(ui.mode === 'ruler' ? 'pan' : 'ruler');
         $('modePing').onclick = () => setMode(ui.mode === 'ping' ? 'pan' : 'ping');
-        ['wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
+        ['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
         $('diceToolBtn').onclick = () => {
             const pop = $('dicePop');
             pop.classList.toggle('hidden');
@@ -5907,7 +6023,7 @@
 
         function choosePlayer() {
             const src = campaignSource();
-            const pcs = Object.values(src.things).filter(t => t.type === 'npc' && t.traits?.pc && (campaignOfIn(src, t.id) || PCAMP) === PCAMP).map(t => t.name).sort();
+            const pcs = [...new Set([...Object.values(GH?.meta() ? Object.fromEntries(Object.keys(battleTokens(db.view.battleId)).map(id => [id, battleThing(id, db.view.battleId)]).filter(([,t]) => t)) : {}).filter(t => t.traits?.pc).map(t => t.name), ...Object.values(src.things).filter(t => t.type === 'npc' && t.traits?.pc && (campaignOfIn(src, t.id) || PCAMP) === PCAMP).map(t => t.name)])].sort();
             document.querySelectorAll('[data-passgate]').forEach(e => e.remove());
             const ov = document.createElement('div');
             ov.dataset.passgate = '1';
@@ -5932,7 +6048,7 @@
                 localStorage.setItem(PNAME_KEY, n);
                 $('playerNameLabel').textContent = n;
                 ov.remove();
-                refreshInspector();
+                refreshInspector(); renderView();
             };
             ov.querySelectorAll('[data-n]').forEach(b => b.onclick = () => done(b.dataset.n));
             ov.querySelector('#pnOk').onclick = () => done(ov.querySelector('#pnInput').value.trim());
@@ -6424,12 +6540,14 @@
                 const box = document.createElement('div');
                 box.dataset.tokbox = '';
                 box.className = 'bg-slate-900/70 border border-slate-800 rounded-xl p-3 space-y-2';
-                box.innerHTML = `<div class="text-[10px] uppercase tracking-wider font-bold text-indigo-300">Token on this map</div>
+                box.innerHTML = `<div class="text-[10px] uppercase tracking-wider font-bold text-indigo-300">Token on this map</div><label class="text-xs flex gap-2"><input data-token-light type="checkbox" ${battleTokens(bid)[t.id]?.light?.on ? 'checked' : ''}>Light <input data-light-range type="number" min="1" max="100" value="${battleTokens(bid)[t.id]?.light?.range || 4}" class="w-12 bg-slate-950 border border-slate-700 rounded"> cells</label>
                     <div class="grid grid-cols-3 gap-1.5 text-[11px]">
                         ${[['hidden', 'Hidden'], ['hideName', 'Hide name'], ['hideHp', 'Hide HP']].map(([k, l]) => `<label class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-1.5 py-1"><input type="checkbox" data-tflag="${k}" ${tok[k] ? 'checked' : ''} class="accent-indigo-500">${l}</label>`).join('')}
                     </div>
                     <div class="flex flex-wrap gap-1">${CONDITION_LIST.map(c => `<button data-cond="${esc(c.id)}" class="px-1.5 py-0.5 rounded-full text-[10px] border ${conds.includes(c.id) ? 'text-slate-900 font-semibold' : 'text-slate-300 bg-slate-950'}" style="border-color:${c.color};${conds.includes(c.id) ? 'background:' + c.color : ''}">${esc(c.label || c.id)}</button>`).join('')}</div>`;
                 pane.appendChild(box);
+                const setLight = () => moveToken(bid, t.id, { ...battleTokens(bid)[t.id], light:{on:box.querySelector('[data-token-light]').checked,range:Math.max(1,Number(box.querySelector('[data-light-range]').value)||4)} });
+                box.querySelector('[data-token-light]').onchange = setLight; box.querySelector('[data-light-range]').onchange = setLight;
                 box.querySelectorAll('[data-tflag]').forEach(cb => cb.onchange = () => { tok[cb.dataset.tflag] = cb.checked; changed({ keepInspector: true }); });
                 box.querySelectorAll('[data-cond]').forEach(b => b.onclick = () => {
                     const c = b.dataset.cond, cur = new Set(conds);
