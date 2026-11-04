@@ -3410,6 +3410,49 @@
             }
         }
 
+        // Local automation uses the same player actions as dragging and right-clicking.
+        if (LOCAL_DB) {
+            const shown = new Map(), originalShowPings = showPings;
+            showPings = function(records) {
+                const now = Date.now();
+                for (const [id, p] of Object.entries(records)) if (!seenPings.has(id) && p && p.v === viewKey() &&
+                    now - p.ts <= 6000 && ui.size.w && (db.view.level !== 'VTT' || floorMatches(p))) shown.set(id, p);
+                originalShowPings(records);
+            };
+            const own = () => Object.keys(battleTokens(db.view.battleId)).find(id => {
+                const t = battleThing(id, db.view.battleId); return t?.traits?.pc && t.name === playerName;
+            }) || null;
+            window.__SHEETS__ = {
+                ready: () => !!(GH?.meta() && ui.loaded && ui.scene && db.view.level === 'VTT' && playerName),
+                pick(name) {
+                    choosePlayer(name);
+                    return playerName === name;
+                },
+                state() {
+                    const bid = db.view.battleId, now = Date.now();
+                    for (const [id, p] of shown) if (now - p.ts > 3400) shown.delete(id);
+                    return { ready: this.ready(), status: $('statusMessage').textContent, campaign: liveCamp(), bid,
+                        level: db.view.level, floor: GH?.floor() || 0, meta: GH?.meta(), me: {token: own(), name: playerName},
+                        tokens: Object.entries(battleTokens(bid)).map(([id, p]) => { const t = battleThing(id, bid);
+                            return {id, name:t?.name || id, ...p, pc:!!t?.traits?.pc, size:t?.traits?.size || 'medium'}; }),
+                        pings: [...shown.values()].filter(p => p.v === viewKey() && floorMatches(p)),
+                        doors: Object.fromEntries((GH?.geometry().doors || []).map(d => [d.key,d.closed?'closed':'open'])), dmAt };
+                },
+                move(id, x, y, f) {
+                    id ||= own(); const t = battleThing(id, db.view.battleId);
+                    if (!id || !t?.traits?.pc || t.name !== playerName) throw Error('Player can only move their own PC token');
+                    moveToken(db.view.battleId, id, {x,y,...(f === undefined ? {} : {f})});
+                },
+                ping(x, y, f) { sendPing(x * ui.size.w, y * ui.size.h, f); },
+                floor(f) {
+                    const id = own(), p = battleTokens(db.view.battleId)[id];
+                    if (!p) throw Error('No own token to change floor');
+                    if (!(GH?.meta()?.floors || []).includes(f)) throw Error('Unknown floor');
+                    this.move(id, p.x, p.y, f);
+                }
+            };
+        }
+
         // ---- ruler ----
         function drawRuler() {
             const svg = $('rulerSvg');
@@ -6029,7 +6072,7 @@
             window.open(location.pathname + '?player&campaign=' + encodeURIComponent(db.view.worldId), '_blank');
         };
 
-        function choosePlayer() {
+        function choosePlayer(selectedName) {
             const src = campaignSource();
             const pcs = [...new Set([...Object.values(GH?.meta() ? Object.fromEntries(Object.keys(battleTokens(db.view.battleId)).map(id => [id, battleThing(id, db.view.battleId)]).filter(([,t]) => t)) : {}).filter(t => t.traits?.pc).map(t => t.name), ...Object.values(src.things).filter(t => t.type === 'npc' && t.traits?.pc && (campaignOfIn(src, t.id) || PCAMP) === PCAMP).map(t => t.name)])].sort();
             document.querySelectorAll('[data-passgate]').forEach(e => e.remove());
@@ -6061,6 +6104,7 @@
             ov.querySelectorAll('[data-n]').forEach(b => b.onclick = () => done(b.dataset.n));
             ov.querySelector('#pnOk').onclick = () => done(ov.querySelector('#pnInput').value.trim());
             document.body.appendChild(ov);
+            if (LOCAL_DB && typeof selectedName === 'string') done(selectedName);
         }
 
         const campaignName = () => db.maps[db.view.worldId]?.name || 'Campaign';
