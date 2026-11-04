@@ -360,6 +360,7 @@
                 <span id="zoomDisplay" class="text-[10px] font-mono text-slate-400 w-10 text-center">100%</span>
                 <button id="zoomInBtn" class="w-8 h-8 hover:bg-slate-800 rounded-lg text-slate-300" title="Zoom in"><i class="fa-solid fa-plus text-xs"></i></button>
                 <button id="fitScreenBtn" class="w-8 h-8 hover:bg-slate-800 rounded-lg text-slate-300" title="Fit (F)"><i class="fa-solid fa-expand text-xs"></i></button>
+                <button id="open3dBtn" class="hidden h-8 px-2 hover:bg-slate-800 rounded-lg text-amber-300 text-xs font-bold" title="Open this map in 3D, in a new tab (close it if your computer struggles)"><i class="fa-solid fa-cube mr-1"></i>3D</button>
             </div>
         </div>
 
@@ -1884,6 +1885,7 @@
             const seq = ++renderSeq;
             const level = db.view.level;
             GH?.controls(); GH?.startWeather();
+            $('open3dBtn').classList.toggle('hidden', !(level === 'VTT' && GH?.meta()));
             mapWrapper.querySelectorAll('[data-ping-floor]').forEach(el => { if (level !== 'VTT' || !floorMatches({f:Number(el.dataset.pingFloor)})) el.remove(); });
             renderToolHint();
             emptyState.classList.add('hidden');
@@ -6370,6 +6372,13 @@
             const rf = $('railFog'); if (rf) { rf.classList.toggle('text-amber-400', fm !== 'off'); const tip = rf.querySelector('span'); if (tip) tip.textContent = FOG_LABEL[fm] + ' (click to change)'; }
             const rm = $('railMapFog'), mp = currentMap(); if (rm && mp && isMap) { const tip = rm.querySelector('span'); if (tip) tip.textContent = MAP_FOG_LABEL[mp.playerFog || 'auto'] + (mp.playerFog ? '' : (mapFogOn(mp) ? ' (fogged)' : ' (clear)')); rm.classList.toggle('text-amber-400', !!mp.playerFog); }
         }
+        // The same GeezTabletop map in 3D (GeezTabletopWeb), in its own tab so a struggling computer can just close it.
+        // localStorage 'geez3dUrl' points it at a local copy for testing.
+        $('open3dBtn').onclick = () => {
+            const q = new URLSearchParams({ camp: liveCamp(), bid: db.view.battleId });
+            if (PLAYER && playerName) q.set('name', playerName);
+            window.open(`${localStorage.getItem('geez3dUrl') || 'https://geezjonny.github.io/GeezTabletopWeb/'}?${q}`, 'geez3d');
+        };
         $('lockMoveBtn').onclick = () => { Live.update(livePath('session'), { lockMove: !liveSession.lockMove }); showStatus(liveSession.lockMove ? 'Players can move their tokens again' : 'Token movement locked for players'); };
         $('lockPingBtn').onclick = () => { Live.update(livePath('session'), { lockPings: !liveSession.lockPings }); };
 
