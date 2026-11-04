@@ -2275,7 +2275,7 @@
                 markerCtx.lineWidth = Math.max(1, 2.5 * k);
                 markerCtx.stroke();
 
-                const hasInside = (t.traits?.childMap && db.maps[t.traits.childMap]) || t.traits?.dd2vtt;
+                const hasInside = (t.traits?.childMap && db.maps[t.traits.childMap]) || hasBattleMap(t);
                 if (hasInside) {
                     markerCtx.beginPath();
                     markerCtx.arc(p.x, p.y, 17 * k, 0, Math.PI * 2);
@@ -3028,9 +3028,11 @@
             return { x: frac(axis(x, scene.w) / scene.w), y: frac(axis(y, scene.h) / scene.h) };
         }
 
+        // A battle map you can open and put tokens on: a dd2vtt file, a blank map, or one GeezTabletop publishes.
+        function hasBattleMap(t) { return !!(t?.traits?.dd2vtt || t?.traits?.table3d); }
         function arm(npcId) {
             const bt = db.things[db.view.battleId];
-            if (db.view.level !== 'VTT' || !bt?.traits?.dd2vtt) { showStatus('Open a battle map first (select a battle map marker and press Open in VTT).'); return; }
+            if (db.view.level !== 'VTT' || !hasBattleMap(bt)) { showStatus('Open a battle map first (select a battle map marker and press Open in VTT).'); return; }
             ui.armed = npcId;
             viewport.classList.add('placing');
             $('statusMessage').textContent = `Click the map to place ${db.things[npcId].name}. Esc to cancel.`;
@@ -4789,7 +4791,7 @@
         function openPlace(id) {
             const t = db.things[id];
             if (!t) return;
-            if (catOf(t) === 'battlemap' && t.traits?.dd2vtt) openBattle(id);
+            if (catOf(t) === 'battlemap' && hasBattleMap(t)) openBattle(id);
             else if (t.traits?.childMap && db.maps[t.traits.childMap]) openLocationMap(t.traits.childMap);
             else goToThingOnMap(id);
         }
@@ -5173,7 +5175,7 @@
             const cat = catOf(t);
             if (PLAYER) {
                 const child = t.traits?.childMap && db.maps[t.traits.childMap];
-                const canBattle = cat === 'battlemap' && t.traits?.dd2vtt;
+                const canBattle = cat === 'battlemap' && hasBattleMap(t);
                 $('locLinkBox').innerHTML = `
                     <div class="text-[11px] text-slate-400">${CATEGORY[cat].label}${isVisited(t) ? ' · visited' : ' · heard of'}</div>
                     ${child ? `<button id="openChildBtn" class="${BTN_MAIN}"><i class="fa-solid fa-city"></i>Open map</button>` : ''}
@@ -5627,7 +5629,7 @@
             $('npcCountBadge').textContent = npcs.length;
             const nd = $('npcCardsDirectory');
             nd.innerHTML = npcs.length ? '' : '<div class="text-xs text-slate-500">No NPCs yet.</div>';
-            const onBattle = !PLAYER && db.view.level === 'VTT' && db.things[db.view.battleId]?.traits?.dd2vtt;
+            const onBattle = !PLAYER && db.view.level === 'VTT' && hasBattleMap(db.things[db.view.battleId]);
             const battleTokens = onBattle ? (db.battles[db.view.battleId]?.tokens || {}) : {};
             if (onBattle) nd.insertAdjacentHTML('beforeend', '<div class="text-[11px] text-indigo-300 mb-1">Click an NPC, then click the battle map to place their token.</div>');
             npcs.forEach(n => {

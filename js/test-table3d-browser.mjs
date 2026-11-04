@@ -46,6 +46,14 @@ try{
     assert.equal(await evaluate("live.tokens.battle.gh_pc.light.on"),false);
     await evaluate(`document.querySelector('[data-light-on]').checked=true;document.querySelector('[data-light-on]').onchange();`);
     assert.equal(await evaluate("live.tokens.battle.gh_pc.light.on"),true);
+    // The GM can place an NPC token on a GeezTabletop map (it has no dd2vtt file).
+    await evaluate(`db.things.orc={id:'orc',name:'Orc',type:'npc',traits:{},properties:[]};arm('orc');`);
+    assert.equal(await evaluate('ui.armed'),'orc');
+    await evaluate(`const r=viewport.getBoundingClientRect();viewport.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,clientX:r.left+r.width/2,clientY:r.top+r.height/2}));`);
+    assert.equal(await evaluate('ui.armed'),null);
+    assert.equal(await evaluate("typeof live.tokens.battle.orc?.x"),'number');
+    await evaluate(`delete db.battles.battle.tokens.orc;Live.remove(livePath('tokens/battle/orc'));delete db.things.orc;`);
+    console.log('ok - GM places an NPC token on a GeezTabletop map');
     // A monster entering a trap on an unshown floor still fires it; PCs do not.
     await evaluate(`Live.set('table3d/world/battle/traps/upper',{name:'Upper trap',f:1,cells:['2_2'],who:'monsters',once:true,armed:true});Live.update(livePath('tokens/battle/gh_npc'),{x:.1875,y:.1875,f:1});checkTraps('battle');Live.update(livePath('tokens/battle/gh_pc'),{x:.3125,y:.3125,f:1});`);
     await new Promise(r=>setTimeout(r,100));assert.equal(await evaluate('GH.traps().upper.armed'),true);
