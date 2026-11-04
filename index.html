@@ -7,6 +7,7 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <!-- Firebase: the same project and SDK version as every other GeezSheets page (js/geez-config.js, js/rodeo-firebase.js) -->
     <script src="js/geez-config.js"></script>
+    <script src="js/local-db.js"></script>
     <script src="js/swatches.js"></script>
     <script src="js/props.js"></script>
     <style>
@@ -675,9 +676,12 @@
             appId:             "1:57811286242:web:cd9cac596acdb355a2c6bb",
         };
         const FB_ROOT = 'geezvtt';
-        const USE_FB = !!(FIREBASE_CONFIG && window.firebase) && !new URLSearchParams(location.search).has('local');
+        // ?db=local: GeezTabletop's local database (godot-vtt/tools/localdb) instead of Firebase, for testing.
+        const LOCAL_DB = window.GeezLocalDbUrl?.() || null;
+        const USE_FB = !!LOCAL_DB || (!!(FIREBASE_CONFIG && window.firebase) && !new URLSearchParams(location.search).has('local'));
         let rtdb = null;
-        if (USE_FB) {
+        if (LOCAL_DB) rtdb = GeezLocalDb(LOCAL_DB);
+        else if (USE_FB) {
             try { firebase.initializeApp(FIREBASE_CONFIG); rtdb = firebase.database(); }
             catch (e) { console.error('Firebase init failed', e); }
         }
@@ -6377,7 +6381,9 @@
         $('open3dBtn').onclick = () => {
             const q = new URLSearchParams({ camp: liveCamp(), bid: db.view.battleId });
             if (PLAYER && playerName) q.set('name', playerName);
-            window.open(`${localStorage.getItem('geez3dUrl') || 'https://geezjonny.github.io/GeezTabletopWeb/'}?${q}`, 'geez3d');
+            if (LOCAL_DB) q.set('db', LOCAL_DB);
+            const page = localStorage.getItem('geez3dUrl') || (LOCAL_DB ? `${LOCAL_DB}/GeezTabletopWeb/` : 'https://geezjonny.github.io/GeezTabletopWeb/');
+            window.open(`${page}?${q}`, 'geez3d');
         };
         $('lockMoveBtn').onclick = () => { Live.update(livePath('session'), { lockMove: !liveSession.lockMove }); showStatus(liveSession.lockMove ? 'Players can move their tokens again' : 'Token movement locked for players'); };
         $('lockPingBtn').onclick = () => { Live.update(livePath('session'), { lockPings: !liveSession.lockPings }); };
