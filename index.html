@@ -1102,7 +1102,7 @@
             ui.doorKind ||= m.DOOR_KINDS.includes(ui.swatch.door) ? ui.swatch.door : 'wood';
             GH = m.createBridge({ db: () => db, ui, player: PLAYER, live: Live, camp: liveCamp, path: livePath,
                 moves: bid => live.tokens[bid] || {}, name: () => playerName, locked: () => liveSession.lockMove,
-                render: () => renderView(), changed, avatar: initialsAvatar, propDef, propImg, paint: swatchPaint,
+                render: () => renderView(), loadPicture: loadDd2vtt, changed, avatar: initialsAvatar, propDef, propImg, paint: swatchPaint,
                 swatch: swatchOf, swatchImg, wrapper: mapWrapper, viewport, content: toContent, edits: editsOf,
                 uid: p => uid(p), esc: v => esc(v), move: moveToken, status: showStatus });
             renderView();

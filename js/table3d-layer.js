@@ -40,6 +40,26 @@ export function onStairs(stair, x, y) {
 }
 export function floorList(meta) { return [...new Set((Array.isArray(meta?.floors) ? meta.floors : Object.values(meta?.floors || {0:0})).map(Number).filter(Number.isFinite))].sort((a,b)=>a-b); }
 
+// Keep guessed tiles until the referenced image has decoded. Failures are cached too.
+export function pictureCache(load, changed, warn = (...args) => console.warn(...args)) {
+    const entries = new Map();
+    return descriptor => {
+        if (!descriptor) return null;
+        const key = JSON.stringify(descriptor);
+        if (!entries.has(key)) {
+            entries.set(key, null);
+            Promise.resolve().then(async () => {
+                const r = descriptor.rect;
+                if (!Array.isArray(r) || r.length !== 4 || !r.every(Number.isFinite) || r[2] <= 0 || r[3] <= 0 || !descriptor.dd2vtt) throw Error('Invalid picture descriptor');
+                const scene = await load(descriptor.dd2vtt);
+                if (!scene?.img) throw Error('Picture unavailable');
+                entries.set(key, {img: scene.img, rect: r}); changed();
+            }).catch(error => warn('GeezTabletop picture unavailable; using floor tiles', descriptor.dd2vtt, error));
+        }
+        return entries.get(key);
+    };
+}
+
 // Path and decal kinds from GeezTabletop's paint layer (and this page's own Road/Stream/Blood/Scorch/Rubble).
 const PATH_COLORS = {road:'#877655', cobble_road:'#7d7a72', dirt_path:'#7a6448', gravel:'#8b857a', mud:'#5b4632', stream:'#497b91', river:'#3f6f8a'};
 const DECAL_COLORS = {blood:'#7f1d1d', blood_splatter:'#7f1d1d', blood_pool:'#6b1414', scorch:'#171717', ash:'#3f3f46', rubble:'#78716c',
@@ -50,6 +70,7 @@ export function createBridge(a) {
     const current = () => a.db().view.battleId;
     const redraw = () => { if (a.db().view.level === 'VTT') a.render(); };
     const invalidate = () => { revision++; cache.clear(); redraw(); };
+    const picture = pictureCache(name => a.loadPicture(name), invalidate);
     function watch(bid) {
         const key = `${a.camp()}/${bid}`;
         if (key === subKey) return;
@@ -125,11 +146,12 @@ export function createBridge(a) {
     }
     function drawBase(ctx,s) {
         if(!data.meta) return;
-        const f=layer(), g=s.ppg, key=`${shownFloor()}:${revision}:${s.w}:${s.h}:${JSON.stringify(a.edits(current()).hideWalls||{})}`;
+        const f=layer(), art=picture(f.picture), g=s.ppg, key=`${shownFloor()}:${revision}:${s.w}:${s.h}:${JSON.stringify(a.edits(current()).hideWalls||{})}`;
         let c=cache.get(key);
         if(!c) {
             c=document.createElement('canvas');const scale=Math.min(1,2048/Math.max(s.w,s.h));c.width=Math.ceil(s.w*scale);c.height=Math.ceil(s.h*scale);const x=c.getContext('2d');x.scale(scale,scale);
-            for(const [k,id] of Object.entries(f.paint||{})){const [cx,cy]=k.split('_').map(Number);x.fillStyle=a.paint('floor',id,g);x.fillRect(cx*g,cy*g,g+.5,g+.5);}
+            if(art) x.drawImage(art.img,...art.rect.map(v=>v*g));
+            else for(const [k,id] of Object.entries(f.paint||{})){const [cx,cy]=k.split('_').map(Number);x.fillStyle=a.paint('floor',id,g);x.fillRect(cx*g,cy*g,g+.5,g+.5);}
             for(const [k,h] of Object.entries(f.elevation||{})){const [cx,cy]=k.split('_').map(Number);x.fillStyle=`rgba(${h>0?'255,255,255':'0,0,0'},${Math.min(.5,Math.abs(h)*.13)})`;x.fillRect(cx*g,cy*g,g,g);}
             x.strokeStyle='#151515';x.lineWidth=2;x.beginPath();for(const [x1,y1,x2,y2] of elevationEdges(f.elevation)){x.moveTo(x1*g,y1*g);x.lineTo(x2*g,y2*g);}x.stroke();
             annotations(x,{paths:f.paths,decals:f.decals},g);

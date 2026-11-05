@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const source=await readFile(new URL('./table3d-layer.js',import.meta.url),'utf8');
-const {doorRules,elevationEdges,liftedRoof,smoothPath,floorList,onStairs}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+const {doorRules,elevationEdges,liftedRoof,smoothPath,floorList,onStairs,pictureCache}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 let n=0;
 function test(name,fn){fn();console.log(`ok ${++n} - ${name}`);}
 test('door rules separate movement, sight and toggling',()=>{
@@ -43,4 +43,16 @@ test('stair hit testing follows the rotated footprint',()=>{
     assert.equal(onStairs(stair,1.5,1.1),false);
     assert.equal(onStairs({...stair,rot:0},1.5,1.1),true);
 });
-console.log(`Passed ${n} GeezTabletop tests.`);
+const descriptor={dd2vtt:'room.dd2vtt',rect:[2.5,-1,8,4]},img={};
+let loaded=0,changed=0;const warnings=[];
+const picture=pictureCache(async name=>{loaded++;assert.equal(name,descriptor.dd2vtt);return {img};},()=>changed++, (...args)=>warnings.push(args));
+assert.equal(picture(descriptor),null);assert.equal(picture(descriptor),null);
+await new Promise(resolve=>setImmediate(resolve));
+assert.deepEqual(picture(descriptor),{img,rect:descriptor.rect});assert.equal(loaded,1);assert.equal(changed,1);
+assert.equal(picture(null),null);
+for(const load of [async()=>null,async()=>{throw Error('decode');}]){
+    const fallback=pictureCache(load,()=>assert.fail('failed image cannot replace floors'),(...args)=>warnings.push(args));
+    assert.equal(fallback(descriptor),null);await new Promise(resolve=>setImmediate(resolve));assert.equal(fallback(descriptor),null);
+}
+assert.equal(warnings.length,2);
+console.log(`Passed ${n} GeezTabletop tests plus picture loading, caching and failure fallback.`);

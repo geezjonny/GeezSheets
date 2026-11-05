@@ -36,6 +36,18 @@ try{
     console.log('ok - DM renders all layers, uses shared geometry/lights, changes to basement, filters tokens');
     await evaluate("document.querySelector('[data-step=\"1\"]').click()");
     await new Promise(r=>setTimeout(r,100));
+    await evaluate(`(async()=>{window.pictureImage=new Image();pictureImage.src=blankScene({cols:2,rows:2}).img.src;await pictureImage.decode();dd2vttCache.set('picture-fixture.dd2vtt',{img:pictureImage});window.pictureDraws=[];window.tileDraws=[];window.beforePictureDraw=CanvasRenderingContext2D.prototype.drawImage;window.beforePictureFill=CanvasRenderingContext2D.prototype.fillRect;CanvasRenderingContext2D.prototype.drawImage=function(...args){if(args[0]===pictureImage)pictureDraws.push(args.slice(1));return beforePictureDraw.apply(this,args);};CanvasRenderingContext2D.prototype.fillRect=function(...args){if(args[2]===70.5&&args[3]===70.5)tileDraws.push(args);return beforePictureFill.apply(this,args);};window.originalFloor=structuredClone(GH.layer());Live.update(livePath('table3d/battle/floors/0'),{picture:{dd2vtt:'picture-fixture.dd2vtt',rect:[1.5,2,4,3]}});})()`);
+    await new Promise(r=>setTimeout(r,200));
+    assert.deepEqual(await evaluate('pictureDraws.at(-1)'),[105,140,280,210]);
+    await evaluate('pictureDraws=[];tileDraws=[];GH.invalidate();drawScene(ui.scene,"battle")');
+    assert.equal(await evaluate('tileDraws.length'),0,'decoded painting replaces guessed tiles');
+    assert.equal(await evaluate('GH.geometry().walls.length'),1);
+    await evaluate(`window.pictureWarnings=[];window.oldPictureWarn=console.warn;console.warn=(...args)=>pictureWarnings.push(args);dd2vttCache.set('missing-fixture.dd2vtt',null);Live.update(livePath('table3d/battle/floors/0'),{picture:{dd2vtt:'missing-fixture.dd2vtt',rect:[0,0,8,8]}});`);
+    await new Promise(r=>setTimeout(r,200));
+    assert.ok(await evaluate('tileDraws.length>0'),'failed source retains guessed tiles');
+    assert.equal(await evaluate('pictureWarnings.length'),1);
+    await evaluate(`CanvasRenderingContext2D.prototype.drawImage=beforePictureDraw;CanvasRenderingContext2D.prototype.fillRect=beforePictureFill;console.warn=oldPictureWarn;Live.set(livePath('table3d/battle/floors/0'),originalFloor);`);
+    console.log('ok - picture rect placement, tile suppression, retained walls and missing-source fallback');
     // Repeated token moves reuse the static offscreen floor; doors have their own live state.
     await evaluate(`window.baseSources=[];window.originalDraw=CanvasRenderingContext2D.prototype.drawImage;CanvasRenderingContext2D.prototype.drawImage=function(...args){if(this===vttCtx && args[0] instanceof HTMLCanvasElement)baseSources.push(args[0]);return originalDraw.apply(this,args);};drawScene(ui.scene,'battle');window.staticFloor=baseSources[0];baseSources=[];Live.update(livePath('tokens/battle/gh_pc'),{x:.2});`);
     assert.equal(await evaluate('baseSources[0]===staticFloor'),true);
