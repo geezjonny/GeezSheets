@@ -1,0 +1,12 @@
+{
+  "name": "compendium-companion-test",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test test.mjs commands.test.mjs questions.test.mjs"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}
