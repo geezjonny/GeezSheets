@@ -1,6 +1,6 @@
-import {executeWrite,equalJSON} from './gaia-core/write.mjs';
-import {schema} from './gaia-core/schema-loader.mjs';
-import {encodeKey,decodeKey,encodePath,encodeTree,decodeTree} from './gaia-core/firebase-layout.mjs';
+import {executeWrite,equalJSON} from './geez-gaia-core/write.mjs';
+import {schema} from './geez-gaia-core/schema-loader.mjs';
+import {encodeKey,decodeKey,encodePath,encodeTree,decodeTree} from './geez-gaia-core/firebase-layout.mjs';
 const clone=v=>structuredClone(v);
 const get=(o,p)=>p.split('/').filter(Boolean).reduce((v,k)=>v?.[k],o)??null;
 function set(o,p,v){const ks=p.split('/');for(const k of ks.slice(0,-1))o=o[k]??={};if(v===null)delete o[ks.at(-1)];else o[ks.at(-1)]=clone(v);}

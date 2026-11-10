@@ -15,7 +15,7 @@ export const FIREBASE_CONFIG = window.GEEZ_FIREBASE_CONFIG || {
 const dbParam = new URLSearchParams(location.search).get("db");
 let api;
 if (dbParam) {
-  await import(dbParam === "gaia" ? "./gaia-db.js" : "./local-db.js");
+  await import(dbParam === "gaia" ? "./geez-gaia-db.js" : "./geez-local-db.js");
   const local = dbParam === "gaia" ? window.GeezGaiaDb(new URLSearchParams(location.search).get("gaia") || undefined) : window.GeezLocalDb(dbParam === "local" ? location.origin : dbParam);
   api = {
     db: local,

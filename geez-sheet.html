@@ -341,11 +341,11 @@ body.embed .state-screen{min-height:60vh}
 </div>
 <div id="rollShow" class="roll-show" hidden><div id="rollWho" class="who"></div><div id="rollNum" class="num">–</div><div id="rollWhat" class="what"></div></div>
 
-<script src="js/geez-config.js"></script>
+<script src="js/geez-firebase-config.js"></script>
 
 <script type="module">
 // Same Firebase project/config as the VTT (js/rodeo-firebase.js)
-import { callTitle, callMod, answerCall, EXTRAS, passed, sgn } from './js/rollcall.js';
+import { callTitle, callMod, answerCall, EXTRAS, passed, sgn } from './js/geez-rollcall.js';
 import { db, ref, get, set, update, remove, push, onValue, runTransaction } from "./js/geez-rodeo-firebase.js";
 const $   = id => document.getElementById(id);
 const GM_KEY = "jonny";
@@ -370,10 +370,10 @@ let magicDb     = {};  // name.lowercase → magic item object
 async function loadApiData() {
   try {
     const [spellsRaw, skillsRaw, equipRaw, magicRaw] = await Promise.all([
-      fetch("data/spells.json").then(r => r.json()),
-      fetch("data/skills.json").then(r => r.json()),
-      fetch("data/equipment.json").then(r => r.json()).catch(()=>[]),
-      fetch("data/magic_items.json").then(r => r.json()).catch(()=>[]),
+      fetch("data/geez-spells.json").then(r => r.json()),
+      fetch("data/geez-skills.json").then(r => r.json()),
+      fetch("data/geez-equipment.json").then(r => r.json()).catch(()=>[]),
+      fetch("data/geez-magic_items.json").then(r => r.json()).catch(()=>[]),
     ]);
     spellsRaw.forEach(s => { spellsDb[s.name.toLowerCase()] = s; });
     equipRaw.forEach(e  => { equipDb[e.name.toLowerCase()]  = e; });
@@ -1089,7 +1089,7 @@ const Dice = (() => {
     if (!r) { rollBusy = false; return; }
     rollBusy = true;
     if(r.dice?.length)try {
-      trayPromise ||= import('./js/dice3d.js').then(m=>m.createDiceTray3D($('dice3dOverlay')));
+      trayPromise ||= import('./js/geez-dice3d.js').then(m=>m.createDiceTray3D($('dice3dOverlay')));
       const tray=await trayPromise;
       await tray.throwGroup([{dice:r.dice,color:'#34d399',label:r.by,total:r.total,sub:r.detail,cls:r.nat===20?'crit':r.nat===1?'bad':''}]);
       setTimeout(()=>{try{tray.clear();}catch{} nextRoll();},rollQueue.length?1200:3000); return;
@@ -1200,7 +1200,7 @@ Dice.init();
 </script>
 
 <script type="module">
-import { toggleGlossarySearch, registerTerms } from "./js/glossary.js";
+import { toggleGlossarySearch, registerTerms } from "./js/geez-glossary.js";
 window.toggleGlossarySearch = toggleGlossarySearch;
 // Register terms on the sheet once it renders
 const observer = new MutationObserver(() => registerTerms(document.body));

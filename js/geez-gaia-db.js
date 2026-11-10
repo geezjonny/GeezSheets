@@ -24,7 +24,7 @@
     const selectedId = () => oldToNew.get(selected) || raw?.entities.find(e=>e.kind==='pc'&&e.name===selected)?.id || selected;
     const identity = () => player ? 'player:' + selectedId() : 'gm';
     const firebaseMode=base.startsWith('firebase');
-    const backend=firebaseMode?import('./gaia-firebase.mjs').then(m=>m.connect(base,event=>{
+    const backend=firebaseMode?import('./geez-gaia-firebase.mjs').then(m=>m.connect(base,event=>{
       if(!raw||loading||writing)pendingEvents.push(event);
       else {applyEvent(event);project();fire();}
     },identity)):null;

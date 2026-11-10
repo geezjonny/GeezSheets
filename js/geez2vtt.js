@@ -1,4 +1,4 @@
-import { doorRules } from './table3d-layer.js';
+import { doorRules } from './geez-table3d-layer.js';
 // v1 permits extensions; empty paint/geometry collections are omitted by Map Converter.
 export function validateScene(s) {
     const fail = message => { throw Error('Invalid geez2vtt: ' + message); };

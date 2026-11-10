@@ -12,17 +12,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeezVTT Campaign</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <!-- Firebase: the same project and SDK version as every other GeezSheets page (js/geez-config.js, js/rodeo-firebase.js) -->
-    <script src="js/geez-config.js"></script>
-    <script src="js/local-db.js"></script>
-    <script src="js/gaia-db.js"></script>
-    <script src="js/swatches.js"></script>
-    <script src="js/props.js"></script>
+    <!-- Firebase: the same project and SDK version as every other GeezSheets page (js/geez-firebase-config.js, js/rodeo-firebase.js) -->
+    <script src="js/geez-firebase-config.js"></script>
+    <script src="js/geez-local-db.js"></script>
+    <script src="js/geez-gaia-db.js"></script>
+    <script src="js/geez-swatches.js"></script>
+    <script src="js/geez-props.js"></script>
     <style>
         #toolRail kbd { display: none; position: absolute; right: 3px; bottom: 2px; font: 600 9px/1 Inter, sans-serif; color: #64748b; pointer-events: none; }
         #toolRail.vtt-dm kbd { display: block; }
     </style>
-    <script src="audio/library.js"></script>
+    <script src="audio/geez-library.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-database-compat.js"></script>
     <style>
@@ -71,7 +71,7 @@
   #toolRail > button > span { left: calc(100% + 12px) !important; right: auto !important; top: 50% !important; transform: translateY(-50%); z-index: 60 !important; }
 </style>
 <!-- Tailwind, prebuilt (tailwind.config.js has the rebuild command). Last in <head> so utilities win ties, as with the CDN. -->
-<link rel="stylesheet" href="css/tailwind.css">
+<link rel="stylesheet" href="css/geez-tailwind.css">
 </head>
 <body class="h-full flex flex-col font-sans overflow-hidden select-none bg-slate-950 text-slate-100">
 <div id="authBanner" class="hidden fixed top-14 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 rounded-xl border border-amber-600/60 bg-slate-950/95 shadow-2xl text-xs text-amber-100" style="z-index:66">
@@ -672,7 +672,7 @@
         //    geezvtt/party/<campaign>  players: their cards, strings, board layout, notes
         //    geezvtt/live/<campaign>   everyone: token moves, pings, dice, initiative
         // =====================================================================
-        // Same project as every GeezSheets page: js/geez-config.js (the geezsheets project). Add ?local to the address to work offline.
+        // Same project as every GeezSheets page: js/geez-firebase-config.js (the geezsheets project). Add ?local to the address to work offline.
         // (The old sheets-e5838 project is retired; migrate.html copies anything left there across.)
         const FIREBASE_CONFIG = window.GEEZ_FIREBASE_CONFIG || {
             apiKey:            "AIzaSyCJrkcYjFjyyx5UNA9FUaCIlCvxxOYabis",
@@ -1408,7 +1408,7 @@
             loaded: false
         };
 
-        // ---- Wall and door swatches (js/swatches.js) ----
+        // ---- Wall and door swatches (js/geez-swatches.js) ----
         const SWATCHES = window.GEEZ_SWATCHES || { wall: [], door: [] };
         SWATCHES.floor ||= [];
         const SWATCH_KEY = 'geezvtt.swatch';
@@ -2542,7 +2542,7 @@
         }
 
         // Draft sketches are local-only; Build writes the same battle edit parts as the other tools.
-        if (!PLAYER) import('./js/draft-tool.js').then(m => {
+        if (!PLAYER) import('./js/geez-draft-tool.js').then(m => {
             DT = m.createDraftTool({ wrapper: mapWrapper, viewport, bar: $('paintBar'), content: toContent,
                 context: () => ({ visible: !PLAYER && db.view.level === 'VTT' && !!ui.scene && !!db.view.battleId,
                     campaign: liveCamp(), bid: db.view.battleId, floor: GH?.floor() || 0, mode: ui.mode,
@@ -2558,9 +2558,9 @@
             DT.draw(); renderPaintBar();
         }).catch(e => console.error('Draft tool failed', e));
 
-        // ---- godot-style building (js/build-tools.js does the grid maths): rooms, floor brush/fill, grid walls, doors in walls ----
+        // ---- godot-style building (js/geez-build-tools.js does the grid maths): rooms, floor brush/fill, grid walls, doors in walls ----
         let BT = null;
-        import('./js/build-tools.js').then(m => { BT = m; renderPaintBar(); }).catch(() => console.info('js/build-tools.js not found: room tools are off'));
+        import('./js/geez-build-tools.js').then(m => { BT = m; renderPaintBar(); }).catch(() => console.info('js/geez-build-tools.js not found: room tools are off'));
         const PLAN_MODES = ['paint', 'room', 'trap'];
         const planMode = () => PLAN_MODES.includes(ui.mode);
         const keep = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
@@ -2853,7 +2853,7 @@
         }
 
 
-        // ---- objects (js/props.js): battles[id].edits.props = { key: { p: prop id, x, y (centre, grid units), rot (degrees), s (scale), hidden } }
+        // ---- objects (js/geez-props.js): battles[id].edits.props = { key: { p: prop id, x, y (centre, grid units), rot (degrees), s (scale), hidden } }
         const PROPS = window.GEEZ_PROPS || [];
         const propDef = (id) => PROPS.find(d => d.id === id);
         const propImgs = {};
@@ -2936,7 +2936,7 @@
             if (!box) return;
             if (PLAYER || ui.mode !== 'props' || db.view.level !== 'VTT' || !ui.scene) { box.style.display = 'none'; return; }
             box.style.display = 'block';
-            if (!PROPS.length) { box.innerHTML = 'No objects yet: js/props.js is missing.'; return; }
+            if (!PROPS.length) { box.innerHTML = 'No objects yet: js/geez-props.js is missing.'; return; }
             const tags = [...new Set(PROPS.flatMap(d => d.tags || []))];
             const list = PROPS.filter(d => !ui.propTag || d.tags?.includes(ui.propTag));
             const o = propSel && propsOf(db.view.battleId)[propSel], od = o && propDef(o.p);
@@ -3134,8 +3134,8 @@
             { id: 'poisoned', color: '#22c55e' }, { id: 'prone', color: '#d6d3d1' }, { id: 'restrained', color: '#ea580c' },
             { id: 'stunned', color: '#fde047' }, { id: 'unconscious', color: '#1e293b' }, { id: 'concentrating', color: '#38bdf8' }
         ];
-        import('./js/geometry.js').then(m => { GEO = m; if (db.view.level === 'VTT') renderView(); }).catch(() => console.info('js/geometry.js not found: battle-map vision is off'));
-        import('./js/config.js').then(async m => {
+        import('./js/geez-geometry.js').then(m => { GEO = m; if (db.view.level === 'VTT') renderView(); }).catch(() => console.info('js/geez-geometry.js not found: battle-map vision is off'));
+        import('./js/geez-data-config.js').then(async m => {
             try { await m.loadConfig(); const list = m.getCONDITIONS(); if (Array.isArray(list) && list.length) CONDITION_LIST = list.map(c => ({ id: c.id, color: c.color || '#fff', label: c.label || c.name || c.id })); } catch {}
         }).catch(() => {});
         const condColor = (id) => CONDITION_LIST.find(c => c.id === id)?.color || '#fff';
@@ -3550,11 +3550,11 @@
             rollQueue.push(r);
             if (!rollBusy) nextRoll();
         }
-        // Rolls that carry their dice are thrown in 3D (js/dice3d.js); without WebGL/the CDN, or for old rolls, the flat box shows them.
+        // Rolls that carry their dice are thrown in 3D (js/geez-dice3d.js); without WebGL/the CDN, or for old rolls, the flat box shows them.
         let tray3d = null, tray3dP = null, tray3dFailed = false;
         function getTray3d() {
             if (tray3d || tray3dFailed) return Promise.resolve(tray3d);
-            return (tray3dP ||= import('./js/dice3d.js').then(m => m.createDiceTray3D($('dice3dLayer'))).then(t => (tray3d = t))
+            return (tray3dP ||= import('./js/geez-dice3d.js').then(m => m.createDiceTray3D($('dice3dLayer'))).then(t => (tray3d = t))
                 .catch(e => { console.warn('3D dice unavailable, using flat dice', e); tray3dFailed = true; return null; }));
         }
         function nextRoll() {
@@ -3634,7 +3634,7 @@
 
         // ---- Music & sounds the DM pushes (live/<campaign>/audio) ----
         //   music = { src, name, loop, vol, at }   at = server time it started, so late joiners skip ahead
-        //   amb   = { <ambience id>: volume }      synthesized loops from js/sfx.js, layered
+        //   amb   = { <ambience id>: volume }      synthesized loops from js/geez-sfx.js, layered
         //   sfx   = { <push id>: { id | src, vol, ts } }   one-shots; anything older than a few seconds is ignored
         // Each browser keeps its own volumes (localStorage). Browsers only play sound after a tap, hence soundUnlock.
         const Sound = (() => {
@@ -3653,7 +3653,7 @@
             const startedAt = Date.now();
             const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch {} };
             const level = (k) => (prefs.mute ? 0 : prefs.vol * prefs[k]);
-            function loadMod() { return mod ? Promise.resolve(mod) : (modP ||= import('./js/sfx.js').then(m => (mod = m)).catch(e => { console.warn('js/sfx.js not found: no built-in sounds', e); modP = null; return null; })); }
+            function loadMod() { return mod ? Promise.resolve(mod) : (modP ||= import('./js/geez-sfx.js').then(m => (mod = m)).catch(e => { console.warn('js/geez-sfx.js not found: no built-in sounds', e); modP = null; return null; })); }
             function ensureCtx() {
                 if (!ctx) {
                     const AC = window.AudioContext || window.webkitAudioContext;
@@ -3827,7 +3827,7 @@
                             <input data-a="mvol" type="range" min="0" max="1" step="0.05" value="${esc(m.vol ?? 0.7)}" class="w-20 accent-sky-500" title="Volume for everyone">
                             <button data-a="mstop" class="text-slate-400 hover:text-red-400" title="Stop"><i class="fa-solid fa-stop"></i></button></div>` : '<div class="text-[11px] text-slate-500">Nothing playing.</div>'}
                         ${LIB.music.length ? `<div class="flex flex-wrap gap-1">${LIB.music.map((t, i) => `<button data-music="${i}" class="${chip(m?.src === t.src)}"><i class="fa-solid fa-play text-[9px]"></i>${esc(t.name)}</button>`).join('')}</div>`
-                            : '<div class="text-[11px] text-slate-500">Add tracks to <code>audio/library.js</code>, or paste a link:</div>'}
+                            : '<div class="text-[11px] text-slate-500">Add tracks to <code>audio/geez-library.js</code>, or paste a link:</div>'}
                         <div class="flex gap-1"><input id="audioUrl" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded p-1.5 text-xs" placeholder="https://…/track.mp3">
                             <label class="flex items-center gap-1 text-[11px] text-slate-400"><input id="audioLoop" type="checkbox" checked class="accent-sky-500">loop</label>
                             <button data-a="url" class="px-2 rounded bg-sky-700 hover:bg-sky-600 text-white text-xs font-semibold">Play</button></div>
@@ -3883,9 +3883,9 @@
             return { apply, play, dice, pushKey, sfxChoices, get state() { return state; }, get ctx() { return ctx; }, get music() { return el; } };
         })();
 
-        // ---- roll calls (js/rollcall.js: the DM calls, each player rolls from their own sheet) ----
+        // ---- roll calls (js/geez-rollcall.js: the DM calls, each player rolls from their own sheet) ----
         let RC = null, call = null, callHidden = false, callOpt = { mode: null, extras: {}, other: 0 }, callKind = 'init';
-        import('./js/rollcall.js').then(m => { RC = m; renderCall(); }).catch(() => console.info('js/rollcall.js not found: roll calls are off'));
+        import('./js/geez-rollcall.js').then(m => { RC = m; renderCall(); }).catch(() => console.info('js/geez-rollcall.js not found: roll calls are off'));
         const rcApi = { txn: (p, fn) => Live.txn(livePath(p), fn), update: (p, o) => Live.update(livePath(p), o), push: (p, o) => Live.push(livePath(p), o) };
         // The campaign's PCs, one per character: { rid, name, thing, sheet }
         function callPcs() {
@@ -3991,7 +3991,7 @@
             $('callDc').disabled = kind === 'init';
         }
         function openCallModal(kind = callKind) {
-            if (!RC) { showStatus('Roll calls need js/rollcall.js next to this page.'); return; }
+            if (!RC) { showStatus('Roll calls need js/geez-rollcall.js next to this page.'); return; }
             const pcs = callPcs();
             $('callTargets').innerHTML = pcs.map(p => `<label class="flex items-center gap-1 px-2 py-1 rounded-full border border-slate-700 cursor-pointer"><input type="checkbox" class="callPc accent-amber-500" value="${esc(p.rid)}" checked> ${esc(p.name)}${p.sheet ? '' : ' <span class="text-slate-500">(no sheet)</span>'}</label>`).join('')
                 || '<span class="text-slate-500">No PCs in this campaign yet (import them from GeezSheets).</span>';
@@ -4013,7 +4013,7 @@
         $('callRollBtn').onclick = () => { closeMenus(); openCallModal(); };
         // Initiative: call every PC in the campaign at once; NPCs go in by hand
         $('initCallBtn').onclick = () => {
-            if (!RC) { showStatus('Roll calls need js/rollcall.js next to this page.'); return; }
+            if (!RC) { showStatus('Roll calls need js/geez-rollcall.js next to this page.'); return; }
             if (!live.init) saveInit({ rows: {}, round: 1 });
             $('callMode').value = 'normal';
             if (sendCall('init', callPcs().map(p => p.rid))) showStatus('Initiative called: PCs roll from their sheets, add NPCs by name.');
@@ -6787,7 +6787,7 @@
 
     <!-- The living world (DM only): drawn over the world map, with a World tab in the sidebar. Players never load it. -->
     <script>
-        if (!PLAYER) ['js/world-packs.js', 'js/world-defs.js', 'js/world-engine.js', 'js/world-campaign.js', 'js/world-dm.js']
+        if (!PLAYER) ['js/geez-world-packs.js', 'js/geez-world-defs.js', 'js/geez-world-engine.js', 'js/geez-world-campaign.js', 'js/geez-world-dm.js']
             .reduce((p, src) => p.then(() => new Promise((ok) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => { console.info('[world] could not load ' + src); ok(); }; document.head.appendChild(s); })), Promise.resolve());
     </script>
 </body>
