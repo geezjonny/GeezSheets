@@ -230,8 +230,6 @@ export function createBridge(a) {
                 const stair=Object.values(layer().stairs||{}).find(o=>+o.to===to&&onStairs(o,x,y));if(stair)a.move(current(),id,{...p,f:to});else a.status('Stand on stairs to change floors');}
         };});
         if(a.player)return;
-        panel.insertAdjacentHTML('beforeend',`<button data-ink-fog aria-pressed="${fogPreview}">${fogPreview?'Hide':'Preview'} player fog</button>`);
-        panel.querySelector('[data-ink-fog]').onclick=()=>{fogPreview=!fogPreview;redraw();};
         if(inspectId && tokens()[inspectId]) {
             const p=tokens()[inspectId];
             panel.insertAdjacentHTML('beforeend',`<span class="border-l border-slate-700 pl-2">${a.esc(token(inspectId)?.name||inspectId)}</span><label><input data-light-on type="checkbox" ${p.light?.on?'checked':''}> Light</label><label><input data-light-range type="number" min="1" max="100" value="${+p.light?.range||4}" class="w-12 bg-slate-900 border border-slate-700 rounded"> cells</label><button data-inspect-close title="Close token">Close</button>`);
@@ -254,7 +252,7 @@ export function createBridge(a) {
     },true);
     document.addEventListener('keydown',e=>{if(!a.gaia||a.db().view.level!=='VTT'||!['PageUp','PageDown'].includes(e.key)||e.target.closest('input,textarea,select'))return;e.preventDefault();(document.getElementById('floorCrumb')||panel).querySelector('[data-step="'+(e.key==='PageUp'?1:-1)+'"]')?.click();});
     a.viewport.addEventListener('click',e=>{if(!a.gaia||a.player||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label'))return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=Object.values(layer().stairs||{}).find(o=>onStairs(o,p.x/g,p.y/g));if(stair&&floorList(data.meta).includes(stair.to)){floor=stair.to;redraw();}});
-    return {emptyFloor:()=>!a.player&&emptyFloor!==null&&shownFloor()===emptyFloor?emptyFloor:null,fogPreview:()=>fogPreview,inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
+    return {emptyFloor:()=>!a.player&&emptyFloor!==null&&shownFloor()===emptyFloor?emptyFloor:null,fogPreview:()=>fogPreview,setFogPreview(v){fogPreview=!!v;redraw();},inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
         setDoor(d,open,f=shownFloor()){if(!doorRules(d.kind||d.mat).toggle)return false;a.live.set(a.path(`table3d/${current()}/doors/${f}/${d.key}`),open?'open':'closed');return true;},
         saveTrap(id,t){a.live.set(`table3d/${a.camp()}/${current()}/traps/${id}`,t);},
         isTrap(id){return Object.hasOwn(traps,id);},

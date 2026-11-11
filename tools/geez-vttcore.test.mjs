@@ -39,7 +39,7 @@ try{
  const set=(p,path,value)=>p.evaluate(({path,value})=>window.__SHEETS__.database().ref(path).set(value),{path,value});
  const count=async(p,n)=>{try{await p.waitForFunction(n=>Object.keys(window.__SHEETS__.state().templates).length===n,n);}catch(e){await mkdir('tools/out',{recursive:true});await p.screenshot({path:'tools/out/vttcore-debug.png'});console.log('COUNT',n,await p.locator('#geezTemplateTool').textContent(),await p.evaluate(()=>window.__SHEETS__.state().templates));throw e;}};
  async function point(p,x,y){return p.evaluate(({x,y})=>{const r=document.querySelector('#vttVectorCanvas').getBoundingClientRect();return {x:r.x+r.width*x,y:r.y+r.height*y};},{x,y});}
- async function placeShape(p,shape,i){const tool=p.locator('#geezTemplateTool');await tool.locator('summary').click();await tool.locator('select').selectOption(shape);await tool.locator('input').fill('20');await tool.getByRole('button',{name:'Place template',exact:true}).click();await tool.locator('summary').click();const a=await point(p,.20+i*.07,.35),b=await point(p,.23+i*.07,.35);console.log('POINTS',a,b);await p.touchscreen.tap(a.x,a.y);await p.touchscreen.tap(b.x,b.y);}
+ async function placeShape(p,shape,i){const tool=p.locator('#geezTemplateTool');await p.locator('#railTemplates').click();await tool.locator('select').selectOption(shape);await tool.locator('input').fill('20');await tool.getByRole('button',{name:'Place template',exact:true}).click();await p.locator('#railTemplates').click();const a=await point(p,.20+i*.07,.35),b=await point(p,.23+i*.07,.35);console.log('POINTS',a,b);await p.touchscreen.tap(a.x,a.y);await p.touchscreen.tap(b.x,b.y);}
  let total=0;for(const p of [gm,player])for(const [i,shape]of ['cone','circle','line','square'].entries()){console.log('PLACE',p===gm?'gm':'player',shape);await placeShape(p,shape,i);await count(gm,++total);await count(player,total);}
  console.log('PASS GM and player place all four shapes with primary touch; independent browsers sync');
  const all=await gm.evaluate(()=>window.__SHEETS__.state().templates),gmId=Object.keys(all).find(k=>all[k].owner==='gm'),playerId=Object.keys(all).find(k=>all[k].owner!=='gm');assert(gmId&&playerId);
@@ -49,7 +49,7 @@ try{
  // Known geometry: origin (5.5,5.5), cone/line/square include Ashara and goblin, not ogre.
  const known={...template,map:place,owner:'gm',x:5.5/20,y:5.5/16};
  for(const shape of ['cone','circle','line','square']){await set(gm,'geezvtt/live/world__daddies/templates/known',{...known,shape});await gm.waitForFunction(shape=>window.__SHEETS__.state().templates.known?.shape===shape,shape);const label=gm.locator('button[data-aoe="known"]');await label.click();assert.match(await gm.locator('[data-template-info]').innerText(),/Ashara/);assert.match(await gm.locator('[data-template-info]').innerText(),/Bloodied goblin/);assert.doesNotMatch(await gm.locator('[data-template-info]').innerText(),/Distant ogre/);}
- await gm.locator('#geezTemplateTool summary').click();
+ await gm.locator('#railTemplates').click();
  console.log('PASS caught-token lists for every shape match known near/far layout');
  const goblin=p=>p.locator(`[data-token-id="${npc}"]`);
  await act('hp.damage',{entity:npc,amount:10});await player.waitForFunction(id=>document.querySelector(`[data-token-id="${id}"] [data-hp-status="bloodied"]`),npc);
