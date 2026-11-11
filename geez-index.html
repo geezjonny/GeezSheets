@@ -198,7 +198,7 @@
             <div id="railTable" class="rail-group flex flex-col items-center gap-1 p-1.5 rounded-2xl glass-panel border border-slate-800 shadow-2xl">
             <button id="addNpcQuickBtn" class="p-3 rounded-xl text-purple-400 hover:bg-purple-950/50 border border-purple-500/30 transition relative group">
                 <i class="fa-solid fa-user-plus text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Quick Create NPC</span>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Add NPC</span>
             </button>
             <button id="railInit" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Initiative">
                 <i class="fa-solid fa-list-ol text-lg"></i>
@@ -6559,8 +6559,22 @@
         // Floating windows that used to be sidebar tabs.
         $('sheetPop').appendChild($('sheetPane'));
         $('sheetPopClose').onclick = () => { sheetId = null; renderSheetPane(); if (ui.selection) select(null); };
-        $('npcPop').appendChild($('tabNpcList')); $('tabNpcList').classList.remove('hidden');
-        $('addNpcQuickBtn').onclick = () => { const p = $('npcPop'), b = $('addNpcQuickBtn'); p.style.top = Math.max(56, b.getBoundingClientRect().top) + 'px'; p.style.left = ($('toolRail').getBoundingClientRect().right + 8) + 'px'; p.classList.toggle('hidden'); updateToolRail(); };
+        // Add NPC: make a new one, or pick an existing one (on a battle map it is then placed with a click).
+        $('npcPop').innerHTML = `<div class="p-2 flex flex-col gap-2 w-64">
+            <button id="npcPopNew" class="w-full text-sm font-semibold py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white"><i class="fa-solid fa-plus"></i> New NPC</button>
+            <select id="npcPopExisting" class="w-full text-sm bg-slate-900 border border-slate-700 rounded-lg p-2" aria-label="Add existing NPC"></select></div>`;
+        $('npcPopNew').onclick = () => { $('npcPop').classList.add('hidden'); createNpc(); updateToolRail(); };
+        $('npcPopExisting').onchange = e => {
+            const id = e.target.value; if (!id) return; $('npcPop').classList.add('hidden'); updateToolRail();
+            if (db.view.level === 'VTT' && hasBattleMap(db.things[db.view.battleId])) { arm(id); showStatus(`Click the map to place ${db.things[id].name}`); }
+            else select('thing', id);
+        };
+        function fillNpcPicker() {
+            const onMap = db.view.level === 'VTT' ? (db.battles[db.view.battleId]?.tokens || {}) : {};
+            const npcs = Object.values(db.things).filter(t => t.type === 'npc' && !t.traits?.stub && inCampaign(t.id)).sort((a, b) => a.name.localeCompare(b.name));
+            $('npcPopExisting').innerHTML = '<option value="">Add existing…</option>' + npcs.map(n => `<option value="${esc(n.id)}">${esc(n.name)}${onMap[n.id] ? ' (on this map)' : ''}</option>`).join('');
+        }
+        $('addNpcQuickBtn').onclick = () => { const p = $('npcPop'), b = $('addNpcQuickBtn'); fillNpcPicker(); p.style.top = Math.max(56, b.getBoundingClientRect().top) + 'px'; p.style.left = ($('toolRail').getBoundingClientRect().right + 8) + 'px'; p.classList.toggle('hidden'); updateToolRail(); };
         document.addEventListener('pointerdown', e => { if (!e.target.closest('#npcPop, #addNpcQuickBtn')) $('npcPop').classList.add('hidden'); }, true);
         $('initPop').appendChild($('initList').closest('section'));
         let initOpen = false;

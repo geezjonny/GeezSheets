@@ -14,7 +14,7 @@ try{
  await p.route(/firebaseio\.com|firebasedatabase\.app/,r=>r.abort());
  await p.goto(base+'/sheets/geez-index.html?db=gaia&gaia='+base+'&gm=jonny&campaign=world__daddies&test',{waitUntil:'domcontentloaded'});
  await p.waitForFunction(()=>window.__SHEETS__?.state().data.pcs?.ashara);await p.evaluate(()=>window.__SHEETS__.view('DM_BOARD'));
- await p.locator('#addNpcQuickBtn').click();await p.locator('#createNewNpcBtn').click();await p.locator('#entityTitle').fill('Grimble the Bold');
+ await p.locator('#addNpcQuickBtn').click();await p.locator('#npcPopNew').click();await p.locator('#entityTitle').fill('Grimble the Bold');
  const find=async()=>(await store.list?.('entities')??Object.values((await (await fetch(base+'/v2/worlds/gaia/entities')).json())||{})).find?.(e=>e.kind==='npc'&&e.name==='Grimble the Bold');
  const find2=async name=>Object.values((await (await fetch(base+'/v2/worlds/gaia/entities')).json())||{}).find(e=>e.kind==='npc'&&e.name===name);
  let saved;for(let i=0;i<40&&!(saved=await find());i++)await new Promise(r=>setTimeout(r,250));
@@ -26,12 +26,12 @@ try{
  await store.act('map.publish',{entity:place.id,scene,campaign:'daddies'});
  await p.waitForFunction(id=>window.__SHEETS__.state().data.things[id]?.traits?.scene,place.id);await p.evaluate(id=>window.__SHEETS__.view('VTT',id),place.id);
  await p.waitForFunction(()=>window.__SHEETS__.state().level==='VTT'&&document.querySelector('#vttVectorCanvas'));
- await p.evaluate(()=>document.querySelector('#createNewNpcBtn').click());
+ await p.locator('#addNpcQuickBtn').click();await p.locator('#npcPopNew').click();
  await p.waitForFunction(()=>document.activeElement?.matches('#sheetPane [data-npc-name]'));
  await p.keyboard.press('Control+A');await p.keyboard.type('Vexa the Grey');await p.keyboard.press('Enter');
  let vexa;for(let i=0;i<40&&!(vexa=(await find2('Vexa the Grey')));i++)await new Promise(r=>setTimeout(r,250));
  assert(vexa,'VTT New NPC is saved with the name typed in the sheet pane');
- await p.evaluate(()=>[...document.querySelectorAll('#npcCardsDirectory *')].find(e=>e.children.length&&e.textContent.includes('Vexa the Grey')&&e.onclick)?.click());
+ await p.locator('#addNpcQuickBtn').click();await p.locator('#npcPopExisting').selectOption({label:'Vexa the Grey'});
  await p.waitForFunction(()=>/Click the map to place Vexa/.test(document.querySelector('#statusMessage').textContent));
  const pt=await p.evaluate(()=>{const r=document.querySelector('#vttVectorCanvas').getBoundingClientRect();return {x:r.x+r.width*.3,y:r.y+r.height*.3};});
  await p.mouse.click(pt.x,pt.y);await p.waitForFunction(()=>/Placed Vexa/.test(document.querySelector('#statusMessage').textContent));
