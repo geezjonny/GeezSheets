@@ -298,7 +298,7 @@
             if(next.hp!==prev.hp)stage('actions/hp.set','POST',{args:{entity:e.id,amount:Number(next.hp)}});
           }
           stage('entities/'+e.id,'PATCH',patch);
-        } else stage('entities','POST',body);
+        } else stage('entities','POST',{...body,data:{...(body.kind==='npc'?{profile:{}}:body.kind==='creature'?{statblock:{}}:{}),...body.data}}); // new NPCs need an (empty) profile to validate
         // Known flags are the campaign's reveals, never a second canon permission flag.
         const flag=(t,k='pc-known')=>(t?.properties||[]).find(p=>p.key===k)?.value, yes=v=>/^(true|yes|y|1|x)$/i.test(String(v));
         if(e && (flag(a[group][id])!==flag(value)||yes(flag(a[group][id],'pc-visited'))!==yes(flag(value,'pc-visited'))))
