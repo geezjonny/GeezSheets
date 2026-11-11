@@ -72,6 +72,9 @@ try{
  await player.evaluate(()=>{const [id]=Object.entries(window.__SHEETS__.state().data.things).find(([,t])=>t.traits?.pc&&t.name==='Ashara');window.__SHEETS__.select(id);});
  await player.locator('[data-vttcore-card]').getByRole('button',{name:'+5 ft',exact:true}).click();await gm.waitForFunction(()=>document.querySelector('[data-elevation="35"]'));
  assert(!await gm.locator('[data-elevation="-10"] .fa-feather-pointed').count());console.log('PASS elevation badges, wing badge only when flying; owner +5 card works; foreign player edits rejected; GM edits NPC');
+ await gm.evaluate(id=>window.__SHEETS__.select(id),npc);await gm.locator('[data-status-box] [data-status]').selectOption('Dead');await gm.locator('[data-status-box] [data-known]').selectOption('Unknown');
+ const gm2=await page('gm=jonny');await gm2.waitForFunction(id=>{const t=window.__SHEETS__.state().data.things[id]?.traits;return t?.status==='Dead'&&t?.knownStatus==='Unknown';},npc);
+ console.log('PASS NPC status and players-believe layer save through Gaia and load in a fresh GM page');
  // Keep bloodied, concentration, elevation and all template shapes visible in the artifacts.
  await act('hp.damage',{entity:npc,amount:10});
  for(const p of [gm,player]){await p.evaluate(()=>window.__SHEETS__.select(null));await p.locator('#sidebarCollapseBtn').click().catch(()=>{});}

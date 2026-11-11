@@ -467,7 +467,19 @@
                                         <option value="Alive">Alive</option>
                                         <option value="Hostile">Hostile</option>
                                         <option value="Captive">Captive</option>
-                                        <option value="Deceased">Deceased</option>
+                                        <option value="Dead">Dead</option>
+                                        <option value="Unknown">? Unknown</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-slate-400 block mb-1">Players believe</label>
+                                    <select id="npcKnownStatus" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-1.5 text-xs text-slate-200">
+                                        <option value="">Same as truth</option>
+                                        <option value="Alive">Alive</option>
+                                        <option value="Hostile">Hostile</option>
+                                        <option value="Captive">Captive</option>
+                                        <option value="Dead">Dead</option>
+                                        <option value="Unknown">? Unknown</option>
                                     </select>
                                 </div>
                                 <div class="col-span-2">
@@ -907,7 +919,7 @@
 
         function saveParty() {
             for (const t of Object.values(db.things)) {
-                if (t.party) party.cards[t.id] = { id: t.id, type: t.type, name: t.name, traits: t.traits, notes: t.notes, properties: [], board: t.board, ...(t.owner ? {owner:t.owner} : {}) };
+                if (t.party) party.cards[t.id] = { id: t.id, type: t.type, name: t.name, traits: t.type === 'npc' ? (({knownStatus, ...rest}) => ({...rest, status: playerStatus(t.traits)}))(t.traits || {}) : t.traits, notes: t.notes, properties: [], board: t.board, ...(t.owner ? {owner:t.owner} : {}) };
                 if (t.board && !t.traits?.stub) party.board[t.id] = t.board;
             }
             for (const id of Object.keys(party.cards)) if (!db.things[id]) delete party.cards[id];
@@ -2987,6 +2999,15 @@
         }
 
         // Centre of the grid square under a point, as fractions of the scene image
+        // NPC status has two layers: the GM's truth and what the players believe (blank = same as truth).
+        const normStatus = v => v === 'Deceased' ? 'Dead' : (v || 'Alive');
+        const statusText = v => normStatus(v) === 'Unknown' ? '?' : normStatus(v);
+        const playerStatus = tr => normStatus(tr?.knownStatus || tr?.status);
+        function statusTag(tr) {
+            if (PLAYER) return statusText(playerStatus(tr));
+            const truth = normStatus(tr?.status), told = tr?.knownStatus ? normStatus(tr.knownStatus) : truth;
+            return statusText(truth) + (told !== truth ? ' · players: ' + statusText(told) : '');
+        }
         const tokenSize = (n) => { const v = parseFloat(n?.traits?.size); return v > 0 ? v : 1; };
 
         // Centre of a token of `size` squares dropped at (x, y): odd sizes sit in a square,
@@ -4079,7 +4100,7 @@
                             ${pct !== null ? `<div class="h-1.5 rounded bg-black/50"><div class="h-full rounded" style="width:${pct * 100}%;background:${col}"></div></div>` : ''}
                             <div class="flex items-center justify-between text-[10px] font-mono text-purple-300">
                                 <span>HP ${esc(h ? h.hp + (h.max ? '/' + h.max : '') : '—')} · AC ${esc(ac ?? '—')}</span>
-                                <span class="px-1.5 py-0.5 rounded bg-purple-950 border border-purple-700">${esc(tr.status || 'Alive')}</span>
+                                <span class="px-1.5 py-0.5 rounded bg-purple-950 border border-purple-700">${esc(statusTag(tr))}</span>
                             </div>
                             ${where ? `<div class="text-[10px] text-slate-400 truncate">📍 ${esc(where)}</div>` : ''}
                         </div>`;
@@ -5133,7 +5154,7 @@
             const set = (id, v) => { if (document.activeElement !== $(id)) $(id).value = v ?? ''; };
             set('npcRole', tr.role); set('npcFaction', tr.faction); set('npcHp', tr.hp); set('npcAc', tr.ac);
             set('npcAvatarUrl', tr.avatar);
-            $('npcStatus').value = tr.status || 'Alive';
+            $('npcStatus').value = normStatus(tr.status); $('npcKnownStatus').value = tr.knownStatus ? normStatus(tr.knownStatus) : '';
             const sel = $('npcSize'), cur = String(tokenSize(t));
             sel.querySelectorAll('[data-custom]').forEach(o => o.remove());
             if (![...sel.options].some(o => o.value === cur)) {
@@ -5403,6 +5424,7 @@
             fillNpc(t);
         });
         $('npcStatus').addEventListener('change', (e) => { const t = selectedTarget(); if (t?.type === 'npc') { t.traits.status = e.target.value; changed({ keepInspector: true }); } });
+        $('npcKnownStatus').addEventListener('change', (e) => { const t = selectedTarget(); if (t?.type === 'npc') { if (e.target.value) t.traits.knownStatus = e.target.value; else delete t.traits.knownStatus; changed({ keepInspector: true }); } });
 
         $('deployVttTokenBtn').onclick = () => {
             const t = selectedTarget();
@@ -6567,11 +6589,22 @@
                 $('sheetCloseBtn').onclick = () => { sheetId = null; renderSheetPane(); };
             }
             pane.querySelector('[data-vttcore-card]')?.remove();
+            pane.querySelector('[data-status-box]')?.remove();
             if(VTC&&coreEditable(t)&&sheetFor(t)){
                 const c=sheetFor(t).combat||{},box=document.createElement('div');box.dataset.vttcoreCard='';pane.append(box);
                 VTC.concentrationControls(box,{combat:c,editable:true,save:v=>coreSave(t,v),roll:()=>coreRoll(t)});
                 const elevation=document.createElement('div');elevation.textContent=`Elevation: ${c.elevation||0} ft `;
                 for(const delta of [-5,5]){const b=document.createElement('button');b.textContent=(delta>0?'+':'')+delta+' ft';b.onclick=()=>{b.blur();return coreSave(t,{elevation:(c.elevation||0)+delta}).catch(e=>showStatus(e.message));};elevation.append(b);}box.append(elevation);
+            }
+            if (!PLAYER && t.type === 'npc' && !t.traits?.pc) {
+                const box = document.createElement('div'); box.dataset.statusBox = ''; box.className = 'grid grid-cols-2 gap-2 text-xs';
+                const opts = ['Alive','Hostile','Captive','Dead','Unknown'].map(v => `<option value="${v}">${v === 'Unknown' ? '? Unknown' : v}</option>`).join('');
+                box.innerHTML = `<label>Status<select data-status class="w-full">${opts}</select></label><label>Players believe<select data-known class="w-full"><option value="">Same as truth</option>${opts}</select></label>`;
+                box.querySelector('[data-status]').value = normStatus(t.traits?.status);
+                box.querySelector('[data-known]').value = t.traits?.knownStatus ? normStatus(t.traits.knownStatus) : '';
+                box.querySelector('[data-status]').onchange = e => { (t.traits ||= {}).status = e.target.value; changed({ keepInspector: true }); };
+                box.querySelector('[data-known]').onchange = e => { t.traits ||= {}; if (e.target.value) t.traits.knownStatus = e.target.value; else delete t.traits.knownStatus; changed({ keepInspector: true }); };
+                pane.append(box);
             }
             // DM: this creature's token on the open battle map
             const bid = db.view.battleId, tok = db.view.level === 'VTT' && db.battles[bid]?.tokens?.[t.id];
