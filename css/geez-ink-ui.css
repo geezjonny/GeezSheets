@@ -1,0 +1,270 @@
+/* Shared ink theme. Loaded after the page styles and Tailwind utilities. */
+:root {
+  --page: #ece3d0;
+  --cream: #f6f0e2;
+  --ink: #2a2119;
+  --ink-dim: #5c4d3a;
+  --ink-faint: #716049;
+  --paper: #e2d1ab;
+  --edge: #b9a582;
+  --line: rgba(42, 33, 25, .18);
+  --gold: #8a6526;
+  --gold-dim: #79571f;
+  --blood: #a3362d;
+  --sage: #3f6136;
+  --head: 'Cinzel', Georgia, serif;
+  --fell: 'IM Fell English', Georgia, serif;
+  --body: 'Crimson Pro', Georgia, serif;
+  /* The sheet's existing components consume these aliases. */
+  --bg: var(--page);
+  --panel: var(--cream);
+  --panel2: #efe6d3;
+  --border: var(--line);
+  --text: var(--ink);
+  --dim: var(--ink-dim);
+  --font: var(--body);
+  --mono: var(--body);
+  --red: #a3362d;
+  --green: #36582c;
+  --warn: var(--gold);
+  --magic: #6c5287;
+  --magic2: #5a4373;
+  --skill: var(--sage);
+  --skill2: #3f6a36;
+  --weapon: #8a5a2b;
+  --weapon2: #7a4e22;
+  --tip: var(--sage);
+  --tip2: #3f6a36;
+  color-scheme: light;
+  /* Self-contained SVG lighting: only painted on empty pseudo-elements below. */
+  --ink-crumple: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='480'%3E%3Cfilter id='crumple' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.018' numOctaves='4' seed='7' result='n'/%3E%3CfeDiffuseLighting in='n' lighting-color='%23fff' surfaceScale='2.4'%3E%3CfeDistantLight azimuth='225' elevation='48'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Cpath fill='%23c8b48e' filter='url(%23crumple)' d='M0 0h480v480H0z'/%3E%3C/svg%3E");
+  --ink-torn: polygon(0 0, 100% 0, 100% 96%, 97% 98%, 93% 96%, 88% 100%, 82% 97%, 76% 99%, 71% 96%, 64% 100%, 58% 97%, 51% 99%, 45% 96%, 38% 100%, 31% 97%, 25% 99%, 18% 96%, 12% 100%, 6% 97%, 0 99%);
+}
+
+html, body {
+  background-color: var(--page);
+  color: var(--ink);
+  font-family: var(--body);
+}
+body {
+  background-image: radial-gradient(1200px 700px at 20% -10%, #f7f0e0, transparent 60%),
+    radial-gradient(900px 600px at 110% 110%, #e2d6bd, transparent 55%);
+  font-size: 17px;
+  line-height: 1.4;
+}
+button, input, select, textarea { font-family: inherit; }
+input, select, textarea { background: #fbf7ee; color: var(--ink); border-color: var(--line); min-width: 0; max-width: 100%; accent-color: var(--gold); }
+button { cursor: pointer; color: var(--ink); }
+button, a, input, textarea, select { touch-action: manipulation; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+::selection { background: #e0c98f; color: var(--ink); }
+::-webkit-scrollbar-track { background: var(--page); }
+::-webkit-scrollbar-thumb { background: var(--edge); }
+::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+h2, h4, .font-cinzel, .sp-section-title, .panel-btn, .stat-label,
+.ab-name, .hp-label, .wstat-label, .coin-label, .slot-level-label,
+.brand, #notesLabel, #rightSidebar > div:first-child {
+  font-family: var(--head);
+  font-variant-caps: small-caps;
+  letter-spacing: .12em;
+  color: var(--gold);
+}
+h2, .sp-section-title { text-transform: uppercase; }
+.char-name, .spell-name, .weapon-name, .feat-name, .inv-name,
+.ability-charge-name, #entityTitle, #pinboardWrapper h3 {
+  font-family: var(--fell);
+  font-weight: 400;
+  letter-spacing: .01em;
+  color: var(--ink);
+}
+.stat-val, .ab-score, .ab-mod, .hp-val, .wstat-val,
+.roll-show .num, #rollNum, .dice-log .tot { font-family: var(--fell); font-weight: 400; }
+
+/* Sleek cards remain the default; no full-page texture overlay. */
+.card, .glass-panel, .modal-box, .dice-panel, #cardPop,
+#pinboardWrapper > [data-id] {
+  background: linear-gradient(180deg, var(--cream), var(--panel2));
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: inset 0 1px #fff8, 0 10px 26px -18px #5c4d3a;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.header, body > header {
+  background: #f6f0e2f5;
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: none;
+}
+.brand { background: none; color: var(--gold); font-size: 16px; }
+.campaign-select, .btn, .inv-qbtn { background: var(--panel2); }
+.btn { height: auto; min-height: 34px; }
+.btn:hover, .inv-qbtn:hover { background: #e6dac2; }
+.btn.primary { background: var(--gold); border-color: var(--gold-dim); color: #fbf6ea; }
+.btn.primary:hover { background: #79571f; }
+.cards-wrap { max-width: 1240px; margin: auto; padding: 24px 20px 64px; gap: 20px; }
+.card { width: 380px; max-width: 100%; }
+.card-header { padding: 22px 20px 28px; }
+.char-name { font-size: 34px; line-height: 1.1; margin-bottom: 6px; }
+.char-sub { font-size: 15px; }
+.char-role-badge { background: #8a652612; border-color: #8a652645; color: var(--gold); font-size: 10px; }
+
+/* Paper and torn edges belong exclusively to background layers. Isolation puts
+   negative z-indices above the parent background and below ALL of its content.
+   Never filter, mask, or clip the text-bearing panel. */
+.card-header, #cardPop { position: relative; isolation: isolate; background: transparent; }
+#cardPop { position: fixed; }
+.card-header::before, .card-header::after, #cardPop::before, #cardPop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  clip-path: var(--ink-torn);
+}
+.card-header::before, #cardPop::before { z-index: -2; background: var(--paper); }
+.card-header::after, #cardPop::after {
+  z-index: -1;
+  background-image: var(--ink-crumple);
+  background-size: 480px 480px;
+  mix-blend-mode: multiply;
+  opacity: .55;
+}
+
+.hp-row { margin-top: 18px; flex-wrap: wrap; }
+.hp-val { font-size: 28px; line-height: 1; }
+.hp-bar-wrap { height: 8px; background: #d9ccb0; min-width: 48px; }
+/* Health is updated with inline colors by JS; this theme uses the sample's blood bar. */
+.hp-bar { background: linear-gradient(90deg, #6e2a24, var(--blood)) !important; }
+.hp-controls { gap: 8px; margin-top: 14px; }
+.hp-btn { min-height: 36px; padding: 7px 12px; font: 700 11px var(--head); }
+.hp-btn.heal { color: var(--green); border-color: #7f9c7480; background: #7f9c740d; }
+.hp-btn.dmg { color: #8b2922; border-color: #b4433a80; background: #b4433a0d; }
+.temp-badge { color: var(--green); background: #7f9c7412; border-color: #7f9c7460; }
+.hp-delta, .field input, .field textarea, .inv-add input { background: #fbf7ee; font-size: 16px; }
+.stats-row { gap: 6px; padding: 14px; }
+.stat-cell { background: #fbf7ee; border: 1px solid var(--line); border-radius: 7px; padding: 12px 3px; min-width: 0; }
+.stat-cell:last-child { border-right: 1px solid var(--line); }
+.stat-label { font-size: 9px; }
+.stat-val { font-size: 28px; line-height: 1.1; }
+.ability-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 18px; }
+.ab-box { border-radius: 50% 50% 46% 54% / 52% 48% 52% 48%; background: #fbf7ee; padding: 14px 6px; }
+.ab-name { font-size: 11px; color: var(--gold); }
+.ab-score { font-size: 30px; }
+.ab-mod { font-size: 19px; }
+.card-footer { padding: 16px; gap: 9px; }
+.panel-btn { color: var(--ink); min-height: 38px; font-size: 11px; background: transparent; }
+.panel-btn:hover, .panel-btn.open { background: #2a21190a; border-color: var(--gold-dim); }
+.expand-panel { padding: 18px; background: var(--panel2); }
+.sp-section-title { font-size: 12px; margin: 18px 0 10px; }
+.spell-name, .weapon-name, .feat-name, .inv-name, .ability-charge-name { font-size: 21px; }
+.spell-desc, .feat-desc, .inv-desc, .weapon-notes, .combat-guide, .spell-tip-text { font-size: 16px; line-height: 1.5; }
+.spell-meta, .sp-meta-item, .spell-level-tag, .inv-cat, .weapon-type { font-size: 13px; }
+.skill-row-item, .save-row-item { font-size: 15px; padding: 7px; }
+.skill-grid, .save-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.spell-item, .feat-item, .weapon-item, .inv-item, .ability-charge { padding: 10px; background: #fbf7ee; border-color: var(--line); }
+.slot-pip, .charge-pip { width: 18px; height: 18px; background: radial-gradient(circle, var(--gold) 0 45%, transparent 47%); border-color: var(--ink-dim); }
+.slot-pip.used, .charge-pip.used { background: none; border-color: var(--ink-faint); }
+.slot-level-label { width: 58px; font-size: 11px; }
+.slot-level-row { gap: 12px; padding: 4px 0; }
+.equipped-badge, .sense-pill { background: #7f9c740a; border-color: #7f9c7440; color: var(--ink-dim); }
+.equipped-row, .coin-row { padding: 9px 16px; }
+.coin { font-size: 13px; }
+.coin.pp, .rested-pill { color: #5a4373; }
+.coin.gp, .gm-badge { color: #79571f; }
+.coin.ep { color: #24616b; }
+.coin.sp { color: var(--ink-dim); }
+.coin.cp { color: #874008; }
+.cond-pill { color: #8b2922; }
+.give-target { background: #fbf7ee; }
+.give-target:has(input:checked) { color: var(--green); background: #e5ecd9; border-color: var(--sage); }
+.dice-row button { background: var(--gold); color: #fbf6ea; }
+.dice-log .tot { color: var(--ink); }
+.modal { background: #5c4d3a66; }
+
+/* Index utilities: warm neutral surfaces, preserving semantic condition colors. */
+[class*="bg-slate-9"], [class*="bg-slate-8"], [class*="bg-slate-7"],
+[class*="bg-purple-9"], [class*="bg-indigo-9"], [class*="bg-emerald-9"],
+[class*="bg-rose-9"], [class*="bg-red-9"], [class*="bg-amber-9"], [class*="bg-black/"] { background-color: var(--cream); }
+[class*="border-slate-"] { border-color: var(--line); }
+[class*="text-slate-1"], [class*="text-slate-2"], [class*="text-slate-3"] { color: var(--ink); }
+[class*="text-slate-4"], [class*="text-slate-5"], [class*="text-slate-6"] { color: var(--ink-dim); }
+[class*="text-amber-"] { color: var(--gold-dim); }
+[class*="text-purple-"], [class*="text-indigo-"], [class*="text-violet-"] { color: var(--magic2); }
+[class*="text-emerald-"], [class*="text-green-"], [class*="text-teal-"] { color: var(--green); }
+[class*="text-red-"], [class*="text-rose-"], [class*="text-pink-"] { color: #8b2922; }
+[class*="text-blue-"], [class*="text-sky-"], [class*="text-cyan-"] { color: #245e78; }
+[class*="text-yellow-"], [class*="text-orange-"] { color: #79571f; }
+[class*="text-white"] { color: var(--ink); }
+html[class], body[class] { background-color: var(--page); color: var(--ink); }
+.font-sans, .font-mono { font-family: var(--body); }
+body > header { gap: 10px; min-height: 56px; }
+#rightSidebar { width: 360px; min-width: 0; border-radius: 0; }
+#rightSidebar > div:first-child { letter-spacing: .02em; font-size: 10px; }
+#tabInspector, #tabNpcList, #tabDirectory { padding: 20px; }
+#cardPop { padding: 20px 18px 28px; border-color: #8a652645; }
+#inspectorContent > div:first-child { background: #f3ecdd99; border-color: var(--line); box-shadow: none; padding: 16px; }
+#entityTitle { font-size: 25px; }
+#entityNotes { font-size: 17px; }
+#notesLabel { font-size: 11px; margin-bottom: 8px; }
+#inspectorContent label.uppercase, #inspectorContent h4 { color: var(--gold); }
+button:is([class^="bg-purple-"], [class*=" bg-purple-"], [class^="bg-indigo-"], [class*=" bg-indigo-"],
+  [class^="bg-amber-"], [class*=" bg-amber-"], [class^="bg-emerald-"], [class*=" bg-emerald-"]) {
+  background-color: var(--gold);
+  border-color: var(--gold-dim);
+  color: #fbf6ea;
+}
+button:is([class^="bg-purple-"], [class*=" bg-purple-"], [class^="bg-indigo-"], [class*=" bg-indigo-"],
+  [class^="bg-amber-"], [class*=" bg-amber-"], [class^="bg-emerald-"], [class*=" bg-emerald-"]):hover {
+  background-color: #79571f;
+}
+#pinboardWrapper > [data-id] { border-width: 1px; }
+#pinboardWrapper h3 { font-size: 22px; }
+.pinboard-bg { background-color: var(--page); background-image: radial-gradient(#b9a58266 1px, transparent 1px); background-size: 32px 32px; }
+#mapCanvas { background-color: var(--page); }
+#campaignSelect { min-width: 0; }
+#toolRail { background: var(--cream); border: 1px solid var(--edge); color: var(--ink); }
+#toolRail button { background: var(--cream); color: var(--ink); }
+#toolRail button:hover, #toolRail button[class*="text-amber-"] { background: var(--panel2); color: #79571f; }
+#toolRail [id^="swatch"] { border: 1px solid var(--ink-dim); }
+#toolRail kbd { color: var(--ink-dim); }
+/* These map controls are generated with inline dark styles. */
+#toolHint, #propPanel, #trapPanel, #trapAlert, #paintBar, #swatchPanel {
+  background: var(--cream) !important;
+  color: var(--ink) !important;
+  border-color: var(--edge) !important;
+}
+:is(#propPanel, #trapPanel, #trapAlert, #paintBar, #swatchPanel) :is(button, input, select) {
+  background: #fbf7ee !important;
+  color: var(--ink) !important;
+}
+:is(#toolHint, #propPanel, #trapPanel, #trapAlert, #paintBar, #swatchPanel) [style*="color:"] {
+  color: var(--ink-dim) !important;
+}
+
+@media (max-width: 680px) {
+  .header { height: auto; min-height: 56px; flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
+  .header .brand { font-size: 13px; }
+  .header .sep, .header .spacer { display: none; }
+  .header .campaign-select { flex: 1; width: 120px; }
+  .cards-wrap { padding: 16px 12px 80px; gap: 16px; }
+  .card { width: 100%; }
+  .card-header { padding: 20px 16px 26px; }
+  .char-name { font-size: 32px; overflow-wrap: anywhere; }
+  .char-sub, .spell-desc, .feat-desc, .inv-desc { overflow-wrap: anywhere; }
+  body > header { height: auto; min-height: 56px; flex-wrap: wrap; padding: 8px; gap: 6px; }
+  body > header #campaignSelect { max-width: 126px; }
+  #breadcrumbNav { flex-basis: 100%; order: 10; }
+  #rightSidebar { position: absolute; right: 8px; bottom: 8px; width: min(344px, calc(100% - 16px)); max-height: 44%; border: 1px solid var(--line); border-radius: 10px; }
+  #rightSidebar > div:first-child { flex-shrink: 0; }
+  #rightSidebar > div:first-child button { min-width: 0; overflow-wrap: anywhere; padding-inline: 5px; }
+  #toolRail { left: 8px; max-height: calc(100% - 24px); overflow-y: auto; }
+  #cardPop { max-width: calc(100vw - 16px); }
+  #playerNameBtn { max-width: 110px; padding-inline: 6px; }
+  #playerNameLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #tabInspector, #tabNpcList, #tabDirectory { padding: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-dot, .spinner { animation: none; }
+  .card, .hp-bar, .slot-pip, .charge-pip { transition: none; }
+}
