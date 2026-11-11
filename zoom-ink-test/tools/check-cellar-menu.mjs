@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import {existsSync} from 'node:fs';
+import {mkdir} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+import {join} from 'node:path';
+import {chromium} from './browser.mjs';
+import {serve} from './serve.mjs';
+const out=fileURLToPath(new URL('./out/',import.meta.url));await mkdir(out,{recursive:true});
+const executablePath=process.env.CHROME||['chromium-1248','chromium-1247'].map(v=>join(process.env.LOCALAPPDATA||'',`ms-playwright/${v}/chrome-win64/chrome.exe`)).find(existsSync);
+const server=await serve();let browser;
+try{
+ browser=await chromium.launch({headless:true,executablePath,args:['--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist']});
+ const p=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ await p.goto(`http://127.0.0.1:${server.address().port}/`);await p.waitForFunction(()=>window.__VTT?.propInspector);
+ const info=await p.evaluate(()=>{
+  const a=__VTT,u=a.underground,m=u.create('The Gilded Stag Cellar',16,12),S=a.world.data.settlements.find(s=>s.kind==='town'),e=u.entrance(null,S,'trapdoor','Stag trapdoor');u.linkEntrance(e.id,m.id);u.create('Faraway unrelated dungeon');u.enter(m.id,e.id);
+  const b=m.origin;a.detail.setSquare(0,b.sx+5,b.sz+4,{ground:4,wallN:2});a.world.data.tokens.push({id:'cellar-resize-hero',name:'Hero',space:m.id,sx:m.entry.sx,sz:m.entry.sz,level:0,hp:21});window.resizeFixture={mapId:m.id,entrance:e.id,origin:structuredClone(m.origin),entry:structuredClone(m.entry),exits:JSON.stringify(m.exits)};return resizeFixture;
+ });
+ await p.waitForFunction(()=>document.querySelector('#level').textContent==='The Gilded Stag Cellar');
+ await p.locator('#level').click();assert.equal(await p.locator('#level').getAttribute('aria-expanded'),'true');
+ assert.ok(!(await p.locator('#undergroundPanel').innerText()).includes('Faraway unrelated dungeon'));
+ assert.equal(await p.getByLabel('Cellar width squares',{exact:true}).inputValue(),'16');
+ await p.getByLabel('Cellar name',{exact:true}).fill('The Expanded Stag Cellar');await p.getByLabel('Cellar width squares',{exact:true}).fill('22');await p.getByLabel('Cellar height squares',{exact:true}).fill('18');
+ assert.ok((await p.locator('#undergroundPanel').innerText()).includes('110 × 90 feet'));
+ await p.getByRole('button',{name:'Save cellar settings',exact:true}).click();
+ const expanded=await p.evaluate(()=>{const a=__VTT,u=a.underground,m=u.active,b=m.origin;return{w:m.w,h:m.h,name:m.name,origin:m.origin,entry:m.entry,exits:JSON.stringify(m.exits),ground:a.detail.getSquare(0,b.sx+20,b.sz+16).ground,east:a.detail.getSquare(0,b.sx+22,b.sz+5).wallW,oldEast:a.detail.getSquare(0,b.sx+16,b.sz+5).wallW,interior:a.detail.getSquare(0,b.sx+5,b.sz+4),hp:a.world.data.tokens.find(t=>t.id==='cellar-resize-hero').hp};});
+ assert.equal(expanded.w,22);assert.equal(expanded.h,18);assert.deepEqual(expanded.origin,info.origin);assert.deepEqual(expanded.entry,info.entry);assert.equal(expanded.exits,info.exits);assert.equal(expanded.ground,2);assert.equal(expanded.east,1);assert.equal(expanded.oldEast,0);assert.equal(expanded.interior.ground,4);assert.equal(expanded.interior.wallN,2);assert.equal(expanded.hp,21);
+ await p.locator('#undergroundPanel').getByRole('button',{name:'Undo',exact:true}).click();assert.equal(await p.getByLabel('Cellar width squares',{exact:true}).inputValue(),'16');
+ await p.locator('#undergroundPanel').getByRole('button',{name:'Redo',exact:true}).click();assert.equal(await p.getByLabel('Cellar width squares',{exact:true}).inputValue(),'22');
+ await p.getByLabel('Cellar width squares',{exact:true}).fill('6');await p.getByLabel('Cellar height squares',{exact:true}).fill('6');assert.equal(await p.getByRole('button',{name:'Save cellar settings',exact:true}).isDisabled(),true);assert.match(await p.locator('#undergroundPanel').innerText(),/Move these inside/);
+ await p.getByLabel('Cellar width squares',{exact:true}).fill('16');await p.getByLabel('Cellar height squares',{exact:true}).fill('12');await p.getByRole('button',{name:'Save cellar settings',exact:true}).click();
+ assert.equal(await p.evaluate(()=>__VTT.underground.active.w),16);
+ await p.screenshot({path:join(out,'cellar-title-menu.png')});
+ await p.locator('#level').click();assert.equal(await p.locator('#undergroundPanel').isVisible(),false);await p.locator('#level').press('Enter');assert.equal(await p.locator('#undergroundPanel').isVisible(),true);
+ await p.evaluate(()=>__VTT.setRole('player'));assert.equal(await p.getByLabel('Cellar width squares',{exact:true}).count(),0);assert.equal(await p.getByRole('button',{name:'Return to surface',exact:true}).isVisible(),true);
+ assert.equal(await p.evaluate(()=>__VTT.underground.saveSettings(__VTT.underground.active.id,'hacked',100,100)),false);await p.evaluate(()=>__VTT.setRole('gm'));
+ await p.setViewportSize({width:390,height:844});await p.waitForTimeout(200);const rect=await p.locator('#undergroundPanel').boundingBox();assert.ok(rect.x>=0&&rect.x+rect.width<=390&&rect.y+rect.height<=844);
+ await p.evaluate(()=>__VTT.saveNow());await p.reload();await p.waitForFunction(()=>window.__VTT?.underground.active);await p.locator('#level').click();assert.equal(await p.getByLabel('Cellar name',{exact:true}).inputValue(),'The Expanded Stag Cellar');
+ const imported=await p.evaluate(async()=>{const{resizePreview,resizeCellar}=await import('/cellar-layout.js'),a=__VTT,u=a.underground,m=u.create('Imported boundary test',8,8),b=m.origin;delete m.origin;const expanded=resizeCellar(m,10,10);expanded.imports=[{x:b.sx*1.5-20480,z:b.sz*1.5-20480,w:10,h:10,rot:0}];return{legacyOrigin:JSON.stringify(expanded.origin)===JSON.stringify(b),blocked:!resizePreview(expanded,8,8).ok};});assert.ok(imported.legacyOrigin&&imported.blocked);
+ assert.deepEqual(errors,[]);console.log('PASS: accessible top-left cellar menu, local controls, width/height preview, growth and safe shrink, walls/floors preserved, stable props/stairs/tokens, undo/redo, player permissions, mobile layout, imported-map bounds, and reload persistence.');
+}finally{await browser?.close();await new Promise(r=>server.close(r));}
