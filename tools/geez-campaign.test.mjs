@@ -38,9 +38,9 @@ try {
  const p2=await page(world);
  async function marker(name) {
   const before=await p.evaluate(()=>Object.keys(window.__SHEETS__.state().data.things));
-  await p.keyboard.press('Escape');await p.locator('#modeMarker').click();
+  await p.keyboard.press('Escape');if(await p.locator('#cardPop').isVisible())await p.locator('#cardPopClose').click();await p.locator('#modeMarker').click();
   const box=await p.locator('#mapCanvas').boundingBox();
-  await p.mouse.click(box.x+box.width*.25,box.y+box.height*.25);
+  await p.mouse.click(box.x+box.width*.8,box.y+box.height*.25); // right side: the open card sits left of centre
   await p.waitForFunction(ids=>Object.keys(window.__SHEETS__.state().data.things).some(id=>!ids.includes(id)),before);
   const id=await p.evaluate(ids=>Object.keys(window.__SHEETS__.state().data.things).find(id=>!ids.includes(id)),before);
   await p.locator('#entityTitle').fill(name);await p.locator('#entityTitle').press('Tab');

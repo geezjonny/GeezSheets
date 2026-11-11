@@ -14,7 +14,7 @@ try{
  await p.route(/firebaseio\.com|firebasedatabase\.app/,r=>r.abort());
  await p.goto(base+'/sheets/geez-index.html?db=gaia&gaia='+base+'&gm=jonny&campaign=world__daddies&test',{waitUntil:'domcontentloaded'});
  await p.waitForFunction(()=>window.__SHEETS__?.state().data.pcs?.ashara);await p.evaluate(()=>window.__SHEETS__.view('DM_BOARD'));
- await p.locator('#addNpcQuickBtn').click();await p.locator('#entityTitle').fill('Grimble the Bold');
+ await p.locator('#addNpcQuickBtn').click();await p.locator('#createNewNpcBtn').click();await p.locator('#entityTitle').fill('Grimble the Bold');
  const find=async()=>(await store.list?.('entities')??Object.values((await (await fetch(base+'/v2/worlds/gaia/entities')).json())||{})).find?.(e=>e.kind==='npc'&&e.name==='Grimble the Bold');
  const find2=async name=>Object.values((await (await fetch(base+'/v2/worlds/gaia/entities')).json())||{}).find(e=>e.kind==='npc'&&e.name===name);
  let saved;for(let i=0;i<40&&!(saved=await find());i++)await new Promise(r=>setTimeout(r,250));

@@ -132,7 +132,11 @@
 <div id="cardPop" class="hidden fixed w-[380px] max-w-[calc(100vw-16px)] max-h-[80vh] overflow-y-auto rounded-2xl border border-slate-600 bg-slate-950/95 shadow-2xl p-3" style="z-index:60">
     <button id="cardPopClose" class="absolute top-2 right-3 text-slate-400 hover:text-red-400 z-10" title="Close (Esc or click empty space)"><i class="fa-solid fa-xmark"></i></button>
 </div>
-<div id="dicePop" class="hidden fixed left-20 top-1/2 -translate-y-1/2 w-72 max-h-[80vh] overflow-y-auto rounded-2xl border border-amber-700/50 bg-slate-950/95 shadow-2xl p-3" style="z-index:60"></div>
+<div id="sheetPop" class="hidden fixed right-3 top-14 w-[380px] max-w-[calc(100vw-16px)] overflow-y-auto rounded-2xl border border-slate-600 bg-slate-950/95 shadow-2xl p-3" style="z-index:55;max-height:calc(100vh - 130px)"><button id="sheetPopClose" class="sticky top-0 float-right text-slate-400 hover:text-red-400 z-10" title="Close" aria-label="Close sheet"><i class="fa-solid fa-xmark"></i></button></div>
+<div id="npcPop" class="hidden fixed w-80 max-w-[calc(100vw-100px)] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-600 bg-slate-950/95 shadow-2xl" style="z-index:55;left:84px"></div>
+<div id="initPop" class="hidden fixed left-1/2 -translate-x-1/2 top-14 max-w-[calc(100vw-120px)] rounded-2xl border border-slate-600 bg-slate-950/95 shadow-2xl px-3 py-2" style="z-index:45"></div>
+<div id="statusToast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-20 rounded-full border border-slate-600 bg-slate-950/95 shadow-xl px-4 py-1.5 text-xs text-slate-300 pointer-events-none" style="z-index:70"></div>
+<div id="dicePop" style="z-index:60;right:12px;bottom:64px" class="hidden fixed w-72 max-h-[80vh] overflow-y-auto rounded-2xl border border-amber-700/50 bg-slate-950/95 shadow-2xl p-3"></div>
 
     <!-- Top Navigation & Breadcrumb Header -->
 
@@ -140,27 +144,24 @@
     <div class="flex-1 flex relative overflow-hidden">
 
         <!-- Left Tools Bar -->
-        <div id="toolRail" class="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 p-1.5 rounded-2xl glass-panel border border-slate-800 shadow-2xl" style="z-index:30">
+        <div id="toolRail" class="absolute left-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2" style="z-index:30">
+            <div id="railPlay" class="rail-group flex flex-col items-center gap-1 p-1.5 rounded-2xl glass-panel border border-slate-800 shadow-2xl">
             <button id="modePan" style="display:none" class="mode-btn p-3 rounded-xl text-amber-400 bg-slate-900 border border-amber-500/50 transition relative group">
                 <i class="fa-solid fa-hand text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Pan & Inspect</span>
             </button>
-
             <button id="modeMarker" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i id="markerToolIcon" class="fa-solid fa-location-dot text-lg"></i>
                 <span id="markerToolTooltip" class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Place City Marker</span>
             </button>
-
             <button id="modeTile" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-border-all text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Tile Selector</span>
             </button>
-
             <button id="modeRoad" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-route text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Draw road (click two markers)</span>
             </button>
-
             <button id="railUpload" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-image text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Upload this map's image</span>
@@ -177,11 +178,6 @@
                 <i class="fa-solid fa-circle-dot text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Marker size</span>
             </button>
-            <div id="railDivider2" class="w-7 h-px bg-slate-700 my-0.5"></div>
-            <button id="diceToolBtn" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
-                <i class="fa-solid fa-dice-d20 text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Dice</span>
-            </button>
             <button id="modeRuler" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-ruler text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Ruler (drag to measure)</span>
@@ -190,18 +186,23 @@
                 <i class="fa-solid fa-location-crosshairs text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Ping (click the map)</span>
             </button>
-            <button id="railCallRoll" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Call for a roll">
-                <i class="fa-solid fa-bullhorn text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Call for a roll</span>
-            </button>
             <button id="railTemplates" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Area templates">
                 <i class="fa-solid fa-draw-polygon text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Area templates</span>
             </button>
-            <div id="railDivider3" class="w-7 h-px bg-slate-700 my-0.5"></div>
+            <button id="resetViewBtn" class="p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group mt-auto">
+                <i class="fa-solid fa-expand text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Fit Canvas View</span>
+            </button>
+            </div>
+            <div id="railTable" class="rail-group flex flex-col items-center gap-1 p-1.5 rounded-2xl glass-panel border border-slate-800 shadow-2xl">
             <button id="addNpcQuickBtn" class="p-3 rounded-xl text-purple-400 hover:bg-purple-950/50 border border-purple-500/30 transition relative group">
                 <i class="fa-solid fa-user-plus text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Quick Create NPC</span>
+            </button>
+            <button id="railInit" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Initiative">
+                <i class="fa-solid fa-list-ol text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Initiative</span>
             </button>
             <button id="railFogGroup" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Fog &amp; vision" data-fly="fogFly">
                 <i class="fa-solid fa-eye text-lg"></i>
@@ -225,10 +226,6 @@
                 <i class="fa-solid fa-sun text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Scene: time, weather, music</span>
             </button>
-            <button id="railHandouts" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Handouts">
-                <i class="fa-solid fa-scroll text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Handouts</span>
-            </button>
             <button id="railLocks" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Lock pings / movement" data-fly="lockFly">
                 <i class="fa-solid fa-lock text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Lock pings / movement</span>
@@ -243,28 +240,22 @@
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Lock pings</span>
             </button>
             </div>
-            <div id="railDivider4" class="w-7 h-px bg-slate-700 my-0.5"></div>
-            <button id="railBuild" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
-                <i class="fa-solid fa-hammer text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Build: rooms, floors, walls, doors, objects, traps (B)</span>
-            </button>
-
-            <div id="railDivider" class="w-7 h-px bg-slate-700 my-0.5"></div>
-
             <button id="addPinNoteQuickBtn" class="p-3 rounded-xl text-amber-400 hover:bg-amber-950/50 border border-amber-500/30 transition relative group">
                 <i class="fa-solid fa-note-sticky text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Add DM Board Sticky Note</span>
             </button>
-
             <button id="addEventQuickBtn" class="p-3 rounded-xl text-rose-400 hover:bg-rose-950/50 border border-rose-500/30 transition relative group">
                 <i class="fa-solid fa-calendar-day text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Add event</span>
             </button>
-
-            <button id="resetViewBtn" class="p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group mt-auto">
-                <i class="fa-solid fa-expand text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Fit Canvas View</span>
+            </div>
+            <div id="railBuildGroup" class="rail-group flex flex-col items-center gap-1 p-1.5 rounded-2xl glass-panel border border-slate-800 shadow-2xl">
+            <button id="railBuild" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-hammer text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Build: rooms, floors, walls, doors, objects, traps (B)</span>
             </button>
+            </div>
+
         </div>
         <div id="buildFlyout" class="geez-buildbar glass-panel border border-slate-800 shadow-2xl" role="toolbar" aria-label="Build tools">
             <button id="modeDraft" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" title="Draft rooms (D)">
@@ -321,7 +312,7 @@
                 <!-- kept for the code that labels the current view; not shown -->
                 <div class="hidden"><div id="levelBadgeIcon"><i id="levelIcon"></i></div><h1 id="appTitle"></h1><span id="levelBadge"></span></div>
         
-                <select id="campaignSelect" title="Campaign" class="bg-slate-900 border border-slate-700 hover:border-amber-600 text-amber-200 text-xs font-semibold rounded-lg py-1.5 px-2 max-w-[170px] focus:outline-none"></select>
+                
         
                 <div id="levelNav" class="hidden">
                     <button id="navDmBoard" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5" title="Campaign board"><i class="fa-solid fa-clipboard-list"></i><span class="hidden md:inline">Board</span></button>
@@ -330,7 +321,7 @@
                     <button id="navVttBoard" class="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5" title="Battle map"><i class="fa-solid fa-dungeon"></i><span class="hidden md:inline">Battle</span></button>
                 </div>
         
-                <nav id="breadcrumbNav" class="flex-1 min-w-0 flex items-center gap-1 text-xs text-slate-400 overflow-hidden"></nav>
+                <div id="crumbPill" class="flex items-center gap-1 min-w-0"><select id="campaignSelect" title="Campaign" class="bg-slate-900 border border-slate-700 hover:border-amber-600 text-amber-200 text-xs font-semibold rounded-lg py-1.5 px-2 max-w-[170px] focus:outline-none"></select><span class="text-slate-600">&rsaquo;</span><nav id="breadcrumbNav" class="flex-1 min-w-0 flex items-center gap-1 text-xs text-slate-400 overflow-hidden"></nav></div>
                 <div id="hdrUndoRedo" class="flex items-center gap-1"><button id="hdrUndo" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Undo (Ctrl+Z)" aria-label="Undo"><i class="fa-solid fa-rotate-left"></i></button><button id="hdrRedo" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><i class="fa-solid fa-rotate-right"></i></button></div>
         
                 <div id="presenceBar" class="hidden xl:flex items-center gap-1 max-w-[240px] overflow-hidden"></div>
@@ -338,6 +329,8 @@
                     <i class="fa-solid fa-user"></i><span id="playerNameLabel">Choose character</span>
                 </button>
         
+                <button id="open3dBtn" class="hidden bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold py-1.5 px-2.5 rounded-lg border border-slate-700" title="Open this map in 3D, in a new tab (close it if your computer struggles)"><i class="fa-solid fa-cube mr-1"></i>3D</button>
+                <button id="railHandouts" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Handouts" aria-label="Handouts"><i class="fa-solid fa-scroll"></i></button>
                 <!-- Sound: everyone's own volume; the DM also opens the sound board from here -->
                 <div class="relative">
                     <button id="soundBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Sound"><i class="fa-solid fa-volume-high"></i></button>
@@ -419,12 +412,22 @@
             </div>
 
             <!-- Zoom (wheel / pinch also work; F fits) -->
-            <div class="absolute bottom-3 right-3 flex items-center gap-0.5 p-1 rounded-xl glass-panel border border-slate-800" style="z-index:30">
+            <div id="dicePill" class="absolute bottom-3 right-3 flex items-center gap-1 p-1 rounded-xl glass-panel border border-slate-800" style="z-index:31">
+            <button id="diceToolBtn" class="mode-btn p-2.5 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-dice-d20 text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Dice</span>
+            </button>
+            <button id="railCallRoll" class="mode-btn p-2.5 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Call for a roll">
+                <i class="fa-solid fa-bullhorn text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Call for a roll</span>
+            </button>
+            </div>
+            <div id="zoomPill" class="hidden absolute bottom-3 flex items-center gap-0.5 p-1 rounded-xl glass-panel border border-slate-800" style="z-index:30">
                 <button id="zoomOutBtn" class="w-8 h-8 hover:bg-slate-800 rounded-lg text-slate-300" title="Zoom out"><i class="fa-solid fa-minus text-xs"></i></button>
                 <span id="zoomDisplay" class="text-[10px] font-mono text-slate-400 w-10 text-center">100%</span>
                 <button id="zoomInBtn" class="w-8 h-8 hover:bg-slate-800 rounded-lg text-slate-300" title="Zoom in"><i class="fa-solid fa-plus text-xs"></i></button>
                 <button id="fitScreenBtn" class="w-8 h-8 hover:bg-slate-800 rounded-lg text-slate-300" title="Fit (F)"><i class="fa-solid fa-expand text-xs"></i></button>
-                <button id="open3dBtn" class="hidden h-8 px-2 hover:bg-slate-800 rounded-lg text-amber-300 text-xs font-bold" title="Open this map in 3D, in a new tab (close it if your computer struggles)"><i class="fa-solid fa-cube mr-1"></i>3D</button>
+                
             </div>
         </div>
 
@@ -1457,6 +1460,7 @@
         let statusTimer = null;
         function showStatus(msg) {
             $('statusMessage').textContent = msg;
+            const toast = $('statusToast'); if (toast) { toast.textContent = msg; toast.classList.toggle('hidden', !msg || msg === 'Ready'); clearTimeout(toast._t); toast._t = setTimeout(() => toast.classList.add('hidden'), 3500); }
             clearTimeout(statusTimer);
             statusTimer = setTimeout(() => { $('statusMessage').textContent = 'Ready'; }, 3500);
         }
@@ -4041,6 +4045,8 @@
             const rows = initRows();
             const turn = live.init?.turn;
             $('initRound').textContent = rows.length ? `Round ${live.init?.round || 1}` : '';
+            // Initiative is its own bar: shown while combat runs, or when the GM opens it to set one up.
+            try { $('initPop').classList.toggle('hidden', !rows.length && !(initOpen && !PLAYER)); } catch { /* first render runs before initOpen exists */ }
             $('initDmControls').classList.toggle('hidden', PLAYER);
             $('initList').innerHTML = rows.length ? rows.map(r => {
                 const t = r.thingId && db.things[r.thingId];
@@ -5723,7 +5729,7 @@
             [['tabInspectorBtn', 'tabInspector'], ['tabNpcListBtn', 'tabNpcList'], ['tabDirectoryBtn', 'tabDirectory'], ['tabDiceBtn', 'tabDice'], ['tabWorldBtn', 'tabWorld']].forEach(([b, p]) => {
                 const hid = b === 'tabWorldBtn' && !window.WorldDM;
                 $(b).className = (b === which ? TAB_ON : TAB_OFF) + (hid ? ' hidden' : '');
-                $(p).classList.toggle('hidden', b !== which);
+                if (p !== 'tabNpcList') $(p).classList.toggle('hidden', b !== which);   // the NPC list lives in the NPC picker now
             });
             if (which === 'tabWorldBtn' && window.WorldDM) WorldDM.render();
         }
@@ -6477,7 +6483,6 @@
             const lv = db.view.level, isMap = lv === 'WORLD' || lv === 'LOCATION', onMap = lv !== 'DM_BOARD';
             const show = (id, on) => { const el = $(id); if (el) el.style.display = on ? '' : 'none'; };
             show('modeMarker', !PLAYER && isMap); show('modeTile', !PLAYER && isMap); show('modeRoad', !PLAYER && isMap);
-            show('modePan', lv === 'VTT');
             show('modeRuler', onMap); show('modePing', onMap); show('diceToolBtn', true);
             const dmVtt = !PLAYER && lv === 'VTT';
             ['railVision', 'railForget', 'railDivider3', 'railDivider4', 'railBuild', 'railFogPreview'].forEach(id => show(id, dmVtt));
@@ -6489,8 +6494,12 @@
             $('railDecor').className = GH?.panel?.() === 'decor' ? MODE_ON : MODE_OFF;
             $('railScene').className = GH?.panel?.() === 'scene' ? MODE_ON : MODE_OFF;
             $('railBuild').className = ui.build ? MODE_ON : MODE_OFF;
-            ['railCallRoll', 'railFogGroup', 'railScene', 'railLocks'].forEach(id => show(id, dmVtt));
-            show('railHandouts', lv === 'VTT'); show('hdrUndoRedo', !PLAYER);
+            ['railFogGroup', 'railScene', 'railLocks', 'railInit'].forEach(id => show(id, dmVtt));
+            show('railCallRoll', !PLAYER); show('hdrUndoRedo', !PLAYER);
+            $('addNpcQuickBtn').className = $('npcPop').classList.contains('hidden') ? 'mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group' : MODE_ON;
+            let io = false; try { io = initOpen; } catch {} $('railInit').className = io || !$('initPop').classList.contains('hidden') ? MODE_ON : MODE_OFF;
+            // A pill with nothing to show disappears.
+            requestAnimationFrame(() => document.querySelectorAll('#toolRail .rail-group').forEach(g => { g.style.display = [...g.children].some(c => !c.classList.contains('geez-flyout') && c.style.display !== 'none' && getComputedStyle(c).display !== 'none') ? '' : 'none'; }));
             if (!dmVtt) document.querySelectorAll('#toolRail .geez-flyout').forEach(f => f.style.display = 'none');
             let ls = {}; try { ls = liveSession; } catch { /* rail can draw before the live session loads */ }
             const lockI = (id, on, a, b) => { const el = $(id); el.className = on ? MODE_ON : MODE_OFF; el.querySelector('i').className = `fa-solid ${on ? a : b} text-lg`; };
@@ -6547,6 +6556,15 @@
         $('railDecor').onclick = () => { GH?.setPanel?.(GH.panel?.() === 'decor' ? null : 'decor'); updateToolRail(); };
         $('railScene').onclick = () => { closeFlyouts(); GH?.setPanel?.(GH.panel?.() === 'scene' ? null : 'scene'); updateToolRail(); };
         $('railCallRoll').onclick = () => $('callRollBtn').click();
+        // Floating windows that used to be sidebar tabs.
+        $('sheetPop').appendChild($('sheetPane'));
+        $('sheetPopClose').onclick = () => { sheetId = null; renderSheetPane(); if (ui.selection) select(null); };
+        $('npcPop').appendChild($('tabNpcList')); $('tabNpcList').classList.remove('hidden');
+        $('addNpcQuickBtn').onclick = () => { const p = $('npcPop'), b = $('addNpcQuickBtn'); p.style.top = Math.max(56, b.getBoundingClientRect().top) + 'px'; p.style.left = ($('toolRail').getBoundingClientRect().right + 8) + 'px'; p.classList.toggle('hidden'); updateToolRail(); };
+        document.addEventListener('pointerdown', e => { if (!e.target.closest('#npcPop, #addNpcQuickBtn')) $('npcPop').classList.add('hidden'); }, true);
+        $('initPop').appendChild($('initList').closest('section'));
+        let initOpen = false;
+        $('railInit').onclick = () => { initOpen = !initOpen; renderInit(); updateToolRail(); };
         $('railHandouts').onclick = () => $('handoutBtn').click();
         $('railLockMove').onclick = () => { $('lockMoveBtn').click(); setTimeout(updateToolRail, 300); };
         $('railLockPing').onclick = () => { $('lockPingBtn').click(); setTimeout(updateToolRail, 300); };
@@ -6676,6 +6694,7 @@
             const t = sheetId && db.things[sheetId];
             $('noSelectionMsg').classList.toggle('hidden', !!t);
             $('sheetPane').classList.toggle('hidden', !t);
+            $('sheetPop').classList.toggle('hidden', !t);   // the sheet floats over the map when a character is clicked
             if (!t) return;
             const pane = $('sheetPane');
             if (pane.contains(document.activeElement)) return;
@@ -6753,9 +6772,11 @@
         }
 
         // ---- Hide / show the right sidebar ( ] key ) ----
+        // No sidebar any more: sheets, NPCs and initiative float over the map.
         function setSidebar(open) {
+            open = false;
             $('rightSidebar').classList.toggle('hidden', !open);
-            $('sidebarOpenBtn').classList.toggle('hidden', open);
+            $('sidebarOpenBtn').classList.toggle('hidden', true);
             try { localStorage.setItem('geezvtt.sidebar', open ? 'open' : 'closed'); } catch {}
             if (db.view.level === 'DM_BOARD') drawStrings();
         }
@@ -6873,10 +6894,6 @@
         }
     </script>
 
-    <!-- The living world (DM only): drawn over the world map, with a World tab in the sidebar. Players never load it. -->
-    <script>
-        if (!PLAYER) ['js/geez-world-packs.js', 'js/geez-world-defs.js', 'js/geez-world-engine.js', 'js/geez-world-campaign.js', 'js/geez-world-dm.js']
-            .reduce((p, src) => p.then(() => new Promise((ok) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => { console.info('[world] could not load ' + src); ok(); }; document.head.appendChild(s); })), Promise.resolve());
-    </script>
+
 </body>
 </html>
