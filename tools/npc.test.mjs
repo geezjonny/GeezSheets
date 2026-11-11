@@ -36,4 +36,11 @@ try{
  const pt=await p.evaluate(()=>{const r=document.querySelector('#vttVectorCanvas').getBoundingClientRect();return {x:r.x+r.width*.3,y:r.y+r.height*.3};});
  await p.mouse.click(pt.x,pt.y);await p.waitForFunction(()=>/Placed Vexa/.test(document.querySelector('#statusMessage').textContent));
  console.log('PASS VTT New NPC: name it in the sheet pane, arm it and click the map to place its token');
+ // Party to here: one click on the button, one on the map; every campaign PC gets a token on this map and floor.
+ await p.locator('#partyHereBtn').click();await p.waitForFunction(()=>/where the party should stand/.test(document.querySelector('#statusMessage').textContent));
+ await p.mouse.click(pt.x+60,pt.y+60);await p.waitForFunction(()=>/Party moved here/.test(document.querySelector('#statusMessage').textContent));
+ let onMap=[],npcs=[];for(let i=0;i<40;i++){const st=await (await fetch(base+'/v2/campaigns/daddies/state/tokens')).json();onMap=Object.values(st||{}).map(g=>Object.entries(g||{}).filter(([k,t])=>/^pc_/.test(k)&&t?.f===0).map(([,t])=>t)).sort((a,b)=>b.length-a.length)[0]||[];npcs=Object.values(st||{}).flatMap(g=>Object.entries(g||{}).filter(([k])=>/^npc_/.test(k)).map(([,t])=>t.x+','+t.y));if(onMap.length>=2)break;await new Promise(r=>setTimeout(r,250));}
+ assert(onMap.length>=2,'party PCs saved on the map: '+onMap.length);
+ assert.equal(new Set(onMap.map(t=>t.x+','+t.y)).size,onMap.length,'each PC on its own cell');assert(!onMap.some(t=>npcs.includes(t.x+','+t.y)),'no PC lands on an NPC');assert.deepEqual(errors,[]);
+ console.log('PASS Party to here: '+onMap.length+' PCs placed in a cluster and saved');
 }finally{await browser?.close();if(app){app.server.closeAllConnections?.();await app.close();}assert.deepEqual(await readFile(source),original,'real Gaia source unchanged');await rm(dir,{recursive:true,force:true});}

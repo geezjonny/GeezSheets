@@ -2,9 +2,9 @@
 <html lang="en" class="h-full bg-slate-950 text-slate-100">
 <head>
 <script>
-  // GeezSheets on Gaia (new data, /v2). Always runs with the Gaia backend: Firebase /v2 online, the local Gaia server on 127.0.0.1.
+  // GeezSheets on Gaia (data in Firebase /v2). Always Firebase, also when opened from this PC; ?gaia=... overrides (tests).
   (function(){const q=new URLSearchParams(location.search);if(q.get('db')==='gaia'&&q.has('gaia'))return;q.set('db','gaia');
-  if(!q.has('gaia'))q.set('gaia',['127.0.0.1','localhost','[::1]'].includes(location.hostname)?location.origin:'firebase');
+  if(!q.has('gaia'))q.set('gaia','firebase');
   location.replace(location.pathname+'?'+q.toString().replace(/=(&|$)/g,'$1')+location.hash);})();
 </script>
 
@@ -203,6 +203,10 @@
             <button id="addNpcQuickBtn" class="p-3 rounded-xl text-purple-400 hover:bg-purple-950/50 border border-purple-500/30 transition relative group">
                 <i class="fa-solid fa-user-plus text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Add NPC</span>
+            </button>
+            <button id="partyHereBtn" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Party to here">
+                <i class="fa-solid fa-people-group text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Party to here: click, then click the map</span>
             </button>
             <button id="railInit" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Initiative">
                 <i class="fa-solid fa-list-ol text-lg"></i>
@@ -3099,6 +3103,39 @@
             $('statusMessage').textContent = `Click the map to place ${db.things[npcId].name}. Esc to cancel.`;
             updateDirectories();
         }
+        // "Party to here": every PC in this campaign jumps to one spot on the open battle map.
+        const PARTY = '__party__';
+        const partyPcs = () => Object.values(db.things).filter(t => t.type === 'npc' && t.traits?.pc && !t.traits?.stub && inCampaign(t.id));
+        function armParty() {
+            const bt = db.things[db.view.battleId];
+            if (db.view.level !== 'VTT' || !hasBattleMap(bt)) { showStatus('Open a battle map first.'); return; }
+            if (!partyPcs().length) { showStatus('No PCs in this campaign.'); return; }
+            if (ui.armed === PARTY) { disarm(); showStatus('Cancelled'); return; }
+            ui.armed = PARTY; viewport.classList.add('placing');
+            $('statusMessage').textContent = 'Click the map where the party should stand. Esc to cancel.';
+        }
+        function placeParty(p) {
+            const bid = db.view.battleId, g = ui.scene.ppg, f = GH?.floor() ?? 0, pcs = partyPcs();
+            // skip cells already holding someone else's token
+            const cellOf = q => Math.round(q.x * ui.scene.w / g - .5) + ',' + Math.round(q.y * ui.scene.h / g - .5);
+            const taken = new Set(Object.entries(battleTokens(bid)).filter(([id, q]) => !pcs.some(t => t.id === id) && (q.f ?? 0) === f).map(([, q]) => cellOf(q)));
+            const free = []; // rings of cells around the click: centre first
+            for (let r = 0, k = 0; free.length < pcs.length && r < 12; r++) for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
+                if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || free.length >= pcs.length) continue;
+                const q = snapToCell(ui.scene, p.x + dx * g, p.y + dy * g, 1); if (!taken.has(cellOf(q))) { taken.add(cellOf(q)); free.push([dx, dy]); }
+            }
+            while (free.length < pcs.length) free.push([0, 0]);
+            const here = {}, gone = {};
+            pcs.forEach((t, i) => {
+                for (const [obid, b] of Object.entries(db.battles)) if (obid !== bid && b?.tokens?.[t.id]) { delete b.tokens[t.id]; (gone[obid] ||= {})[t.id] = null; }
+                here[t.id] = { ...snapToCell(ui.scene, p.x + free[i][0] * g, p.y + free[i][1] * g, tokenSize(t)), f };
+            });
+            Object.assign((db.battles[bid] ||= { tokens: {} }).tokens, here);
+            for (const [obid, v] of Object.entries(gone)) Live.update(livePath('tokens/' + obid), v);
+            Live.update(livePath('tokens/' + bid), here);
+            disarm(); changed();
+            showStatus(`Party moved here: ${pcs.map(t => t.name).join(', ')}`);
+        }
         function disarm() {
             if (!ui.armed) return;
             ui.armed = null;
@@ -4553,6 +4590,7 @@
                 return;
             }
             const isMap = (level === 'WORLD' || level === 'LOCATION') && ui.loaded;
+            if (level === 'VTT' && ui.armed === PARTY && ui.loaded && ui.scene) { placeParty(p); return; }
             if (level === 'VTT' && ui.armed && ui.loaded && ui.scene) {
                 const id = ui.armed;
                 const placed = snapToCell(ui.scene, p.x, p.y, tokenSize(db.things[id]));
@@ -5727,6 +5765,7 @@
             $('entityTitle').focus(); $('entityTitle').select();
         }
         $('addNpcQuickBtn').onclick = createNpc;
+        $('partyHereBtn').onclick = armParty;
         $('createNewNpcBtn').onclick = createNpc;
         $('addPinNoteQuickBtn').onclick = createNote;
         $('addEventQuickBtn').onclick = createEvent;
@@ -6269,7 +6308,7 @@
         if (migratedNote) setTimeout(() => showStatus(migratedNote), 500);
         if (PLAYER) {
             renderCampaignSelect();
-            ['modeMarker', 'modeTile', 'modeRoad', 'addNpcQuickBtn', 'fogBtn', 'createNewNpcBtn', 'uploadMapBtn', 'exportJsonBtn', 'openPlayerViewBtn', 'dicePrivateWrap', 'shareLocBtn', 'mapFogBtn', 'lockMoveBtn', 'lockPingBtn', 'pullBtn', 'sessionDmOnly', 'moreMenuWrap']
+            ['modeMarker', 'modeTile', 'modeRoad', 'addNpcQuickBtn', 'partyHereBtn', 'fogBtn', 'createNewNpcBtn', 'uploadMapBtn', 'exportJsonBtn', 'openPlayerViewBtn', 'dicePrivateWrap', 'shareLocBtn', 'mapFogBtn', 'lockMoveBtn', 'lockPingBtn', 'pullBtn', 'sessionDmOnly', 'moreMenuWrap']
                 .forEach(id => { const el = $(id); if (el) { el.classList.add('hidden'); el.style.display = 'none'; } });
             $('importJsonInput').closest('label')?.classList.add('hidden');
             $('playerNameBtn').classList.remove('hidden');
@@ -6520,7 +6559,7 @@
             renderSwatchPanel();
             const rv = $('railVision'), vm = visionMode(db.view.battleId);
             if (rv) { rv.querySelector('i').className = `fa-solid ${VISION_ICON[vm]} text-lg`; rv.classList.toggle('text-amber-400', vm !== 'bright'); rv.querySelector('span').textContent = VISION_LABEL[vm] + ' (click to change)'; }
-            show('addNpcQuickBtn', !PLAYER && (lv === 'DM_BOARD' || lv === 'VTT')); show('addEventQuickBtn', !PLAYER && lv === 'DM_BOARD');
+            show('addNpcQuickBtn', !PLAYER && (lv === 'DM_BOARD' || lv === 'VTT')); show('partyHereBtn', !PLAYER && lv === 'VTT'); show('addEventQuickBtn', !PLAYER && lv === 'DM_BOARD');
             show('addPinNoteQuickBtn', lv === 'DM_BOARD');
             show('railDivider', lv === 'DM_BOARD' ? true : onMap);
             show('railUpload', !PLAYER && isMap && !!currentMap() && !currentMap()?.shift);

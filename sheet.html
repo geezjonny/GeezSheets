@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <script>
-  // GeezSheets on Gaia (new data, /v2). Always runs with the Gaia backend: Firebase /v2 online, the local Gaia server on 127.0.0.1.
+  // GeezSheets on Gaia (data in Firebase /v2). Always Firebase, also when opened from this PC; ?gaia=... overrides (tests).
   (function(){const q=new URLSearchParams(location.search);if(q.get('db')==='gaia'&&q.has('gaia'))return;q.set('db','gaia');
-  if(!q.has('gaia'))q.set('gaia',['127.0.0.1','localhost','[::1]'].includes(location.hostname)?location.origin:'firebase');
+  if(!q.has('gaia'))q.set('gaia','firebase');
   location.replace(location.pathname+'?'+q.toString().replace(/=(&|$)/g,'$1')+location.hash);})();
 </script>
 
