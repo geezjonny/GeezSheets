@@ -59,6 +59,10 @@ for(const mode of ['damage','heal','set','temp','max'])add(`hp.${mode}`,({damage
  if(mode==='set')next=int(n,0,max);
  if(mode==='temp'){t=n;p[b+'temp_hp']=t;}
  if(mode==='max'){p[b+'hp_max']=n;next=Math.min(hp,n);}
+ if(next===0 && c.concentration?.active)p[b+'concentration']={active:false,spell:'',check:null};
+ else if(c.concentration?.active && (mode==='damage'||mode==='set'&&next<hp))p[b+'concentration']={...c.concentration,check:{id:globalThis.crypto.randomUUID(),dc:Math.max(10,Math.floor((mode==='damage'?n:hp-next)/2))}};
+ if(mode==='damage'&&hp===0)p[b+'death_saves']={success:c.death_saves?.success||0,fail:Math.min(3,(c.death_saves?.fail||0)+1)};
+ if(next>0&&c.death_saves)p[b+'death_saves']={success:0,fail:0};
  p[b+'hp_current']=next;return patch(e,p,`${e.name}: HP ${hp} -> ${next} (temp ${t})${mode==='max'?`; max ${max} -> ${n}`:''}`);
 });
 for(const mode of ['spend','restore']){
@@ -140,7 +144,7 @@ for(const mode of ['long','short'])add(`rest.${mode}`,`Take a ${mode} rest using
 for(const mode of ['pass','fail','stable'])add(`deathsave.${mode}`,'Update saved death saves.',[target],true,(g,a,e)=>{
  const c=sheet(e)?.combat;if(!c)fail('No saved combat stats');const success=mode==='stable'?3:Math.min(3,int(c.death_save_successes??c.death_saves?.success??0,0,3)+(mode==='pass'?1:0)),failures=mode==='stable'?0:Math.min(3,int(c.death_save_failures??c.death_saves?.fail??0,0,3)+(mode==='fail'?1:0));return patch(e,deathPatch(e,success,failures),`${e.name}: death saves ${success} pass / ${failures} fail`);
 });
-for(const mode of ['set','clear'])add(`concentration.${mode}`,'Update saved concentration.',[target,...(mode==='set'?[arg('spell')]:[])],false,(g,a,e)=>{if(!sheet(e)?.combat)fail('No saved combat stats');return patch(e,{[base(e)+'combat.concentration']:{...sheet(e).combat.concentration,active:mode==='set',spell:mode==='set'?a.spell:''}},`${e.name}: ${mode==='set'?'concentrating '+a.spell:'concentration cleared'}`);});
+for(const mode of ['set','clear'])add(`concentration.${mode}`,'Update saved concentration.',[target,...(mode==='set'?[arg('spell')]:[])],true,(g,a,e)=>{if(!sheet(e)?.combat)fail('No saved combat stats');if(mode==='set'&&(a.spell.length>200||sheet(e).combat.hp_current===0))fail('Concentration needs a spell of at most 200 characters and positive HP');return patch(e,{[base(e)+'combat.concentration']:{...sheet(e).combat.concentration,active:mode==='set',spell:mode==='set'?a.spell:'',check:null}},`${e.name}: ${mode==='set'?'concentrating '+a.spell:'concentration cleared'}`);});
 export function inventoryItem(e,q){
  const norm=s=>canonicalName(s).replace(/\bpotions\b/g,'potion').replace(/^potion of healing$/,'healing potion').replace(/(ch|sh|ss|x|z)es$/,'$1').replace(/ies$/,'y').replace(/s$/,'');const entries=Object.entries(e.data.inventory??{}),n=norm(q);
  let found=entries.filter(([id,v])=>id===q||canonicalName(v.name)===canonicalName(q));if(!found.length)found=entries.filter(([,v])=>norm(v.name)===n);
@@ -180,3 +184,6 @@ add('map.publish','Publish a data map scene.',[target,arg('scene','object')],fal
  changes.push({op:'patch',entity:map.id,patch:{'data.scene':a.scene,'data.size':{cols:a.scene.grid.cols,rows:a.scene.grid.rows},'data.floors':a.scene.floors.map(({level,name,elevation})=>({level,name,elevation}))}});
  return result(changes,'Published '+a.scene.name);
 });
+
+add('elevation.set','Set character token elevation in feet.',[target,arg('feet','integer')],true,(g,a,e)=>{sheet(e);int(a.feet,-10000,10000);return patch(e,{[base(e)+'combat.elevation']:a.feet},`${e.name}: elevation ${a.feet} ft`);});
+add('concentration.keep','Resolve a concentration check.',[target,arg('check')],true,(g,a,e)=>{const c=sheet(e)?.combat?.concentration;if(!c?.active||c.check?.id!==a.check)fail('Concentration check changed',409);return patch(e,{[base(e)+'combat.concentration']:{...c,check:null}},`${e.name}: concentration kept`);});

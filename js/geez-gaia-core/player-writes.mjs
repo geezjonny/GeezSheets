@@ -1,12 +1,18 @@
+export function validateTemplate(v,db,campaign,bad){
+ if(!v||typeof v!=='object'||Array.isArray(v)||Object.keys(v).some(k=>!['owner','map','shape','size','x','y','angle','f','color'].includes(k)))bad('Invalid template fields');
+ if(!['cone','circle','line','square'].includes(v.shape)||!Number.isFinite(v.size)||v.size<5||v.size>1000||![v.x,v.y].every(n=>Number.isFinite(n)&&n>=0&&n<=1)||!Number.isFinite(v.angle)||Math.abs(v.angle)>1000||!Number.isInteger(v.f)||Math.abs(v.f)>100||!/^#[0-9a-f]{6}$/i.test(v.color||''))bad('Invalid template geometry');
+ const map=db.worlds.gaia.entities[v.map];if(!map||!['place','map'].includes(map.kind)||map.campaign&&map.campaign!==campaign)bad('Template needs a map in this campaign');
+ if(typeof v.owner!=='string'||v.owner.length>200)bad('Invalid template owner');
+}
 // Narrow Sheets player records. Both persistence transports call this boundary.
 const deny = message => { throw Object.assign(new Error(message), {status:403}); };
 const bad = message => { throw Object.assign(new Error(message), {status:400}); };
 export function playerWrite(db, parts, body, auth, equal) {
  const [,campaign,,field,...keys]=parts, entities=db.worlds.gaia.entities;
  const pcs=(auth.pcs||[]).map(id=>entities[id]).filter(e=>e?.kind==='pc'&&e.campaign===campaign&&db.campaigns[campaign]?.party?.[e.id]);
- if(!pcs.length)deny('Players may write only in their own PC campaign');
+ if(!pcs.length&&auth.role!=='gm')deny('Players may write only in their own PC campaign');
  if(Object.keys(body).some(k=>!['value','expected','call'].includes(k))||!Object.hasOwn(body,'value'))bad('Expected {value, expected?, call?}');
- const pc=pcs[0], own=id=>pcs.some(e=>e.id===id), names=pcs.map(e=>e.name);
+ const pc=pcs[0], own=id=>auth.role==='gm'||pcs.some(e=>e.id===id), names=pcs.map(e=>e.name);
  const value=body.value;
  // Bound all free text and nested payloads before storing it.
  function bounded(v,depth=0){
@@ -18,7 +24,10 @@ export function playerWrite(db, parts, body, auth, equal) {
  bounded(value);if(JSON.stringify(value).length>20000)bad('Player record exceeds 20000 characters');
  const obj=v=>v&&typeof v==='object'&&!Array.isArray(v);
  let path;
- if(['rolls','pings','presence'].includes(field)&&keys.length===1){
+ if(field==='templates'&&keys.length===1){
+  path=`campaigns/${campaign}/state/templates/${keys[0]}`;
+  if(value!==null){validateTemplate(value,db,campaign,bad);if(!db.campaigns[campaign].state.templates?.[keys[0]]&&Object.keys(db.campaigns[campaign].state.templates||{}).length>=100)bad('At most 100 templates per campaign');}
+ }else if(['rolls','pings','presence'].includes(field)&&keys.length===1){
   path=`campaigns/${campaign}/state/${field}/${keys[0]}`;
  }else if(field==='rollcall'&&keys.length===1){
   path=`campaigns/${campaign}/state/rollcall/results/${keys[0]}`;

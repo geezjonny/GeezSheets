@@ -97,7 +97,7 @@ export function executeWrite(snapshot,schema,path,method,body,auth){
         }
         send(200,last);return;
       }
-      if (parts[0]==='campaigns' && parts[2]==='player' && req.method==='PUT' && auth.role!=='gm') {
+      if (parts[0]==='campaigns' && parts[2]==='player' && req.method==='PUT' && (auth.role!=='gm'||parts[3]==='templates')) {
         if(!object(body))fail(400,'Expected a JSON object');checkKeys(body);
         const w=playerWrite(db,parts,body,auth,equalJSON);
         send(200,commit(w.path,w.value));return;

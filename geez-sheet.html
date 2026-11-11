@@ -283,6 +283,7 @@ body.embed .state-screen{min-height:60vh}
 .temp-badge input{background:transparent;color:inherit;border:0;border-bottom:1px solid currentColor;font:inherit;text-align:center;padding:0 2px}.death-panel{padding:8px}.death-panel:empty{display:none}.death-panel button{min-height:32px;margin:3px}.call-banner{margin:12px;padding:12px;border:2px solid var(--gold);border-radius:12px;background:var(--panel2)}.call-banner button,.call-banner select,.call-banner input{min-height:36px;margin:4px;max-width:100%}.call-banner fieldset{padding:8px;min-width:0}.call-options{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/geez-vttcore.css">
 <link rel="stylesheet" href="css/geez-ink-ui.css">
 </head>
 <body>
@@ -347,6 +348,7 @@ body.embed .state-screen{min-height:60vh}
 
 <script type="module">
 // Same Firebase project/config as the VTT (js/rodeo-firebase.js)
+import {concentrationControls} from './js/geez-vttcore.js';
 import { callTitle, callMod, answerCall, EXTRAS, passed, sgn } from './js/geez-rollcall.js';
 import { db, ref, get, set, update, remove, push, onValue, runTransaction } from "./js/geez-rodeo-firebase.js";
 const $   = id => document.getElementById(id);
@@ -665,6 +667,7 @@ function buildCard(char) {
         <button class="hp-btn dmg"  onclick="window.adjustHp(${jsarg(char.id)},false)">&#8722; Dmg</button>
       </div>
     </div>
+    <div id="concentration-${esc(char.id)}"></div>
     <div id="death-${esc(char.id)}" class="death-panel">${deathHtml(char.id,c)}</div>
     <button class="panel-btn" data-charid="${esc(char.id)}" onclick="window.rollInitiative(this.dataset.charid)">Roll initiative</button>
     <div class="stats-row">
@@ -839,7 +842,8 @@ window.adjustHp = async function(charId, isHeal) {
   const delta = parseInt(deltaEl?.value,10)||1;
   if(!deltaEl||delta<=0)return;
   try {
-    await runTransaction(ref(db,`characters/pcs/${charId}/combat`), c => {
+    if(!isHeal&&db.gaia)await db.damage(charId,delta);
+    else await runTransaction(ref(db,`characters/pcs/${charId}/combat`), c => {
       if(!c)return c;
       const cur=Number(c.hp_current)||0, tmp=Math.max(0,Number(c.temp_hp)||0);
       const hp=isHeal?Math.min(Number(c.hp_max)||1,cur+delta):Math.max(0,cur-Math.max(0,delta-tmp));
@@ -936,6 +940,8 @@ function watchCharacter(charId) {
   combatUnsubs[charId] = onValue(ref(db,`characters/pcs/${charId}/combat`), snap => {
     if(!snap.exists())return;
     const c=snap.val(), hpCur=c.hp_current??0, hpMax=c.hp_max??1;
+    const conc=$(`concentration-${charId}`);
+    if(conc)concentrationControls(conc,{combat:c,editable:IS_GM||charId===(PARAMS.get('pc')||ONLY),save:v=>update(ref(db,`characters/pcs/${charId}/combat`),v),roll:async()=>{const pc=allPcs.find(p=>p.id===charId),mod=callMod(pc,{kind:'save',key:'con'}).mod,r=Dice.rollExpr(`1d20${mod>=0?'+':''}${mod}`);await logPcRoll(pc,'Concentration CON save',r,Dice.camp);}});
     const pct=Math.max(0,Math.min(1,hpCur/hpMax));
     const bar=$(`hpbar-${charId}`), val=$(`hpval-${charId}`);
     if(bar){bar.style.width=Math.round(pct*100)+'%';bar.style.backgroundColor=hpColor(hpCur,hpMax);}

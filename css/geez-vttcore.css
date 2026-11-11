@@ -1,0 +1,12 @@
+/* Ink VTT controls: cream/ink and white on bronze (WCAG AA). */
+.geez-vtt-controls{background:#fff8e8;color:#2a2119;border:1px solid #8a6526;border-radius:8px;padding:8px;font:12px/1.5 system-ui;max-width:100%;box-sizing:border-box}
+.geez-vtt-controls button,.geez-template-label{background:#8a6526!important;color:#fff!important;border:1px solid #6b4c1b!important;border-radius:5px;padding:7px 9px;min-height:36px;font:600 12px system-ui;cursor:pointer;margin:2px}
+.geez-vtt-controls input:not([type=checkbox]),.geez-vtt-controls select{background:#fffdf7!important;color:#2a2119!important;border:1px solid #8a6526;border-radius:4px;min-height:34px;padding:3px;max-width:160px}
+.geez-vtt-controls input[type=number]{width:70px}.geez-vtt-controls label{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px}.geez-vtt-controls input[type=checkbox]{accent-color:#8a6526}
+.geez-vtt-controls button:focus-visible,.geez-template-label:focus-visible{outline:3px solid #2a2119;outline-offset:2px}
+.geez-template-tool{position:absolute;left:8px;bottom:48px;z-index:42;width:270px;max-width:calc(100% - 16px)}
+.geez-template-tool summary{cursor:pointer;font-weight:700;padding:4px;min-height:30px}.geez-template-fields{display:flex;flex-wrap:wrap;gap:4px}.geez-template-label{pointer-events:auto;transform:translate(-50%,-50%);white-space:nowrap;min-height:28px;padding:3px 6px}
+.geez-concentration-prompt{border:2px solid #a3362d;border-radius:5px;padding:6px;margin-top:6px;font-weight:700}
+.geez-token-elevation{position:absolute;top:-20px;left:50%;transform:translateX(-50%);background:#fff8e8;color:#2a2119;border:1px solid #8a6526;border-radius:4px;padding:1px 4px;white-space:nowrap;font:bold 10px system-ui;pointer-events:none}
+.geez-token-concentration{position:absolute;inset:-5px;border:2px dashed #8a6526;border-radius:50%;pointer-events:none}.geez-token-concentration b{position:absolute;top:0;left:-5px;background:#fff8e8;color:#2a2119;border-radius:50%;font:700 10px system-ui;padding:2px}
+#geezConcentrationAlerts{position:absolute;top:8px;left:8px;z-index:43;max-width:280px;max-height:40%;overflow:auto}#geezConcentrationAlerts:empty{display:none}

@@ -40,10 +40,10 @@
     const sceneMap = id => raw?.entities.find(e=>e.kind==='map' && e.data.scene && (e.id===canonical(id) || e.data.parent_place===canonical(id)));
     const battleMap = id => old(sceneMap(id)?.data.parent_place || id);
     const canonicalMap = id => sceneMap(id)?.id || canonical(id);
-    const refs = new Set(['char','from','to','entity','map','parent_map','parent_place','parent','home','where','childMap','charId','characterId','pcId','npcId','entityId','mapId','target','locationId','linkedCharacterId']);
+    const refs = new Set(['char','from','to','owner','entity','map','parent_map','parent_place','parent','home','where','childMap','charId','characterId','pcId','npcId','entityId','mapId','target','locationId','linkedCharacterId']);
     function translate(v, toOld = true, key = '') {
       const id = toOld ? old : canonical;
-      if (typeof v === 'string') return toOld && ['charId','char'].includes(key) ? sheetIds.get(v)||old(v) : refs.has(key) || key === 'chain' ? id(v) : v;
+      if (typeof v === 'string') return toOld && ['charId','char','owner'].includes(key) ? sheetIds.get(v)||old(v) : refs.has(key) || key === 'chain' ? id(v) : v;
       if (!v || typeof v !== 'object') return v;
       if (Array.isArray(v)) return v.map(x => translate(x, toOld, key));
       return Object.fromEntries(Object.entries(v).map(([k, x]) => [id(k), translate(x, toOld, k)]));
@@ -83,7 +83,7 @@
         const reveal = campaigns[e.campaign]?.reveals?.[e.id] || Object.values(campaigns).map(c => c.reveals?.[e.id]).find(Boolean);
         campaign.things[id] = { ...extra, id, type: ({place:'location',pc:'npc',creature:'npc'})[e.kind] || e.kind, name:e.name,
           campaign: apps.sheets?.campaignIds?.[e.campaign] || 'world__' + (e.campaign || (player ? (qs.get('campaign')||'world__daddies').replace(/^world__/,'') : Object.keys(campaigns)[0])), notes:d.description || d.text || extra.notes || '', board:extra.board || reveal?.board || null,
-          traits: { ...extra.traits, ...(e.kind === 'place' ? { scene: d.scene || entities.find(m=>m.kind==='map' && (m.id===e.data.childMap || m.data.parent_place===e.id))?.data.scene || null, category:d.place_kind, ...(d.childMap ? {childMap:d.childMap} : {}) } : {}), ...(combat ? {hp:combat.hp_current, ac:combat.ac} : {}), ...(e.kind === 'pc' ? {pc:true, charId:sid} : {}), ...(e.kind === 'npc' ? {charId:sid} : {}), ...(d.token || {}), ...(d.status ? {status:d.status} : {}) }, properties:copy(extra.properties || []) };
+          traits: { ...extra.traits, ...(e.kind === 'place' ? { scene: d.scene || entities.find(m=>m.kind==='map' && (m.id===e.data.childMap || m.data.parent_place===e.id))?.data.scene || null, category:d.place_kind, ...(d.childMap ? {childMap:d.childMap} : {}) } : {}), ...(combat ? {hp:combat.hp_current, ac:combat.ac} : {}), ...(e.kind === 'pc' ? {pc:true, charId:sid} : {}), ...(['npc','creature'].includes(e.kind) ? {charId:sid} : {}), ...(d.token || {}), ...(d.status ? {status:d.status} : {}) }, properties:copy(extra.properties || []) };
         if (e.kind === 'map' || d.dd2vtt) campaign.things[id].traits.dd2vtt = d.dd2vtt;
       }
       for (const l of Object.values(links)) if (!l._sheetsDeleted) campaign.links[l.id] = translate(l);
@@ -177,6 +177,7 @@
       if(!after) return [{path:'entities/'+e.id,method:'PATCH',body:{'data._sheetsDeleted':true}}];
       if(player && selectedId()!==e.id) throw Object.assign(Error('Players may change only their own PC'),{status:403});
       const plans=[], patch={}, changes=diff(before,after), args={entity:e.id};
+      let concentrationHandled=false;
       const action=(name,values)=>plans.push({path:'actions/'+name,method:'POST',body:{args:{...args,...values}}});
       if(!same(before.inventory,after.inventory)) {
         for(const k of new Set([...Object.keys(before.inventory||{}),...Object.keys(after.inventory||{})])) {
@@ -190,8 +191,15 @@
         if(p==='name') {patch.name=v;continue;}
         const b=e.kind==='pc'?'data.':'data.statblock.';
         if(p==='combat.hp_current') action('hp.set',{amount:v});
+        else if(p==='combat.elevation')action('elevation.set',{feet:v});
+        else if(p.startsWith('combat.concentration')&&!concentrationHandled){
+          concentrationHandled=true;const c=after.combat?.concentration;
+          if(!c?.active)action('concentration.clear',{});
+          else if(before.combat?.concentration?.check&&!c.check)action('concentration.keep',{check:before.combat.concentration.check.id});
+          else action('concentration.set',{spell:c.spell});
+        }else if(p.startsWith('combat.concentration'))continue;
         else if(p==='combat.hp_max') action('hp.max',{amount:v});
-        else if(p==='combat.temp_hp') action('hp.temp',{amount:v});
+        else if(p==='combat.temp_hp')action('hp.temp',{amount:v});
         else if(p==='combat.conditions') {
           for(const c of before.combat?.conditions||[])if(!(v||[]).includes(c))action('condition.remove',{condition:c});
           for(const c of v||[])if(!(before.combat?.conditions||[]).includes(c))action('condition.add',{condition:c});
@@ -330,7 +338,10 @@
         const a=before.geezvtt.live[key]||{},b=after.geezvtt.live[key]||{},c=rootIds.get(key)||campaignId(key);
         if(key==='_dmCampaign'){if(!same(a,b))stage('apps/sheets/dmCampaign','PUT',{value:b});continue;}
         for(const field of new Set([...Object.keys(a),...Object.keys(b)]))if(!same(a[field],b[field])) {
-          if(player && ['rolls','pings','presence','rollcall','initiative'].includes(field)) {
+          if(field==='templates'){
+            const prev=a.templates||{},next=b.templates||{};
+            for(const id of new Set([...Object.keys(prev),...Object.keys(next)]))if(!same(prev[id],next[id]))stage(`campaigns/${c}/player/templates/${id}`,'PUT',{value:next[id]?translate(next[id],false):null});
+          }else if(player && ['rolls','pings','presence','rollcall','initiative'].includes(field)) {
             if(field==='initiative'){
               if(b.initiative?.round!==a.initiative?.round||b.initiative?.turn!==a.initiative?.turn)throw Object.assign(Error('Only the GM controls initiative turn and round'),{status:403});
               const prev=a.initiative?.rows||{},next=b.initiative?.rows||{};
@@ -459,6 +470,12 @@
     }
     if(!backend)stream();
     return {
+      damage(entity,amount) {
+        const result=queue.then(async()=>{await ready;await load();
+          const out=await request('actions/hp.damage','POST',{args:{entity:canonical(entity),amount}});
+          await load();fire();return out;
+        });queue=result.catch(()=>{});return result;
+      },
       async storeFile(name,blob) {
         const value=await new Promise((ok,no)=>{
           const reader=new FileReader();

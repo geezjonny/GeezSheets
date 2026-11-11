@@ -73,6 +73,7 @@
 <!-- Tailwind, prebuilt (tailwind.config.js has the rebuild command). Last in <head> so utilities win ties, as with the CDN. -->
 <link rel="stylesheet" href="css/geez-tailwind.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:wght@400;600&display=swap">
+<link rel="stylesheet" href="css/geez-vttcore.css">
 <link rel="stylesheet" href="css/geez-ink-ui.css">
 </head>
 <body class="h-full flex flex-col font-sans overflow-hidden select-none bg-slate-950 text-slate-100">
@@ -1930,7 +1931,7 @@
                 drawVision(scene, vis, bt.id);
                 if (!PLAYER) { checkTraps(bt.id); drawEditPreview(); }
                 GH?.roofs(markerCtx, scene, viewerTokens(scene, bt.id));
-                renderTokens(bt.id, scene);
+                renderTokens(bt.id, scene); VT?.draw(); renderConcentrationAlerts();
                 ui.loaded = true;
                 if (newView && !cam().fitted) fitView(); else applyTransform();
                 return;
@@ -3055,6 +3056,7 @@
                     ${(() => {
                         const h = hpOf(n);
                         if (!h || (PLAYER && flags.hideHp)) return '';
+                        if(PLAYER&&!n.traits?.pc)return Number(h.hp)<=0?'<span data-hp-status="down" class="geez-token-elevation">? Down</span>':h.max&&h.hp<=h.max/2?'<span data-hp-status="bloodied" class="geez-token-elevation" style="background:#a3362d;color:white">? Bloodied</span>':'';
                         const pct = h.max ? Math.max(0, Math.min(1, h.hp / h.max)) : null;
                         const col = pct === null ? '#ef4444' : pct > .5 ? '#4a9a4a' : pct > .25 ? '#caca30' : '#cc3030';
                         return `<span class="absolute font-mono px-1 rounded-full whitespace-nowrap pointer-events-none" style="top:-6px;right:-6px;font-size:${Math.max(8, baseSize / 8)}px;background:#1c0a0a;color:#fecaca;border:1px solid ${col}" title="${h.live ? 'Live from character sheet' : 'HP'}${h.temp ? ` (+${esc(h.temp)} temp)` : ''}">${esc(h.hp)}${h.temp ? `<span style="color:#7dd3fc">+${esc(h.temp)}</span>` : ''}${h.max ? '/' + esc(h.max) : ''}</span>`
@@ -3074,6 +3076,10 @@
                     onClick: () => { if (!db.things[npcId] && !PLAYER) GH?.inspectToken(npcId); else if (!db.things[npcId]?.traits?.stub) select('thing', npcId); },
                     startPos: () => { const p = (live.tokens?.[battleId] || {})[npcId] || tokens[npcId]; return { x: p.x * scene.w, y: p.y * scene.h }; }
                 });
+                el.dataset.tokenId=npcId;
+                const combat=sheetFor(n)?.combat||{};
+                if(combat.elevation){const badge=document.createElement('span');badge.className='geez-token-elevation';badge.dataset.elevation=String(combat.elevation);badge.textContent=`${combat.elevation>0?'+':''}${combat.elevation} ft`;el.append(badge);}
+                if(combat.concentration?.active){const ring=document.createElement('span');ring.className='geez-token-concentration';ring.title='Concentrating on: '+combat.concentration.spell;ring.innerHTML='<b>C</b>';el.append(ring);}
                 tokensLayer.appendChild(el);
             }
         }
@@ -3249,6 +3255,7 @@
                     if (!PLAYER) mergeLiveTokens();
                     if (db.view.level === 'VTT' && ui.scene) renderView();
                 }),
+                Live.on(livePath('templates'), v => { templateRecords=v||{}; VT?.receive(templateRecords); }),
                 Live.on(livePath('pings'), (v) => showPings(v || {})),
                 Live.on(livePath('rolls'), onRolls),
                 Live.on(livePath('initiative'), (v) => { live.init = v; renderInit(); if (db.view.level === 'VTT' && ui.scene) renderView(); }),
@@ -3347,7 +3354,7 @@
                     for (const [id, p] of shown) if (now - p.ts > 3400) shown.delete(id);
                     return { ready: this.ready(), status: $('statusMessage').textContent, campaign: liveCamp(), bid,
                         data: {pcs:sheets, npcs:npcSheets, things:db.things, maps:db.maps, links:db.links, battles:db.battles, initiative:live.init},
-                        level: db.view.level, loaded:ui.loaded, floor: GH?.floor() || 0, meta: GH?.meta(), me: {token: own(), name: playerName},
+                        templates:templateRecords, level: db.view.level, loaded:ui.loaded, floor: GH?.floor() || 0, meta: GH?.meta(), me: {token: own(), name: playerName},
                         tokens: Object.entries(battleTokens(bid)).map(([id, p]) => { const t = battleThing(id, bid);
                             return {id, name:t?.name || id, ...p, pc:!!t?.traits?.pc, size:t?.traits?.size || 'medium'}; }),
                         pings: [...shown.values()].filter(p => p.v === viewKey() && floorMatches(p)),
@@ -3368,6 +3375,22 @@
             };
         }
 
+        let VT=null, VTC=null, templateRecords={};
+        const coreOwner=()=>new URLSearchParams(location.search).get('pc')||Object.values(db.things).find(t=>t.traits?.pc&&t.name===playerName)?.traits?.charId||'gm';
+        const coreWrite=(path,value)=>rtdb.ref('geezvtt/'+livePath(path)).set(value);
+        const coreScale=()=>db.things[db.view.battleId]?.traits?.scene?.grid?.cell_ft||5;
+        const coreEditable=t=>!PLAYER||!!t?.traits?.pc&&t.name===playerName;
+        function coreSave(t,values){const cid=t.traits?.charId||t.id;return rtdb.ref('characters/'+(t.traits?.pc?'pcs':'npcs')+'/'+cid+'/combat').update(values);}
+        function coreRoll(t){const m=RC.callMod(sheetFor(t),{kind:'save',key:'con'}).mod;return doRoll('1d20'+(m>=0?'+':'')+m);}
+        function renderConcentrationAlerts(){
+            if(!VTC)return;let host=$('geezConcentrationAlerts');if(!host){host=document.createElement('div');host.id='geezConcentrationAlerts';viewport.append(host);}
+            host.replaceChildren();
+            for(const t of Object.values(db.things)){const c=sheetFor(t)?.combat;if(!c?.concentration?.active||!c.concentration.check||!coreEditable(t))continue;
+                const box=document.createElement('div');host.append(box);VTC.concentrationControls(box,{combat:c,editable:true,save:v=>coreSave(t,v),roll:()=>coreRoll(t)});
+            }
+        }
+        import('./js/geez-vttcore.js').then(m=>{VTC=m;VT=m.createVttCore({viewport,layer:tokensLayer,player:PLAYER,scene:()=>ui.scene,visible:()=>db.view.level==='VTT',bid:()=>db.view.battleId,floor:()=>GH?.floor()||0,scale:coreScale,owner:coreOwner,color:()=>pingColor(whoAmI()),content:toContent,pan:()=>setMode('pan'),write:coreWrite,tokens:()=>[...tokensLayer.querySelectorAll('[data-token-id]')].map(el=>{const id=el.dataset.tokenId,p=battleTokens(db.view.battleId)[id];return {...p,name:battleThing(id,db.view.battleId)?.name||id};})});VT.receive(templateRecords);renderConcentrationAlerts();}).catch(console.error);
+
         // ---- ruler ----
         function drawRuler() {
             const svg = $('rulerSvg');
@@ -3380,7 +3403,9 @@
             if (db.view.level === 'VTT' && ui.scene) {
                 const g = ui.scene.ppg;
                 const sq = Math.max(Math.abs(Math.floor(r.b.x / g) - Math.floor(r.a.x / g)), Math.abs(Math.floor(r.b.y / g) - Math.floor(r.a.y / g)));
-                label = `${sq * 5} ft · ${sq} sq`;
+                const endpointElevation=p=>{const hit=Object.entries(battleTokens(db.view.battleId)).find(([id,t])=>Math.hypot(t.x*ui.scene.w-p.x,t.y*ui.scene.h-p.y)<=g*tokenSize(battleThing(id,db.view.battleId))/2);return hit?sheetFor(battleThing(hit[0],db.view.battleId))?.combat?.elevation||0:0;};
+                const vertical=Math.abs(endpointElevation(r.a)-endpointElevation(r.b));
+                label = `${Math.max(sq*coreScale(),vertical)} ft · ${sq} sq`;
             } else {
                 const map = currentMap();
                 const d = Math.hypot(r.b.x - r.a.x, r.b.y - r.a.y) / (ui.size.w || 1);
@@ -6540,6 +6565,13 @@
                 } else renderCardSections(t, pane.querySelector('[data-sheetsecs]'), true);
                 $('sheetCloseBtn').onclick = () => { sheetId = null; renderSheetPane(); };
             }
+            pane.querySelector('[data-vttcore-card]')?.remove();
+            if(VTC&&coreEditable(t)&&sheetFor(t)){
+                const c=sheetFor(t).combat||{},box=document.createElement('div');box.dataset.vttcoreCard='';pane.append(box);
+                VTC.concentrationControls(box,{combat:c,editable:true,save:v=>coreSave(t,v),roll:()=>coreRoll(t)});
+                const elevation=document.createElement('div');elevation.textContent=`Elevation: ${c.elevation||0} ft `;
+                for(const delta of [-5,5]){const b=document.createElement('button');b.textContent=(delta>0?'+':'')+delta+' ft';b.onclick=()=>{b.blur();return coreSave(t,{elevation:(c.elevation||0)+delta}).catch(e=>showStatus(e.message));};elevation.append(b);}box.append(elevation);
+            }
             // DM: this creature's token on the open battle map
             const bid = db.view.battleId, tok = db.view.level === 'VTT' && db.battles[bid]?.tokens?.[t.id];
             if (!PLAYER && tok) {
@@ -6555,7 +6587,7 @@
                 pane.appendChild(box);
                 const setLight = () => moveToken(bid, t.id, { ...battleTokens(bid)[t.id], light:{on:box.querySelector('[data-token-light]').checked,range:Math.max(1,Number(box.querySelector('[data-light-range]').value)||4)} });
                 box.querySelector('[data-token-light]').onchange = setLight; box.querySelector('[data-light-range]').onchange = setLight;
-                box.querySelectorAll('[data-tflag]').forEach(cb => cb.onchange = () => { tok[cb.dataset.tflag] = cb.checked; changed({ keepInspector: true }); });
+                box.querySelectorAll('[data-tflag]').forEach(cb => cb.onchange = () => { tok[cb.dataset.tflag] = cb.checked; Live.update(livePath(`tokens/${bid}/${t.id}`),{[cb.dataset.tflag]:cb.checked}); changed({ keepInspector: true }); });
                 box.querySelectorAll('[data-cond]').forEach(b => b.onclick = () => {
                     const c = b.dataset.cond, cur = new Set(conds);
                     cur.has(c) ? cur.delete(c) : cur.add(c);
@@ -6595,7 +6627,7 @@
                 if (db.view.level === 'DM_BOARD') renderPinboard();
                 refreshInspector();
             }, () => {});
-            if (!PLAYER) rtdb.ref('characters/npcs').on('value', (snap) => { npcSheets = snap.val() || {}; refreshInspector(); }, () => {});
+            rtdb.ref('characters/npcs').on('value', (snap) => { npcSheets = snap.val() || {}; if(db.view.level==='VTT'&&ui.scene)renderView(); refreshInspector(); }, () => {});
             if (!PLAYER) {
                 let first = true, gaiaInitial = true;
                 FbRemote.on('campaign', (val) => {
