@@ -137,7 +137,7 @@ for kind in ids:
         light = {'range': 4 if k != 'campfire' else 6, 'color': '#79d34e' if k == 'cauldron' else '#ffb35c'} if k in ('campfire','candelabra','torch_sconce','light','cauldron') else None
         tag = 'light' if k in ('campfire','candelabra','torch_sconce','light') else 'furniture' if k in ('bed','bench','bookshelf','chair','chest','stool','table','crate','barrel') else 'decor' if k in ('rug','statue','cauldron') else 'dungeon'
         entries.append(dict(id=k, name=k.replace('_',' ').title(), src='props/'+k+'.png', w=SIZES[k][0], h=SIZES[k][1], light=light, blocks=k in ('bookshelf','iron_cage','statue','skull_pillar'), tags=[tag]))
-    (ROOT/'js/props.js').write_text('// Dark-fantasy top-down props for battle maps. One cell represents 5 feet.\n// Used by index.html. PNGs have transparent backgrounds at 256 pixels per cell.\n// Add a prop by dropping a PNG in props/ and listing its footprint and light here.\nwindow.GEEZ_PROPS = '+json.dumps(entries, indent=2)+';\n', encoding='utf-8')
+    (ROOT/'js/old-props.js').write_text('// Dark-fantasy top-down props for battle maps. One cell represents 5 feet.\n// Used by old-index.html. PNGs have transparent backgrounds at 256 pixels per cell.\n// Add a prop by dropping a PNG in props/ and listing its footprint and light here.\nwindow.GEEZ_PROPS = '+json.dumps(entries, indent=2)+';\n', encoding='utf-8')
     preview = Image.new('RGB', (1050, 1020), '#292c30')
     d = ImageDraw.Draw(preview)
     for y in range(0,1020,35):

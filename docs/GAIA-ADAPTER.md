@@ -10,7 +10,7 @@ On the deployed site, use these paths (replace the campaign/PC if needed):
 - Player: `gaia.html?player&pc=ashara&campaign=world__daddies`
 - Player sheet: `sheet-gaia.html?player&pc=ashara&char=ashara&campaign=world__daddies&live=world__daddies`
 
-The wrappers select `?db=gaia&gaia=firebase` on non-localhost addresses, using only `/v2`. On localhost/127.0.0.1 they select the same origin's Node transport. Override either with `&gaia=http://127.0.0.1:8740` or `&gaia=firebase`. For isolated Firebase testing use `&gaia=firebase:/v2-test/<run-id>`. Other Firebase root paths are refused. The same switches work directly on index.html and sheet.html. Opening a static file through file:// is unsupported; use HTTP(S).
+The wrappers select `?db=gaia&gaia=firebase` on non-localhost addresses, using only `/v2`. On localhost/127.0.0.1 they select the same origin's Node transport. Override either with `&gaia=http://127.0.0.1:8740` or `&gaia=firebase`. For isolated Firebase testing use `&gaia=firebase:/v2-test/<run-id>`. Other Firebase root paths are refused. The same switches work directly on old-index.html and old-sheet.html. Opening a static file through file:// is unsupported; use HTTP(S).
 
 Do not use live legacy Firebase pages for this session: Gaia mode routes compatibility paths into the selected v2 root. It does not write to rodeo, characters, geezvtt, session, campaigns, maps or dice at the database root.
 

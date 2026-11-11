@@ -1,7 +1,7 @@
-// Builds css/tailwind.css for index.html. After adding new Tailwind classes, rebuild from this folder:
-//   npx tailwindcss@3.4.17 -i css/tailwind.input.css -o css/tailwind.css --minify
+// Builds css/old-tailwind.css for old-index.html. After adding new Tailwind classes, rebuild from this folder:
+//   npx tailwindcss@3.4.17 -i css/old-tailwind.input.css -o css/old-tailwind.css --minify
 module.exports = {
-    content: ['./index.html', './js/**/*.js'],
+    content: ['./old-index.html', './js/**/*.js'],
     // setLevel() and the breadcrumbs build these from a colour name, so the scanner can't see them
     safelist: [
         { pattern: /^(bg|border|text)-(purple|amber|emerald|indigo)-(300|400|600|950)$/ },

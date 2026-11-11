@@ -1,8 +1,10 @@
+import { toTable3d } from './geez2vtt.js';
+import { createInkRenderer, drawDoor as inkDoor, drawProp as inkProp, drawLighting } from './ink.js';
 // GeezTabletop bridge: grid-unit helpers and cached canvas rendering. No Firebase dependency.
 export const DOOR_KINDS = ['wood', 'iron', 'double', 'portcullis', 'bars', 'secret', 'arch', 'curtain', 'window'];
 export function doorRules(kind = 'wood', open = false) {
     const closed = kind === 'arch' ? false : kind === 'window' ? true : !open;
-    return { closed, toggle: !['window', 'arch'].includes(kind), sight: closed && !['window', 'bars', 'portcullis'].includes(kind), pass: kind === 'curtain' || !closed };
+    return { closed, toggle: !['window', 'arch'].includes(kind), sight: closed && !['window', 'bars', 'portcullis'].includes(kind), pass: !closed };
 }
 export function elevationEdges(elevation = {}) {
     const edges = new Map();
@@ -40,17 +42,46 @@ export function onStairs(stair, x, y) {
 }
 export function floorList(meta) { return [...new Set((Array.isArray(meta?.floors) ? meta.floors : Object.values(meta?.floors || {0:0})).map(Number).filter(Number.isFinite))].sort((a,b)=>a-b); }
 
+// Keep guessed tiles until the referenced image has decoded. Failures are cached too.
+export function pictureCache(load, changed, warn = (...args) => console.warn(...args)) {
+    const entries = new Map();
+    return descriptor => {
+        if (!descriptor) return null;
+        const key = JSON.stringify(descriptor);
+        if (!entries.has(key)) {
+            entries.set(key, null);
+            Promise.resolve().then(async () => {
+                const r = descriptor.rect;
+                if (!Array.isArray(r) || r.length !== 4 || !r.every(Number.isFinite) || r[2] <= 0 || r[3] <= 0 || !descriptor.dd2vtt) throw Error('Invalid picture descriptor');
+                const scene = await load(descriptor.dd2vtt);
+                if (!scene?.img) throw Error('Picture unavailable');
+                entries.set(key, {img: scene.img, rect: r}); changed();
+            }).catch(error => warn('GeezTabletop picture unavailable; using floor tiles', descriptor.dd2vtt, error));
+        }
+        return entries.get(key);
+    };
+}
+
 // Path and decal kinds from GeezTabletop's paint layer (and this page's own Road/Stream/Blood/Scorch/Rubble).
-const PATH_COLORS = {road:'#877655', cobble_road:'#7d7a72', dirt_path:'#7a6448', gravel:'#8b857a', mud:'#5b4632', stream:'#497b91', river:'#3f6f8a'};
+export const PATH_COLORS = {road:'#877655', cobble_road:'#7d7a72', dirt_path:'#7a6448', gravel:'#8b857a', mud:'#5b4632', stream:'#497b91', river:'#3f6f8a'};
 const DECAL_COLORS = {blood:'#7f1d1d', blood_splatter:'#7f1d1d', blood_pool:'#6b1414', scorch:'#171717', ash:'#3f3f46', rubble:'#78716c',
     moss:'#4d6b2f', cracks:'#2a2622', puddle:'#4a6f86', leaves:'#8a5a2b', stains:'#4b3b2a', rune_circle:'#7c6fd6', footprints:'#3b3127'};
 export function createBridge(a) {
-    let data = {}, traps = {}, trapSnapshot = '', subKey = '', off = [], floor = 0, revision = 0, weatherFrame = 0;
+    let data = {}, traps = {}, trapSnapshot = '', subKey = '', off = [], floor = 0, revision = 0, weatherFrame = 0, fogPreview = false;
     const cache = new Map(), scenes = new Map();
     const current = () => a.db().view.battleId;
     const redraw = () => { if (a.db().view.level === 'VTT') a.render(); };
     const invalidate = () => { revision++; cache.clear(); redraw(); };
+    let sceneText='';
     function watch(bid) {
+        if(a.gaia){
+            const source=a.scene(bid),text=JSON.stringify(source||null),key=a.camp()+'/'+bid;
+            if(key===subKey && text===sceneText)return;
+            if(key!==subKey)floor=0;off.forEach(f=>f());off=[];
+            subKey=key;sceneText=text;data=source?toTable3d(source):{};cache.clear();scenes.clear();
+            if(source) off.push(a.live.on(a.path('table3d/'+bid+'/doors'),v=>{data.doors={...toTable3d(source).doors};for(const [f,states] of Object.entries(v||{}))data.doors[f]={...data.doors[f],...states};redraw();}));
+            return;
+        }
         const key = `${a.camp()}/${bid}`;
         if (key === subKey) return;
         off.forEach(f=>f()); off=[]; subKey=key; data={}; traps={}; trapSnapshot=''; cache.clear(); scenes.clear(); floor=0;inspectId=null;
@@ -70,12 +101,14 @@ export function createBridge(a) {
         const stored=a.db().battles[bid]?.tokens||{}, moves=a.moves(bid);
         return Object.fromEntries(Object.entries({...stored,...moves}).map(([id,p])=>[id,{...stored[id],...p}]));
     }
+    let emptyFloor=null;
     function shownFloor() {
         if (a.player) {
             const own=Object.entries(tokens()).find(([id])=>{const t=token(id);return t?.traits.pc && t.name===a.name();});
             if (own) return Number(own[1].f)||0;
         }
         const list=floorList(data.meta);
+        if (!a.player && emptyFloor!==null && floor===emptyFloor && !list.includes(floor)) return floor;
         return data.meta && !list.includes(floor) ? (list.includes(0)?0:list[0]??0) : floor;
     }
     const onFloor = p => (Number(p?.f)||0) === shownFloor();
@@ -101,55 +134,54 @@ export function createBridge(a) {
         if(s) for(const [id,p] of Object.entries(tokens())) if(onFloor(p)&&p.light?.on&&!(a.player&&p.hidden)) out.push({key:`token:${id}`,src:'token',x:p.x*s.w/s.ppg,y:p.y*s.h/s.ppg,range:+p.light.range||4});
         return out;
     }
-    function drawProp(ctx,o,g) {
-        if (a.player && o.hidden) return;
-        const d=a.propDef(o.p), im=d&&a.propImg(d); if(!im) return;
-        ctx.save(); ctx.globalAlpha=o.hidden ? .45 : 1; ctx.translate(o.x*g,o.y*g); ctx.rotate((o.rot||0)*Math.PI/180);
-        ctx.drawImage(im,-d.w*g*(o.s||1)/2,-d.h*g*(o.s||1)/2,d.w*g*(o.s||1),d.h*g*(o.s||1));ctx.restore();
-    }
     function annotations(ctx,f,g) {
         ctx.save(); ctx.lineCap='round';ctx.lineJoin='round';
         for(const p of Object.values(f.paths||{})) {
-            ctx.strokeStyle=PATH_COLORS[p.kind]||'#877655';ctx.lineWidth=(+p.width||1)*g;ctx.beginPath();
+            ctx.strokeStyle='#211b15';ctx.lineWidth=(+p.width||1)*g;ctx.beginPath();
             for(const [op,...n] of smoothPath(p.points)) ctx[({M:'moveTo',Q:'quadraticCurveTo',L:'lineTo'})[op]](...n.map(v=>v*g));ctx.stroke();
         }
         for(const o of Object.values(f.decals||{})) {
             ctx.save();ctx.translate(o.x*g,o.y*g);ctx.rotate((o.rot||0)*Math.PI/180);ctx.scale((o.s||1)*g,(o.s||1)*g);
-            ctx.fillStyle=DECAL_COLORS[o.kind]||'#7f1d1d';ctx.globalAlpha=o.kind==='rune_circle'||o.kind==='footprints'?.6:.85;
+            ctx.fillStyle='#211b15';ctx.globalAlpha=o.kind==='rune_circle'||o.kind==='footprints'?.6:.85;
             for(let i=0;i<7;i++){ctx.beginPath();ctx.ellipse(Math.sin(i*13)*.3,Math.cos(i*7)*.25,.09+i*.012,.05+i*.006,i,0,Math.PI*2);ctx.fill();}ctx.restore();
         }
         for(const o of Object.values(f.labels||{})) {
-            ctx.save();ctx.translate(o.x*g,o.y*g);ctx.rotate((o.rot||0)*Math.PI/180);ctx.font=`600 ${(o.size||1)*g*.35}px Inter,sans-serif`;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#111';ctx.fillStyle='#f1e5c9';ctx.strokeText(o.text||'',0,0);ctx.fillText(o.text||'',0,0);ctx.restore();
+            ctx.save();ctx.translate(o.x*g,o.y*g);ctx.rotate((o.rot||0)*Math.PI/180);ctx.font=`italic ${(o.size||1)*g*.35}px Georgia,serif`;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#82704f';ctx.fillStyle='#211b15';ctx.strokeText(o.text||'',0,0);ctx.fillText(o.text||'',0,0);ctx.restore();
         }
         ctx.restore();
     }
-    function drawBase(ctx,s) {
-        if(!data.meta) return;
-        const f=layer(), g=s.ppg, key=`${shownFloor()}:${revision}:${s.w}:${s.h}:${JSON.stringify(a.edits(current()).hideWalls||{})}`;
-        let c=cache.get(key);
-        if(!c) {
-            c=document.createElement('canvas');const scale=Math.min(1,2048/Math.max(s.w,s.h));c.width=Math.ceil(s.w*scale);c.height=Math.ceil(s.h*scale);const x=c.getContext('2d');x.scale(scale,scale);
-            for(const [k,id] of Object.entries(f.paint||{})){const [cx,cy]=k.split('_').map(Number);x.fillStyle=a.paint('floor',id,g);x.fillRect(cx*g,cy*g,g+.5,g+.5);}
-            for(const [k,h] of Object.entries(f.elevation||{})){const [cx,cy]=k.split('_').map(Number);x.fillStyle=`rgba(${h>0?'255,255,255':'0,0,0'},${Math.min(.5,Math.abs(h)*.13)})`;x.fillRect(cx*g,cy*g,g,g);}
-            x.strokeStyle='#151515';x.lineWidth=2;x.beginPath();for(const [x1,y1,x2,y2] of elevationEdges(f.elevation)){x.moveTo(x1*g,y1*g);x.lineTo(x2*g,y2*g);}x.stroke();
-            annotations(x,{paths:f.paths,decals:f.decals},g);
-            for(const o of Object.values(f.props||{})) drawProp(x,o,g);
-            for(const o of Object.values(f.stairs||{})) {
-                const w=o.w||1,h=o.h||2,d=a.propDef(o.kind==='ladder'?'ladder':'stairs'),im=d&&a.propImg(d);if(im){x.save();x.translate((o.x+w/2)*g,(o.y+h/2)*g);x.rotate((o.rot||0)*Math.PI/180);x.drawImage(im,-w*g/2,-h*g/2,w*g,h*g);x.restore();continue;}x.save();x.translate((o.x+w/2)*g,(o.y+h/2)*g);x.rotate((o.rot||0)*Math.PI/180);x.fillStyle='#655b4e';x.fillRect(-w*g/2,-h*g/2,w*g,h*g);x.strokeStyle='#d1c5ae';x.lineWidth=2;
-                for(let i=0;i<8;i++){x.beginPath();x.moveTo(-w*g/2,(-h/2+h*i/8)*g);x.lineTo(w*g/2,(-h/2+h*i/8)*g);x.stroke();}x.restore();
-            }
-            annotations(x,{labels:f.labels},g);
-            for(const w of geometry().walls.filter(w=>!a.edits(current()).hideWalls?.[w.key])){x.strokeStyle=a.paint('wall',w.mat,g);x.lineWidth=g*.25;x.lineCap='square';x.beginPath();x.moveTo(w.x1*g,w.y1*g);x.lineTo(w.x2*g,w.y2*g);x.stroke();}
-            cache.set(key,c);
-            while(cache.size>4) cache.delete(cache.keys().next().value);
-        }
-        ctx.drawImage(c,0,0,s.w,s.h);
+    function inkScene(ed={},geo=geometry()) {
+        const original=a.gaia?a.scene(current()):null, f=layer(), source=original?.floors.find(v=>v.level===shownFloor());
+        const cells={...(source?.cells||{})};
+        for(const [k,id] of Object.entries(f.paint||{})) if(!cells[k.replace('_',',')]) cells[k.replace('_',',')]={floor:id,elevation:f.elevation?.[k]||0};
+        for(const [k,id] of Object.entries(ed.paint||{})) cells[k.replace('_',',')]={...cells[k.replace('_',',')],floor:id};
+        const props=Object.values({...f.props,...ed.props}).filter(o=>!(a.player&&o.hidden)).map(o=>({id:o.p,x:o.x,y:o.y,rotation:o.rot||0,scale:o.s||1}));
+        // Stairs show an arrow: up if they lead to a higher floor, down if lower.
+        const dirOf=o=>o.to==null||o.to===''?undefined:+o.to>shownFloor()?'up':'down';
+        for(const [key,o] of Object.entries(f.stairs||{}))if(!f.props?.[key])props.push({id:o.kind||'stairs',x:o.x+(o.w||1)/2,y:o.y+(o.h||2)/2,rotation:o.rot||0,scale:1,dir:dirOf(o)});
+        for(const o of Object.values(ed.stairs||{}))props.push({id:'stairs',x:o.x+.5,y:o.y+.5,rotation:o.rot||0,scale:.6,dir:dirOf(o)});
+        const walls=geo.walls.filter(w=>!ed.hideWalls?.[w.key]).map(w=>({a:[w.x1,w.y1],b:[w.x2,w.y2],material:w.mat||'stone'}));
+        const portals=geo.doors.filter(d=>!ed.hideDoors?.[d.key]).map(d=>({a:[d.x1,d.y1],b:[d.x2,d.y2],material:d.mat||'wood',kind:['window','arch'].includes(d.kind)?d.kind:'door',closed:true}));
+        return {format:'geez2vtt',version:1,style:'ink',name:original?.name||current(),grid:{cols:+data.meta.size.x,rows:+data.meta.size.y,cell_ft:data.meta.cell_ft||5},floors:[{level:shownFloor(),name:'Floor',elevation:0,cells,walls,props,lights:[],portals}]};
     }
-    function drawDoor(ctx,d,g) {
-        const kind=d.kind||d.mat||'wood', sw=a.swatch('door',['wood','iron','secret'].includes(kind)?d.mat||kind:kind), im=sw.texture&&a.swatchImg(sw.texture), len=Math.hypot(d.x2-d.x1,d.y2-d.y1)*g;
-        ctx.save();ctx.translate(d.x1*g,d.y1*g);ctx.rotate(Math.atan2(d.y2-d.y1,d.x2-d.x1));ctx.globalAlpha=d.closed?1:.4;
-        if(im?.complete&&im.naturalWidth) ctx.drawImage(im,0,-g*.18,len,g*.36);
-        else {ctx.fillStyle=sw.color;ctx.fillRect(0,-g*.11,len,g*.22);}ctx.restore();
+    let activeInk=null, memoryKey='', memoryReset=null, memoryTimer;
+    function drawBase(ctx,s,ed={},geo=geometry()) {
+        if(!data.meta)return;
+        const source=inkScene(ed,geo),key=JSON.stringify(source);
+        let entry=cache.get(key);
+        if(!entry){entry=createInkRenderer(source,{ppg:s.ppg});cache.set(key,entry);while(cache.size>4)cache.delete(cache.keys().next().value);}
+        if(activeInk&&activeInk!==entry&&activeInk.level===entry.level)entry.restoreExplored(activeInk.exploredCells());
+        activeInk=entry;entry.drawBase(ctx,s.w,s.h);
+        annotations(ctx,layer(),s.ppg);annotations(ctx,ed,s.ppg);
+    }
+    function drawDoor(ctx,d,g) { inkDoor(ctx,d,g); }
+    function drawProp(ctx,p,g) { if(!(a.player&&p.hidden))inkProp(ctx,p,g); }
+    function drawFog(ctx,s,vis,options={}) {
+        if(!activeInk)return;
+        const key=['geez.ink.explored',a.camp(),current(),shownFloor(),a.name()||'party'].join('.'),reset=options.reset||0;
+        if(key!==memoryKey||reset!==memoryReset){clearTimeout(memoryTimer);memoryKey=key;memoryReset=reset;activeInk.resetExplored();try{const old=JSON.parse(localStorage.getItem(key)||'null');if(old?.reset===reset)activeInk.restoreExplored(old.cells);}catch{}}
+        activeInk.drawFog(ctx,vis,{...options,width:s.w,height:s.h});
+        if(vis&&(!options.gm||options.preview)){clearTimeout(memoryTimer);const ink=activeInk;memoryTimer=setTimeout(()=>{try{localStorage.setItem(key,JSON.stringify({reset,cells:ink.exploredCells()}));}catch{}},1500);}
     }
     let lifted=new Set();
     function roofs(ctx,s,viewers) {
@@ -157,17 +189,11 @@ export function createBridge(a) {
         ctx.save();ctx.globalAlpha=a.player?1:.22;
         for(const [k,style] of Object.entries(f.roofs||{})) {
             if(a.player&&lifted.has(k)) continue;const [x,y]=k.split('_').map(Number);
-            ctx.fillStyle=style==='thatch'?'#756348':'#494954';ctx.fillRect(x*g,y*g,g+.6,g+.6);ctx.strokeStyle='#27272a';ctx.lineWidth=1;ctx.strokeRect(x*g,y*g,g,g);
+            ctx.fillStyle='#61523c';ctx.fillRect(x*g,y*g,g+.6,g+.6);ctx.strokeStyle='#211b15';ctx.lineWidth=1;ctx.strokeRect(x*g,y*g,g,g);for(let i=0;i<g;i+=6){ctx.beginPath();ctx.moveTo(x*g+i,y*g);ctx.lineTo(x*g,y*g+i);ctx.stroke();}
         }ctx.restore();
     }
     const covered = (x,y) => {const k=`${Math.floor(x)}_${Math.floor(y)}`;return !!layer().roofs?.[k]&&!lifted.has(k);};
-    const atmosphereCanvas=document.createElement('canvas');
-    function atmosphere(ctx,s,allLights) {
-        const b=a.db().battles[current()]||{}, time=data.meta?.time||b.time||'day',color=({dawn:'rgba(223,147,90,.19)',dusk:'rgba(133,80,130,.26)',night:'rgba(17,33,83,.48)'})[time];
-        if(!color) return;
-        const c=atmosphereCanvas,k=Math.min(1,1024/Math.max(s.w,s.h));c.width=Math.ceil(s.w*k);c.height=Math.ceil(s.h*k);const x=c.getContext('2d');x.fillStyle=color;x.fillRect(0,0,c.width,c.height);x.globalCompositeOperation='destination-out';
-        for(const l of allLights){const r=l.range*s.ppg*k;if(!(r>0))continue;const cx=l.x*s.ppg*k,cy=l.y*s.ppg*k,grad=x.createRadialGradient(cx,cy,0,cx,cy,r);grad.addColorStop(0,'#000');grad.addColorStop(.65,'#000');grad.addColorStop(1,'transparent');x.fillStyle=grad;x.fillRect(cx-r,cy-r,r*2,r*2);}ctx.drawImage(c,0,0,s.w,s.h);
-    }
+    function atmosphere(ctx,s,allLights) { drawLighting(ctx,s.w/s.ppg,s.h/s.ppg,allLights,s.ppg); }
     const weather=document.createElement('canvas');weather.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:20';a.wrapper.appendChild(weather);
     let weatherKey='';
     function startWeather() {
@@ -178,7 +204,7 @@ export function createBridge(a) {
         weather.width=700;weather.height=500;const x=weather.getContext('2d');
         if(a.db().view.level!=='VTT'||!kind||kind==='Clear')return;
         const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;let last=0;
-        function frame(t){if(t-last>65||reduced){last=t;x.clearRect(0,0,700,500);x.strokeStyle='rgba(185,215,235,.3)';x.fillStyle=({Leaves:'#aa7b44',Ash:'#aaa',Snow:'#eee'})[kind]||'#bfd4e4';
+        function frame(t){if(t-last>65||reduced){last=t;x.clearRect(0,0,700,500);x.strokeStyle='rgba(33,27,21,.4)';x.fillStyle='#211b15';
             for(let i=0;i<65;i++){const speed=kind==='Rain'?180:25,py=((i*137+(reduced?0:t*.001*speed))%530)-15,px=((i*83+py*(+w.wind||0))%730)-15;x.beginPath();if(kind==='Rain'){x.moveTo(px,py);x.lineTo(px-3-(+w.wind||0)*7,py+12);x.stroke();}else{x.ellipse(px,py,kind==='Leaves'?3:1.5,1.5,i,0,Math.PI*2);x.fill();}}}
             if(!reduced)weatherFrame=requestAnimationFrame(frame);
         }frame(0);
@@ -186,17 +212,34 @@ export function createBridge(a) {
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',startWeather);
     // A compact panel uses existing controls and places annotations with one click or a short path chain.
     const panel=document.createElement('div');panel.className='fixed z-40 bg-slate-950/95 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 flex flex-wrap gap-2 items-center';panel.style.cssText='top:112px;left:78px;max-width:calc(100vw - 100px)';document.body.appendChild(panel);
-    panel.addEventListener('pointerdown',e=>e.stopPropagation());let tool='',pathPoints=[],inspectId=null;
+    panel.addEventListener('pointerdown',e=>e.stopPropagation());let tool='',pathPoints=[],inspectId=null,panelMode=null;
     function controls() {
-        const v=a.db().view;panel.style.display=v.level==='VTT'?'flex':'none';if(v.level!=='VTT')return;
+        const v=a.db().view,rb=document.getElementById('railDecor');
+        // GM map-detail tools live in a flyout beside the left rail; it shows when opened there or while a token is inspected.
+        // GM panel opens from the VTT rail (scene: time, weather, music) or the build bar (map details); token light inspect also uses it.
+        const inspecting=inspectId&&tokens()[inspectId];
+        panel.style.display=v.level==='VTT'&&!a.player&&(panelMode||inspecting)?'flex':'none';
+        const anchor=document.getElementById(panelMode==='decor'?'buildFlyout':'railScene'),r=anchor?.offsetParent&&anchor.getBoundingClientRect();
+        if(r&&panelMode==='decor')Object.assign(panel.style,{top:'auto',bottom:(innerHeight-r.top+8)+'px',left:r.left+'px'});
+        else if(r)Object.assign(panel.style,{bottom:'auto',top:r.top+'px',left:(document.getElementById('toolRail').getBoundingClientRect().right+8)+'px'});
+        else Object.assign(panel.style,{bottom:'auto',top:'112px',left:'78px'});
+        if(v.level!=='VTT')return;
         const b=a.db().battles[current()]||{},f=shownFloor(),list=floorList(data.meta);
         const select=(id,values,value)=>`<select data-gh="${id}" class="bg-slate-900 border border-slate-700 rounded p-1">${values.map(k=>`<option ${k===value?'selected':''}>${k}</option>`).join('')}</select>`;
-        panel.innerHTML=`<button data-step="-1">Floor down</button><span>${a.esc(data.meta?.floorNames?.[f]||(f<0?`Basement ${-f}`:f===0?'Ground':`Floor ${f+1}`))}</span><button data-step="1">Floor up</button>`;
-        panel.querySelectorAll('[data-step]').forEach(btn=>{const to=list[list.indexOf(f)+Number(btn.dataset.step)];btn.disabled=to===undefined;btn.classList.toggle('opacity-40',btn.disabled);btn.onclick=()=>{
-            if(!a.player){floor=to;redraw();return;}
+        // Floor stepper lives in the breadcrumb (Campaign > Board > ... > map > floor) when the page provides one.
+        const isEmpty=!list.includes(f), name=a.esc(data.meta?.floorNames?.[f]||(f<0?`Basement ${-f}`:f===0?'Ground':`Floor ${f+1}`))+(isEmpty?' (empty: attach a map to add it)':'');
+        const floorHtml=`<span class="geez-floor-crumb"><span>${name}</span><button data-step="1" aria-label="Floor up" title="Floor up">&#9650;</button><button data-step="-1" aria-label="Floor down" title="Floor down">&#9660;</button></span>`;
+        const crumb=document.getElementById('floorCrumb');
+        if(crumb){crumb.innerHTML='<span class="text-slate-600 mx-0.5">&rsaquo;</span>'+floorHtml;panel.innerHTML='';}else panel.innerHTML=floorHtml;
+        (crumb||panel).querySelectorAll('[data-step]').forEach(btn=>{const step=Number(btn.dataset.step),at=list.indexOf(f);let to=at<0?(step>0?undefined:list.at(-1)):list[at+step];
+            // The GM can step one floor past the top or bottom onto an empty floor, to attach a map there.
+            if(to===undefined&&!a.player&&data.meta&&at>=0&&list.length)to=step>0?list.at(-1)+1:list[0]-1;
+            if(at<0&&step<0)to=f>list.at(-1)?list.at(-1):undefined;if(at<0&&step>0)to=f<list[0]?list[0]:undefined;
+            btn.disabled=to===undefined;btn.classList.toggle('opacity-40',btn.disabled);btn.onclick=()=>{
+            if(!a.player){floor=to;emptyFloor=list.includes(to)?null:to;redraw();controls();return;}
             if(a.locked())return;const s=a.ui.scene;
             for(const [id,p] of Object.entries(tokens())){const t=token(id);if(!t?.traits.pc||t.name!==a.name()||!onFloor(p))continue;const x=p.x*s.w/s.ppg,y=p.y*s.h/s.ppg;
-                const stair=Object.values(layer().stairs||{}).find(o=>+o.to===to&&onStairs(o,x,y));if(stair)a.move(current(),id,{...p,f:to});else a.status('Stand on stairs to change floors');}
+                const stair=[...Object.values(layer().stairs||{}),...Object.values(a.edits?.(current())?.stairs||{})].find(o=>+o.to===to&&onStairs(o,x,y));if(stair)a.move(current(),id,{...p,f:to});else a.status('Stand on stairs to change floors');}
         };});
         if(a.player)return;
         if(inspectId && tokens()[inspectId]) {
@@ -206,20 +249,25 @@ export function createBridge(a) {
             panel.querySelector('[data-light-on]').onchange=write;panel.querySelector('[data-light-range]').onchange=write;
             panel.querySelector('[data-inspect-close]').onclick=()=>{inspectId=null;controls();};
         }
-        if(!data.meta){panel.insertAdjacentHTML('beforeend',select('time',['day','dawn','dusk','night'],b.time||'day')+select('weather',['Clear','Rain','Snow','Leaves','Ash'],b.weather?.kind||'Clear')+'<label>Wind <input data-gh="wind" type="range" min="0" max="1" step=".1" class="w-12" value="'+(b.weather?.wind||0)+'"></label>');}
-        panel.insertAdjacentHTML('beforeend',select('tool',['Details','Label','Blood','Scorch','Rubble','Road','Stream'],tool||'Details')+(pathPoints.length?'<button data-finish>Finish path</button>':''));
+        if(panelMode==='scene'){panel.insertAdjacentHTML('beforeend','<button data-music class="border border-slate-700 rounded px-2 py-1"><i class="fa-solid fa-music"></i> Music &amp; sounds</button>');panel.querySelector('[data-music]').onclick=()=>document.getElementById('audioBoardBtn')?.click();}
+        if(panelMode==='scene'&&!data.meta){panel.insertAdjacentHTML('beforeend',select('time',['day','dawn','dusk','night'],b.time||'day')+select('weather',['Clear','Rain','Snow','Leaves','Ash'],b.weather?.kind||'Clear')+'<label>Wind <input data-gh="wind" type="range" min="0" max="1" step=".1" class="w-12" value="'+(b.weather?.wind||0)+'"></label>');}
+        if(panelMode==='decor')panel.insertAdjacentHTML('beforeend',select('tool',['Details','Label','Blood','Scorch','Rubble','Road','Stream'],tool||'Details')+(pathPoints.length?'<button data-finish>Finish path</button>':''));
         panel.querySelectorAll('[data-gh]').forEach(el=>el.onchange=()=>{const k=el.dataset.gh;if(k==='tool'){tool=el.value==='Details'?'':el.value;pathPoints=[];a.status(tool?'Click the map to place '+tool.toLowerCase():'Ready');return;}const battle=(a.db().battles[current()]||={tokens:{}});if(k==='time')battle.time=el.value;else battle.weather={kind:k==='weather'?el.value:b.weather?.kind||'Clear',wind:k==='wind'?+el.value:b.weather?.wind||0};a.changed();});
         panel.querySelector('[data-finish]')?.addEventListener('click',()=>finishPath());
     }
     function finishPath(){if(pathPoints.length<2){a.status('Pick at least two path points');return;}const ed=a.edits(current());(ed.paths||={})[a.uid('path')]={f:shownFloor(),kind:tool.toLowerCase(),width:2,points:pathPoints};pathPoints=[];tool='';a.changed();}
     a.viewport.addEventListener('pointerdown',e=>{
-        if(a.player||!tool||a.db().view.level!=='VTT'||e.button!==0||e.target.closest('button,input,select,label'))return;
+        if(a.player||!tool||a.db().view.level!=='VTT'||e.button!==0||e.target.closest('button,input,select,label,#appHeader'))return;
         e.stopImmediatePropagation();const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg,x=+(p.x/g).toFixed(2),y=+(p.y/g).toFixed(2),ed=a.edits(current());
         if(tool==='Label'){const text=prompt('Label');if(text)(ed.labels||={})[a.uid('label')]={x,y,text,f:shownFloor(),size:1,rot:0};tool='';a.changed();}
         else if(['Road','Stream'].includes(tool)){pathPoints.push([x,y]);controls();a.status('Pick another point, then Finish path');}
         else{(ed.decals||={})[a.uid('decal')]={x,y,kind:tool.toLowerCase(),s:1,rot:0,f:shownFloor()};tool='';a.changed();}
     },true);
-    return {inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,annotations,roofs,covered,atmosphere,controls,startWeather,
+    document.addEventListener('keydown',e=>{if(!a.gaia||a.db().view.level!=='VTT'||!['PageUp','PageDown'].includes(e.key)||e.target.closest('input,textarea,select'))return;e.preventDefault();(document.getElementById('floorCrumb')||panel).querySelector('[data-step="'+(e.key==='PageUp'?1:-1)+'"]')?.click();});
+    a.viewport.addEventListener('click',e=>{if(!a.gaia||a.player||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label,#appHeader'))return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=[...Object.values(layer().stairs||{}),...Object.values(a.edits?.(current())?.stairs||{})].find(o=>onStairs(o,p.x/g,p.y/g));if(stair&&floorList(data.meta).includes(stair.to)){floor=stair.to;redraw();}});
+    // Stairs under a token (cell units) on floor f: the map's own stairs plus ones placed in Build.
+    function stairAt(x,y,f=shownFloor()){const ed=a.db().battles?.[current()]?.edits||{},e=+f?ed.floors?.[f]:ed;return [...Object.values(layer(f).stairs||{}),...Object.values(e?.stairs||{})].find(o=>o.to!=null&&o.to!==''&&+o.to!==+f&&onStairs(o,x,y));}
+    return {stairAt,emptyFloor:()=>!a.player&&emptyFloor!==null&&shownFloor()===emptyFloor?emptyFloor:null,fogPreview:()=>fogPreview,setFogPreview(v){fogPreview=!!v;redraw();},inspectToken(id){inspectId=id;controls();},panel:()=>panelMode,setPanel(m){panelMode=m||null;if(panelMode!=='decor'){tool='';pathPoints=[];}controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
         setDoor(d,open,f=shownFloor()){if(!doorRules(d.kind||d.mat).toggle)return false;a.live.set(a.path(`table3d/${current()}/doors/${f}/${d.key}`),open?'open':'closed');return true;},
         saveTrap(id,t){a.live.set(`table3d/${a.camp()}/${current()}/traps/${id}`,t);},
         isTrap(id){return Object.hasOwn(traps,id);},
