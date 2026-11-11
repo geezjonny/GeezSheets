@@ -295,6 +295,10 @@
                 <i class="fa-solid fa-chair text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Objects: furniture, lights and dungeon dressing</span>
             </button>
+            <button id="modeStairs" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Stairs">
+                <i class="fa-solid fa-stairs text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Stairs: click a square to link it to the next floor</span>
+            </button>
             <button id="modeLight" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-lightbulb text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Lights: click to add, drag one to move it</span>
@@ -2956,6 +2960,7 @@
             { mode: 'wall', key: '4', name: 'Walls', hint: 'Build walls along the grid lines.', keys: 'Drag: build · Right-drag or X: remove · R: line / rectangle · Click: chain freely (Alt: no snap) · I: pick a wall' },
             { mode: 'door', key: '5', name: 'Doors', hint: 'Put a door into a wall. Open doors with Select.', keys: 'Click a wall: door · Right-click a door or X: wall it up · Drag off a wall: a free door · I: pick a door' },
             { mode: 'props', key: '6', name: 'Objects', hint: 'Place furniture, lights and dungeon dressing; Scatter paints loose handfuls.', keys: 'Click: place · Drag an object: move · Right-click or X: remove · R: turn · H: hide · + −: size · Del: delete · Alt: off the grid' },
+            { mode: 'stairs', key: 'S', name: 'Stairs', hint: 'Stairs between floors: they lead up (or down from the top floor) and get matching stairs back. Players stand on them and use the floor buttons.', keys: 'Click: place a pair · Click stairs: remove the pair' },
             { mode: 'light', key: '7', name: 'Lights', hint: 'Light sources for dark maps.', keys: 'Click: add · Drag a light: move it' },
             { mode: 'trap', key: '8', name: 'Traps', hint: 'Traps only you see: drag out the squares, then set what happens when someone steps in.', keys: 'Drag: highlight · Enter: new trap · Click a trap: edit · X: remove squares' },
             { mode: 'ruler', key: '9', name: 'Measure', hint: 'Measure distances in feet.', keys: 'Drag: measure · Esc: clear' },
@@ -2964,7 +2969,7 @@
         ];
         const ERASE_MODES = ['room', 'paint', 'wall', 'door', 'trap', 'props'];
         // Build hides the building tools at the table and brings them back when you need them (B)
-        const BUILD_MODES = ['draft', 'room', 'paint', 'wall', 'door', 'props', 'light', 'trap', 'erase'];
+        const BUILD_MODES = ['draft', 'room', 'paint', 'wall', 'door', 'props', 'stairs', 'light', 'trap', 'erase'];
         ui.build = kept('geezvtt.build', '0') === '1';
         ui.picking = false;          // the next click on the map picks a style (the I key, for touch screens)
         function setBuild(on) {
@@ -4362,6 +4367,23 @@
                 drawEditPreview();
                 return;
             }
+            if (editing && ui.mode === 'stairs') {
+                // A pair of stairs: here -> the next floor (down from the top), and the same square back.
+                const pt = toContent(e.clientX, e.clientY), g = ui.scene.ppg, x = Math.floor(pt.x / g), y = Math.floor(pt.y / g);
+                const bid = db.view.battleId, b = (db.battles[bid] ||= { tokens: {} }), root = (b.edits ||= {}), here = GH?.floor() || 0;
+                const floorEd = f => f === 0 ? root : ((root.floors ||= {})[f] ||= {});
+                const list = GH_API.floorList(GH?.meta()), mine = floorEd(here).stairs ||= {};
+                const hit = Object.entries(mine).find(([, o]) => o.x === x && o.y === y);
+                if (hit) { const [k, o] = hit; delete mine[k]; if (o.pair) delete floorEd(o.to).stairs?.[o.pair]; ui.vision = null; changed({ keepInspector: true }); showStatus('Stairs removed'); return; }
+                const to = list[list.indexOf(here) + 1] ?? list[list.indexOf(here) - 1];
+                if (to === undefined) { showStatus('Add another floor first: step past the top floor with the floor arrows and attach a map.'); return; }
+                const k1 = uid('st'), k2 = uid('st');
+                mine[k1] = { x, y, w: 1, h: 1, to, pair: k2 };
+                (floorEd(to).stairs ||= {})[k2] = { x, y, w: 1, h: 1, to: here, pair: k1 };
+                ui.vision = null; changed({ keepInspector: true });
+                showStatus(`Stairs to ${to > here ? 'the floor above' : 'the floor below'} placed, with stairs back at the same square`);
+                return;
+            }
             if (editing && ui.mode === 'props') {
                 const pt = toContent(e.clientX, e.clientY), g = ui.scene.ppg, gx = pt.x / g, gy = pt.y / g, hit = propAt(gx, gy), ed = editsOf(db.view.battleId);
                 if (e.button === 2 || ui.erase) {
@@ -4709,7 +4731,7 @@
         const MODE_OFF = 'mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group';
         function setMode(mode) {
             const isMap = db.view.level === 'WORLD' || db.view.level === 'LOCATION';
-            const rulerOk = ((mode === 'ruler' || mode === 'ping') && db.view.level !== 'DM_BOARD') || (['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].includes(mode) && db.view.level === 'VTT' && !PLAYER);
+            const rulerOk = ((mode === 'ruler' || mode === 'ping') && db.view.level !== 'DM_BOARD') || (['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props', 'stairs'].includes(mode) && db.view.level === 'VTT' && !PLAYER);
             if (wallChain && mode !== 'wall') endWallChain();
             if (mode !== 'pan' && !isMap && !rulerOk) { showStatus('Markers and tiles work on the world and location maps.'); return; }
             if (PLAYER && !['pan', 'ruler', 'ping'].includes(mode)) return;
@@ -4728,7 +4750,7 @@
             ui.mode = mode;
             $('modeRuler').className = mode === 'ruler' ? MODE_ON : MODE_OFF;
             $('modePing').className = mode === 'ping' ? MODE_ON : MODE_OFF;
-            ['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].forEach(m => { const el = $('mode' + m[0].toUpperCase() + m.slice(1)); if (el) el.className = mode === m ? MODE_ON : MODE_OFF; });
+            ['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props', 'stairs'].forEach(m => { const el = $('mode' + m[0].toUpperCase() + m.slice(1)); if (el) el.className = mode === m ? MODE_ON : MODE_OFF; });
             renderToolHint();
             if (db.view.level === 'VTT' && ui.scene && !PLAYER) { drawScene(ui.scene, db.view.battleId); drawEditPreview(); }
             renderSwatchPanel(); renderPaintBar(); renderPropPanel();
@@ -4748,7 +4770,7 @@
         ['marker', 'tile', 'road'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
         $('modeRuler').onclick = () => setMode(ui.mode === 'ruler' ? 'pan' : 'ruler');
         $('modePing').onclick = () => setMode(ui.mode === 'ping' ? 'pan' : 'ping');
-        ['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
+        ['draft', 'wall', 'door', 'light', 'erase', 'paint', 'room', 'trap', 'props', 'stairs'].forEach(m => { $('mode' + m[0].toUpperCase() + m.slice(1)).onclick = () => setMode(ui.mode === m ? 'pan' : m); });
         $('diceToolBtn').onclick = () => {
             const pop = $('dicePop');
             pop.classList.toggle('hidden');

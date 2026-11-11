@@ -61,6 +61,16 @@ try{
  const stairPoint=await pages[0].evaluate(({cols,rows})=>{const r=document.querySelector('#vttVectorCanvas').getBoundingClientRect();return {x:r.x+r.width*4/cols,y:r.y+r.height*4/rows};},scene.grid);
  await pages[0].mouse.click(stairPoint.x,stairPoint.y);await pages[0].waitForFunction(()=>window.__SHEETS__.state().floor===-1);
  await pages[0].keyboard.press('PageUp');console.log('PASS clicking stair prop changes view to to_level');
+ // Build > Stairs: the GM places a linked pair; clicking them in Select changes floor both ways; clicking again in Stairs removes both.
+ const sq=await pages[0].evaluate(({cols,rows})=>{const r=document.querySelector('#vttVectorCanvas').getBoundingClientRect();return {x:r.x+r.width*10.5/cols,y:r.y+r.height*10.5/rows};},scene.grid);
+ if(!(await pages[0].locator('#modeStairs').isVisible()))await pages[0].locator('#railBuild').click();
+ await pages[0].locator('#modeStairs').click();await pages[0].mouse.click(sq.x,sq.y);
+ await pages[0].waitForFunction(()=>/Stairs to/.test(document.querySelector('#statusMessage').textContent));
+ await pages[0].locator('#modeStairs').click();await pages[0].mouse.click(sq.x,sq.y);await pages[0].waitForFunction(()=>window.__SHEETS__.state().floor===-1);
+ await pages[0].mouse.click(sq.x,sq.y);await pages[0].waitForFunction(()=>window.__SHEETS__.state().floor===0);
+ await pages[0].locator('#modeStairs').click();await pages[0].mouse.click(sq.x,sq.y);await pages[0].waitForFunction(()=>/Stairs removed/.test(document.querySelector('#statusMessage').textContent));
+ await pages[0].locator('#modeStairs').click();await pages[0].mouse.click(sq.x,sq.y);await new Promise(r=>setTimeout(r,400));assert.equal(await pages[0].evaluate(()=>window.__SHEETS__.state().floor),0);
+ console.log('PASS Build > Stairs places a linked pair, Select clicks change floor both ways, removal takes both');
  // Portal policies use the same helper as the bridge, including unknown extensions.
  const policies=await pages[0].evaluate(async s=>{const m=await import('./js/geez2vtt.js');s.floors[0].portals=['door','window','arch'].map((kind,i)=>({a:[i,0],b:[i,1],kind,material:'wood',closed:true,reviewed:true}));return m.sceneGeometry(s).doors;},scene);
  assert.deepEqual(policies.map(d=>[d.sight,d.pass]),[[true,false],[false,false],[false,true]]);console.log('PASS closed doors block sight/movement; windows block movement; arches are open');

@@ -157,6 +157,7 @@ export function createBridge(a) {
         for(const [k,id] of Object.entries(ed.paint||{})) cells[k.replace('_',',')]={...cells[k.replace('_',',')],floor:id};
         const props=Object.values({...f.props,...ed.props}).filter(o=>!(a.player&&o.hidden)).map(o=>({id:o.p,x:o.x,y:o.y,rotation:o.rot||0,scale:o.s||1}));
         for(const [key,o] of Object.entries(f.stairs||{}))if(!f.props?.[key])props.push({id:o.kind||'stairs',x:o.x+(o.w||1)/2,y:o.y+(o.h||2)/2,rotation:o.rot||0,scale:1});
+        for(const o of Object.values(ed.stairs||{}))props.push({id:'stairs',x:o.x+.5,y:o.y+.5,rotation:o.rot||0,scale:.6});
         const walls=geo.walls.filter(w=>!ed.hideWalls?.[w.key]).map(w=>({a:[w.x1,w.y1],b:[w.x2,w.y2],material:w.mat||'stone'}));
         const portals=geo.doors.filter(d=>!ed.hideDoors?.[d.key]).map(d=>({a:[d.x1,d.y1],b:[d.x2,d.y2],material:d.mat||'wood',kind:['window','arch'].includes(d.kind)?d.kind:'door',closed:true}));
         return {format:'geez2vtt',version:1,style:'ink',name:original?.name||current(),grid:{cols:+data.meta.size.x,rows:+data.meta.size.y,cell_ft:data.meta.cell_ft||5},floors:[{level:shownFloor(),name:'Floor',elevation:0,cells,walls,props,lights:[],portals}]};
@@ -227,7 +228,7 @@ export function createBridge(a) {
             if(!a.player){floor=to;emptyFloor=list.includes(to)?null:to;redraw();controls();return;}
             if(a.locked())return;const s=a.ui.scene;
             for(const [id,p] of Object.entries(tokens())){const t=token(id);if(!t?.traits.pc||t.name!==a.name()||!onFloor(p))continue;const x=p.x*s.w/s.ppg,y=p.y*s.h/s.ppg;
-                const stair=Object.values(layer().stairs||{}).find(o=>+o.to===to&&onStairs(o,x,y));if(stair)a.move(current(),id,{...p,f:to});else a.status('Stand on stairs to change floors');}
+                const stair=[...Object.values(layer().stairs||{}),...Object.values(a.edits?.(current())?.stairs||{})].find(o=>+o.to===to&&onStairs(o,x,y));if(stair)a.move(current(),id,{...p,f:to});else a.status('Stand on stairs to change floors');}
         };});
         if(a.player)return;
         if(inspectId && tokens()[inspectId]) {
@@ -251,7 +252,7 @@ export function createBridge(a) {
         else{(ed.decals||={})[a.uid('decal')]={x,y,kind:tool.toLowerCase(),s:1,rot:0,f:shownFloor()};tool='';a.changed();}
     },true);
     document.addEventListener('keydown',e=>{if(!a.gaia||a.db().view.level!=='VTT'||!['PageUp','PageDown'].includes(e.key)||e.target.closest('input,textarea,select'))return;e.preventDefault();(document.getElementById('floorCrumb')||panel).querySelector('[data-step="'+(e.key==='PageUp'?1:-1)+'"]')?.click();});
-    a.viewport.addEventListener('click',e=>{if(!a.gaia||a.player||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label'))return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=Object.values(layer().stairs||{}).find(o=>onStairs(o,p.x/g,p.y/g));if(stair&&floorList(data.meta).includes(stair.to)){floor=stair.to;redraw();}});
+    a.viewport.addEventListener('click',e=>{if(!a.gaia||a.player||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label'))return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=[...Object.values(layer().stairs||{}),...Object.values(a.edits?.(current())?.stairs||{})].find(o=>onStairs(o,p.x/g,p.y/g));if(stair&&floorList(data.meta).includes(stair.to)){floor=stair.to;redraw();}});
     return {emptyFloor:()=>!a.player&&emptyFloor!==null&&shownFloor()===emptyFloor?emptyFloor:null,fogPreview:()=>fogPreview,setFogPreview(v){fogPreview=!!v;redraw();},inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
         setDoor(d,open,f=shownFloor()){if(!doorRules(d.kind||d.mat).toggle)return false;a.live.set(a.path(`table3d/${current()}/doors/${f}/${d.key}`),open?'open':'closed');return true;},
         saveTrap(id,t){a.live.set(`table3d/${a.camp()}/${current()}/traps/${id}`,t);},
