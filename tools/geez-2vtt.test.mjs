@@ -42,6 +42,21 @@ try{
  await pages[0].getByRole('button',{name:'Floor up',exact:true}).click();await pages[0].waitForFunction(()=>window.__SHEETS__.state().floor===0);
  await pages[0].getByRole('button',{name:'Floor down',exact:true}).click();await pages[0].keyboard.press('PageUp');await pages[0].waitForFunction(()=>window.__SHEETS__.state().floor===0);
  assert.deepEqual((await gm.entity(mapId)).data.scene,two);assert.deepEqual(mapPics(images),[]);console.log('PASS action republishes live; floor buttons and PgUp/PgDn step through scene levels');
+ // GM steps past the top floor onto an empty floor; attaching a map there ADDS it as that floor.
+ await pages[0].evaluate(()=>window.__SHEETS__.view('VTT',window.__SHEETS__.state().bid||undefined)).catch(()=>{});
+ assert.ok(await pages[0].locator('#breadcrumbNav [aria-label="Floor up"]').count(),'floor stepper sits in the breadcrumb');
+ await pages[0].getByRole('button',{name:'Floor up',exact:true}).click();await pages[0].waitForFunction(()=>window.__SHEETS__.state().floor===1);
+ assert.match(await pages[0].locator('#breadcrumbNav').innerText(),/Floor 2 \(empty/);
+ const extra={...scene,floors:[{...scene.floors[0],name:'Attic'}]};
+ await pages[0].evaluate(text=>{const dt=new DataTransfer();dt.items.add(new File([text],'attic.geez2vtt',{type:'application/json'}));const v=document.querySelector('#vttVectorCanvas').parentElement;v.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}));},JSON.stringify(extra));
+ for(const p of pages)await p.waitForFunction(()=>window.__SHEETS__.state().meta?.floors.includes(1));
+ const grown=(await gm.entity(mapId)).data.scene;assert.deepEqual(grown.floors.map(f=>f.level).sort(),[-1,0,1]);assert.equal(grown.floors.find(f=>f.level===1).name,'Attic');assert.deepEqual(grown.floors.filter(f=>f.level!==1),two.floors);
+ const wrong={...extra,grid:{...extra.grid,cols:extra.grid.cols+1}};await pages[0].getByRole('button',{name:'Floor up',exact:true}).click();await pages[0].waitForFunction(()=>window.__SHEETS__.state().floor===2);
+ await pages[0].evaluate(text=>{const dt=new DataTransfer();dt.items.add(new File([text],'wrong.geez2vtt'));document.querySelector('#vttVectorCanvas').parentElement.dispatchEvent(new DragEvent('drop',{dataTransfer:dt,bubbles:true,cancelable:true}));},JSON.stringify(wrong));
+ await pages[0].waitForFunction(()=>/same size/.test(document.querySelector('#statusMessage').textContent));
+ await gm.act('map.publish',{entity:mapId,scene:two,campaign:'daddies'});for(const p of pages)await p.waitForFunction(()=>!window.__SHEETS__.state().meta?.floors.includes(1));
+ await pages[0].getByRole('button',{name:'Floor down',exact:true}).click().catch(()=>{});
+ console.log('PASS GM steps onto an empty floor from the breadcrumb; attaching there adds a floor; wrong-size map refused');
  await pages[0].evaluate(()=>window.__SHEETS__.select(null));
  const stairPoint=await pages[0].evaluate(({cols,rows})=>{const r=document.querySelector('#vttVectorCanvas').getBoundingClientRect();return {x:r.x+r.width*4/cols,y:r.y+r.height*4/rows};},scene.grid);
  await pages[0].mouse.click(stairPoint.x,stairPoint.y);await pages[0].waitForFunction(()=>window.__SHEETS__.state().floor===-1);

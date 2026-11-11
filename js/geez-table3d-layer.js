@@ -101,12 +101,14 @@ export function createBridge(a) {
         const stored=a.db().battles[bid]?.tokens||{}, moves=a.moves(bid);
         return Object.fromEntries(Object.entries({...stored,...moves}).map(([id,p])=>[id,{...stored[id],...p}]));
     }
+    let emptyFloor=null;
     function shownFloor() {
         if (a.player) {
             const own=Object.entries(tokens()).find(([id])=>{const t=token(id);return t?.traits.pc && t.name===a.name();});
             if (own) return Number(own[1].f)||0;
         }
         const list=floorList(data.meta);
+        if (!a.player && emptyFloor!==null && floor===emptyFloor && !list.includes(floor)) return floor;
         return data.meta && !list.includes(floor) ? (list.includes(0)?0:list[0]??0) : floor;
     }
     const onFloor = p => (Number(p?.f)||0) === shownFloor();
@@ -212,9 +214,17 @@ export function createBridge(a) {
         const v=a.db().view;panel.style.display=v.level==='VTT'?'flex':'none';if(v.level!=='VTT')return;
         const b=a.db().battles[current()]||{},f=shownFloor(),list=floorList(data.meta);
         const select=(id,values,value)=>`<select data-gh="${id}" class="bg-slate-900 border border-slate-700 rounded p-1">${values.map(k=>`<option ${k===value?'selected':''}>${k}</option>`).join('')}</select>`;
-        panel.innerHTML=`<button data-step="-1">Floor down</button><span>${a.esc(data.meta?.floorNames?.[f]||(f<0?`Basement ${-f}`:f===0?'Ground':`Floor ${f+1}`))}</span><button data-step="1">Floor up</button>`;
-        panel.querySelectorAll('[data-step]').forEach(btn=>{const to=list[list.indexOf(f)+Number(btn.dataset.step)];btn.disabled=to===undefined;btn.classList.toggle('opacity-40',btn.disabled);btn.onclick=()=>{
-            if(!a.player){floor=to;redraw();return;}
+        // Floor stepper lives in the breadcrumb (Campaign > Board > ... > map > floor) when the page provides one.
+        const isEmpty=!list.includes(f), name=a.esc(data.meta?.floorNames?.[f]||(f<0?`Basement ${-f}`:f===0?'Ground':`Floor ${f+1}`))+(isEmpty?' (empty: attach a map to add it)':'');
+        const floorHtml=`<span class="geez-floor-crumb"><span>${name}</span><button data-step="1" aria-label="Floor up" title="Floor up">&#9650;</button><button data-step="-1" aria-label="Floor down" title="Floor down">&#9660;</button></span>`;
+        const crumb=document.getElementById('floorCrumb');
+        if(crumb){crumb.innerHTML='<span class="text-slate-600 mx-0.5">&rsaquo;</span>'+floorHtml;panel.innerHTML='';}else panel.innerHTML=floorHtml;
+        (crumb||panel).querySelectorAll('[data-step]').forEach(btn=>{const step=Number(btn.dataset.step),at=list.indexOf(f);let to=at<0?(step>0?undefined:list.at(-1)):list[at+step];
+            // The GM can step one floor past the top or bottom onto an empty floor, to attach a map there.
+            if(to===undefined&&!a.player&&data.meta&&at>=0&&list.length)to=step>0?list.at(-1)+1:list[0]-1;
+            if(at<0&&step<0)to=f>list.at(-1)?list.at(-1):undefined;if(at<0&&step>0)to=f<list[0]?list[0]:undefined;
+            btn.disabled=to===undefined;btn.classList.toggle('opacity-40',btn.disabled);btn.onclick=()=>{
+            if(!a.player){floor=to;emptyFloor=list.includes(to)?null:to;redraw();controls();return;}
             if(a.locked())return;const s=a.ui.scene;
             for(const [id,p] of Object.entries(tokens())){const t=token(id);if(!t?.traits.pc||t.name!==a.name()||!onFloor(p))continue;const x=p.x*s.w/s.ppg,y=p.y*s.h/s.ppg;
                 const stair=Object.values(layer().stairs||{}).find(o=>+o.to===to&&onStairs(o,x,y));if(stair)a.move(current(),id,{...p,f:to});else a.status('Stand on stairs to change floors');}
@@ -242,9 +252,9 @@ export function createBridge(a) {
         else if(['Road','Stream'].includes(tool)){pathPoints.push([x,y]);controls();a.status('Pick another point, then Finish path');}
         else{(ed.decals||={})[a.uid('decal')]={x,y,kind:tool.toLowerCase(),s:1,rot:0,f:shownFloor()};tool='';a.changed();}
     },true);
-    document.addEventListener('keydown',e=>{if(!a.gaia||a.db().view.level!=='VTT'||!['PageUp','PageDown'].includes(e.key)||e.target.closest('input,textarea,select'))return;e.preventDefault();panel.querySelector('[data-step="'+(e.key==='PageUp'?1:-1)+'"]')?.click();});
+    document.addEventListener('keydown',e=>{if(!a.gaia||a.db().view.level!=='VTT'||!['PageUp','PageDown'].includes(e.key)||e.target.closest('input,textarea,select'))return;e.preventDefault();(document.getElementById('floorCrumb')||panel).querySelector('[data-step="'+(e.key==='PageUp'?1:-1)+'"]')?.click();});
     a.viewport.addEventListener('click',e=>{if(!a.gaia||a.player||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label'))return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=Object.values(layer().stairs||{}).find(o=>onStairs(o,p.x/g,p.y/g));if(stair&&floorList(data.meta).includes(stair.to)){floor=stair.to;redraw();}});
-    return {fogPreview:()=>fogPreview,inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
+    return {emptyFloor:()=>!a.player&&emptyFloor!==null&&shownFloor()===emptyFloor?emptyFloor:null,fogPreview:()=>fogPreview,inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
         setDoor(d,open,f=shownFloor()){if(!doorRules(d.kind||d.mat).toggle)return false;a.live.set(a.path(`table3d/${current()}/doors/${f}/${d.key}`),open?'open':'closed');return true;},
         saveTrap(id,t){a.live.set(`table3d/${a.camp()}/${current()}/traps/${id}`,t);},
         isTrap(id){return Object.hasOwn(traps,id);},

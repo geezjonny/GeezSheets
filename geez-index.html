@@ -1878,6 +1878,7 @@
                 if (!c.current) el.onclick = c.go;
                 nav.appendChild(el);
             });
+            if (v.level === 'VTT') { nav.insertAdjacentHTML('beforeend', '<span id="floorCrumb" class="flex items-center gap-1 shrink-0"></span>'); GH?.controls?.(); }
             const titles = { DM_BOARD: 'Campaign Pin Board', WORLD: 'World Map', LOCATION: currentMap() ? mapLabel(currentMap()) : 'Location Map', VTT: db.things[v.battleId]?.name || 'Battle Map' };
             $('appTitle').textContent = titles[v.level];
         }
@@ -5537,7 +5538,14 @@
             try {
                 const {validateScene,dd2vttToScene}=await import('./js/geez2vtt.js');
                 const json=JSON.parse(await file.text());
-                const scene=json.format==='geez2vtt'?validateScene(json):dd2vttToScene(json,file.name.replace(/\.[^.]+$/, ''));
+                let scene=json.format==='geez2vtt'?validateScene(json):dd2vttToScene(json,file.name.replace(/\.[^.]+$/, ''));
+                // On an empty floor (stepped past the top/bottom), the file's first floor is ADDED to this map.
+                const empty=db.view.level==='VTT'&&db.view.battleId===target.id?GH?.emptyFloor?.():null, cur=target.traits?.scene;
+                if(empty!=null&&cur){
+                    if(scene.grid.cols!==cur.grid.cols||scene.grid.rows!==cur.grid.rows)throw Error(`A new floor must be the same size as this map (${cur.grid.cols}x${cur.grid.rows} squares); this file is ${scene.grid.cols}x${scene.grid.rows}.`);
+                    const f=scene.floors[0],step=Math.abs(cur.floors.find(x=>x.level!==0)?.elevation)||10;
+                    scene={...cur,floors:[...cur.floors,{...f,level:empty,name:f.name&&!/^(floor|ground)$/i.test(f.name)?f.name:(empty<0?`Basement ${-empty}`:`Floor ${empty+1}`),elevation:empty*step}]};
+                }
                 if(saveTimer){clearTimeout(saveTimer);saveTimer=null;syncCampaign();}
                 await rtdb.publishScene(target.id,scene,liveCamp());
                 showStatus('Published '+scene.name);
