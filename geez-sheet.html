@@ -221,6 +221,7 @@ body.embed .state-screen{min-height:60vh}
 /* ── Coin purse ── */
 .coin-row{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .coin-label{font-family:var(--font);font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-right:2px}
+.coin-adj{border:0;background:transparent;color:inherit;font:inherit;padding:0 3px;cursor:pointer;opacity:.7}.coin-adj:hover{opacity:1}
 .coin{display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid}
 .coin.pp{color:#c4b5fd;border-color:rgba(196,181,253,.3);background:rgba(196,181,253,.07)}
 .coin.gp{color:#facc15;border-color:rgba(250,204,21,.3);background:rgba(250,204,21,.07)}
@@ -685,13 +686,10 @@ function buildCard(char) {
       return parts.length?`<div class="equipped-row">${parts.join('')}</div>`:'';
     })()}
     ${(()=>{
-      const cp=char.coin_purse; if(!cp) return '';
-      const coins=[];
-      coins.push(`<div class="coin pp">◈ ${esc(cp.pp??0)}pp</div>`);
-      coins.push(`<div class="coin gp">◉ ${esc(cp.gp??0)}gp</div>`);
-      coins.push(`<div class="coin ep">◈ ${esc(cp.ep??0)}ep</div>`);
-      coins.push(`<div class="coin sp">◎ ${esc(cp.sp??0)}sp</div>`);
-      coins.push(`<div class="coin cp">○ ${esc(cp.cp??0)}cp</div>`);
+      const cp=char.coin_purse||(IS_GM?{}:null); if(!cp) return '';
+      // The GM gets - / + on each coin (Shift = 10 at a time).
+      const adj=(k,d)=>IS_GM?`<button class="coin-adj" title="${d<0?'Spend':'Add'} ${k} (Shift: 10)" onclick="window.coinAdj(${jsarg(char.id)},'${k}',${d},event)">${d<0?'−':'+'}</button>`:'';
+      const coins=[['pp','◈'],['gp','◉'],['ep','◈'],['sp','◎'],['cp','○']].map(([k,i])=>`<div class="coin ${k}">${adj(k,-1)}${i} ${esc(cp[k]??0)}${k}${adj(k,1)}</div>`);
       return `<div class="coin-row"><span class="coin-label">💰</span>${coins.join('')}</div>`;
     })()}
     <div class="ability-grid">${abilityBoxes}</div>
@@ -933,6 +931,7 @@ async function submitCall(f) {
  catch(e){f.querySelector('[data-error]').textContent=e.message;}finally{btn.disabled=false;}
 }
 window.answerSheetCall=btn=>submitCall(btn.closest('fieldset'));
+window.coinAdj=(id,k,d,e)=>{if(!IS_GM)return;e?.currentTarget?.blur();const pc=allPcs.find(p=>p.id===id),cur=Number(pc?.coin_purse?.[k]||0),n=Math.max(0,cur+d*(e?.shiftKey?10:1));if(n===cur)return;update(ref(db,`characters/pcs/${id}/coin_purse`),{[k]:n}).catch(err=>console.error('Coin change failed:',err.message));};
 
 const combatUnsubs = {};
 function watchCharacter(charId) {

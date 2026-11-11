@@ -397,9 +397,9 @@
             for(const [map,tokens]of Object.entries(b.tokens||{}))for(const [id,pos]of Object.entries(tokens)) {
               const prev=a.tokens?.[map]?.[id];if(same(prev,pos))continue;
               if(canonical(id)!==selectedId())throw Object.assign(Error('Players may move only their own PC token'),{status:403});
-              if(Object.keys(diff(prev,pos)).some(k=>!['x','y'].includes(k)))throw Object.assign(Error('Players may move token x/y only'),{status:403});
+              if(Object.keys(diff(prev,pos)).some(k=>!['x','y','f'].includes(k)))throw Object.assign(Error('Players may move token x/y (and floor, by stairs) only'),{status:403});
               const flat=Object.entries(raw.campaigns[c].state.tokens||{}).find(([,t])=>t.entity===canonical(id)&&t.map===canonicalMap(map));
-              stage(`campaigns/${c}/tokens/${flat?flat[0]:canonicalMap(map)+'/'+canonical(id)}`,'PATCH',{x:pos.x,y:pos.y});
+              stage(`campaigns/${c}/tokens/${flat?flat[0]:canonicalMap(map)+'/'+canonical(id)}`,'PATCH',{x:pos.x,y:pos.y,...(pos.f!==undefined&&pos.f!==(prev?.f??0)?{floor:pos.f}:{})});
             }
           } else if(field==='tokens' && Object.keys(b.tokens||{}).some(id=>sceneMap(id))) {
             const value=copy(raw.campaigns[c]?.state?.tokens||{});

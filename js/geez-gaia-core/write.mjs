@@ -175,7 +175,7 @@ export function executeWrite(snapshot,schema,path,method,body,auth){
         const [,campaign,,map,entity]=parts;
         const target='campaigns/'+campaign+'/state/tokens/'+map+'/'+entity;
         const previous=existing(target), active=lookup(db,['campaigns',campaign,'state','active_map']);
-        if (Object.keys(body).some(k=>!['x','y'].includes(k)) || Object.values(body).some(v=>typeof v!=='number'||!Number.isFinite(v))) fail(400,'Expected numeric token x/y');
+        if (Object.keys(body).some(k=>!['x','y','floor'].includes(k)) || Object.values(body).some(v=>typeof v!=='number'||!Number.isFinite(v))) fail(400,'Expected numeric token x/y/floor');
         if (auth.role!=='gm' && (entities[entity]?.kind!=='pc'||!auth.pcs.includes(entity)||entities[entity].campaign!=null&&entities[entity].campaign!==campaign||active!=null&&active!==map||lookup(db,['campaigns',campaign,'state','session','lockMove']))) fail(403,'Players may move only their own PC in their campaign on the active map');
         send(200,commit(target,{...previous,...body},'patch'));return;
       }
@@ -250,7 +250,8 @@ export function executeWrite(snapshot,schema,path,method,body,auth){
           if (auth.role !== 'gm') {
             if (!auth.pcs.includes(old.entity) || entities[old.entity]?.kind !== 'pc') fail(403, 'Players may move only their own PC tokens');
             if (entities[old.entity].campaign!=null && entities[old.entity].campaign!==campaign || lookup(db,['campaigns',campaign,'state','session','lockMove'])) fail(403,'Players may move only in their campaign while movement is unlocked');
-            if (Object.keys(body).some(k => !['x', 'y'].includes(k))) fail(403, 'Players may change token x and y only');
+            // Players may change floor too (the client allows it only on stairs).
+            if (Object.keys(body).some(k => !['x', 'y', 'floor'].includes(k))) fail(403, 'Players may change token x, y and floor only');
             // Existing migrations may have no active map; an explicit active map must match.
             const active = lookup(db, [ 'campaigns', campaign, 'state', 'active_map' ]);
             if (active != null && active !== old.map) fail(403, 'Token is not on the active map');

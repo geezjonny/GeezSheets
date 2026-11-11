@@ -3364,19 +3364,25 @@
         function moveToken(battleId, thingId, pos) {
             const before = battleTokens(battleId)[thingId] || {};
             if (PLAYER && liveSession.lockMove) {showStatus('The GM has locked token movement.');return;}
-            if(PLAYER && rtdb?.gaia && pos.f!==undefined && pos.f!==(before.f??0)){showStatus('Only the GM can change a token floor.');return;}
-            if (battleId === db.view.battleId && before.x !== undefined && ui.scene && GEO && pos.f === undefined) {
+            // Stairs: stepping onto them takes the token to the floor they lead to.
+            const cellAt = p => ui.scene && p?.x !== undefined ? [p.x * ui.scene.w/ui.scene.ppg, p.y * ui.scene.h/ui.scene.ppg] : null;
+            const stairUnder = (p, f) => battleId === db.view.battleId && cellAt(p) ? GH?.stairAt?.(...cellAt(p), f) : null;
+            const floorChange = pos.f !== undefined && +pos.f !== +(before.f ?? 0);
+            if(PLAYER && rtdb?.gaia && floorChange && !(stairUnder(pos, before.f ?? 0) && +stairUnder(pos, before.f ?? 0).to === +pos.f)){showStatus('Stand on stairs to change floors.');return;}
+            if (PLAYER && battleId === db.view.battleId && before.x !== undefined && ui.scene && GEO && pos.f === undefined) { // walls stop players; the GM drags anywhere
                 const geo = sceneGeometry(ui.scene, battleId), g = ui.scene.ppg;
                 const blockers = [...geo.walls, ...geo.doors.filter(d => d.pass === false || (d.pass === undefined && d.closed))];
                 if (GEO.isPathBlocked(before.x * ui.scene.w/g, before.y * ui.scene.h/g, pos.x * ui.scene.w/g, pos.y * ui.scene.h/g, blockers, [])) { showStatus('The way is blocked'); renderView(); return; }
             }
             pos = { ...before, ...pos, f: pos.f ?? before.f ?? GH?.floor() ?? 0 };
-            Live.update(livePath('tokens/' + battleId + '/' + thingId), { x:pos.x, y:pos.y, ...(!PLAYER ? {f:pos.f} : {}), ...(!PLAYER && pos.light ? {light:pos.light} : {}) });
+            Live.update(livePath('tokens/' + battleId + '/' + thingId), { x:pos.x, y:pos.y, ...(!PLAYER || floorChange ? {f:pos.f} : {}), ...(!PLAYER && pos.light ? {light:pos.light} : {}) });
             const b = (db.battles[battleId] ||= { tokens: {} });
             b.tokens[thingId] = { ...(b.tokens[thingId] || {}), ...pos };
             live.tokens[battleId] = { ...(live.tokens[battleId] || {}), [thingId]: pos };
             if (!PLAYER) save();
             renderView();
+            // Walked onto stairs (not already standing on them): go to their floor.
+            if (!floorChange) { const f = pos.f ?? 0, s = stairUnder(pos, f); if (s && s !== stairUnder(before, f)) { showStatus('Taking the stairs ' + (+s.to > f ? 'up' : 'down')); moveToken(battleId, thingId, { x: pos.x, y: pos.y, f: +s.to }); } }
         }
         function mergeLiveTokens() {
             let dirty = false;
@@ -6752,7 +6758,8 @@
             pane.querySelector('[data-status-box]')?.remove();
             if(VTC&&coreEditable(t)&&sheetFor(t)){
                 const c=sheetFor(t).combat||{},box=document.createElement('div');box.dataset.vttcoreCard='';pane.append(box);
-                VTC.concentrationControls(box,{combat:c,editable:true,save:v=>coreSave(t,v),roll:()=>coreRoll(t)});
+                // An embedded sheet already has its own concentration control.
+                if(!pane.querySelector('iframe[data-sheet]'))VTC.concentrationControls(box,{combat:c,editable:true,save:v=>coreSave(t,v),roll:()=>coreRoll(t)});
                 const elevation=document.createElement('div');elevation.textContent=`Elevation: ${c.elevation||0} ft `;
                 for(const delta of [-5,5]){const b=document.createElement('button');b.textContent=(delta>0?'+':'')+delta+' ft';b.onclick=()=>{b.blur();return coreSave(t,{elevation:(c.elevation||0)+delta}).catch(e=>showStatus(e.message));};elevation.append(b);}box.append(elevation);
             }
