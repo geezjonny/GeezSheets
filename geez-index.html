@@ -5643,6 +5643,8 @@
             setSidebar(true);
             showInspectorTab();
             $('entityTitle').focus(); $('entityTitle').select();
+            // In the VTT the sheet pane opens instead of the inspector: name the NPC there.
+            requestAnimationFrame(() => { const n = document.querySelector('#sheetPane [data-npc-name]'); if (n && db.view.level === 'VTT') { n.focus(); n.select(); } });
         }
         function createEvent() {
             const id = createThing('event', 'New event', { when: '' });
@@ -6617,7 +6619,7 @@
             if (frameSrc && frame?.dataset.sheet === frameSrc) pane.querySelector('[data-tokbox]')?.remove();   // keep the loaded sheet, redo the rest
             else {
                 pane.innerHTML = `<div class="flex items-center gap-3"><img src="${avatarOf(t)}" class="w-14 h-14 rounded-xl object-cover border border-purple-500/40" alt="">
-                    <div class="min-w-0 flex-1"><div class="font-cinzel font-bold text-base text-purple-200 truncate">${esc(t.name)}</div><div class="text-[11px] text-slate-400 truncate">${esc(t.traits?.role || '')}</div></div>
+                    <div class="min-w-0 flex-1">${!PLAYER && !t.traits?.pc ? `<input data-npc-name aria-label="NPC name" value="${esc(t.name)}" class="w-full font-cinzel font-bold text-base bg-transparent border-b border-slate-700 focus:outline-none focus:border-amber-500">` : `<div class="font-cinzel font-bold text-base text-purple-200 truncate">${esc(t.name)}</div>`}<div class="text-[11px] text-slate-400 truncate">${esc(t.traits?.role || '')}</div></div>
                     ${frameSrc ? `<a href="${esc(frameSrc.replace('&embed', ''))}" target="_blank" class="text-slate-500 hover:text-purple-300" title="Open the sheet in its own tab"><i class="fa-solid fa-up-right-from-square"></i></a>` : ''}
                     <button id="sheetCloseBtn" class="text-slate-500 hover:text-red-400" title="Close sheet"><i class="fa-solid fa-xmark"></i></button></div>
                     ${frameSrc ? '' : '<div data-sheetsecs class="space-y-2"></div>'}`;
@@ -6635,6 +6637,8 @@
                     pane.appendChild(f);
                 } else renderCardSections(t, pane.querySelector('[data-sheetsecs]'), true);
                 $('sheetCloseBtn').onclick = () => { sheetId = null; renderSheetPane(); };
+                const nameBox = pane.querySelector('[data-npc-name]');
+                if (nameBox) { nameBox.oninput = () => { t.name = nameBox.value; changed({ keepInspector: true }); updateBreadcrumbs(); }; nameBox.onkeydown = e => { if (e.key === 'Enter') nameBox.blur(); }; }
             }
             pane.querySelector('[data-vttcore-card]')?.remove();
             pane.querySelector('[data-status-box]')?.remove();
