@@ -190,6 +190,10 @@
                 <i class="fa-solid fa-draw-polygon text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Area templates</span>
             </button>
+            <button id="railHandouts" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Handouts">
+                <i class="fa-solid fa-scroll text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Handouts</span>
+            </button>
             <button id="resetViewBtn" class="p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group mt-auto">
                 <i class="fa-solid fa-expand text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Fit Canvas View</span>
@@ -322,7 +326,7 @@
                 </div>
         
                 <div id="crumbPill" class="flex items-center gap-1 min-w-0"><select id="campaignSelect" title="Campaign" class="bg-slate-900 border border-slate-700 hover:border-amber-600 text-amber-200 text-xs font-semibold rounded-lg py-1.5 px-2 max-w-[170px] focus:outline-none"></select><span class="text-slate-600">&rsaquo;</span><nav id="breadcrumbNav" class="flex-1 min-w-0 flex items-center gap-1 text-xs text-slate-400 overflow-hidden"></nav></div>
-                <div id="hdrUndoRedo" class="flex items-center gap-1"><button id="hdrUndo" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Undo (Ctrl+Z)" aria-label="Undo"><i class="fa-solid fa-rotate-left"></i></button><button id="hdrRedo" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><i class="fa-solid fa-rotate-right"></i></button></div>
+                
         
                 <div id="presenceBar" class="hidden xl:flex items-center gap-1 max-w-[240px] overflow-hidden"></div>
                 <button id="playerNameBtn" class="hidden bg-emerald-900/60 hover:bg-emerald-800 text-emerald-100 text-xs py-1.5 px-3 rounded-lg border border-emerald-600/50 items-center gap-1.5">
@@ -330,15 +334,15 @@
                 </button>
         
                 <button id="open3dBtn" class="hidden bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold py-1.5 px-2.5 rounded-lg border border-slate-700" title="Open this map in 3D, in a new tab (close it if your computer struggles)"><i class="fa-solid fa-cube mr-1"></i>3D</button>
-                <button id="railHandouts" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Handouts" aria-label="Handouts"><i class="fa-solid fa-scroll"></i></button>
+                
                 <!-- Sound: everyone's own volume; the DM also opens the sound board from here -->
                 <div class="relative">
                     <button id="soundBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Sound"><i class="fa-solid fa-volume-high"></i></button>
                     <div id="soundMenu" class="hidden absolute right-0 top-10 w-64 p-3 rounded-xl border border-slate-700 bg-slate-950/95 shadow-2xl space-y-2 text-xs text-slate-300"></div>
                 </div>
         
-                <!-- Session menu -->
-                <div class="relative">
+                <!-- Session menu: retired. Its buttons stay (hidden) because the bars and shortcuts reuse them. -->
+                <div class="relative hidden" id="sessionMenuWrap">
                     <button id="sessionMenuBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold py-1.5 px-3 rounded-lg border border-slate-700 flex items-center gap-1.5"><i class="fa-solid fa-dice-d20 text-amber-400"></i><span class="hidden sm:inline">Session</span><i class="fa-solid fa-chevron-down text-[9px] text-slate-400"></i></button>
                     <div id="sessionMenu" class="hidden absolute right-0 top-10 w-64 p-1.5 rounded-xl border border-slate-700 bg-slate-950/95 shadow-2xl">
                         <button id="shareLocBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-bullhorn w-4 text-rose-400"></i>Share my location</button>
@@ -6495,7 +6499,7 @@
             $('railScene').className = GH?.panel?.() === 'scene' ? MODE_ON : MODE_OFF;
             $('railBuild').className = ui.build ? MODE_ON : MODE_OFF;
             ['railFogGroup', 'railScene', 'railLocks', 'railInit'].forEach(id => show(id, dmVtt));
-            show('railCallRoll', !PLAYER); show('hdrUndoRedo', !PLAYER);
+            show('railCallRoll', !PLAYER);
             $('addNpcQuickBtn').className = $('npcPop').classList.contains('hidden') ? 'mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group' : MODE_ON;
             let io = false; try { io = initOpen; } catch {} $('railInit').className = io || !$('initPop').classList.contains('hidden') ? MODE_ON : MODE_OFF;
             // A pill with nothing to show disappears.
@@ -6580,13 +6584,14 @@
         let initOpen = false;
         $('railInit').onclick = () => { initOpen = !initOpen; renderInit(); updateToolRail(); };
         $('railHandouts').onclick = () => $('handoutBtn').click();
+        // GM: shift-click the breadcrumb bar to pull every player to the map you're on.
+        $('crumbPill').addEventListener('click', e => { if (!e.shiftKey || PLAYER) return; e.preventDefault(); e.stopImmediatePropagation(); $('pullBtn').click(); }, true);
+        $('crumbPill').title = PLAYER ? '' : 'Shift-click: pull everyone here';
         $('railLockMove').onclick = () => { $('lockMoveBtn').click(); setTimeout(updateToolRail, 300); };
         $('railLockPing').onclick = () => { $('lockPingBtn').click(); setTimeout(updateToolRail, 300); };
         // The floating header sits over the map: its clicks and wheel must not pan or zoom the map.
         ['pointerdown', 'mousedown', 'touchstart', 'wheel', 'dblclick'].forEach(t => $('appHeader').addEventListener(t, e => e.stopPropagation()));
-        $('hdrUndo').onclick = () => $('undoBtn').click();
-        $('hdrRedo').onclick = () => $('redoBtn').click();
-        $('railTemplates').onclick = () => { const d = document.querySelector('#geezTemplateTool details'); if (d) d.open = !d.open; updateToolRail(); };
+                $('railTemplates').onclick = () => { const d = document.querySelector('#geezTemplateTool details'); if (d) d.open = !d.open; updateToolRail(); };
         $('railFogPreview').onclick = () => { GH?.setFogPreview?.(!GH.fogPreview()); updateToolRail(); };
         $('railForget').onclick = () => {
             const bid = db.view.battleId;
