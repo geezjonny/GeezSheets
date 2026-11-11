@@ -831,6 +831,9 @@
         "known": {
           "type": "boolean"
         },
+        "visited": {
+          "type": "boolean"
+        },
         "revealed_at": {
           "type": "string"
         },

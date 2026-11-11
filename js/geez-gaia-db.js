@@ -104,6 +104,9 @@
           // Player projection uses pc-known; only the selected campaign's reveals grant it.
           if (t && (!player || c === (qs.get('campaign') || qs.get('live') || 'world__daddies').replace(/^world__/, ''))) {
             t.properties = t.properties.filter(p => p.key !== 'pc-known'); t.properties.push({key:'pc-known',value:'true'});
+            // Visited clears the players' fog. Older data kept it only in the legacy card properties.
+            const ent = entities.find(x => x.id === id), legacyVisited = Object.values(ent?.data?._legacy || {}).some(v => (v?.properties || []).some(p => p.key === 'pc-visited' && /^(true|yes|y|1|x)$/i.test(String(p.value))));
+            if ((r.visited ?? legacyVisited) && !t.properties.some(p => p.key === 'pc-visited')) t.properties.push({key:'pc-visited',value:'true'});
           }
         }
         const state = tree.geezvtt.live[key] = translate(copy(value.state || {}));
@@ -297,8 +300,9 @@
           stage('entities/'+e.id,'PATCH',patch);
         } else stage('entities','POST',body);
         // Known flags are the campaign's reveals, never a second canon permission flag.
-        const flag=t=>(t?.properties||[]).find(p=>p.key==='pc-known')?.value;
-        if(e && flag(a[group][id])!==flag(value))stage(`campaigns/${body.campaign}/reveals/${e.id}`,'PUT',{...raw.campaigns[body.campaign]?.reveals?.[e.id],known:/^(true|yes|1)$/i.test(String(flag(value)))});
+        const flag=(t,k='pc-known')=>(t?.properties||[]).find(p=>p.key===k)?.value, yes=v=>/^(true|yes|y|1|x)$/i.test(String(v));
+        if(e && (flag(a[group][id])!==flag(value)||yes(flag(a[group][id],'pc-visited'))!==yes(flag(value,'pc-visited'))))
+          stage(`campaigns/${body.campaign}/reveals/${e.id}`,'PUT',{...raw.campaigns[body.campaign]?.reveals?.[e.id],known:yes(flag(value)),visited:yes(flag(value,'pc-visited'))});
       }
       for(const id of new Set([...Object.keys(a.links),...Object.keys(b.links)]))if(!same(a.links[id],b.links[id])) {
         const value=b.links[id];
