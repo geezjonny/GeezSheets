@@ -32,7 +32,7 @@ try{
  await new Promise(ok=>web.listen(0,'127.0.0.1',ok));const base='http://127.0.0.1:'+web.address().port;
  const {chromium}=await import(pathToFileURL(join(process.env.APPDATA,'npm/node_modules/@playwright/mcp/node_modules/playwright/index.mjs')));browser=await chromium.launch({headless:true,channel:'msedge'});
  async function page(query,sheet=false){const ctx=await browser.newContext({viewport:{width:1280,height:900},hasTouch:true});await installFake(ctx,db);const p=await ctx.newPage();p.setDefaultTimeout(15000);p.on('pageerror',e=>{errors.push(e.message);console.error('PAGE',e.message);});p.on('console',m=>{if(m.type()==='error'&&!m.text().startsWith('Failed to load resource'))console.log('BROWSER',m.text());});p.on('dialog',d=>d.accept());await p.route(/https?:\/\/(?!127\.0\.0\.1)/,r=>r.abort());await p.goto(`${base}/geez-${sheet?'sheet':'index'}.html?gaia=firebase:/v2-test/vttcore&db=gaia&campaign=world__daddies&test&${query}`,{waitUntil:'domcontentloaded'});await p.waitForFunction(sheet?()=>document.querySelector('#hpval-ashara'):()=>window.__SHEETS__?.state().data.pcs.ashara);return p;}
- const gm=await page('gm=jonny'),player=await page('player&pc=ashara'),sheet=await page('char=ashara&live=world__daddies');
+ const gm=await page('gm=jonny'),player=await page('player&pc=ashara'),sheet=await page('char=ashara&live=world__daddies',true);
  for(const p of [gm,player]){await p.evaluate(id=>window.__SHEETS__.view('VTT',id),place);await p.waitForFunction(()=>window.__SHEETS__.state().loaded&&document.querySelector('[data-token-id]')&&document.querySelector('#geezTemplateTool'));}
  await gm.evaluate(async()=>{window.core=await (await import('./js/geez-gaia-firebase.mjs')).connect('firebase:/v2-test/vttcore',()=>{},()=> 'gm');});
  const act=(name,args)=>gm.evaluate(({name,args})=>window.core.request('actions/'+name,'POST',{args:{campaign:'daddies',...args}}),{name,args});
@@ -42,7 +42,7 @@ try{
  async function placeShape(p,shape,i){const tool=p.locator('#geezTemplateTool');await tool.locator('summary').click();await tool.locator('select').selectOption(shape);await tool.locator('input').fill('20');await tool.getByRole('button',{name:'Place template',exact:true}).click();await tool.locator('summary').click();const a=await point(p,.20+i*.07,.35),b=await point(p,.23+i*.07,.35);console.log('POINTS',a,b);await p.touchscreen.tap(a.x,a.y);await p.touchscreen.tap(b.x,b.y);}
  let total=0;for(const p of [gm,player])for(const [i,shape]of ['cone','circle','line','square'].entries()){console.log('PLACE',p===gm?'gm':'player',shape);await placeShape(p,shape,i);await count(gm,++total);await count(player,total);}
  console.log('PASS GM and player place all four shapes with primary touch; independent browsers sync');
- const all=await gm.evaluate(()=>window.__SHEETS__.state().templates),gmId=Object.keys(all)[0],playerId=Object.keys(all)[4];
+ const all=await gm.evaluate(()=>window.__SHEETS__.state().templates),gmId=Object.keys(all).find(k=>all[k].owner==='gm'),playerId=Object.keys(all).find(k=>all[k].owner!=='gm');assert(gmId&&playerId);
  await assert.rejects(()=>set(player,'geezvtt/live/world__daddies/templates/'+gmId,null));await count(gm,8);
  await set(gm,'geezvtt/live/world__daddies/templates/'+playerId,null);await count(player,7);
  console.log('PASS player cannot delete GM template; GM can delete player template');
@@ -52,7 +52,7 @@ try{
  await gm.locator('#geezTemplateTool summary').click();
  console.log('PASS caught-token lists for every shape match known near/far layout');
  const goblin=p=>p.locator(`[data-token-id="${npc}"]`);
- await act('hp.damage',{entity:npc,amount:10});console.log('HPDEBUG',await player.evaluate(id=>({thing:window.__SHEETS__.state().data.things[id],sheet:window.__SHEETS__.state().data.npcs[id],token:document.querySelector(`[data-token-id="${id}"]`)?.outerHTML}),npc));await player.waitForFunction(id=>document.querySelector(`[data-token-id="${id}"] [data-hp-status="bloodied"]`),npc);
+ await act('hp.damage',{entity:npc,amount:10});await player.waitForFunction(id=>document.querySelector(`[data-token-id="${id}"] [data-hp-status="bloodied"]`),npc);
  assert.match(await goblin(gm).innerText(),/10.*20/);assert.doesNotMatch(await goblin(player).innerText(),/10\/20/);
  await act('hp.damage',{entity:npc,amount:10});await player.waitForFunction(id=>document.querySelector(`[data-token-id="${id}"] [data-hp-status="down"]`),npc);
  await set(gm,`geezvtt/live/world__daddies/tokens/${place}/${npc}/hideHp`,true);await player.waitForFunction(id=>!document.querySelector(`[data-token-id="${id}"] [data-hp-status]`),npc);
@@ -69,7 +69,7 @@ try{
  await act('hp.heal',{entity:ash.id,amount:100});await act('concentration.set',{entity:ash.id,spell:'Bless'});
  await set(player,'characters/pcs/ashara/combat/elevation',30);await gm.waitForFunction(()=>document.querySelector('[data-elevation="30"]'));await player.waitForFunction(()=>document.querySelector('[data-elevation="30"]'));
  await assert.rejects(()=>set(player,'characters/pcs/liora/combat/elevation',5));await act('elevation.set',{entity:npc,feet:-10});await player.waitForFunction(()=>document.querySelector('[data-elevation="-10"]'));
- await player.evaluate(id=>window.__SHEETS__.select(id),Object.keys((await player.evaluate(()=>window.__SHEETS__.state().data.things))).find(id=>id===ash.id)||ash.id);
+ await player.evaluate(()=>{const [id]=Object.entries(window.__SHEETS__.state().data.things).find(([,t])=>t.traits?.pc&&t.name==='Ashara');window.__SHEETS__.select(id);});
  await player.locator('[data-vttcore-card]').getByRole('button',{name:'+5 ft',exact:true}).click();await gm.waitForFunction(()=>document.querySelector('[data-elevation="35"]'));
  console.log('PASS elevation badges sync; owner +5 card works; foreign player edits rejected; GM edits NPC');
  // Keep bloodied, concentration, elevation and all template shapes visible in the artifacts.

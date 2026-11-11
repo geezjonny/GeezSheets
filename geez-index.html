@@ -3056,7 +3056,7 @@
                     ${(() => {
                         const h = hpOf(n);
                         if (!h || (PLAYER && flags.hideHp)) return '';
-                        if(PLAYER&&!n.traits?.pc)return Number(h.hp)<=0?'<span data-hp-status="down" class="geez-token-elevation">? Down</span>':h.max&&h.hp<=h.max/2?'<span data-hp-status="bloodied" class="geez-token-elevation" style="background:#a3362d;color:white">? Bloodied</span>':'';
+                        if(PLAYER&&!n.traits?.pc)return Number(h.hp)<=0?'<span data-hp-status="down" class="geez-token-elevation">&#9760; Down</span>':h.max&&h.hp<=h.max/2?'<span data-hp-status="bloodied" class="geez-token-elevation" style="background:#a3362d;color:white">&#9679; Bloodied</span>':'';
                         const pct = h.max ? Math.max(0, Math.min(1, h.hp / h.max)) : null;
                         const col = pct === null ? '#ef4444' : pct > .5 ? '#4a9a4a' : pct > .25 ? '#caca30' : '#cc3030';
                         return `<span class="absolute font-mono px-1 rounded-full whitespace-nowrap pointer-events-none" style="top:-6px;right:-6px;font-size:${Math.max(8, baseSize / 8)}px;background:#1c0a0a;color:#fecaca;border:1px solid ${col}" title="${h.live ? 'Live from character sheet' : 'HP'}${h.temp ? ` (+${esc(h.temp)} temp)` : ''}">${esc(h.hp)}${h.temp ? `<span style="color:#7dd3fc">+${esc(h.temp)}</span>` : ''}${h.max ? '/' + esc(h.max) : ''}</span>`
@@ -3231,6 +3231,7 @@
                 const byName = Object.values(sheets).find(c => String(c?.name || '').trim().toLowerCase() === key);
                 if (byName) return byName;
             } else if (cid && npcSheets[cid]) return npcSheets[cid];
+            else if (npcSheets[t.id]) return npcSheets[t.id]; // party-board copies carry no charId
             return t.sheet || null;
         }
         function hpOf(t) {
