@@ -14,3 +14,9 @@
 .geez-template-tool{left:84px!important;bottom:auto!important;top:50%;transform:translateY(-50%)}
 .geez-template-tool summary{display:none}
 .geez-template-tool:not(:has(details[open])){display:none}
+/* Rail flyouts pull out to the right of the VTT rail; the build bar runs along the bottom. */
+.geez-flyout{position:absolute;left:calc(100% + 8px);display:none;flex-direction:row;gap:4px;padding:6px;border-radius:16px;width:max-content;z-index:31}
+.geez-flyout .mode-btn .absolute,.geez-buildbar .mode-btn .absolute{left:50%!important;transform:translateX(-50%)}
+.geez-flyout .mode-btn .absolute{top:calc(100% + 6px)}
+.geez-buildbar{position:absolute;left:84px;bottom:16px;display:none;flex-direction:row;flex-wrap:wrap;gap:2px;padding:6px;border-radius:16px;max-width:calc(100% - 100px);z-index:30}
+.geez-buildbar .mode-btn .absolute{bottom:calc(100% + 6px);top:auto}

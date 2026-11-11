@@ -210,9 +210,18 @@ export function createBridge(a) {
     matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',startWeather);
     // A compact panel uses existing controls and places annotations with one click or a short path chain.
     const panel=document.createElement('div');panel.className='fixed z-40 bg-slate-950/95 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 flex flex-wrap gap-2 items-center';panel.style.cssText='top:112px;left:78px;max-width:calc(100vw - 100px)';document.body.appendChild(panel);
-    panel.addEventListener('pointerdown',e=>e.stopPropagation());let tool='',pathPoints=[],inspectId=null;
+    panel.addEventListener('pointerdown',e=>e.stopPropagation());let tool='',pathPoints=[],inspectId=null,panelMode=null;
     function controls() {
-        const v=a.db().view;panel.style.display=v.level==='VTT'?'flex':'none';if(v.level!=='VTT')return;
+        const v=a.db().view,rb=document.getElementById('railDecor');
+        // GM map-detail tools live in a flyout beside the left rail; it shows when opened there or while a token is inspected.
+        // GM panel opens from the VTT rail (scene: time, weather, music) or the build bar (map details); token light inspect also uses it.
+        const inspecting=inspectId&&tokens()[inspectId];
+        panel.style.display=v.level==='VTT'&&!a.player&&(panelMode||inspecting)?'flex':'none';
+        const anchor=document.getElementById(panelMode==='decor'?'buildFlyout':'railScene'),r=anchor?.offsetParent&&anchor.getBoundingClientRect();
+        if(r&&panelMode==='decor')Object.assign(panel.style,{top:'auto',bottom:(innerHeight-r.top+8)+'px',left:r.left+'px'});
+        else if(r)Object.assign(panel.style,{bottom:'auto',top:r.top+'px',left:(document.getElementById('toolRail').getBoundingClientRect().right+8)+'px'});
+        else Object.assign(panel.style,{bottom:'auto',top:'112px',left:'78px'});
+        if(v.level!=='VTT')return;
         const b=a.db().battles[current()]||{},f=shownFloor(),list=floorList(data.meta);
         const select=(id,values,value)=>`<select data-gh="${id}" class="bg-slate-900 border border-slate-700 rounded p-1">${values.map(k=>`<option ${k===value?'selected':''}>${k}</option>`).join('')}</select>`;
         // Floor stepper lives in the breadcrumb (Campaign > Board > ... > map > floor) when the page provides one.
@@ -238,8 +247,9 @@ export function createBridge(a) {
             panel.querySelector('[data-light-on]').onchange=write;panel.querySelector('[data-light-range]').onchange=write;
             panel.querySelector('[data-inspect-close]').onclick=()=>{inspectId=null;controls();};
         }
-        if(!data.meta){panel.insertAdjacentHTML('beforeend',select('time',['day','dawn','dusk','night'],b.time||'day')+select('weather',['Clear','Rain','Snow','Leaves','Ash'],b.weather?.kind||'Clear')+'<label>Wind <input data-gh="wind" type="range" min="0" max="1" step=".1" class="w-12" value="'+(b.weather?.wind||0)+'"></label>');}
-        panel.insertAdjacentHTML('beforeend',select('tool',['Details','Label','Blood','Scorch','Rubble','Road','Stream'],tool||'Details')+(pathPoints.length?'<button data-finish>Finish path</button>':''));
+        if(panelMode==='scene'){panel.insertAdjacentHTML('beforeend','<button data-music class="border border-slate-700 rounded px-2 py-1"><i class="fa-solid fa-music"></i> Music &amp; sounds</button>');panel.querySelector('[data-music]').onclick=()=>document.getElementById('audioBoardBtn')?.click();}
+        if(panelMode==='scene'&&!data.meta){panel.insertAdjacentHTML('beforeend',select('time',['day','dawn','dusk','night'],b.time||'day')+select('weather',['Clear','Rain','Snow','Leaves','Ash'],b.weather?.kind||'Clear')+'<label>Wind <input data-gh="wind" type="range" min="0" max="1" step=".1" class="w-12" value="'+(b.weather?.wind||0)+'"></label>');}
+        if(panelMode==='decor')panel.insertAdjacentHTML('beforeend',select('tool',['Details','Label','Blood','Scorch','Rubble','Road','Stream'],tool||'Details')+(pathPoints.length?'<button data-finish>Finish path</button>':''));
         panel.querySelectorAll('[data-gh]').forEach(el=>el.onchange=()=>{const k=el.dataset.gh;if(k==='tool'){tool=el.value==='Details'?'':el.value;pathPoints=[];a.status(tool?'Click the map to place '+tool.toLowerCase():'Ready');return;}const battle=(a.db().battles[current()]||={tokens:{}});if(k==='time')battle.time=el.value;else battle.weather={kind:k==='weather'?el.value:b.weather?.kind||'Clear',wind:k==='wind'?+el.value:b.weather?.wind||0};a.changed();});
         panel.querySelector('[data-finish]')?.addEventListener('click',()=>finishPath());
     }
@@ -253,7 +263,7 @@ export function createBridge(a) {
     },true);
     document.addEventListener('keydown',e=>{if(!a.gaia||a.db().view.level!=='VTT'||!['PageUp','PageDown'].includes(e.key)||e.target.closest('input,textarea,select'))return;e.preventDefault();(document.getElementById('floorCrumb')||panel).querySelector('[data-step="'+(e.key==='PageUp'?1:-1)+'"]')?.click();});
     a.viewport.addEventListener('click',e=>{if(!a.gaia||a.player||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label'))return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=[...Object.values(layer().stairs||{}),...Object.values(a.edits?.(current())?.stairs||{})].find(o=>onStairs(o,p.x/g,p.y/g));if(stair&&floorList(data.meta).includes(stair.to)){floor=stair.to;redraw();}});
-    return {emptyFloor:()=>!a.player&&emptyFloor!==null&&shownFloor()===emptyFloor?emptyFloor:null,fogPreview:()=>fogPreview,setFogPreview(v){fogPreview=!!v;redraw();},inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
+    return {emptyFloor:()=>!a.player&&emptyFloor!==null&&shownFloor()===emptyFloor?emptyFloor:null,fogPreview:()=>fogPreview,setFogPreview(v){fogPreview=!!v;redraw();},inspectToken(id){inspectId=id;controls();},panel:()=>panelMode,setPanel(m){panelMode=m||null;if(panelMode!=='decor'){tool='';pathPoints=[];}controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
         setDoor(d,open,f=shownFloor()){if(!doorRules(d.kind||d.mat).toggle)return false;a.live.set(a.path(`table3d/${current()}/doors/${f}/${d.key}`),open?'open':'closed');return true;},
         saveTrap(id,t){a.live.set(`table3d/${a.camp()}/${current()}/traps/${id}`,t);},
         isTrap(id){return Object.hasOwn(traps,id);},

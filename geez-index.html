@@ -149,6 +149,7 @@
         </div>
 
         <nav id="breadcrumbNav" class="flex-1 min-w-0 flex items-center gap-1 text-xs text-slate-400 overflow-hidden"></nav>
+        <div id="hdrUndoRedo" class="flex items-center gap-1"><button id="hdrUndo" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Undo (Ctrl+Z)" aria-label="Undo"><i class="fa-solid fa-rotate-left"></i></button><button id="hdrRedo" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><i class="fa-solid fa-rotate-right"></i></button></div>
 
         <div id="presenceBar" class="hidden xl:flex items-center gap-1 max-w-[240px] overflow-hidden"></div>
         <button id="playerNameBtn" class="hidden bg-emerald-900/60 hover:bg-emerald-800 text-emerald-100 text-xs py-1.5 px-3 rounded-lg border border-emerald-600/50 items-center gap-1.5">
@@ -236,14 +237,39 @@
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Marker size</span>
             </button>
             <div id="railDivider2" class="w-7 h-px bg-slate-700 my-0.5"></div>
-
-            <button id="railVision" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
-                <i class="fa-solid fa-eye text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Player vision</span>
+            <button id="diceToolBtn" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-dice-d20 text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Dice</span>
+            </button>
+            <button id="modeRuler" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-ruler text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Ruler (drag to measure)</span>
+            </button>
+            <button id="modePing" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-location-crosshairs text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Ping (click the map)</span>
+            </button>
+            <button id="railCallRoll" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Call for a roll">
+                <i class="fa-solid fa-bullhorn text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Call for a roll</span>
             </button>
             <button id="railTemplates" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Area templates">
                 <i class="fa-solid fa-draw-polygon text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Area templates</span>
+            </button>
+            <div id="railDivider3" class="w-7 h-px bg-slate-700 my-0.5"></div>
+            <button id="addNpcQuickBtn" class="p-3 rounded-xl text-purple-400 hover:bg-purple-950/50 border border-purple-500/30 transition relative group">
+                <i class="fa-solid fa-user-plus text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Quick Create NPC</span>
+            </button>
+            <button id="railFogGroup" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Fog &amp; vision" data-fly="fogFly">
+                <i class="fa-solid fa-eye text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Fog &amp; vision</span>
+            </button>
+            <div id="fogFly" class="geez-flyout glass-panel border border-slate-800 shadow-2xl" role="toolbar" aria-label="Fog and vision">
+            <button id="railVision" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+                <i class="fa-solid fa-eye text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Player vision</span>
             </button>
             <button id="railFogPreview" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Preview player fog">
                 <i class="fa-solid fa-user-secret text-lg"></i>
@@ -253,24 +279,53 @@
                 <i class="fa-solid fa-clock-rotate-left text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Forget explored areas (players' map memory)</span>
             </button>
-            <div id="railDivider3" class="w-7 h-px bg-slate-700 my-0.5"></div>
-            <button id="modeRuler" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
-                <i class="fa-solid fa-ruler text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Ruler (drag to measure)</span>
+            </div>
+            <button id="railScene" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Scene: time, weather, music">
+                <i class="fa-solid fa-sun text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Scene: time, weather, music</span>
             </button>
-            <button id="modePing" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
+            <button id="railHandouts" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Handouts">
+                <i class="fa-solid fa-scroll text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Handouts</span>
+            </button>
+            <button id="railLocks" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Lock pings / movement" data-fly="lockFly">
+                <i class="fa-solid fa-lock text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Lock pings / movement</span>
+            </button>
+            <div id="lockFly" class="geez-flyout glass-panel border border-slate-800 shadow-2xl" role="toolbar" aria-label="Locks">
+            <button id="railLockMove" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Lock token movement">
+                <i class="fa-solid fa-lock-open text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Lock token movement</span>
+            </button>
+            <button id="railLockPing" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Lock pings">
                 <i class="fa-solid fa-location-crosshairs text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Ping (click the map)</span>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Lock pings</span>
             </button>
-            <button id="diceToolBtn" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
-                <i class="fa-solid fa-dice-d20 text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Dice</span>
-            </button>
+            </div>
             <div id="railDivider4" class="w-7 h-px bg-slate-700 my-0.5"></div>
             <button id="railBuild" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group">
                 <i class="fa-solid fa-hammer text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Build: rooms, floors, walls, doors, objects, traps (B)</span>
             </button>
+
+            <div id="railDivider" class="w-7 h-px bg-slate-700 my-0.5"></div>
+
+            <button id="addPinNoteQuickBtn" class="p-3 rounded-xl text-amber-400 hover:bg-amber-950/50 border border-amber-500/30 transition relative group">
+                <i class="fa-solid fa-note-sticky text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Add DM Board Sticky Note</span>
+            </button>
+
+            <button id="addEventQuickBtn" class="p-3 rounded-xl text-rose-400 hover:bg-rose-950/50 border border-rose-500/30 transition relative group">
+                <i class="fa-solid fa-calendar-day text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Add event</span>
+            </button>
+
+            <button id="resetViewBtn" class="p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group mt-auto">
+                <i class="fa-solid fa-expand text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Fit Canvas View</span>
+            </button>
+        </div>
+        <div id="buildFlyout" class="geez-buildbar glass-panel border border-slate-800 shadow-2xl" role="toolbar" aria-label="Build tools">
             <button id="modeDraft" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" title="Draft rooms (D)">
                 <i class="fa-solid fa-drafting-compass text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-30">Draft rooms (D)</span>
@@ -311,29 +366,12 @@
                 <i class="fa-solid fa-eraser text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Erase a wall, door or light</span>
             </button>
-
-            <div id="railDivider" class="w-7 h-px bg-slate-700 my-0.5"></div>
-
-            <button id="addNpcQuickBtn" class="p-3 rounded-xl text-purple-400 hover:bg-purple-950/50 border border-purple-500/30 transition relative group">
-                <i class="fa-solid fa-user-plus text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Quick Create NPC</span>
+            <div class="w-px h-7 bg-slate-700 mx-0.5 self-center"></div>
+            <button id="railDecor" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Map details">
+                <i class="fa-solid fa-pen-nib text-lg"></i>
+                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Map details: labels, blood, scorch, rubble, roads, streams</span>
             </button>
-
-            <button id="addPinNoteQuickBtn" class="p-3 rounded-xl text-amber-400 hover:bg-amber-950/50 border border-amber-500/30 transition relative group">
-                <i class="fa-solid fa-note-sticky text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Add DM Board Sticky Note</span>
-            </button>
-
-            <button id="addEventQuickBtn" class="p-3 rounded-xl text-rose-400 hover:bg-rose-950/50 border border-rose-500/30 transition relative group">
-                <i class="fa-solid fa-calendar-day text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Add event</span>
-            </button>
-
-            <button id="resetViewBtn" class="p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group mt-auto">
-                <i class="fa-solid fa-expand text-lg"></i>
-                <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Fit Canvas View</span>
-            </button>
-        </div>
+            </div>
 
         <!-- Center Viewport Area -->
         <div id="viewport" class="flex-1 relative overflow-hidden bg-slate-950 canvas-container flex items-center justify-center">
@@ -341,7 +379,7 @@
             <div id="propPanel" style="display:none;position:absolute;left:84px;top:62px;z-index:30;width:300px;max-height:calc(100% - 140px);overflow:auto;padding:8px;border-radius:12px;background:rgba(2,6,23,.95);border:1px solid #334155;font-size:11px;color:#cbd5e1"></div>
             <div id="trapPanel" style="display:none;position:absolute;left:84px;top:62px;z-index:30;width:290px;max-height:calc(100% - 140px);overflow:auto;padding:10px;border-radius:12px;background:rgba(2,6,23,.95);border:1px solid #7f1d1d;font-size:12px;color:#cbd5e1"></div>
             <div id="trapAlert" style="display:none;position:absolute;left:50%;top:56px;transform:translateX(-50%);z-index:40;width:min(420px,calc(100% - 32px));padding:12px 14px;border-radius:12px;background:rgba(28,5,5,.97);border:2px solid #dc2626;box-shadow:0 10px 40px rgba(0,0,0,.6);font-size:13px;color:#fecaca"></div>
-            <div id="paintBar" style="display:none;position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:30;padding:8px 10px;border-radius:12px;background:rgba(2,6,23,.94);border:1px solid #334155;max-width:calc(100% - 120px);font-size:12px;color:#cbd5e1"></div>
+            <div id="paintBar" style="display:none;position:absolute;left:50%;bottom:84px;transform:translateX(-50%);z-index:30;padding:8px 10px;border-radius:12px;background:rgba(2,6,23,.94);border:1px solid #334155;max-width:calc(100% - 120px);font-size:12px;color:#cbd5e1"></div>
             <div id="swatchPanel" style="display:none;position:absolute;left:84px;top:62px;max-height:calc(100% - 140px);overflow:auto;z-index:30;padding:8px;border-radius:10px;background:rgba(2,6,23,.92);border:1px solid #334155;max-width:min(340px,calc(100% - 96px))"></div>
             <div id="realmBar" class="hidden absolute top-3 left-3 flex flex-wrap gap-1.5 items-center max-w-[70%]" style="z-index:30"></div>
             <div id="shiftBox" class="hidden absolute top-3 right-3 w-64 rounded-xl border border-fuchsia-700/60 bg-slate-950/95 shadow-2xl p-3 space-y-2 text-xs text-slate-300" style="z-index:30"></div>
@@ -2973,11 +3011,12 @@
         ui.build = kept('geezvtt.build', '0') === '1';
         ui.picking = false;          // the next click on the map picks a style (the I key, for touch screens)
         function setBuild(on) {
+            // The build bar sits along the bottom; the hammer on the VTT rail shows or hides it.
             ui.build = on;
             keep('geezvtt.build', on ? '1' : '0');
             if (!on && BUILD_MODES.includes(ui.mode)) setMode('pan');
+            if (!on) GH?.setPanel?.(null);
             updateToolRail();
-            showStatus(on ? 'Build tools out' : 'Build tools put away');
         }
         $('railBuild').onclick = () => setBuild(!ui.build);
         const toolOk = (t) => !!$('mode' + t.mode[0].toUpperCase() + t.mode.slice(1));
@@ -6436,19 +6475,30 @@
             const lv = db.view.level, isMap = lv === 'WORLD' || lv === 'LOCATION', onMap = lv !== 'DM_BOARD';
             const show = (id, on) => { const el = $(id); if (el) el.style.display = on ? '' : 'none'; };
             show('modeMarker', !PLAYER && isMap); show('modeTile', !PLAYER && isMap); show('modeRoad', !PLAYER && isMap);
+            show('modePan', lv === 'VTT');
             show('modeRuler', onMap); show('modePing', onMap); show('diceToolBtn', true);
             const dmVtt = !PLAYER && lv === 'VTT';
             ['railVision', 'railForget', 'railDivider3', 'railDivider4', 'railBuild', 'railFogPreview'].forEach(id => show(id, dmVtt));
             show('railTemplates', lv === 'VTT' && !!rtdb?.gaia);
             $('railTemplates').className = document.querySelector('#geezTemplateTool details')?.open ? MODE_ON : MODE_OFF;
             $('railFogPreview').className = GH?.fogPreview?.() ? MODE_ON : MODE_OFF;
-            BUILD_MODES.forEach(m => show('mode' + m[0].toUpperCase() + m.slice(1), dmVtt && ui.build));
+            BUILD_MODES.forEach(m => show('mode' + m[0].toUpperCase() + m.slice(1), true));
+            $('buildFlyout').style.display = dmVtt && ui.build ? 'flex' : 'none';
+            $('railDecor').className = GH?.panel?.() === 'decor' ? MODE_ON : MODE_OFF;
+            $('railScene').className = GH?.panel?.() === 'scene' ? MODE_ON : MODE_OFF;
             $('railBuild').className = ui.build ? MODE_ON : MODE_OFF;
+            ['railCallRoll', 'railFogGroup', 'railScene', 'railLocks'].forEach(id => show(id, dmVtt));
+            show('railHandouts', lv === 'VTT'); show('hdrUndoRedo', !PLAYER);
+            if (!dmVtt) document.querySelectorAll('#toolRail .geez-flyout').forEach(f => f.style.display = 'none');
+            let ls = {}; try { ls = liveSession; } catch { /* rail can draw before the live session loads */ }
+            const lockI = (id, on, a, b) => { const el = $(id); el.className = on ? MODE_ON : MODE_OFF; el.querySelector('i').className = `fa-solid ${on ? a : b} text-lg`; };
+            lockI('railLockMove', !!ls.lockMove, 'fa-lock', 'fa-lock-open'); lockI('railLockPing', !!ls.lockPings, 'fa-ban', 'fa-location-crosshairs');
+            $('railLocks').classList.toggle('text-amber-400', !!(ls.lockMove || ls.lockPings));
             $('toolRail').classList.toggle('vtt-dm', dmVtt);
             renderSwatchPanel();
             const rv = $('railVision'), vm = visionMode(db.view.battleId);
             if (rv) { rv.querySelector('i').className = `fa-solid ${VISION_ICON[vm]} text-lg`; rv.classList.toggle('text-amber-400', vm !== 'bright'); rv.querySelector('span').textContent = VISION_LABEL[vm] + ' (click to change)'; }
-            show('addNpcQuickBtn', !PLAYER && lv === 'DM_BOARD'); show('addEventQuickBtn', !PLAYER && lv === 'DM_BOARD');
+            show('addNpcQuickBtn', !PLAYER && (lv === 'DM_BOARD' || lv === 'VTT')); show('addEventQuickBtn', !PLAYER && lv === 'DM_BOARD');
             show('addPinNoteQuickBtn', lv === 'DM_BOARD');
             show('railDivider', lv === 'DM_BOARD' ? true : onMap);
             show('railUpload', !PLAYER && isMap && !!currentMap() && !currentMap()?.shift);
@@ -6485,6 +6535,21 @@
             updateToolRail();
             showStatus(VISION_LABEL[next]);
         };
+        // Rail flyouts (fog & vision, locks) pull out to the right and tuck away on any click off them.
+        const closeFlyouts = except => document.querySelectorAll('#toolRail .geez-flyout').forEach(f => { if (f !== except) f.style.display = 'none'; });
+        document.querySelectorAll('#toolRail [data-fly]').forEach(b => b.onclick = () => {
+            const f = $(b.dataset.fly), open = f.style.display !== 'flex'; closeFlyouts(f); GH?.setPanel?.(GH.panel?.() === 'decor' ? 'decor' : null);
+            f.style.top = b.offsetTop + 'px'; f.style.display = open ? 'flex' : 'none'; updateToolRail();
+        });
+        document.addEventListener('pointerdown', e => { if (!e.target.closest('#toolRail .geez-flyout, #toolRail [data-fly]')) closeFlyouts(); }, true);
+        $('railDecor').onclick = () => { GH?.setPanel?.(GH.panel?.() === 'decor' ? null : 'decor'); updateToolRail(); };
+        $('railScene').onclick = () => { closeFlyouts(); GH?.setPanel?.(GH.panel?.() === 'scene' ? null : 'scene'); updateToolRail(); };
+        $('railCallRoll').onclick = () => $('callRollBtn').click();
+        $('railHandouts').onclick = () => $('handoutBtn').click();
+        $('railLockMove').onclick = () => { $('lockMoveBtn').click(); setTimeout(updateToolRail, 300); };
+        $('railLockPing').onclick = () => { $('lockPingBtn').click(); setTimeout(updateToolRail, 300); };
+        $('hdrUndo').onclick = () => $('undoBtn').click();
+        $('hdrRedo').onclick = () => $('redoBtn').click();
         $('railTemplates').onclick = () => { const d = document.querySelector('#geezTemplateTool details'); if (d) d.open = !d.open; updateToolRail(); };
         $('railFogPreview').onclick = () => { GH?.setFogPreview?.(!GH.fogPreview()); updateToolRail(); };
         $('railForget').onclick = () => {
