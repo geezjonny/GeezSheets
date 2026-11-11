@@ -3166,9 +3166,14 @@
             return best;
         }
         function toggleDoorAt(battleId, i) {
-            if(PLAYER && rtdb?.gaia){showStatus('Only the GM can change doors.');return;}
             i = String(i);
             const d = sceneGeometry(ui.scene, battleId).doors.find(d => d.key === i);
+            if (PLAYER) {
+                // Players open doors they stand next to (the server checks this too).
+                const me = viewerTokens(ui.scene, battleId).filter(v => v.t.name === playerName);
+                const dist = (x, y) => { const dx = d.x2 - d.x1, dy = d.y2 - d.y1, l = dx * dx + dy * dy, t = l ? Math.max(0, Math.min(1, ((x - d.x1) * dx + (y - d.y1) * dy) / l)) : 0; return Math.hypot(x - d.x1 - t * dx, y - d.y1 - t * dy); };
+                if (!d || !me.some(v => dist(v.x, v.y) <= 1.5)) { showStatus('Stand next to the door to open or close it.'); return; }
+            }
             if (d && GH_API && !GH_API.doorRules(d.kind || d.mat).toggle) return;
             if (d?.src === 'table3d') { GH.setDoor(d, d.closed); return; }
             const b = (db.battles[battleId] ||= { tokens: {} });
@@ -4434,7 +4439,7 @@
                     return;
                 }
             }
-            if (!PLAYER && level === 'VTT' && ui.mode === 'pan' && ui.scene && db.view.battleId) {
+            if ((!PLAYER || rtdb?.gaia) && level === 'VTT' && ui.mode === 'pan' && ui.scene && db.view.battleId) {
                 const d = doorAt(ui.scene, db.view.battleId, p.x, p.y);
                 if (d) { toggleDoorAt(db.view.battleId, d.key); return; }
             }

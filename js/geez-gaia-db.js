@@ -345,7 +345,16 @@
           if(field==='templates'){
             const prev=a.templates||{},next=b.templates||{};
             for(const id of new Set([...Object.keys(prev),...Object.keys(next)]))if(!same(prev[id],next[id]))stage(`campaigns/${c}/player/templates/${id}`,'PUT',{value:next[id]?translate(next[id],false):null});
-          }else if(player && ['rolls','pings','presence','rollcall','initiative'].includes(field)) {
+          }else if(player && field==='table3d') {
+            // Players may only flip door states; the server checks the door and that their token is next to it.
+            const prev=a.table3d||{},next=b.table3d||{};
+            for(const place of new Set([...Object.keys(prev),...Object.keys(next)])){
+              const {doors:pd={},...pr}=prev[place]||{},{doors:nd={},...nr}=next[place]||{};
+              if(!same(pr,nr))throw Object.assign(Error('Only the GM can change the battle map'),{status:403});
+              for(const f of new Set([...Object.keys(pd),...Object.keys(nd)]))for(const k of new Set([...Object.keys(pd[f]||{}),...Object.keys(nd[f]||{})]))
+                if(pd[f]?.[k]!==nd[f]?.[k])stage(`campaigns/${c}/player/doors/${canonical(place)}/${f}/${k}`,'PUT',{value:nd[f]?.[k]??null});
+            }
+          } else if(player && ['rolls','pings','presence','rollcall','initiative'].includes(field)) {
             if(field==='initiative'){
               if(b.initiative?.round!==a.initiative?.round||b.initiative?.turn!==a.initiative?.turn)throw Object.assign(Error('Only the GM controls initiative turn and round'),{status:403});
               const prev=a.initiative?.rows||{},next=b.initiative?.rows||{};

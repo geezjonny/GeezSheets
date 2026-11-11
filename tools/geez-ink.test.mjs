@@ -61,7 +61,7 @@ try {
     const head=execFileSync('git',['-c','safe.directory='+repo.replaceAll('\\','/'),'show','HEAD:geez-index.html'],{cwd:repo,encoding:'utf8'});
     const scratch=await mkdtemp(join(tmpdir(),'geez-ink-patch-proof-'));await writeFile(join(scratch,'geez-index.html'),head);if(!head.includes('async function attachGeez2vtt('))execFileSync('git',['apply',patch],{cwd:scratch}); // already merged into main on 2026-11-10
     const patched=await readFile(join(scratch,'geez-index.html'),'utf8'),handler=patched.slice(patched.indexOf('async function attachGeez2vtt('),patched.indexOf("        viewport.addEventListener('dragover'",patched.indexOf('async function attachGeez2vtt(')));
-    const published=await page.evaluate(async handler=>{const PLAYER=false,sent=[],rtdb={gaia:true,publishScene:async(...args)=>sent.push(args)},liveCamp=()=> 'daddies',showStatus=()=>{},syncCampaign=()=>{};let saveTimer=null;
+    const published=await page.evaluate(async handler=>{const PLAYER=false,db={view:{level:'BOARD'}},GH=null,sent=[],rtdb={gaia:true,publishScene:async(...args)=>sent.push(args)},liveCamp=()=> 'daddies',showStatus=()=>{},syncCampaign=()=>{};let saveTimer=null;
         const attach=eval('('+handler.replace("'./js/geez2vtt.js'","'/GeezSheets/js/geez2vtt.js'")+')');
         await attach(new File([JSON.stringify({image:'discard',resolution:{map_size:{x:5,y:6}}})],'Friday.dd2vtt'),{id:'place_friday'});
         await attach(new File([JSON.stringify(scene)],'Friday.geez2vtt'),{id:'place_friday'});return sent;
