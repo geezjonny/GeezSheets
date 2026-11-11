@@ -1,4 +1,4 @@
-﻿let state,campaign='',busy=false,retry=null,last='',locals=[];
+let state,campaign='',busy=false,retry=null,last='',locals=[];
 const pageStarts=new Map(),seenInk=new Set();
 const $=id=>document.getElementById(id);
 function pref(key,value){try{if(value===undefined)return localStorage.getItem('compendium-'+key);localStorage.setItem('compendium-'+key,value);}catch{}return '';}
@@ -11,7 +11,8 @@ function card(p){
  const e=node('article',undefined,'proposal');e.append(node('span','CHANGE TO REVIEW','speaker'));
  if(p.operation==='campaign_change'){
   e.append(node('h3',p.title.replaceAll('_',' ')));if(p.warning)e.append(node('p',p.warning,'warning'));
-  for(const patch of p.patches){if(patch.before===null||typeof patch.after==='object'){const d=node('details',undefined,'patch');d.append(node('summary',patch.label),node('pre','Before: '+JSON.stringify(patch.before,null,2)+'\n\nAfter: '+JSON.stringify(patch.after,null,2)));e.append(d);}else e.append(node('div',patch.label+': '+String(patch.before)+' → '+String(patch.after),'patch'));}
+  if(p.changes){const d=node('details',undefined,'patch');d.append(node('summary','What changes'),node('pre',JSON.stringify(p.changes,null,2)));e.append(d);}
+  for(const patch of p.patches||[]){if(patch.before===null||typeof patch.after==='object'){const d=node('details',undefined,'patch');d.append(node('summary',patch.label),node('pre','Before: '+JSON.stringify(patch.before,null,2)+'\n\nAfter: '+JSON.stringify(patch.after,null,2)));e.append(d);}else e.append(node('div',patch.label+': '+String(patch.before)+' → '+String(patch.after),'patch'));}
  }else e.append(node('h3',p.characterName+' | '+p.item.name),node('div',p.before+' → '+p.after,'change'));
  if(p.conflict)e.append(node('p',p.conflict,'warning'));
  const actions=node('div',undefined,'actions');
@@ -33,7 +34,7 @@ function render(){
  for(const p of state.proposals.filter(p=>p.status==='pending_review'))log.append(card(p));
  if(atEnd)requestAnimationFrame(()=>window.scrollTo({top:document.documentElement.scrollHeight,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'}));
 }
-async function refresh(){state=await api('/api/state'+(campaign?'?campaign='+encodeURIComponent(campaign):''));campaign=state.campaign;pref('campaign',campaign);render();}
+async function refresh(){state=await api('/api/state'+(campaign?'?campaign='+encodeURIComponent(campaign):''));campaign=state.campaign;pref('campaign',campaign);document.title='The journal · '+state.mode;render();}
 async function send(request){
  busy=true;retry=request;$('message').disabled=true;$('retry').hidden=true;document.body.classList.add('waiting');status('');
  try{const result=await api(request.note?'/api/journal':'/api/chat',{campaign:request.campaign,text:request.text,requestId:request.requestId});retry=null;pref('draft-'+campaign,'');$('message').value='';status('');$('message').style.height='140px';if(request.note)status('Kept in your notes.');}
