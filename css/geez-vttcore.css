@@ -45,3 +45,5 @@
 #initPop #initDmControls.hidden{display:none}
 #initPop #initDmControls button{padding:4px 8px}
 #npcPop #tabNpcList{flex:none}
+/* No right sidebar or its reopen tab: sheets, NPCs and initiative float over the map. */
+#rightSidebar,#sidebarOpenBtn{display:none!important}

@@ -6787,7 +6787,7 @@
             if (e.key !== ']' || e.target.closest('input, textarea, select')) return;
             setSidebar(!sidebarOpen());
         });
-        if (localStorage.getItem('geezvtt.sidebar') === 'closed') setSidebar(false);
+        setSidebar(false);
 
         // ---- Connect: live channel always; campaign/party through Firebase when configured ----
         function rerenderAll() {
