@@ -3078,7 +3078,7 @@
                 });
                 el.dataset.tokenId=npcId;
                 const combat=sheetFor(n)?.combat||{};
-                if(combat.elevation){const badge=document.createElement('span');badge.className='geez-token-elevation';badge.dataset.elevation=String(combat.elevation);badge.textContent=`${combat.elevation>0?'+':''}${combat.elevation} ft`;el.append(badge);}
+                if(combat.elevation){const badge=document.createElement('span');badge.className='geez-token-elevation';badge.dataset.elevation=String(combat.elevation);badge.innerHTML=combat.elevation>0?`<i class="fa-solid fa-feather-pointed" aria-hidden="true"></i> ${esc(combat.elevation)} ft`:`${esc(combat.elevation)} ft`;badge.title=combat.elevation>0?'Flying':'Below ground';el.append(badge);}
                 if(combat.concentration?.active){const ring=document.createElement('span');ring.className='geez-token-concentration';ring.title='Concentrating on: '+combat.concentration.spell;ring.innerHTML='<b>C</b>';el.append(ring);}
                 tokensLayer.appendChild(el);
             }

@@ -67,11 +67,11 @@ try{
  await act('concentration.set',{entity:ash.id,spell:'Spirit guardians'});await act('hp.damage',{entity:ash.id,amount:100});await player.waitForFunction(()=>!window.__SHEETS__.state().data.pcs.ashara.combat.concentration?.active);
  console.log('PASS damage via normal sheet path prompts owner and GM at DC 14; roll, Drop and zero HP clear concentration');
  await act('hp.heal',{entity:ash.id,amount:100});await act('concentration.set',{entity:ash.id,spell:'Bless'});
- await set(player,'characters/pcs/ashara/combat/elevation',30);await gm.waitForFunction(()=>document.querySelector('[data-elevation="30"]'));await player.waitForFunction(()=>document.querySelector('[data-elevation="30"]'));
+ await set(player,'characters/pcs/ashara/combat/elevation',30);await gm.waitForFunction(()=>document.querySelector('[data-elevation="30"]'));await gm.waitForFunction(()=>document.querySelector('[data-elevation="30"] .fa-feather-pointed'));await player.waitForFunction(()=>document.querySelector('[data-elevation="30"]'));
  await assert.rejects(()=>set(player,'characters/pcs/liora/combat/elevation',5));await act('elevation.set',{entity:npc,feet:-10});await player.waitForFunction(()=>document.querySelector('[data-elevation="-10"]'));
  await player.evaluate(()=>{const [id]=Object.entries(window.__SHEETS__.state().data.things).find(([,t])=>t.traits?.pc&&t.name==='Ashara');window.__SHEETS__.select(id);});
  await player.locator('[data-vttcore-card]').getByRole('button',{name:'+5 ft',exact:true}).click();await gm.waitForFunction(()=>document.querySelector('[data-elevation="35"]'));
- console.log('PASS elevation badges sync; owner +5 card works; foreign player edits rejected; GM edits NPC');
+ assert(!await gm.locator('[data-elevation="-10"] .fa-feather-pointed').count());console.log('PASS elevation badges, wing badge only when flying; owner +5 card works; foreign player edits rejected; GM edits NPC');
  // Keep bloodied, concentration, elevation and all template shapes visible in the artifacts.
  await act('hp.damage',{entity:npc,amount:10});
  for(const p of [gm,player]){await p.evaluate(()=>window.__SHEETS__.select(null));await p.locator('#sidebarCollapseBtn').click().catch(()=>{});}
