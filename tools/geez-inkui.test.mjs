@@ -89,6 +89,9 @@ try {
           loaded: [...document.styleSheets].some(s => s.href?.endsWith('/css/geez-ink-ui.css') && s.cssRules.length > 0),
           last: [...document.head.querySelectorAll('link')].at(-1)?.getAttribute('href'),
           background: getComputedStyle(document.body).backgroundColor,
+          scheme: getComputedStyle(document.documentElement).colorScheme,
+          blend: getComputedStyle(panel, '::after').mixBlendMode,
+          textureOpacity: getComputedStyle(panel, '::after').opacity,
           scroll: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
           viewport: innerWidth,
           panelFilter: getComputedStyle(panel).filter,
@@ -100,20 +103,70 @@ try {
       });
       assert.equal(styles.loaded, true, `${name}: stylesheet loaded`);
       assert.equal(styles.last, 'css/geez-ink-ui.css');
-      assert.equal(styles.background, 'rgb(20, 17, 16)', `${name}: dark body`);
+      assert.equal(styles.background, 'rgb(236, 227, 208)', `${name}: light body`);
       assert.ok(styles.scroll <= styles.viewport, `${name} at ${width}: horizontal overflow ${styles.scroll}`);
+      assert.equal(styles.scheme, 'light');
+      assert.equal(styles.blend, 'multiply');
+      assert.equal(styles.textureOpacity, '0.55');
       assert.equal(styles.panelFilter, 'none');
       assert.equal(styles.textFilter, 'none');
       assert.match(styles.texture, /feTurbulence/);
       assert.match(styles.edge, /polygon/);
       assert.ok(Number(styles.layer) < 0, 'texture stays behind content');
+      const contrast = await page.evaluate(() => {
+        const rgba = value => value.match(/[\d.]+/g)?.map(Number);
+        const blend = (fg, bg) => fg.slice(0, 3).map((v, i) => v * (fg[3] ?? 1) + bg[i] * (1 - (fg[3] ?? 1)));
+        const luminance = rgb => rgb.slice(0, 3).map(v => {
+          const c = v / 255;
+          return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4;
+        }).reduce((sum, c, i) => sum + c * [.2126, .7152, .0722][i], 0);
+        const visible = el => {
+          if (!el.checkVisibility({checkOpacity: true, checkVisibilityCSS: true})) return false;
+          return [...function* () { for (let p = el; p; p = p.parentElement) yield p; }()]
+            .every(p => Number(getComputedStyle(p).opacity) > 0);
+        };
+        // Composite transparent controls over their ancestors. Check both ends
+        // of surface gradients, and the paper layer behind parchment content.
+        const backgrounds = el => {
+          if (!el) return [[255, 255, 255]];
+          const style = getComputedStyle(el);
+          let colors = backgrounds(el.parentElement).map(bg => blend(rgba(style.backgroundColor), bg));
+          const stops = style.backgroundImage.match(/rgba?\([^)]+\)/g) || [];
+          if (stops.length) colors = colors.flatMap(bg => stops.map(stop => blend(rgba(stop), bg)));
+          const paper = getComputedStyle(el, '::before');
+          if (paper.content !== 'none' && paper.content !== 'normal' && Number(paper.zIndex) < 0) {
+            colors = colors.map(bg => blend(rgba(paper.backgroundColor), bg));
+          }
+          return colors;
+        };
+        const failures = [];
+        let count = 0;
+        for (const button of document.querySelectorAll('button, [role="button"], a.btn')) {
+          if (!visible(button)) continue;
+          count++;
+          // Include nested labels/icons with their own colour declarations.
+          for (const label of [button, ...button.querySelectorAll('*')]) {
+            if (!visible(label)) continue;
+            const fg = rgba(getComputedStyle(label).color);
+            const ratio = Math.min(...backgrounds(label).map(bg => {
+              const a = luminance(blend(fg, bg)), b = luminance(bg);
+              return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+            }));
+            if (ratio < 4.5) failures.push({button: button.id || button.textContent.trim().slice(0, 60),
+              label: label.className, color: getComputedStyle(label).color, ratio});
+          }
+        }
+        return {count, failures};
+      });
+      assert.ok(contrast.count > 0, `${name}: visible buttons checked`);
+      assert.deepEqual(contrast.failures, [], `${name} at ${width}: button contrast >= 4.5:1`);
       await page.screenshot({path: join(out, `inkui-${name}-${width}.png`), fullPage: true});
-      console.log(`PASS ${name} ${width}: loaded, dark, crisp text, no horizontal scroll`);
+      console.log(`PASS ${name} ${width}: loaded, light, AA buttons, crisp text, no horizontal scroll`);
     }
     assert.deepEqual(errors, [], `${name}: browser errors`);
     await page.close();
   }
-  await writeFile(join(out, 'inkui-commit.txt'), 'Style sheet and campaign pages with shared dark ink UI and offline visual checks\n');
+  await writeFile(join(out, 'light-commit.txt'), 'Convert shared ink UI to a light parchment theme with AA button contrast checks\n');
 } finally {
   await browser?.close();
   web?.closeAllConnections();
