@@ -156,8 +156,10 @@ export function createBridge(a) {
         for(const [k,id] of Object.entries(f.paint||{})) if(!cells[k.replace('_',',')]) cells[k.replace('_',',')]={floor:id,elevation:f.elevation?.[k]||0};
         for(const [k,id] of Object.entries(ed.paint||{})) cells[k.replace('_',',')]={...cells[k.replace('_',',')],floor:id};
         const props=Object.values({...f.props,...ed.props}).filter(o=>!(a.player&&o.hidden)).map(o=>({id:o.p,x:o.x,y:o.y,rotation:o.rot||0,scale:o.s||1}));
-        for(const [key,o] of Object.entries(f.stairs||{}))if(!f.props?.[key])props.push({id:o.kind||'stairs',x:o.x+(o.w||1)/2,y:o.y+(o.h||2)/2,rotation:o.rot||0,scale:1});
-        for(const o of Object.values(ed.stairs||{}))props.push({id:'stairs',x:o.x+.5,y:o.y+.5,rotation:o.rot||0,scale:.6});
+        // Stairs show an arrow: up if they lead to a higher floor, down if lower.
+        const dirOf=o=>o.to==null||o.to===''?undefined:+o.to>shownFloor()?'up':'down';
+        for(const [key,o] of Object.entries(f.stairs||{}))if(!f.props?.[key])props.push({id:o.kind||'stairs',x:o.x+(o.w||1)/2,y:o.y+(o.h||2)/2,rotation:o.rot||0,scale:1,dir:dirOf(o)});
+        for(const o of Object.values(ed.stairs||{}))props.push({id:'stairs',x:o.x+.5,y:o.y+.5,rotation:o.rot||0,scale:.6,dir:dirOf(o)});
         const walls=geo.walls.filter(w=>!ed.hideWalls?.[w.key]).map(w=>({a:[w.x1,w.y1],b:[w.x2,w.y2],material:w.mat||'stone'}));
         const portals=geo.doors.filter(d=>!ed.hideDoors?.[d.key]).map(d=>({a:[d.x1,d.y1],b:[d.x2,d.y2],material:d.mat||'wood',kind:['window','arch'].includes(d.kind)?d.kind:'door',closed:true}));
         return {format:'geez2vtt',version:1,style:'ink',name:original?.name||current(),grid:{cols:+data.meta.size.x,rows:+data.meta.size.y,cell_ft:data.meta.cell_ft||5},floors:[{level:shownFloor(),name:'Floor',elevation:0,cells,walls,props,lights:[],portals}]};
