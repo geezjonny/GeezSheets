@@ -59,7 +59,7 @@ try {
     // Apply the review patch only to a temporary HEAD copy; never touch the concurrent working page.
     const repo=join(root,'GeezSheets'),patch=fileURLToPath(new URL('geez-ink-index.patch',import.meta.url));
     const head=execFileSync('git',['-c','safe.directory='+repo.replaceAll('\\','/'),'show','HEAD:geez-index.html'],{cwd:repo,encoding:'utf8'});
-    const scratch=await mkdtemp(join(tmpdir(),'geez-ink-patch-proof-'));await writeFile(join(scratch,'geez-index.html'),head);execFileSync('git',['apply',patch],{cwd:scratch});
+    const scratch=await mkdtemp(join(tmpdir(),'geez-ink-patch-proof-'));await writeFile(join(scratch,'geez-index.html'),head);if(!head.includes('async function attachGeez2vtt('))execFileSync('git',['apply',patch],{cwd:scratch}); // already merged into main on 2026-11-10
     const patched=await readFile(join(scratch,'geez-index.html'),'utf8'),handler=patched.slice(patched.indexOf('async function attachGeez2vtt('),patched.indexOf("        viewport.addEventListener('dragover'",patched.indexOf('async function attachGeez2vtt(')));
     const published=await page.evaluate(async handler=>{const PLAYER=false,sent=[],rtdb={gaia:true,publishScene:async(...args)=>sent.push(args)},liveCamp=()=> 'daddies',showStatus=()=>{},syncCampaign=()=>{};let saveTimer=null;
         const attach=eval('('+handler.replace("'./js/geez2vtt.js'","'/GeezSheets/js/geez2vtt.js'")+')');
