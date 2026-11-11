@@ -4,7 +4,7 @@
 import json
 from pathlib import Path
 
-GS = Path(__file__).resolve().parents[2] / 'GeezSheets' / 'data'
+GS = Path(__file__).resolve().parents[2] / 'data'  # GeezSheets/data (this folder lives inside GeezSheets)
 OUT = Path(__file__).resolve().parents[1] / 'data' / 'items.js'
 UNIT = {'cp': .01, 'sp': .1, 'ep': .5, 'gp': 1, 'pp': 10}
 

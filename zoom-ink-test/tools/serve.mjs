@@ -18,8 +18,8 @@ export function serve(port = 0, host = '127.0.0.1') {
     let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (p.startsWith('/ollama/')) return proxy(req, res, p.slice(7));
     if (p.endsWith('/')) p += 'index.html';
-    // token pictures: GeezSheets' tokens/ folder beside this repo (one copy for both apps)
-    const sheets = normalize(join(root, '..', 'GeezSheets'));
+    // token pictures: GeezSheets' tokens/ folder (the parent of this folder) (one copy for both apps)
+    const sheets = normalize(join(root, '..'));   // this folder lives inside GeezSheets
     let file = normalize(join(root, p));
     if (p.startsWith('/tokens/') && !existsSync(file)) file = normalize(join(sheets, p));
     if (p.startsWith('/battlemap/') && !existsSync(file)) file = normalize(join(sheets, p)); // GeezSheets' .dd2vtt maps

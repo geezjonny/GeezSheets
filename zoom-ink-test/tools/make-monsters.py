@@ -3,7 +3,7 @@
 import json, re
 from pathlib import Path
 
-SRC = Path(__file__).resolve().parents[2] / 'GeezSheets' / 'data' / 'monsters.json'
+SRC = Path(__file__).resolve().parents[2] / 'data' / 'monsters.json'
 OUT = Path(__file__).resolve().parents[1] / 'data' / 'monsters.js'
 WANT = '''wolf dire-wolf giant-spider giant-wolf-spider owlbear bandit bandit-captain boar giant-boar deer elk brown-bear black-bear
 goblin hobgoblin bugbear orc gnoll worg ogre hill-giant troll griffon harpy goat giant-goat manticore wyvern young-red-dragon
