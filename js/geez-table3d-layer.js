@@ -1,9 +1,10 @@
 import { toTable3d } from './geez2vtt.js';
+import { createInkRenderer, drawDoor as inkDoor, drawProp as inkProp, drawLighting } from './geez-ink.js';
 // GeezTabletop bridge: grid-unit helpers and cached canvas rendering. No Firebase dependency.
 export const DOOR_KINDS = ['wood', 'iron', 'double', 'portcullis', 'bars', 'secret', 'arch', 'curtain', 'window'];
 export function doorRules(kind = 'wood', open = false) {
     const closed = kind === 'arch' ? false : kind === 'window' ? true : !open;
-    return { closed, toggle: !['window', 'arch'].includes(kind), sight: closed && !['window', 'bars', 'portcullis'].includes(kind), pass: kind === 'curtain' || !closed };
+    return { closed, toggle: !['window', 'arch'].includes(kind), sight: closed && !['window', 'bars', 'portcullis'].includes(kind), pass: !closed };
 }
 export function elevationEdges(elevation = {}) {
     const edges = new Map();
@@ -66,12 +67,11 @@ export const PATH_COLORS = {road:'#877655', cobble_road:'#7d7a72', dirt_path:'#7
 const DECAL_COLORS = {blood:'#7f1d1d', blood_splatter:'#7f1d1d', blood_pool:'#6b1414', scorch:'#171717', ash:'#3f3f46', rubble:'#78716c',
     moss:'#4d6b2f', cracks:'#2a2622', puddle:'#4a6f86', leaves:'#8a5a2b', stains:'#4b3b2a', rune_circle:'#7c6fd6', footprints:'#3b3127'};
 export function createBridge(a) {
-    let data = {}, traps = {}, trapSnapshot = '', subKey = '', off = [], floor = 0, revision = 0, weatherFrame = 0;
+    let data = {}, traps = {}, trapSnapshot = '', subKey = '', off = [], floor = 0, revision = 0, weatherFrame = 0, fogPreview = false;
     const cache = new Map(), scenes = new Map();
     const current = () => a.db().view.battleId;
     const redraw = () => { if (a.db().view.level === 'VTT') a.render(); };
     const invalidate = () => { revision++; cache.clear(); redraw(); };
-    const picture = pictureCache(name => a.loadPicture(name), invalidate);
     let sceneText='';
     function watch(bid) {
         if(a.gaia){
@@ -79,7 +79,7 @@ export function createBridge(a) {
             if(key===subKey && text===sceneText)return;
             if(key!==subKey)floor=0;off.forEach(f=>f());off=[];
             subKey=key;sceneText=text;data=source?toTable3d(source):{};cache.clear();scenes.clear();
-            if(source) off.push(a.live.on(a.path('table3d/'+bid+'/doors'),v=>{data.doors={...toTable3d(source).doors};for(const [f,states] of Object.entries(v||{}))data.doors[f]={...data.doors[f],...states};cache.clear();redraw();}));
+            if(source) off.push(a.live.on(a.path('table3d/'+bid+'/doors'),v=>{data.doors={...toTable3d(source).doors};for(const [f,states] of Object.entries(v||{}))data.doors[f]={...data.doors[f],...states};redraw();}));
             return;
         }
         const key = `${a.camp()}/${bid}`;
@@ -132,58 +132,51 @@ export function createBridge(a) {
         if(s) for(const [id,p] of Object.entries(tokens())) if(onFloor(p)&&p.light?.on&&!(a.player&&p.hidden)) out.push({key:`token:${id}`,src:'token',x:p.x*s.w/s.ppg,y:p.y*s.h/s.ppg,range:+p.light.range||4});
         return out;
     }
-    function drawProp(ctx,o,g) {
-        if (a.player && o.hidden) return;
-        const d=a.propDef(o.p);
-        const icon=d&&a.propImg(d);if(a.gaia&&!icon){ctx.save();ctx.translate(o.x*g,o.y*g);ctx.rotate((o.rot||0)*Math.PI/180);ctx.fillStyle='#625b50';ctx.fillRect(-g*.35,-g*.35,g*.7,g*.7);ctx.fillStyle='#eee2c9';ctx.font=Math.max(9,g*.16)+'px sans-serif';ctx.textAlign='center';ctx.fillText(({barrel:'?',altar:'?',bed:'?',chest:'?',stairs:'?',ladder:'?'})[o.p] || d?.name || o.p,0,0,g*1.5);ctx.restore();return;}
-        const im=icon; if(!im) return;
-        ctx.save(); ctx.globalAlpha=o.hidden ? .45 : 1; ctx.translate(o.x*g,o.y*g); ctx.rotate((o.rot||0)*Math.PI/180);
-        ctx.drawImage(im,-d.w*g*(o.s||1)/2,-d.h*g*(o.s||1)/2,d.w*g*(o.s||1),d.h*g*(o.s||1));ctx.restore();
-    }
     function annotations(ctx,f,g) {
         ctx.save(); ctx.lineCap='round';ctx.lineJoin='round';
         for(const p of Object.values(f.paths||{})) {
-            ctx.strokeStyle=PATH_COLORS[p.kind]||'#877655';ctx.lineWidth=(+p.width||1)*g;ctx.beginPath();
+            ctx.strokeStyle='#211b15';ctx.lineWidth=(+p.width||1)*g;ctx.beginPath();
             for(const [op,...n] of smoothPath(p.points)) ctx[({M:'moveTo',Q:'quadraticCurveTo',L:'lineTo'})[op]](...n.map(v=>v*g));ctx.stroke();
         }
         for(const o of Object.values(f.decals||{})) {
             ctx.save();ctx.translate(o.x*g,o.y*g);ctx.rotate((o.rot||0)*Math.PI/180);ctx.scale((o.s||1)*g,(o.s||1)*g);
-            ctx.fillStyle=DECAL_COLORS[o.kind]||'#7f1d1d';ctx.globalAlpha=o.kind==='rune_circle'||o.kind==='footprints'?.6:.85;
+            ctx.fillStyle='#211b15';ctx.globalAlpha=o.kind==='rune_circle'||o.kind==='footprints'?.6:.85;
             for(let i=0;i<7;i++){ctx.beginPath();ctx.ellipse(Math.sin(i*13)*.3,Math.cos(i*7)*.25,.09+i*.012,.05+i*.006,i,0,Math.PI*2);ctx.fill();}ctx.restore();
         }
         for(const o of Object.values(f.labels||{})) {
-            ctx.save();ctx.translate(o.x*g,o.y*g);ctx.rotate((o.rot||0)*Math.PI/180);ctx.font=`600 ${(o.size||1)*g*.35}px Inter,sans-serif`;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#111';ctx.fillStyle='#f1e5c9';ctx.strokeText(o.text||'',0,0);ctx.fillText(o.text||'',0,0);ctx.restore();
+            ctx.save();ctx.translate(o.x*g,o.y*g);ctx.rotate((o.rot||0)*Math.PI/180);ctx.font=`italic ${(o.size||1)*g*.35}px Georgia,serif`;ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#82704f';ctx.fillStyle='#211b15';ctx.strokeText(o.text||'',0,0);ctx.fillText(o.text||'',0,0);ctx.restore();
         }
         ctx.restore();
     }
-    function drawBase(ctx,s) {
-        if(!data.meta) return;
-        const f=layer(), art=a.gaia?null:picture(f.picture), g=s.ppg, key=`${shownFloor()}:${revision}:${s.w}:${s.h}:${JSON.stringify(a.edits(current()).hideWalls||{})}`;
-        let c=cache.get(key);
-        if(!c) {
-            c=document.createElement('canvas');const scale=Math.min(1,2048/Math.max(s.w,s.h));c.width=Math.ceil(s.w*scale);c.height=Math.ceil(s.h*scale);const x=c.getContext('2d');x.scale(scale,scale);
-            if(art) x.drawImage(art.img,...art.rect.map(v=>v*g));
-            else for(const [k,id] of Object.entries(f.paint||{})){const [cx,cy]=k.split('_').map(Number);x.fillStyle=a.paint('floor',id,g);x.fillRect(cx*g,cy*g,g+.5,g+.5);}
-            for(const [k,h] of Object.entries(f.elevation||{})){const [cx,cy]=k.split('_').map(Number);x.fillStyle=`rgba(${h>0?'255,255,255':'0,0,0'},${Math.min(.5,Math.abs(h)*.13)})`;x.fillRect(cx*g,cy*g,g,g);}
-            x.strokeStyle='#151515';x.lineWidth=2;x.beginPath();for(const [x1,y1,x2,y2] of elevationEdges(f.elevation)){x.moveTo(x1*g,y1*g);x.lineTo(x2*g,y2*g);}x.stroke();
-            annotations(x,{paths:f.paths,decals:f.decals},g);
-            for(const o of Object.values(f.props||{})) drawProp(x,o,g);
-            for(const o of Object.values(f.stairs||{})) {
-                const w=o.w||1,h=o.h||2,d=a.propDef(o.kind==='ladder'?'ladder':'stairs'),im=d&&a.propImg(d);if(im){x.save();x.translate((o.x+w/2)*g,(o.y+h/2)*g);x.rotate((o.rot||0)*Math.PI/180);x.drawImage(im,-w*g/2,-h*g/2,w*g,h*g);x.restore();continue;}x.save();x.translate((o.x+w/2)*g,(o.y+h/2)*g);x.rotate((o.rot||0)*Math.PI/180);x.fillStyle='#655b4e';x.fillRect(-w*g/2,-h*g/2,w*g,h*g);x.strokeStyle='#d1c5ae';x.lineWidth=2;
-                for(let i=0;i<8;i++){x.beginPath();x.moveTo(-w*g/2,(-h/2+h*i/8)*g);x.lineTo(w*g/2,(-h/2+h*i/8)*g);x.stroke();}x.restore();
-            }
-            annotations(x,{labels:f.labels},g);
-            for(const w of geometry().walls.filter(w=>!a.edits(current()).hideWalls?.[w.key])){x.strokeStyle=a.paint('wall',w.mat,g);x.lineWidth=g*.25;x.lineCap='square';x.beginPath();x.moveTo(w.x1*g,w.y1*g);x.lineTo(w.x2*g,w.y2*g);x.stroke();}
-            cache.set(key,c);
-            while(cache.size>4) cache.delete(cache.keys().next().value);
-        }
-        ctx.drawImage(c,0,0,s.w,s.h);
+    function inkScene(ed={},geo=geometry()) {
+        const original=a.gaia?a.scene(current()):null, f=layer(), source=original?.floors.find(v=>v.level===shownFloor());
+        const cells={...(source?.cells||{})};
+        for(const [k,id] of Object.entries(f.paint||{})) if(!cells[k.replace('_',',')]) cells[k.replace('_',',')]={floor:id,elevation:f.elevation?.[k]||0};
+        for(const [k,id] of Object.entries(ed.paint||{})) cells[k.replace('_',',')]={...cells[k.replace('_',',')],floor:id};
+        const props=Object.values({...f.props,...ed.props}).filter(o=>!(a.player&&o.hidden)).map(o=>({id:o.p,x:o.x,y:o.y,rotation:o.rot||0,scale:o.s||1}));
+        for(const [key,o] of Object.entries(f.stairs||{}))if(!f.props?.[key])props.push({id:o.kind||'stairs',x:o.x+(o.w||1)/2,y:o.y+(o.h||2)/2,rotation:o.rot||0,scale:1});
+        const walls=geo.walls.filter(w=>!ed.hideWalls?.[w.key]).map(w=>({a:[w.x1,w.y1],b:[w.x2,w.y2],material:w.mat||'stone'}));
+        const portals=geo.doors.filter(d=>!ed.hideDoors?.[d.key]).map(d=>({a:[d.x1,d.y1],b:[d.x2,d.y2],material:d.mat||'wood',kind:['window','arch'].includes(d.kind)?d.kind:'door',closed:true}));
+        return {format:'geez2vtt',version:1,style:'ink',name:original?.name||current(),grid:{cols:+data.meta.size.x,rows:+data.meta.size.y,cell_ft:data.meta.cell_ft||5},floors:[{level:shownFloor(),name:'Floor',elevation:0,cells,walls,props,lights:[],portals}]};
     }
-    function drawDoor(ctx,d,g) {
-        const kind=d.kind||d.mat||'wood', sw=a.swatch('door',['wood','iron','secret'].includes(kind)?d.mat||kind:kind), im=sw.texture&&a.swatchImg(sw.texture), len=Math.hypot(d.x2-d.x1,d.y2-d.y1)*g;
-        ctx.save();ctx.translate(d.x1*g,d.y1*g);ctx.rotate(Math.atan2(d.y2-d.y1,d.x2-d.x1));ctx.globalAlpha=d.closed?1:.4;
-        if(im?.complete&&im.naturalWidth) ctx.drawImage(im,0,-g*.18,len,g*.36);
-        else {ctx.fillStyle=sw.color;ctx.fillRect(0,-g*.11,len,g*.22);}ctx.restore();
+    let activeInk=null, memoryKey='', memoryReset=null, memoryTimer;
+    function drawBase(ctx,s,ed={},geo=geometry()) {
+        if(!data.meta)return;
+        const source=inkScene(ed,geo),key=JSON.stringify(source);
+        let entry=cache.get(key);
+        if(!entry){entry=createInkRenderer(source,{ppg:s.ppg});cache.set(key,entry);while(cache.size>4)cache.delete(cache.keys().next().value);}
+        if(activeInk&&activeInk!==entry&&activeInk.level===entry.level)entry.restoreExplored(activeInk.exploredCells());
+        activeInk=entry;entry.drawBase(ctx,s.w,s.h);
+        annotations(ctx,layer(),s.ppg);annotations(ctx,ed,s.ppg);
+    }
+    function drawDoor(ctx,d,g) { inkDoor(ctx,d,g); }
+    function drawProp(ctx,p,g) { if(!(a.player&&p.hidden))inkProp(ctx,p,g); }
+    function drawFog(ctx,s,vis,options={}) {
+        if(!activeInk)return;
+        const key=['geez.ink.explored',a.camp(),current(),shownFloor(),a.name()||'party'].join('.'),reset=options.reset||0;
+        if(key!==memoryKey||reset!==memoryReset){clearTimeout(memoryTimer);memoryKey=key;memoryReset=reset;activeInk.resetExplored();try{const old=JSON.parse(localStorage.getItem(key)||'null');if(old?.reset===reset)activeInk.restoreExplored(old.cells);}catch{}}
+        activeInk.drawFog(ctx,vis,{...options,width:s.w,height:s.h});
+        if(vis&&(!options.gm||options.preview)){clearTimeout(memoryTimer);const ink=activeInk;memoryTimer=setTimeout(()=>{try{localStorage.setItem(key,JSON.stringify({reset,cells:ink.exploredCells()}));}catch{}},1500);}
     }
     let lifted=new Set();
     function roofs(ctx,s,viewers) {
@@ -191,17 +184,11 @@ export function createBridge(a) {
         ctx.save();ctx.globalAlpha=a.player?1:.22;
         for(const [k,style] of Object.entries(f.roofs||{})) {
             if(a.player&&lifted.has(k)) continue;const [x,y]=k.split('_').map(Number);
-            ctx.fillStyle=style==='thatch'?'#756348':'#494954';ctx.fillRect(x*g,y*g,g+.6,g+.6);ctx.strokeStyle='#27272a';ctx.lineWidth=1;ctx.strokeRect(x*g,y*g,g,g);
+            ctx.fillStyle='#61523c';ctx.fillRect(x*g,y*g,g+.6,g+.6);ctx.strokeStyle='#211b15';ctx.lineWidth=1;ctx.strokeRect(x*g,y*g,g,g);for(let i=0;i<g;i+=6){ctx.beginPath();ctx.moveTo(x*g+i,y*g);ctx.lineTo(x*g,y*g+i);ctx.stroke();}
         }ctx.restore();
     }
     const covered = (x,y) => {const k=`${Math.floor(x)}_${Math.floor(y)}`;return !!layer().roofs?.[k]&&!lifted.has(k);};
-    const atmosphereCanvas=document.createElement('canvas');
-    function atmosphere(ctx,s,allLights) {
-        const b=a.db().battles[current()]||{}, time=data.meta?.time||b.time||'day',color=({dawn:'rgba(223,147,90,.19)',dusk:'rgba(133,80,130,.26)',night:'rgba(17,33,83,.48)'})[time];
-        if(!color) return;
-        const c=atmosphereCanvas,k=Math.min(1,1024/Math.max(s.w,s.h));c.width=Math.ceil(s.w*k);c.height=Math.ceil(s.h*k);const x=c.getContext('2d');x.fillStyle=color;x.fillRect(0,0,c.width,c.height);x.globalCompositeOperation='destination-out';
-        for(const l of allLights){const r=l.range*s.ppg*k;if(!(r>0))continue;const cx=l.x*s.ppg*k,cy=l.y*s.ppg*k,grad=x.createRadialGradient(cx,cy,0,cx,cy,r);grad.addColorStop(0,'#000');grad.addColorStop(.65,'#000');grad.addColorStop(1,'transparent');x.fillStyle=grad;x.fillRect(cx-r,cy-r,r*2,r*2);}ctx.drawImage(c,0,0,s.w,s.h);
-    }
+    function atmosphere(ctx,s,allLights) { drawLighting(ctx,s.w/s.ppg,s.h/s.ppg,allLights,s.ppg); }
     const weather=document.createElement('canvas');weather.style.cssText='position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:20';a.wrapper.appendChild(weather);
     let weatherKey='';
     function startWeather() {
@@ -212,7 +199,7 @@ export function createBridge(a) {
         weather.width=700;weather.height=500;const x=weather.getContext('2d');
         if(a.db().view.level!=='VTT'||!kind||kind==='Clear')return;
         const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;let last=0;
-        function frame(t){if(t-last>65||reduced){last=t;x.clearRect(0,0,700,500);x.strokeStyle='rgba(185,215,235,.3)';x.fillStyle=({Leaves:'#aa7b44',Ash:'#aaa',Snow:'#eee'})[kind]||'#bfd4e4';
+        function frame(t){if(t-last>65||reduced){last=t;x.clearRect(0,0,700,500);x.strokeStyle='rgba(33,27,21,.4)';x.fillStyle='#211b15';
             for(let i=0;i<65;i++){const speed=kind==='Rain'?180:25,py=((i*137+(reduced?0:t*.001*speed))%530)-15,px=((i*83+py*(+w.wind||0))%730)-15;x.beginPath();if(kind==='Rain'){x.moveTo(px,py);x.lineTo(px-3-(+w.wind||0)*7,py+12);x.stroke();}else{x.ellipse(px,py,kind==='Leaves'?3:1.5,1.5,i,0,Math.PI*2);x.fill();}}}
             if(!reduced)weatherFrame=requestAnimationFrame(frame);
         }frame(0);
@@ -233,6 +220,8 @@ export function createBridge(a) {
                 const stair=Object.values(layer().stairs||{}).find(o=>+o.to===to&&onStairs(o,x,y));if(stair)a.move(current(),id,{...p,f:to});else a.status('Stand on stairs to change floors');}
         };});
         if(a.player)return;
+        panel.insertAdjacentHTML('beforeend',`<button data-ink-fog aria-pressed="${fogPreview}">${fogPreview?'Hide':'Preview'} player fog</button>`);
+        panel.querySelector('[data-ink-fog]').onclick=()=>{fogPreview=!fogPreview;redraw();};
         if(inspectId && tokens()[inspectId]) {
             const p=tokens()[inspectId];
             panel.insertAdjacentHTML('beforeend',`<span class="border-l border-slate-700 pl-2">${a.esc(token(inspectId)?.name||inspectId)}</span><label><input data-light-on type="checkbox" ${p.light?.on?'checked':''}> Light</label><label><input data-light-range type="number" min="1" max="100" value="${+p.light?.range||4}" class="w-12 bg-slate-900 border border-slate-700 rounded"> cells</label><button data-inspect-close title="Close token">Close</button>`);
@@ -255,7 +244,7 @@ export function createBridge(a) {
     },true);
     document.addEventListener('keydown',e=>{if(!a.gaia||a.db().view.level!=='VTT'||!['PageUp','PageDown'].includes(e.key)||e.target.closest('input,textarea,select'))return;e.preventDefault();panel.querySelector('[data-step="'+(e.key==='PageUp'?1:-1)+'"]')?.click();});
     a.viewport.addEventListener('click',e=>{if(!a.gaia||a.player||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label'))return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=Object.values(layer().stairs||{}).find(o=>onStairs(o,p.x/g,p.y/g));if(stair&&floorList(data.meta).includes(stair.to)){floor=stair.to;redraw();}});
-    return {inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,annotations,roofs,covered,atmosphere,controls,startWeather,
+    return {fogPreview:()=>fogPreview,inspectToken(id){inspectId=id;controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,
         setDoor(d,open,f=shownFloor()){if(!doorRules(d.kind||d.mat).toggle)return false;a.live.set(a.path(`table3d/${current()}/doors/${f}/${d.key}`),open?'open':'closed');return true;},
         saveTrap(id,t){a.live.set(`table3d/${a.camp()}/${current()}/traps/${id}`,t);},
         isTrap(id){return Object.hasOwn(traps,id);},

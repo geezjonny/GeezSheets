@@ -1,0 +1,2305 @@
+{
+  "format": "geez2vtt",
+  "version": 1,
+  "style": "ink",
+  "name": "The Gaoler’s House",
+  "grid": {
+    "cols": 29,
+    "rows": 22,
+    "cell_ft": 5
+  },
+  "floors": [
+    {
+      "level": 0,
+      "name": "Ground",
+      "elevation": 0,
+      "cells": {
+        "4,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "19,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "20,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "21,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "22,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "23,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "24,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "19,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "20,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "21,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "22,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "23,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "24,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "19,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "20,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "21,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "22,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "23,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "24,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "19,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "20,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "21,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "22,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "23,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "24,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "21,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "22,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "23,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "24,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "4,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,9": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,9": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,9": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,9": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "21,9": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "22,9": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "23,9": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "24,9": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "4,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,10": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,10": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,10": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,10": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "21,10": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "22,10": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "23,10": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "24,10": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "4,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,11": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,11": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,11": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,11": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "21,11": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "22,11": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "23,11": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "24,11": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "4,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,12": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,12": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,12": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,12": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "21,12": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "22,12": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "23,12": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "24,12": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "4,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,13": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,13": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,13": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,13": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "21,13": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "22,13": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "23,13": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "24,13": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "4,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "19,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "20,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "21,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "22,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "23,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "24,14": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "19,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "20,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "21,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "22,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "23,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "24,15": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "19,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "20,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "21,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "22,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "23,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "24,16": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "18,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "19,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "20,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "21,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "22,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "23,17": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "24,17": {
+          "floor": "stone",
+          "elevation": 0
+        }
+      },
+      "walls": [
+        {
+          "a": [
+            3.94000149,
+            7.96611452
+          ],
+          "b": [
+            3.94000149,
+            16.016119
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            3.94611263
+          ],
+          "b": [
+            3.94000149,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            5.95000267,
+            18.02612
+          ],
+          "b": [
+            10.9800043,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            16.010006,
+            18.02612
+          ],
+          "b": [
+            10.9800043,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21.0400085,
+            18.02612
+          ],
+          "b": [
+            16.010006,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            3.94611263
+          ],
+          "b": [
+            8.970004,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            14.0000057,
+            3.94611263
+          ],
+          "b": [
+            8.970004,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            19.0200081,
+            3.94611263
+          ],
+          "b": [
+            14.0000057,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            19.0200081,
+            3.94611263
+          ],
+          "b": [
+            23.0500088,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            8.976115
+          ],
+          "b": [
+            25.060009,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            16.016119
+          ],
+          "b": [
+            25.060009,
+            8.976115
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            18.02612
+          ],
+          "b": [
+            21.0400085,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            7.96000338,
+            6.966114
+          ],
+          "b": [
+            8.970004,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            7.96000338,
+            3.94611263
+          ],
+          "b": [
+            7.96000338,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            9.980004,
+            6.966114
+          ],
+          "b": [
+            10.9800043,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            3.94611263
+          ],
+          "b": [
+            10.9800043,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            12.9900055,
+            6.966114
+          ],
+          "b": [
+            14.0000057,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            12.9900055,
+            3.94611263
+          ],
+          "b": [
+            12.9900055,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            15.0000067,
+            6.966114
+          ],
+          "b": [
+            16.010006,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            16.010006,
+            3.94611263
+          ],
+          "b": [
+            16.010006,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            6.966114
+          ],
+          "b": [
+            23.0500088,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            3.94611263
+          ],
+          "b": [
+            22.0400085,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            24.05001,
+            6.966114
+          ],
+          "b": [
+            25.060009,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            23.0500088,
+            3.94611263
+          ],
+          "b": [
+            25.060009,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            23.0500088,
+            7.96611452
+          ],
+          "b": [
+            23.0500088,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            23.0500088,
+            7.96611452
+          ],
+          "b": [
+            25.060009,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            14.0061169
+          ],
+          "b": [
+            18.0200062,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            9.976116
+          ],
+          "b": [
+            18.0200062,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            11.9961157
+          ],
+          "b": [
+            22.0400085,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            7.96611452
+          ],
+          "b": [
+            22.0400085,
+            9.976116
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            7.96611452
+          ],
+          "b": [
+            22.0400085,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            9.976116
+          ],
+          "b": [
+            18.0200062,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            15.0061169
+          ],
+          "b": [
+            18.0200062,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21.0400085,
+            15.0061169
+          ],
+          "b": [
+            21.0400085,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21.0400085,
+            15.0061169
+          ],
+          "b": [
+            20.0300083,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            19.0200081,
+            15.0061169
+          ],
+          "b": [
+            18.0200062,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            15.0061169
+          ],
+          "b": [
+            22.0400085,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            16.016119
+          ],
+          "b": [
+            25.060009,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            15.0061169
+          ],
+          "b": [
+            24.05001,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            23.0500088,
+            15.0061169
+          ],
+          "b": [
+            22.0400085,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            12.9900055,
+            15.0061169
+          ],
+          "b": [
+            12.9900055,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            16.010006,
+            15.0061169
+          ],
+          "b": [
+            16.010006,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            16.010006,
+            15.0061169
+          ],
+          "b": [
+            15.0000067,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            14.0000057,
+            15.0061169
+          ],
+          "b": [
+            12.9900055,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            7.96000338,
+            15.0061169
+          ],
+          "b": [
+            7.96000338,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            15.0061169
+          ],
+          "b": [
+            10.9800043,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            15.0061169
+          ],
+          "b": [
+            9.980004,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            8.970004,
+            15.0061169
+          ],
+          "b": [
+            7.96000338,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            5.95000267,
+            18.02612
+          ],
+          "b": [
+            3.94000149,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            16.016119
+          ],
+          "b": [
+            3.94000149,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            15.0061169
+          ],
+          "b": [
+            6.960003,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            15.0061169
+          ],
+          "b": [
+            5.95000267,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            4.950002,
+            15.0061169
+          ],
+          "b": [
+            3.94000149,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            5.95000267,
+            7.96611452
+          ],
+          "b": [
+            5.95000267,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            7.96611452
+          ],
+          "b": [
+            5.95000267,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            6.966114
+          ],
+          "b": [
+            4.950002,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            5.95000267,
+            6.966114
+          ],
+          "b": [
+            6.960003,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            3.94611263
+          ],
+          "b": [
+            6.960003,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            14.0061169
+          ],
+          "b": [
+            6.960003,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            11.9961157
+          ],
+          "b": [
+            6.960003,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            7.96611452
+          ],
+          "b": [
+            10.9800043,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            7.96611452
+          ],
+          "b": [
+            6.960003,
+            9.976116
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            7.96611452
+          ],
+          "b": [
+            6.960003,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            6.966114
+          ],
+          "b": [
+            19.0200081,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            3.94611263
+          ],
+          "b": [
+            18.0200062,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            20.0300083,
+            6.966114
+          ],
+          "b": [
+            21.0400085,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21.0400085,
+            3.94611263
+          ],
+          "b": [
+            21.0400085,
+            6.966114
+          ],
+          "material": "stone"
+        }
+      ],
+      "portals": [
+        {
+          "a": [
+            8.970004,
+            6.966114
+          ],
+          "b": [
+            9.980004,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            14.0000057,
+            6.966114
+          ],
+          "b": [
+            15.0000067,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            23.0500088,
+            6.966114
+          ],
+          "b": [
+            24.05001,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            23.0500088,
+            14.0061169
+          ],
+          "b": [
+            24.05001,
+            14.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            24.05001,
+            14.0061169
+          ],
+          "b": [
+            25.060009,
+            14.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            22.0400085,
+            11.9961157
+          ],
+          "b": [
+            22.0400085,
+            10.9861155
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            22.0400085,
+            10.9861155
+          ],
+          "b": [
+            22.0400085,
+            9.976116
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            20.0300083,
+            15.0061169
+          ],
+          "b": [
+            19.0200081,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            24.05001,
+            15.0061169
+          ],
+          "b": [
+            23.0500088,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            15.0000067,
+            15.0061169
+          ],
+          "b": [
+            14.0000057,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            9.980004,
+            15.0061169
+          ],
+          "b": [
+            8.970004,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            5.95000267,
+            15.0061169
+          ],
+          "b": [
+            4.950002,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            3.94000149,
+            14.0061169
+          ],
+          "b": [
+            4.950002,
+            14.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            4.950002,
+            14.0061169
+          ],
+          "b": [
+            5.95000267,
+            14.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            4.950002,
+            6.966114
+          ],
+          "b": [
+            5.95000267,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            6.960003,
+            10.9861155
+          ],
+          "b": [
+            6.960003,
+            11.9961157
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            6.960003,
+            9.976116
+          ],
+          "b": [
+            6.960003,
+            10.9861155
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            19.0200081,
+            6.966114
+          ],
+          "b": [
+            20.0300083,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        }
+      ],
+      "lights": [
+        {
+          "x": 5.00824261,
+          "y": 10.996254,
+          "range": 4,
+          "intensity": 3,
+          "color": "#FFEBBF"
+        },
+        {
+          "x": 4.18996334,
+          "y": 12.4932928,
+          "range": 4,
+          "intensity": 3,
+          "color": "#FFEBBF"
+        },
+        {
+          "x": 4.18996239,
+          "y": 9.477244,
+          "range": 4,
+          "intensity": 3,
+          "color": "#FFEBBF"
+        }
+      ],
+      "props": [
+        {
+          "id": "table",
+          "x": 12,
+          "y": 10,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "chair",
+          "x": 12,
+          "y": 9,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "barrel",
+          "x": 5,
+          "y": 11,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "crate",
+          "x": 6,
+          "y": 12,
+          "rotation": 15,
+          "scale": 1
+        },
+        {
+          "id": "stairs",
+          "x": 23,
+          "y": 11,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "altar",
+          "x": 20,
+          "y": 9,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "brazier",
+          "x": 17,
+          "y": 11,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "bookshelf",
+          "x": 24,
+          "y": 12,
+          "rotation": 90,
+          "scale": 1
+        },
+        {
+          "id": "chest",
+          "x": 20,
+          "y": 16,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "bed",
+          "x": 6,
+          "y": 5,
+          "rotation": 90,
+          "scale": 1
+        },
+        {
+          "id": "bed",
+          "x": 9,
+          "y": 5,
+          "rotation": 90,
+          "scale": 1
+        },
+        {
+          "id": "bed",
+          "x": 14,
+          "y": 16,
+          "rotation": 90,
+          "scale": 1
+        },
+        {
+          "id": "coffin",
+          "x": 24,
+          "y": 16,
+          "rotation": 0,
+          "scale": 1
+        }
+      ]
+    }
+  ]
+}

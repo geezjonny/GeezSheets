@@ -5,6 +5,7 @@ export function validateScene(s) {
     const object = v => v && typeof v === 'object' && !Array.isArray(v);
     const number = v => typeof v === 'number' && Number.isFinite(v);
     if (!object(s) || s.format !== 'geez2vtt' || s.version !== 1 || typeof s.name !== 'string') fail('expected geez2vtt v1');
+    if (s.style !== undefined && typeof s.style !== 'string') fail('style');
     if (!object(s.grid) || !['cols','rows'].every(k => Number.isInteger(s.grid[k]) && s.grid[k] > 0) || !number(s.grid.cell_ft) || s.grid.cell_ft <= 0) fail('grid');
     if (!Array.isArray(s.floors) || !s.floors.length) fail('floors');
     const levels = new Set();
@@ -45,7 +46,7 @@ export function toTable3d(scene) {
         const segment = v => ({x1:v.a[0],y1:v.a[1],x2:v.b[0],y2:v.b[1],mat:material(v.material)});
         (f.walls || []).forEach((w,i)=>layer.walls['scene-wall-'+i]=segment(w));
         (f.portals || []).forEach((d,i)=>{
-            const key='scene-door-'+i,kind=d.kind==='door'?(['iron','curtain'].includes(d.material)?d.material:'wood'):d.kind;
+            const key='scene-door-'+i,kind=d.kind==='door'?(['iron','curtain','secret'].includes(d.material)?d.material:'wood'):d.kind;
             layer.doors[key]={...segment(d),kind};out.doors[f.level][key]=d.closed?'closed':'open';
         });
         (f.lights || []).forEach((l,i)=>layer.lights[i]={...l});
@@ -55,6 +56,25 @@ export function toTable3d(scene) {
         });
     }
     return out;
+}
+// Deliberately select fields: never retain the embedded picture, even temporarily in a scene.
+export function dd2vttToScene(json, name = 'Imported map') {
+    const size=json?.resolution?.map_size, origin=json?.resolution?.map_origin || {};
+    if (!size) throw Error('Invalid dd2vtt: resolution.map_size required');
+    const at=p=>[Number(p?.x)-Number(origin.x||0),Number(p?.y)-Number(origin.y||0)];
+    const floor={level:0,name:'Ground',elevation:0,cells:{},walls:[],portals:[],lights:[],props:[]};
+    for(const [key,object] of [['line_of_sight',false],['objects_line_of_sight',true]])
+        for(const poly of json[key] || []) for(let i=1;i<poly.length;i++)
+            floor.walls.push({a:at(poly[i-1]),b:at(poly[i]),material:'stone',...(object?{object:true}:{})});
+    for(const p of json.portals || []) {
+        if(!Array.isArray(p.bounds)||p.bounds.length!==2) throw Error('Invalid dd2vtt: portal bounds');
+        floor.portals.push({a:at(p.bounds[0]),b:at(p.bounds[1]),kind:'door',material:'wood',closed:p.closed!==false,reviewed:false});
+    }
+    for(const l of json.lights || []) {
+        const [x,y]=at(l.position),color=String(l.color||'ffffffff').replace(/^#/,'');
+        floor.lights.push({x,y,range:l.range??5,intensity:l.intensity??1,color:'#'+(color.length===8?color.slice(2):color)});
+    }
+    return validateScene({format:'geez2vtt',version:1,style:'ink',name:String(name),grid:{cols:Number(size.x),rows:Number(size.y),cell_ft:5},floors:[floor]});
 }
 export function sceneGeometry(scene, level=scene.floors[0].level, states={}) {
     const data=toTable3d(scene),f=data.floors[level];

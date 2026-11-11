@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>Geez Ink · cartography proofs</title>
+<style>body{margin:0;background:#181611;color:#b6a17a;font:14px Georgia}header{padding:16px 24px;border-bottom:1px solid #524632;letter-spacing:2px}canvas{display:block;margin:20px auto;max-width:calc(100vw - 40px);height:auto;box-shadow:0 8px 40px #0008}#wrap{overflow:hidden}</style>
+<header>GEEZ INK / <span id="name"></span></header><div id="wrap"><canvas id="map"></canvas></div>
+<script type="module">
+import * as ink from '../../js/geez-ink.js';
+import {dd2vttToScene,validateScene} from '../../js/geez2vtt.js';
+import * as geo from '../../js/geez-geometry.js';
+const c=document.querySelector('canvas'),ctx=c.getContext('2d');
+window.ink=ink;window.geo=geo;window.convert=dd2vttToScene;window.validateScene=validateScene;
+window.loadScene=(scene)=>{window.scene=scene;window.renderer=ink.createInkRenderer(scene,{ppg:48});c.width=renderer.canvas.width;c.height=renderer.canvas.height;document.querySelector('#name').textContent=scene.name;};
+window.paint=({player=false,viewers=[{x:scene.grid.cols/2,y:scene.grid.rows/2}],states={},preview=false}={})=>{
+    ctx.clearRect(0,0,c.width,c.height);renderer.drawBase(ctx);renderer.drawDoors(ctx,states);
+    const vis=ink.visionFor(scene,viewers,renderer.level,states);renderer.drawFog(ctx,vis,{gm:!player,preview});return vis;
+};
+window.probe=(x,y)=>Array.from(ctx.getImageData(Math.floor(x*renderer.ppg),Math.floor(y*renderer.ppg),1,1).data);
+window.ready=true;
+</script>

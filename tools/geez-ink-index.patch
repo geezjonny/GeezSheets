@@ -1,0 +1,294 @@
+diff --git a/geez-index.html b/geez-index.html
+index 1f59417..52e0c83 100644
+--- a/geez-index.html
++++ b/geez-index.html
+@@ -1105,8 +1105,9 @@
+             if (!keepInspector) refreshInspector();
+         }
+ 
+-        let GH = null, GH_API = null, DT = null;
+-        import('./js/geez-table3d-layer.js').then(m => {
++        let Ink = null, GH = null, GH_API = null, DT = null;
++        Promise.all([import('./js/geez-ink.js'), import('./js/geez-table3d-layer.js')]).then(([ink, m]) => {
++            Ink = ink;
+             GH_API = m;
+             ui.doorKind ||= m.DOOR_KINDS.includes(ui.swatch.door) ? ui.swatch.door : 'wood';
+             GH = m.createBridge({ db: () => db, ui, player: PLAYER, live: Live, gaia: !!rtdb?.gaia, scene: bid => db.things[bid]?.traits?.scene, camp: liveCamp, path: livePath,
+@@ -1414,23 +1415,13 @@
+         const SWATCH_KEY = 'geezvtt.swatch';
+         const swatchOf = (kind, id) => SWATCHES[kind].find(s => s.id === id) || SWATCHES[kind][0] || { id: '', color: kind === 'door' ? '#7a4e2a' : '#6b6b68' };
+         ui.swatch = (() => { try { return { wall: swatchOf('wall').id, door: swatchOf('door').id, floor: SWATCHES.floor[0]?.id || '', ...JSON.parse(localStorage.getItem(SWATCH_KEY) || '{}') }; } catch { return { wall: swatchOf('wall').id, door: swatchOf('door').id }; } })();
+-        const swatchImgs = new Map();
+-        function swatchImg(src) {
+-            if (!swatchImgs.has(src)) {
+-                const img = new Image();
+-                img.onload = () => { GH?.invalidate(); if (db.view.level === 'VTT' && ui.scene) drawScene(ui.scene, db.view.battleId); };
+-                img.src = src;
+-                swatchImgs.set(src, img);
+-            }
+-            return swatchImgs.get(src);
+-        }
+-        // A canvas paint for a swatch: its texture tiled once per grid square, or its colour until the texture loads
++        function swatchImg() { return null; }
+         function swatchPaint(kind, id, g) {
+-            const sw = swatchOf(kind, id), img = sw.texture && swatchImg(sw.texture);
+-            if (!img?.complete || !img.naturalWidth) return sw.color;
+-            const pat = vttCtx.createPattern(img, 'repeat');
+-            pat.setTransform(new DOMMatrix().scale(g / img.naturalWidth));
+-            return pat;
++            if (!Ink) return '#82704f';
++            const tile = document.createElement('canvas'); tile.width = tile.height = Math.max(16, Math.ceil(g));
++            const x = tile.getContext('2d'); x.fillStyle = Ink.PAPER; x.fillRect(0, 0, tile.width, tile.height);
++            Ink.drawCell(x, id, 0, 0, tile.width);
++            return vttCtx.createPattern(tile, 'repeat');
+         }
+         function renderSwatchPanel() {
+             const panel = $('swatchPanel'), kind = { wall: 'wall', door: 'door', paint: 'floor', room: ui.roomTheme === 'mine' ? 'floor' : null }[ui.mode] || null;
+@@ -1441,7 +1432,7 @@
+             const list = kind === 'floor' ? [{ id: '', name: 'Erase', color: 'repeating-linear-gradient(45deg,#334155 0 6px,#1e293b 6px 12px)' }, ...SWATCHES.floor] : SWATCHES[kind];
+             panel.innerHTML = `<div style="font-size:11px;color:#94a3b8;margin:0 2px 6px">${{ wall: 'Wall', door: 'Door', floor: 'Floor' }[kind]} material</div><div style="display:flex;flex-wrap:wrap;gap:6px;max-width:${kind === 'floor' ? 280 : 400}px">` +
+                 list.map(sw => `<button data-swatch="${esc(sw.id)}" title="${esc(sw.name)}" style="display:flex;flex-direction:column;align-items:center;gap:3px;width:62px;padding:4px;border-radius:8px;cursor:pointer;background:#1e293b;color:#e2e8f0;font-size:10px;border:2px solid ${ui.swatch[kind] === sw.id ? '#f59e0b' : '#334155'}">` +
+-                    `<span style="display:block;width:44px;height:44px;border-radius:5px;background:${esc(sw.color)}${sw.texture ? ` url('${esc(sw.texture)}') center/cover` : ''}"></span>${esc(sw.name)}</button>`).join('') + '</div>';
++                    `<span style="display:block;width:44px;height:44px;border-radius:5px;background:${esc(sw.color)}"></span>${esc(sw.name)}</button>`).join('') + '</div>';
+             if (kind === 'door' && GH_API) { panel.insertAdjacentHTML('beforeend', '<label class="text-xs">Kind <select id="doorKind" class="bg-slate-900 border border-slate-700 rounded mt-2">' + GH_API.DOOR_KINDS.map(k => `<option ${k === (ui.doorKind || 'wood') ? 'selected' : ''}>${k}</option>`).join('') + '</select></label>'); panel.querySelector('#doorKind').onchange = e => { ui.doorKind = e.target.value; }; }
+             panel.querySelectorAll('[data-swatch]').forEach(b => b.onclick = (e) => {
+                 e.stopPropagation();
+@@ -1913,7 +1904,7 @@
+             }
+ 
+             tokensLayer.innerHTML = '';
+-            vttCtx.clearRect(0, 0, vttVectorCanvas.width, vttVectorCanvas.height);
++            if (level !== 'VTT') { vttCtx.clearRect(0, 0, vttVectorCanvas.width, vttVectorCanvas.height); inkDrawKey = ''; }
+ 
+             if (level === 'VTT') {
+                 const bt = db.things[db.view.battleId];
+@@ -1921,13 +1912,13 @@
+                 GH?.watch(bt.id);
+                 GH?.controls();
+                 const grimScene = GH?.scene();
+-                if(rtdb?.gaia && !bt.traits?.scene){clearCanvases();showEmpty('Not converted yet: attach a .geez2vtt','Attach a scene from the location card or drop it here.',false);return;}
++                if(rtdb?.gaia && !bt.traits?.scene){clearCanvases();showEmpty('Attach a battle map','Attach or drop a .dd2vtt or .geez2vtt here.',false);return;}
+                 if (!grimScene && !bt.traits?.table3d && !bt.traits?.dd2vtt) { clearCanvases(); showEmpty(`${bt.name} has no dd2vtt yet`, 'Select its marker on the location map and attach a dd2vtt file.', false); return; }
+                 const scene = grimScene || (bt.traits?.table3d && !bt.traits.dd2vtt ? await loadDd2vtt('blank:20x20') : await loadDd2vtt(bt.traits.dd2vtt));
+                 if (seq !== renderSeq) return;
+                 if (!scene) { clearCanvases(); showEmpty(`Can't find ${bt.traits.dd2vtt}`, PLAYER ? 'Ask the DM to put a copy of this file in the battlemap/ folder.' : 'Put a copy in the battlemap/ folder next to this page (same file name), or attach it again from the battle map card.', false); return; }
+                 if (ui.size.w !== scene.w || ui.size.h !== scene.h) setCanvasSize(scene.w, scene.h);
+-                mapCtx.drawImage(scene.img, 0, 0);
++                if (!scene.table3d) mapCtx.drawImage(scene.img, 0, 0);
+                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                 markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
+                 ui.scene = scene; GH?.startWeather();
+@@ -2314,54 +2305,16 @@
+             }
+         }
+ 
++        let inkDrawKey = '';
+         function drawScene(s, battleId) {
+-            const { walls, doors } = sceneGeometry(s, battleId);
+-            const g = s.ppg;
++            const geo = sceneGeometry(s, battleId), ed = floorEdits(battleId), lights = sceneLights(s, battleId);
++            const key = JSON.stringify([battleId, GH?.floor(), db.things[battleId]?.traits?.scene, geo, ed, lights, s.w, s.h]);
++            if (key === inkDrawKey) return; // Token-only moves redraw fog and tokens, preserving static ink.
++            inkDrawKey = key;
+             vttCtx.clearRect(0, 0, vttVectorCanvas.width, vttVectorCanvas.height);
+-            vttCtx.save();
+-            GH?.drawBase(vttCtx, s);
+-            // painted floor squares (battles[id].edits.paint = { 'col_row': floor swatch id })
+-            for (const [k, id] of Object.entries(floorEdits(battleId).paint || {})) {
+-                const [cx, cy] = k.split('_').map(Number);
+-                vttCtx.fillStyle = swatchPaint('floor', id, g);
+-                vttCtx.fillRect(cx * g, cy * g, g + 0.5, g + 0.5);
+-            }
+-            if (s.blank) {
+-                vttCtx.strokeStyle = 'rgba(203,213,225,.13)'; vttCtx.lineWidth = 1;
+-                vttCtx.beginPath();
+-                for (let x = 0; x <= s.w; x += g) { vttCtx.moveTo(x + .5, 0); vttCtx.lineTo(x + .5, s.h); }
+-                for (let y = 0; y <= s.h; y += g) { vttCtx.moveTo(0, y + .5); vttCtx.lineTo(s.w, y + .5); }
+-                vttCtx.stroke();
+-            }
+-            GH?.annotations(vttCtx, floorEdits(battleId), g);
+-            drawProps(battleId, g);
+-            vttCtx.lineCap = 'round';
+-            const line = (o) => { vttCtx.beginPath(); vttCtx.moveTo(o.x1 * g, o.y1 * g); vttCtx.lineTo(o.x2 * g, o.y2 * g); vttCtx.stroke(); };
+-            // walls and doors the DM drew aren't in the map image: draw them in their swatch
+-            vttCtx.lineCap = 'square';
+-            walls.forEach(w => { if (w.src !== 'add') return; vttCtx.strokeStyle = swatchPaint('wall', w.mat, g); vttCtx.lineWidth = g * 0.25; line(w); });
+-            doors.forEach(d => { if (d.src !== 'dd') GH?.drawDoor(vttCtx, d, g); });
+-            GH?.atmosphere(vttCtx, s, sceneLights(s, battleId));
+-            vttCtx.lineCap = 'round';
+-            if (PLAYER) {
+-                // players only see doors (open ones faintly), never the wall lines
+-                vttCtx.lineWidth = Math.max(4, g / 8);
+-                doors.forEach(d => { vttCtx.strokeStyle = d.closed ? 'rgba(180,140,90,.85)' : 'rgba(134,239,172,.35)'; line(d); });
+-                vttCtx.restore();
+-                return;
+-            }
+-            vttCtx.lineWidth = Math.max(2, g / 14);
+-            walls.forEach(w => { vttCtx.strokeStyle = w.src === 'add' ? 'rgba(251,146,60,.95)' : 'rgba(248,113,113,.85)'; line(w); });
+-            vttCtx.lineWidth = Math.max(4, g / 8);
+-            doors.forEach(d => { vttCtx.strokeStyle = d.closed ? '#60a5fa' : '#4ade80'; vttCtx.setLineDash(d.closed ? [] : [g / 6, g / 8]); line(d); });
+-            vttCtx.setLineDash([]);
+-            const editing = ['light', 'erase'].includes(ui.mode);
+-            sceneLights(s, battleId).forEach(l => {
+-                if (editing) { vttCtx.strokeStyle = 'rgba(253,224,71,.35)'; vttCtx.lineWidth = 1.5; vttCtx.setLineDash([6, 6]); vttCtx.beginPath(); vttCtx.arc(l.x * g, l.y * g, (l.range || 4) * g, 0, Math.PI * 2); vttCtx.stroke(); vttCtx.setLineDash([]); }
+-                vttCtx.fillStyle = '#fde047'; vttCtx.beginPath(); vttCtx.arc(l.x * g, l.y * g, Math.max(5, g / 9), 0, Math.PI * 2); vttCtx.fill();
+-                vttCtx.strokeStyle = '#1c1917'; vttCtx.lineWidth = 2; vttCtx.stroke();
+-            });
+-            vttCtx.restore();
++            GH?.drawBase(vttCtx, s, ed, geo);
++            geo.doors.forEach(d => GH?.drawDoor(vttCtx, d, s.ppg));
++            GH?.atmosphere(vttCtx, s, lights);
+         }
+ 
+         // ---- Battle-map editing (DM): walls, doors, lights, erase ----
+@@ -2369,7 +2322,7 @@
+         let wallChain = null, editPreview = null;
+         function drawEditPreview() {
+             DT?.draw();
+-            if (PLAYER || db.view.level !== 'VTT' || !ui.scene) return;
++            if (PLAYER || GH?.fogPreview() || db.view.level !== 'VTT' || !ui.scene) return;
+             markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
+             const g = ui.scene.ppg;
+             drawTraps();
+@@ -2856,11 +2809,11 @@
+         // ---- objects (js/geez-props.js): battles[id].edits.props = { key: { p: prop id, x, y (centre, grid units), rot (degrees), s (scale), hidden } }
+         const PROPS = window.GEEZ_PROPS || [];
+         const propDef = (id) => PROPS.find(d => d.id === id);
+-        const propImgs = {};
+         function propImg(d) {
+-            let im = propImgs[d.id];
+-            if (!im) { im = propImgs[d.id] = new Image(); im.onload = () => { GH?.invalidate(); if (db.view.level === 'VTT' && ui.scene) drawScene(ui.scene, db.view.battleId); }; im.src = d.src; }
+-            return im.complete && im.naturalWidth ? im : null;
++            if (!Ink) return null;
++            const c = document.createElement('canvas'); c.width = c.height = 80;
++            const x = c.getContext('2d'); Ink.drawProp(x, {id:d.id,x:1,y:1,scale:.8},40);
++            return c;
+         }
+         ui.prop = kept('geezvtt.prop', PROPS[0]?.id || '');
+         ui.propRot = 0; ui.propScatter = false; ui.propHidden = false; ui.propTag = '';
+@@ -2942,7 +2895,7 @@
+             const o = propSel && propsOf(db.view.battleId)[propSel], od = o && propDef(o.p);
+             const chip = (on) => `padding:2px 8px;border-radius:999px;border:1px solid ${on ? '#f59e0b' : '#334155'};${on ? 'color:#fde68a;background:rgba(180,83,9,.25)' : ''}`;
+             box.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"><button data-tag="" style="${chip(!ui.propTag)}">All</button>${tags.map(t => `<button data-tag="${esc(t)}" style="${chip(ui.propTag === t)}">${esc(t)}</button>`).join('')}</div>
+-                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">${list.map(d => `<button data-prop="${esc(d.id)}" title="${esc(d.name)} (${d.w}×${d.h} sq)${d.light ? ', gives light' : ''}" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:8px;background:#1e293b;font-size:9.5px;line-height:1.1;color:#cbd5e1;border:2px solid ${ui.prop === d.id ? '#f59e0b' : '#334155'}"><img src="${esc(d.src)}" alt="" style="width:40px;height:40px;object-fit:contain">${esc(d.name)}${d.light ? ' <i class="fa-solid fa-fire" style="color:#fbbf24;font-size:8px"></i>' : ''}</button>`).join('')}</div>
++                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">${list.map(d => `<button data-prop="${esc(d.id)}" title="${esc(d.name)} (${d.w}×${d.h} sq)${d.light ? ', gives light' : ''}" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;border-radius:8px;background:#1e293b;font-size:9.5px;line-height:1.1;color:#cbd5e1;border:2px solid ${ui.prop === d.id ? '#f59e0b' : '#334155'}"><canvas data-ink-prop="${esc(d.id)}" width="80" height="80" style="width:40px;height:40px"></canvas>${esc(d.name)}${d.light ? ' <i class="fa-solid fa-fire" style="color:#fbbf24;font-size:8px"></i>' : ''}</button>`).join('')}</div>
+                 <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
+                     <button data-po="scatter" style="${chip(ui.propScatter)}" title="Drag to scatter loose copies, each turned its own way"><i class="fa-solid fa-spray-can-sparkles"></i> Scatter</button>
+                     <button data-po="hidden" style="${chip(ui.propHidden)}" title="New objects only you see until you show them"><i class="fa-solid fa-eye-slash"></i> Hidden (H)</button>
+@@ -2957,6 +2910,7 @@
+                             <button data-ps="Delete" style="${chip(false)};color:#fca5a5"><i class="fa-solid fa-trash"></i> Delete</button>
+                         </div></div>`
+                     : '<div style="color:#64748b;margin-top:7px">Click to place. Click an object on the map to pick it up and move it.</div>'}`;
++            box.querySelectorAll('[data-ink-prop]').forEach(c => Ink.drawProp(c.getContext('2d'), {id:c.dataset.inkProp,x:1,y:1,scale:.8},40));
+             box.querySelectorAll('[data-tag]').forEach(b => b.onclick = () => { ui.propTag = b.dataset.tag; renderPropPanel(); });
+             box.querySelectorAll('[data-prop]').forEach(b => b.onclick = () => { ui.prop = b.dataset.prop; keep('geezvtt.prop', ui.prop); propSel = null; renderPropPanel(); drawEditPreview(); });
+             box.querySelectorAll('[data-po]').forEach(b => b.onclick = () => {
+@@ -3211,12 +3165,11 @@
+             return mine.length ? mine : pcs;
+         }
+         function partyVision(scene, battleId) {
+-            if (!GEO || !PLAYER) return null;
++            if (!GEO || (!PLAYER && !GH?.fogPreview())) return null;
+             const b = db.battles[battleId];
+             if (b?.vision === false) return null;
+             const dark = (GH?.meta()?.light || b?.light) === 'dark';
+             const { walls, doors } = sceneGeometry(scene, battleId);
+-            if (!dark && !walls.length && !doors.length) return null;
+             const occ = GEO.activeOccluders(walls, doors.filter(d => d.sight !== false));
+             const range = Math.hypot(scene.w, scene.h) / scene.ppg;
+             const lights = dark ? sceneLights(scene, battleId).filter(l => l.range > 0).map(l => GEO.computeVisibilityPolygon(l.x, l.y, occ, l.range)) : [];
+@@ -3248,69 +3201,7 @@
+         }
+         function drawVision(scene, vis, battleId) {
+             markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
+-            if (!vis) return;
+-            const s = Math.min(1, 2048 / Math.max(scene.w, scene.h)), W = Math.ceil(scene.w * s), H = Math.ceil(scene.h * s), k = scene.ppg * s;
+-            const [lit, dim, one, light] = visionMasks.map(c => { c.width = W; c.height = H; const x = c.getContext('2d'); x.fillStyle = '#fff'; return x; });
+-            if (vis.dark) vis.lights.forEach(p => { if (p.length) { polyPath(light, p, k); light.fill(); } });
+-            for (const v of vis.views) {
+-                if (!v.los.length) continue;
+-                one.globalCompositeOperation = 'source-over';
+-                one.clearRect(0, 0, W, H); polyPath(one, v.los, k); one.fill();
+-                if (vis.dark) { one.globalCompositeOperation = 'destination-in'; one.drawImage(light.canvas, 0, 0); }
+-                lit.drawImage(one.canvas, 0, 0);
+-                if (v.dv?.length) { polyPath(dim, v.dv, k); dim.fill(); }
+-            }
+-            const ex = exploredFor(battleId);
+-            if (ex) {
+-                ex.ctx.drawImage(lit.canvas, 0, 0, ex.ctx.canvas.width, ex.ctx.canvas.height);
+-                ex.ctx.drawImage(dim.canvas, 0, 0, ex.ctx.canvas.width, ex.ctx.canvas.height);
+-                saveExploredSoon(ex);
+-            }
+-            const m = markerCtx;
+-            m.save();
+-            m.fillStyle = 'rgba(2,3,8,0.94)';
+-            m.fillRect(0, 0, scene.w, scene.h);
+-            m.globalCompositeOperation = 'destination-out';
+-            if (ex?.ready) { m.globalAlpha = 0.45; m.drawImage(ex.ctx.canvas, 0, 0, scene.w, scene.h); m.globalAlpha = 1; }
+-            m.drawImage(dim.canvas, 0, 0, scene.w, scene.h);
+-            m.globalCompositeOperation = 'source-over';
+-            dim.globalCompositeOperation = 'source-in';
+-            dim.fillStyle = 'rgb(22,26,44)'; dim.fillRect(0, 0, W, H);
+-            m.globalAlpha = 0.45; m.drawImage(dim.canvas, 0, 0, scene.w, scene.h); m.globalAlpha = 1;
+-            m.globalCompositeOperation = 'destination-out';
+-            m.drawImage(lit.canvas, 0, 0, scene.w, scene.h);
+-            m.restore();
+-        }
+-
+-        // Explored memory, per player and battle map, kept in this browser (localStorage) as a
+-        // small PNG. The DM's "Forget explored areas" stamps session/exploredReset/<battle>;
+-        // a saved memory from before the latest stamp is thrown away.
+-        const explored = new Map();
+-        const exploredKey = (battleId) => `geezvtt.explored.${PCAMP}.${battleId}.${GH?.floor() || 0}.${playerName || 'party'}`;
+-        function exploredFor(battleId) {
+-            const key = exploredKey(battleId), reset = liveSession.exploredReset?.[battleId] || 0;
+-            let ex = explored.get(key);
+-            if (ex && ex.base === reset) return ex;
+-            const c = document.createElement('canvas');
+-            const scene = ui.scene, s = Math.min(1, 512 / Math.max(scene.w, scene.h));
+-            c.width = Math.ceil(scene.w * s); c.height = Math.ceil(scene.h * s);
+-            ex = { key, base: reset, ctx: c.getContext('2d'), ready: true };
+-            explored.set(key, ex);
+-            let rec = null;
+-            try { rec = JSON.parse(localStorage.getItem(key) || 'null'); } catch {}
+-            if (rec?.data && rec.base === reset) {
+-                ex.ready = false;   // wait for the saved image, so it isn't overwritten half-loaded
+-                const img = new Image();
+-                img.onload = () => { ex.ctx.globalCompositeOperation = 'destination-over'; ex.ctx.drawImage(img, 0, 0, c.width, c.height); ex.ctx.globalCompositeOperation = 'source-over'; ex.ready = true; if (db.view.level === 'VTT' && ui.scene) renderView(); };
+-                img.onerror = () => { ex.ready = true; };
+-                img.src = rec.data;
+-            } else if (rec) { try { localStorage.removeItem(key); } catch {} }
+-            return ex;
+-        }
+-        function saveExploredSoon(ex) {
+-            if (!ex.ready) return;
+-            clearTimeout(ex.timer);
+-            ex.timer = setTimeout(() => { try { localStorage.setItem(ex.key, JSON.stringify({ base: ex.base, data: ex.ctx.canvas.toDataURL('image/png') })); } catch {} }, 1500);
++            GH?.drawFog(markerCtx, scene, vis, {gm: !PLAYER, preview: GH?.fogPreview(), reset: liveSession.exploredReset?.[battleId] || 0});
+         }
+ 
+         // =====================================================================
+@@ -5264,9 +5155,9 @@
+             $('locColor').value = locColor(t);
+             const box = $('locLinkBox');
+             if(rtdb?.gaia && cat === 'battlemap'){
+-                box.innerHTML='<button id="attachGeez2vttBtn" class="'+BTN_GHOST+'">Attach .geez2vtt</button><button id="launchVttBtn" class="'+BTN_VTT+'">Open in VTT</button>';
++                box.innerHTML='<button id="attachGeez2vttBtn" class="'+BTN_GHOST+'">Attach .dd2vtt / .geez2vtt</button><button id="launchVttBtn" class="'+BTN_VTT+'">Open in VTT</button>';
+                 $('attachGeez2vttBtn').onclick=()=>$('dd2vttInput').click();
+-                $('dd2vttInput').accept='.geez2vtt,application/json';
++                $('dd2vttInput').accept='.dd2vtt,.geez2vtt,application/json';
+                 $('launchVttBtn').onclick=()=>openBattle(t.id);
+             } else if (cat === 'battlemap') {
+                 const f = t.traits?.dd2vtt, bs = blankSize(f);
+@@ -5592,8 +5483,9 @@
+         async function attachGeez2vtt(file,target) {
+             if(PLAYER||!rtdb?.gaia||!file||!target)return;
+             try {
+-                const {validateScene}=await import('./js/geez2vtt.js');
+-                const scene=validateScene(JSON.parse(await file.text()));
++                const {validateScene,dd2vttToScene}=await import('./js/geez2vtt.js');
++                const json=JSON.parse(await file.text());
++                const scene=json.format==='geez2vtt'?validateScene(json):dd2vttToScene(json,file.name.replace(/\.[^.]+$/, ''));
+                 if(saveTimer){clearTimeout(saveTimer);saveTimer=null;syncCampaign();}
+                 await rtdb.publishScene(target.id,scene,liveCamp());
+                 showStatus('Published '+scene.name);
