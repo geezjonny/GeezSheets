@@ -230,6 +230,11 @@
                 <i class="fa-solid fa-sun text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Scene: time, weather, music</span>
             </button>
+            <!-- Volume: everyone's own; sits beside Scene (music) -->
+            <div class="relative">
+                <button id="soundBtn" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition" title="Volume" aria-label="Volume"><i class="fa-solid fa-volume-high text-lg"></i></button>
+                <div id="soundMenu" class="hidden absolute w-64 p-3 rounded-xl border border-slate-700 bg-slate-950/95 shadow-2xl space-y-2 text-xs text-slate-300" style="left:calc(100% + 14px);top:0;z-index:40"></div>
+            </div>
             <button id="railLocks" class="mode-btn p-3 rounded-xl text-slate-400 hover:bg-slate-800 transition relative group" aria-label="Lock pings / movement" data-fly="lockFly">
                 <i class="fa-solid fa-lock text-lg"></i>
                 <span class="absolute left-18 bg-slate-900 text-xs py-1 px-2.5 rounded border border-slate-700 text-slate-200 whitespace-nowrap opacity-0 group-hover:opacity-100 transition duration-200 pointer-events-none z-30 shadow-xl">Lock pings / movement</span>
@@ -335,11 +340,7 @@
         
                 <button id="open3dBtn" class="hidden bg-slate-800 hover:bg-slate-700 text-amber-300 text-xs font-bold py-1.5 px-2.5 rounded-lg border border-slate-700" title="Open this map in 3D, in a new tab (close it if your computer struggles)"><i class="fa-solid fa-cube mr-1"></i>3D</button>
                 
-                <!-- Sound: everyone's own volume; the DM also opens the sound board from here -->
-                <div class="relative">
-                    <button id="soundBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="Sound"><i class="fa-solid fa-volume-high"></i></button>
-                    <div id="soundMenu" class="hidden absolute right-0 top-10 w-64 p-3 rounded-xl border border-slate-700 bg-slate-950/95 shadow-2xl space-y-2 text-xs text-slate-300"></div>
-                </div>
+
         
                 <!-- Session menu: retired. Its buttons stay (hidden) because the bars and shortcuts reuse them. -->
                 <div class="relative hidden" id="sessionMenuWrap">
@@ -359,7 +360,7 @@
                 </div>
         
                 <!-- More menu -->
-                <div class="relative" id="moreMenuWrap">
+                <div class="relative hidden" id="moreMenuWrap">
                     <button id="moreMenuBtn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm py-1 px-2.5 rounded-lg border border-slate-700" title="More"><i class="fa-solid fa-ellipsis"></i></button>
                     <div id="moreMenu" class="hidden absolute right-0 top-10 w-64 p-1.5 rounded-xl border border-slate-700 bg-slate-950/95 shadow-2xl">
                         <label id="uploadMapBtn" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-200 hover:bg-slate-800 text-left cursor-pointer"><i class="fa-solid fa-image w-4 text-amber-400"></i><span id="uploadMapLabel">Upload map image</span><input type="file" id="mapUpload" accept="image/png, image/jpeg, image/webp" class="hidden"></label>
@@ -3872,7 +3873,7 @@
             // ---- everyone: own volume ----
             function renderSoundMenu() {
                 const box = $('soundMenu');
-                $('soundBtn').innerHTML = `<i class="fa-solid ${prefs.mute ? 'fa-volume-xmark text-rose-400' : hasSound() ? 'fa-volume-high text-sky-300' : 'fa-volume-high'}"></i>`;
+                $('soundBtn').innerHTML = `<i class="fa-solid text-lg ${prefs.mute ? 'fa-volume-xmark text-rose-400' : hasSound() ? 'fa-volume-high text-sky-300' : 'fa-volume-high'}"></i>`;
                 if (box.classList.contains('hidden')) return;
                 const row = (k, l) => `<label class="flex items-center gap-2"><span class="w-16">${l}</span><input data-pref="${k}" type="range" min="0" max="1" step="0.05" value="${prefs[k]}" class="flex-1 accent-sky-500"></label>`;
                 box.innerHTML = `<div class="flex items-center justify-between"><span class="font-semibold text-slate-200">Your volume</span>

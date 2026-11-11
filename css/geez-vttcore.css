@@ -47,3 +47,5 @@
 #npcPop #tabNpcList{flex:none}
 /* No right sidebar or its reopen tab: sheets, NPCs and initiative float over the map. */
 #rightSidebar,#sidebarOpenBtn{display:none!important}
+/* No 3D button. */
+#open3dBtn{display:none!important}
