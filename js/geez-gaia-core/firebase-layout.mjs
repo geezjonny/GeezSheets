@@ -13,7 +13,13 @@ export function encodeTree(v){
 export function decodeTree(v){
  if(v&&typeof v==='object'&&Object.keys(v).length===1&&v['%EMPTY'])return v['%EMPTY']==='array'?[]:{};
  if(Array.isArray(v))return v.map(decodeTree);
- if(v&&typeof v==='object')return Object.fromEntries(Object.entries(v).map(([k,x])=>[decodeKey(k),decodeTree(x)]));
+ // A node transaction can add a child below an encoded empty container without
+ // replacing its parent. The old marker then coexists with real children.
+ // It is transport metadata, never a user record (%EMPTY user keys are escaped).
+ if(v&&typeof v==='object'){
+  const entries=Object.entries(v).filter(([k])=>k!=='%EMPTY').map(([k,x])=>[decodeKey(k),decodeTree(x)]);
+  return v['%EMPTY']==='array'?Object.assign([],Object.fromEntries(entries)):Object.fromEntries(entries);
+ }
  return v;
 }
 export function firebaseLayout(input){

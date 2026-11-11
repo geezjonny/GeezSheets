@@ -42,7 +42,7 @@ function add(name,summary,args,player,compute){actions[name]={name,summary,args:
   if(name==='token.move') {
    const token=g.campaigns[a.campaign]?.state?.tokens?.[a.token];
    const active=g.campaigns[a.campaign]?.state?.active_map;
-   if(!token||!as.pcs?.includes(token.entity)||g.worlds.gaia.entities[token.entity]?.kind!=='pc'||active!=null&&active!==token.map)fail('Players may move only their own PC tokens on the active map',403);
+   if(!token||!as.pcs?.includes(token.entity)||g.worlds.gaia.entities[token.entity]?.kind!=='pc'||g.worlds.gaia.entities[token.entity].campaign!=null&&g.worlds.gaia.entities[token.entity].campaign!==a.campaign||g.campaigns[a.campaign].state.session?.lockMove||active!=null&&active!==token.map)fail('Players may move only their own PC tokens in their campaign on the active map while movement is unlocked',403);
   } else if(name!=='item.move'&&(e?.kind!=='pc'||!as.pcs?.includes(e.id)))fail('Players may act only on their own PCs',403);
  }
  return compute(g,a,e,as);

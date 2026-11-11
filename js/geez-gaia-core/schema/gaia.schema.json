@@ -1040,6 +1040,7 @@
     "geez2vtt": {
       "type": "object",
       "properties": {
+        "style": { "type": "string" },
         "format": {
           "const": "geez2vtt"
         },

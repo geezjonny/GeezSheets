@@ -3,6 +3,7 @@ import {newId} from './ids.mjs';
 import {actions} from './actions.mjs';
 import {prepareChanges, at} from './changes.mjs';
 import {parseShorthand} from './shorthand.mjs';
+import {playerWrite} from './player-writes.mjs';
 // RTDB may return object keys in a different order from a local staged write.
 // RTDB never stores null: a null array slot or object key comes back missing (sparse arrays, absent keys).
 // So null and undefined compare equal, and only present (non-null) keys count.
@@ -77,6 +78,30 @@ export function executeWrite(snapshot,schema,path,method,body,auth){
   }
 
  function run(){
+      // The HTTP adapter stages the same atomic plan list as Firebase. Recheck
+      // guards before any plan, so a stale GM initiative save cannot erase a
+      // player's just-edited row (even when the save also runs an action).
+      if(path==='batch'&&req.method==='POST'){
+        if(!object(body)||Object.keys(body).some(k=>!['plans','guards'].includes(k))||!Array.isArray(body.plans)||body.plans.length>1000||body.guards!==undefined&&!Array.isArray(body.guards))fail(400,'Expected {plans, guards?}');
+        checkKeys(body);
+        for(const guard of body.guards||[]){
+          if(!object(guard)||typeof guard.path!=='string')fail(400,'Invalid guard');
+          const ps=safe(guard.path.split('/'));
+          if(!equalJSON(lookup(db,ps)??null,guard.value))fail(409,'Gaia value changed; retry transaction');
+        }
+        let last=null;
+        for(const p of body.plans){
+          if(!object(p)||typeof p.path!=='string'||p.path==='batch'||!['PUT','PATCH','POST'].includes(p.method))fail(400,'Invalid write plan');
+          const out=executeWrite(db,schema,p.path,p.method,p.body,auth);last=out.result;
+          for(const w of out.writes)commit(w.path,w.value,w.op);
+        }
+        send(200,last);return;
+      }
+      if (parts[0]==='campaigns' && parts[2]==='player' && req.method==='PUT' && auth.role!=='gm') {
+        if(!object(body))fail(400,'Expected a JSON object');checkKeys(body);
+        const w=playerWrite(db,parts,body,auth,equalJSON);
+        send(200,commit(w.path,w.value));return;
+      }
       const proposalCreate = req.method === 'POST' && /^campaigns\/[^/]+\/proposals$/.test(path);
       const ownPatch = req.method === 'PATCH' && (parts[0] === 'entities' || /^campaigns\/[^/]+\/tokens\/[^/]+$/.test(path));
       const groupedMove = req.method === 'PATCH' && /^campaigns\/[^/]+\/tokens\/[^/]+\/[^/]+$/.test(path);
@@ -151,7 +176,7 @@ export function executeWrite(snapshot,schema,path,method,body,auth){
         const target='campaigns/'+campaign+'/state/tokens/'+map+'/'+entity;
         const previous=existing(target), active=lookup(db,['campaigns',campaign,'state','active_map']);
         if (Object.keys(body).some(k=>!['x','y'].includes(k)) || Object.values(body).some(v=>typeof v!=='number'||!Number.isFinite(v))) fail(400,'Expected numeric token x/y');
-        if (auth.role!=='gm' && (entities[entity]?.kind!=='pc'||!auth.pcs.includes(entity)||active!=null&&active!==map||lookup(db,['campaigns',campaign,'state','session','lockMove']))) fail(403,'Players may move only their own PC on the active map');
+        if (auth.role!=='gm' && (entities[entity]?.kind!=='pc'||!auth.pcs.includes(entity)||entities[entity].campaign!=null&&entities[entity].campaign!==campaign||active!=null&&active!==map||lookup(db,['campaigns',campaign,'state','session','lockMove']))) fail(403,'Players may move only their own PC in their campaign on the active map');
         send(200,commit(target,{...previous,...body},'patch'));return;
       }
       // Sheets compatibility storage. GM-only (the role gate above applies).
@@ -224,6 +249,7 @@ export function executeWrite(snapshot,schema,path,method,body,auth){
           const old = id ? existing(target) : {};
           if (auth.role !== 'gm') {
             if (!auth.pcs.includes(old.entity) || entities[old.entity]?.kind !== 'pc') fail(403, 'Players may move only their own PC tokens');
+            if (entities[old.entity].campaign!=null && entities[old.entity].campaign!==campaign || lookup(db,['campaigns',campaign,'state','session','lockMove'])) fail(403,'Players may move only in their campaign while movement is unlocked');
             if (Object.keys(body).some(k => !['x', 'y'].includes(k))) fail(403, 'Players may change token x and y only');
             // Existing migrations may have no active map; an explicit active map must match.
             const active = lookup(db, [ 'campaigns', campaign, 'state', 'active_map' ]);

@@ -40,10 +40,10 @@
     const sceneMap = id => raw?.entities.find(e=>e.kind==='map' && e.data.scene && (e.id===canonical(id) || e.data.parent_place===canonical(id)));
     const battleMap = id => old(sceneMap(id)?.data.parent_place || id);
     const canonicalMap = id => sceneMap(id)?.id || canonical(id);
-    const refs = new Set(['from','to','entity','map','parent_map','parent_place','parent','home','where','childMap','charId','characterId','pcId','npcId','entityId','mapId','target','locationId','linkedCharacterId']);
+    const refs = new Set(['char','from','to','entity','map','parent_map','parent_place','parent','home','where','childMap','charId','characterId','pcId','npcId','entityId','mapId','target','locationId','linkedCharacterId']);
     function translate(v, toOld = true, key = '') {
       const id = toOld ? old : canonical;
-      if (typeof v === 'string') return refs.has(key) || key === 'chain' ? id(v) : v;
+      if (typeof v === 'string') return toOld && ['charId','char'].includes(key) ? sheetIds.get(v)||old(v) : refs.has(key) || key === 'chain' ? id(v) : v;
       if (!v || typeof v !== 'object') return v;
       if (Array.isArray(v)) return v.map(x => translate(x, toOld, key));
       return Object.fromEntries(Object.entries(v).map(([k, x]) => [id(k), translate(x, toOld, k)]));
@@ -91,20 +91,23 @@
         const key = apps.sheets?.campaignIds?.[c] || 'world__' + c;
         campaign.maps[key] = {...(campaign.maps[key] || {pins:{},roads:{},tiles:{},gridSize:40,parentMap:null}), ...copy(apps.sheets?.campaignWorlds?.[c] || {}), id:key,name:value.info.name};
         const party = tree.geezvtt.party[key] = {cards:{}, board:{}, notes:{}, links:{}, ...translate(copy(apps.sheets?.party?.[c] || {}))};
+        const ownLayout=player ? translate(copy(apps.sheets?.party?.[c]?.layouts?.[selectedId()]||{})) : {};
+        party.board={...party.board,...ownLayout};
         for (const [id, r] of Object.entries(value.reveals || {})) {
           if (!r.known) continue;
-          if (r.board) party.board[old(id)] = copy(r.board);
-          if (r.notes && !party.notes[old(id)]) party.notes[old(id)] = copy(r.notes);
+          if (r.board && !ownLayout[old(id)]) party.board[old(id)] = copy(r.board);
+          if (r.notes) party.notes[old(id)] = {...translate(copy(r.notes)),...party.notes[old(id)]};
           // Standard revealed things enter through pc-known. Only explicit custom cards
           // belong in party.cards: the UI treats these as party-authored, editable records.
           if(r.card && typeof r.card==='object')party.cards[old(id)]=copy(r.card);
           const t = campaign.things[old(id)];
           // Player projection uses pc-known; only the selected campaign's reveals grant it.
-          if (t && (!player || c === (qs.get('campaign') || 'world__daddies').replace(/^world__/, ''))) {
+          if (t && (!player || c === (qs.get('campaign') || qs.get('live') || 'world__daddies').replace(/^world__/, ''))) {
             t.properties = t.properties.filter(p => p.key !== 'pc-known'); t.properties.push({key:'pc-known',value:'true'});
           }
         }
         const state = tree.geezvtt.live[key] = translate(copy(value.state || {}));
+        if(value.state?.rollcall)for(const field of ['to','results'])if(value.state.rollcall[field])state.rollcall[field]=Object.fromEntries(Object.entries(value.state.rollcall[field]).map(([id,v])=>[sheetIds.get(id)||old(id),translate(v)]));
         state.table3d=translate(copy(apps.sheets?.table3d?.[key]||{}));
         if (value.state?.initiative) {
           const i = value.state.initiative;
@@ -246,7 +249,7 @@
         }
         Object.assign(after,intent(editBase,desired,after));
       }else if(update)for(const [p,x]of Object.entries(v||{}))put(after,path+'/'+p,x);else put(after,path,v);
-      const plans=[];
+      const plans=[],guards=[];
       const stage=(path,method,body)=>plans.push({path,method,body});
       // Campaign roots are campaign records, not world entities. Stage them before all entities.
       const campaignMaps=after.geezvtt.campaign.maps;
@@ -306,14 +309,46 @@
       for(const key of new Set([...Object.keys(before.geezvtt.party),...Object.keys(after.geezvtt.party)])) {
         const a=before.geezvtt.party[key],b=after.geezvtt.party[key];if(same(a,b))continue;
         const c=rootIds.get(key)||campaignId(key);
-        for(const id of new Set([...Object.keys(a?.board||{}),...Object.keys(b?.board||{})]))if(!same(a?.board?.[id],b?.board?.[id]))stage(`campaigns/${c}/reveals/${canonical(id)}`,'PUT',{...raw.campaigns[c]?.reveals?.[canonical(id)],known:!!b?.board?.[id],...(b?.board?.[id]?{board:b.board[id]}:{})});
-        const {board,...extras}=b||{};stage('apps/sheets/party/'+c,'PUT',{value:translate(extras,false)});
+        if(player){
+          for(const field of ['notes','cards','links','board']){
+            const prev=a?.[field]||{},next=b?.[field]||{};
+            for(const id of new Set([...Object.keys(prev),...Object.keys(next)])){
+              const entries=field==='notes'?new Set([...Object.keys(prev[id]||{}),...Object.keys(next[id]||{})]):[''];
+              for(const sub of entries){
+                const x=sub?prev[id]?.[sub]:prev[id],y=sub?next[id]?.[sub]:next[id];if(same(x,y))continue;
+                const value=y?{...translate(y,false),owner:selectedId()}:null;
+                stage('campaigns/'+c+'/player/'+field+'/'+canonical(id)+(sub?'/'+sub:''),'PUT',{value});
+              }
+            }
+          }
+        }else{
+          for(const id of new Set([...Object.keys(a?.board||{}),...Object.keys(b?.board||{})]))if(!same(a?.board?.[id],b?.board?.[id]))stage(`campaigns/${c}/reveals/${canonical(id)}`,'PUT',{...raw.campaigns[c]?.reveals?.[canonical(id)],known:!!b?.board?.[id],...(b?.board?.[id]?{board:b.board[id]}:{})});
+          const {board,...extras}=b||{};stage('apps/sheets/party/'+c,'PUT',{value:translate(extras,false)});
+        }
       }
       for(const key of new Set([...Object.keys(before.geezvtt.live),...Object.keys(after.geezvtt.live)])) {
         const a=before.geezvtt.live[key]||{},b=after.geezvtt.live[key]||{},c=rootIds.get(key)||campaignId(key);
         if(key==='_dmCampaign'){if(!same(a,b))stage('apps/sheets/dmCampaign','PUT',{value:b});continue;}
         for(const field of new Set([...Object.keys(a),...Object.keys(b)]))if(!same(a[field],b[field])) {
-          if(field==='initiative') {
+          if(player && ['rolls','pings','presence','rollcall','initiative'].includes(field)) {
+            if(field==='initiative'){
+              if(b.initiative?.round!==a.initiative?.round||b.initiative?.turn!==a.initiative?.turn)throw Object.assign(Error('Only the GM controls initiative turn and round'),{status:403});
+              const prev=a.initiative?.rows||{},next=b.initiative?.rows||{};
+              for(const id of new Set([...Object.keys(prev),...Object.keys(next)]))if(!same(prev[id],next[id])){
+                const r=next[id],entity=canonical(r?.charId||r?.thingId||prev[id]?.charId||prev[id]?.thingId);
+                const rowId=raw.campaigns[c]?.state?.initiative?.order?.find(row=>row.entity===entity)?.id||id;
+                stage('campaigns/'+c+'/player/initiative/'+rowId,'PUT',{value:r?{id:rowId,entity,label:r.name,init:r.init===''?0:Number(r.init)}:null});
+              }
+            }else{
+              const prev=field==='rollcall'?a[field]?.results||{}:a[field]||{},next=field==='rollcall'?b[field]?.results||{}:b[field]||{};
+              if(field==='rollcall'&&!same({...a[field],results:null},{...b[field],results:null}))throw Object.assign(Error('Only the GM starts or changes a roll call'),{status:403});
+              for(const id of new Set([...Object.keys(prev),...Object.keys(next)]))if(!same(prev[id],next[id])){
+                const value=next[id]?{...translate(next[id],false),owner:selectedId()}:null;
+                stage('campaigns/'+c+'/player/'+field+'/'+(field==='rollcall'?canonical(id):id),'PUT',{value,...(field==='rollcall'?{call:a[field]?.id}:{})});
+              }
+            }
+          } else if(field==='initiative') {
+            guards.push({path:'campaigns/'+c+'/state/initiative',value:raw.campaigns[c]?.state?.initiative??null});
             const value=b[field];
             if(!value||!Object.keys(value.rows||{}).length)stage('actions/combat.end','POST',{args:{campaign:c}});
             else {
@@ -353,25 +388,24 @@
               }
             }
             stage('campaigns/'+c+'/state/tokens','PUT',{value,expected:raw.campaigns[c]?.state?.tokens??null});
-          } else stage(`campaigns/${c}/state/${field}`,'PUT',{value:translate(b[field],false),expected:raw.campaigns[c]?.state?.[field]??null});
+          } else stage(`campaigns/${c}/state/${field}`,'PUT',{value:translate(b[field]??null,false),expected:raw.campaigns[c]?.state?.[field]??null});
         }
       }
       for(const [legacy,target]of [['session','session'],['maps','battlemaps'],['dice','dice'],['geezvtt/meta','meta'],['geezvtt/table3d','table3d']])if(!same(get(before,legacy),get(after,legacy)))stage('apps/sheets/'+target,'PUT',{value:get(after,legacy)});
-      if(!plans.length && !same(before,after))throw Error('Unsupported Gaia path: '+path);
+      if(!plans.length && !same(before,after))throw Object.assign(Error(player?'This change requires a GM: '+path:'Unsupported Gaia path: '+path),{status:player?403:400});
       // Preview every standard action and check non-action ownership before applying any changes.
       if(player)for(const p of plans) {
         if(p.path.startsWith('entities/')) {
           if(selectedId()!==p.path.slice(9))throw Object.assign(Error('Players may change only their own PC'),{status:403});
           for(const key of Object.keys(p.body))if(!/^data\.(combat\.(hp_current|temp_hp|conditions|death_saves|death_save_[^.]+)|spellcasting\.slots_used|abilities\.[^.]+\.current|inventory|coin_purse)(\.|$)/.test(key))throw Object.assign(Error('Players cannot patch '+key),{status:403});
-        } else if(!p.path.startsWith('actions/')&&!/^campaigns\/[^/]+\/tokens\//.test(p.path))throw Object.assign(Error('This write requires a GM'),{status:403});
+        } else if(!p.path.startsWith('actions/')&&!/^campaigns\/[^/]+\/(tokens|player)\//.test(p.path))throw Object.assign(Error('This write requires a GM'),{status:403});
       }
       for(const p of plans)if(p.path.startsWith('actions/'))await request(p.path,'POST',{...p.body,preview:true});
       // A sheet's read/modify/write function must retry if another browser changed
       // the character before our Firebase batch acquired its cross-page lock.
-      const guards=[];
       if(transactionEntity)guards.push({path:'worlds/gaia/entities/'+transactionEntity.id,value:transactionEntity});
       writing=true;
-      try { if(backend)await (await backend).batch(plans,guards);else for(const p of plans)await request(p.path,p.method,p.body); }
+      try { if(backend)await (await backend).batch(plans,guards);else await request('batch','POST',{plans,guards}); }
       finally { try { await load(); } finally { writing=false;if(backend)adoptFirebase(await backend); } }
       return {committed:true,snapshot:snap(parts(path).at(-1),get(tree,path))};
     }

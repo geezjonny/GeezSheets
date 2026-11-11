@@ -818,7 +818,7 @@ window.toggleSlot = function(pip) {
   const pips=[...pip.parentElement.querySelectorAll('.slot-pip')];
   const clamped=Math.max(0,Math.min(max,pip.classList.contains('used')?idx:idx+1));
   pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
-  set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(console.error);
+  set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(e=>toast('Not saved: '+e.message));
 };
 
 window.toggleCharge = function(pip) {
@@ -829,7 +829,7 @@ window.toggleCharge = function(pip) {
   const clamped = Math.max(0,Math.min(max,newUsed));
   pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
   const newCurrent = max - clamped;
-  set(ref(db,`characters/pcs/${charId}/abilities/${abKey}/current`),newCurrent).catch(console.error);
+  set(ref(db,`characters/pcs/${charId}/abilities/${abKey}/current`),newCurrent).catch(e=>toast('Not saved: '+e.message));
 };
 
 window.adjustHp = async function(charId, isHeal) {
@@ -846,7 +846,7 @@ window.adjustHp = async function(charId, isHeal) {
       return {...c,hp_current:hp,temp_hp:isHeal?tmp:Math.max(0,tmp-delta),death_saves:hp>0?{success:0,fail:0}:saves};
     });
     deltaEl.value='';
-  } catch(e) { console.error('HP save failed:',e); }
+  } catch(e) { toast('HP not saved: '+e.message); }
 };
 
 document.addEventListener('keydown', e => {
@@ -861,12 +861,12 @@ function deathHtml(id,c) {
  const d=c.death_saves||{};
  return ['success','fail'].map(k=>`<div>${k} ${[1,2,3].map(n=>`<button data-id="${esc(id)}" data-kind="${k}" data-n="${n}" aria-label="${k} ${n}" aria-pressed="${count(d[k])>=n}" onclick="window.deathPip(this)">${count(d[k])>=n?'&#9679;':'&#9675;'}</button>`).join('')}</div>`).join('')+`<b>${count(d.fail)===3?'Dead':count(d.success)===3?'Stable':''}</b><button data-id="${esc(id)}" onclick="window.rollDeath(this.dataset.id)">Roll death save</button>`;
 }
-window.setTemp=el=>set(ref(db,`characters/pcs/${el.id.slice(5)}/combat/temp_hp`),Math.max(0,Math.trunc(Number(el.value)||0))).catch(console.error);
+window.setTemp=el=>set(ref(db,`characters/pcs/${el.id.slice(5)}/combat/temp_hp`),Math.max(0,Math.trunc(Number(el.value)||0))).catch(e=>toast('Not saved: '+e.message));
 window.deathPip=el=>runTransaction(ref(db,`characters/pcs/${el.dataset.id}/combat`),c=>{
  if(!c||Number(c.hp_current)!==0)return;
  const d=c.death_saves||{},k=el.dataset.kind,n=Number(el.dataset.n);
  return {...c,death_saves:{success:count(d.success),fail:count(d.fail),[k]:count(d[k])>=n?n-1:n}};
-}).catch(console.error);
+}).catch(e=>toast('Not saved: '+e.message));
 function liveApi(camp=Dice.camp) {
  if(!camp)throw new Error('No game open.');
  const r=p=>ref(db,`geezvtt/live/${camp}/${p}`);
@@ -1136,10 +1136,10 @@ const Dice = (() => {
     push(ref(db, `${LIVE_ROOT}/${camp}/rolls`), entry).catch(e => toastDice('Roll not sent: ' + e.message));
     showRoll(entry);
     // the old pages watch dice/last, so single-die results show there too
-    if (r.first) set(ref(db, 'dice/last'), { sides: r.first.sides, result: r.first.result, roller: entry.by, t: entry.ts }).catch(() => {});
+    if (!db.gaia && r.first) set(ref(db, 'dice/last'), { sides: r.first.sides, result: r.first.result, roller: entry.by, t: entry.ts }).catch(() => {});
     // keep the shared log short (same as the VTT)
     const keys = Object.entries(rolls).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0)).map(([k]) => k);
-    keys.slice(0, Math.max(0, keys.length - 40)).forEach(k => remove(ref(db, `${LIVE_ROOT}/${camp}/rolls/${k}`)));
+    (!PLAYER ? keys : []).slice(0, Math.max(0, keys.length - 40)).forEach(k => remove(ref(db, `${LIVE_ROOT}/${camp}/rolls/${k}`)));
   }
 
   function renderLog() {
