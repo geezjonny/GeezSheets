@@ -40,7 +40,7 @@ export function createVttCore(api){
  addEventListener('keydown',e=>{if(e.key==='Escape')cancel();});
  // Capture map interactions while placing; two primary taps also work with touch.
  api.viewport.addEventListener('pointerdown',e=>{
-  if(!armed||panel.contains(e.target)||!api.scene()||e.button!==0)return;
+  if(!armed||panel.contains(e.target)||e.target.closest?.('#appHeader')||!api.scene()||e.button!==0)return;
   e.preventDefault();e.stopImmediatePropagation();const pt=api.content(e.clientX,e.clientY),s=api.scene(),point={x:Math.max(0,Math.min(1,pt.x/s.w)),y:Math.max(0,Math.min(1,pt.y/s.h))};
   if(armed==='move'){put(selected,{...records[selected],...point}).catch(error);cancel();return;}
   if(!origin){origin=point;info.textContent='Tap to aim and finish.';return;}
@@ -50,7 +50,7 @@ export function createVttCore(api){
    const id=crypto.randomUUID();put(id,{...origin,map:api.bid(),owner:api.owner()||'gm',shape:panel.querySelector('select').value,size,angle,f:api.floor(),color:api.color()}).catch(error);selected=id;
   }cancel();
  },true);
- for(const type of ['pointerup','click','pointermove'])api.viewport.addEventListener(type,e=>{if(armed&&!panel.contains(e.target)){e.preventDefault();e.stopImmediatePropagation();}},true);
+ for(const type of ['pointerup','click','pointermove'])api.viewport.addEventListener(type,e=>{if(armed&&!panel.contains(e.target)&&!e.target.closest?.('#appHeader')){e.preventDefault();e.stopImmediatePropagation();}},true);
  function draw(){
   panel.hidden=!api.scene()||!api.visible();api.layer.querySelectorAll('[data-aoe]').forEach(e=>e.remove());if(panel.hidden)return;
   if(selected&&!records[selected]){selected=null;info.replaceChildren();}

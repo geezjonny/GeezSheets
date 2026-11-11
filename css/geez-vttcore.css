@@ -20,3 +20,16 @@
 .geez-flyout .mode-btn .absolute{top:calc(100% + 6px)}
 .geez-buildbar{position:absolute;left:84px;bottom:16px;display:none;flex-direction:row;flex-wrap:wrap;gap:2px;padding:6px;border-radius:16px;max-width:calc(100% - 100px);z-index:30}
 .geez-buildbar .mode-btn .absolute{bottom:calc(100% + 6px);top:auto}
+/* No top bar: the header's pieces float over the map as pills; the gaps between them click through. */
+#appHeader{position:absolute;top:8px;left:8px;right:8px;z-index:40;height:auto;min-height:0;padding:0;flex-wrap:wrap;background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;pointer-events:none}
+#appHeader>*{pointer-events:auto}
+#appHeader #breadcrumbNav{flex:0 1 auto;margin-right:auto;min-height:34px;padding:3px 10px;border-radius:12px;background:#f6f0e2f5;border:1px solid #cdbb98;box-shadow:0 6px 18px -10px #5c4d3a}
+#appHeader #breadcrumbNav:empty{display:none}
+@media (max-width:640px){
+ #appHeader{gap:6px}
+ #appHeader #presenceBar{display:none!important}
+ #appHeader #campaignSelect{max-width:120px;margin-right:auto}
+ #appHeader #breadcrumbNav{order:10;flex:1 1 100%;margin-right:0;overflow-x:auto;scrollbar-width:none}
+ #toolRail{top:104px!important;transform:none!important;max-height:calc(100% - 190px);overflow-y:auto;scrollbar-width:none}
+ .geez-buildbar{left:8px;right:8px;max-width:none;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;bottom:64px}
+}
