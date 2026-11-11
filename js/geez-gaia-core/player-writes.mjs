@@ -1,4 +1,6 @@
 // Narrow Sheets player records. Both persistence transports call this boundary.
+// Shortest distance (grid squares) from a point to a door segment.
+const segDist=(x,y,[ax,ay],[bx,by])=>{const dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((x-ax)*dx+(y-ay)*dy)/l)):0;return Math.hypot(x-ax-t*dx,y-ay-t*dy);};
 const deny = message => { throw Object.assign(new Error(message), {status:403}); };
 const bad = message => { throw Object.assign(new Error(message), {status:400}); };
 export function playerWrite(db, parts, body, auth, equal) {
@@ -37,6 +39,21 @@ export function playerWrite(db, parts, body, auth, equal) {
   const order=old.order.filter(r=>r.id!==keys[0]);if(value)order.push(value);order.sort((a,b)=>b.init-a.init);
   const current=old.order[old.turn]?.id;
   return {path:`campaigns/${campaign}/state/initiative`,value:{...old,order,turn:Math.max(0,order.findIndex(r=>r.id===current))}};
+ }else if(field==='doors'&&keys.length===3){
+  // Players open/close real doors only, and only while their own token stands next to it on that floor.
+  const [place,floorKey,door]=keys,level=Number(floorKey),p=entities[place];
+  if(value!=='open'&&value!=='closed')bad('Door state must be open or closed');
+  const map=p&&(p.data?.scene?p:Object.values(entities).find(m=>m.kind==='map'&&m.data?.scene&&(m.id===p.data?.childMap||m.data.parent_place===p.id)));
+  if(!map||p.campaign&&p.campaign!==campaign)bad('Unknown battle map');
+  const fl=map.data.scene.floors.find(f=>f.level===level),n=/^scene-door-(\d+)$/.exec(door),portal=n&&fl?.portals?.[Number(n[1])];
+  if(!portal)bad('Unknown door');
+  if(['window','arch'].includes(portal.kind))deny('That opening cannot be opened or closed');
+  if(portal.locked)deny('That door is locked');
+  const {cols,rows}=map.data.scene.grid,st=db.campaigns[campaign].state.tokens||{};
+  const at=(k,pc)=>st[k]?.[pc]||Object.values(st).find(t=>t?.entity===pc&&t.map===k);
+  const near=pcs.some(pc=>[place,map.id].some(k=>{const t=at(k,pc.id);return t&&(Number(t.f??t.floor)||0)===level&&segDist(t.x*cols,t.y*rows,portal.a,portal.b)<=1.5;}));
+  if(!near)deny('Stand next to the door to open or close it');
+  return {path:`apps/sheets/table3d/${db.apps.sheets?.campaignIds?.[campaign]||'world__'+campaign}/${place}/doors/${level}/${door}`,value};
  }else deny('This write requires a GM');
  const previous=path.split('/').reduce((o,k)=>o?.[k],db)??null;
  if(Object.hasOwn(body,'expected')&&!equal(previous,body.expected))throw Object.assign(new Error('Player record changed; retry'),{status:409});

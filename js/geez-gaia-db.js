@@ -334,7 +334,16 @@
         const a=before.geezvtt.live[key]||{},b=after.geezvtt.live[key]||{},c=rootIds.get(key)||campaignId(key);
         if(key==='_dmCampaign'){if(!same(a,b))stage('apps/sheets/dmCampaign','PUT',{value:b});continue;}
         for(const field of new Set([...Object.keys(a),...Object.keys(b)]))if(!same(a[field],b[field])) {
-          if(player && ['rolls','pings','presence','rollcall','initiative'].includes(field)) {
+          if(player && field==='table3d') {
+            // Players may only flip door states; the server checks the door and that their token is next to it.
+            const prev=a.table3d||{},next=b.table3d||{};
+            for(const place of new Set([...Object.keys(prev),...Object.keys(next)])){
+              const {doors:pd={},...pr}=prev[place]||{},{doors:nd={},...nr}=next[place]||{};
+              if(!same(pr,nr))throw Object.assign(Error('Only the GM can change the battle map'),{status:403});
+              for(const f of new Set([...Object.keys(pd),...Object.keys(nd)]))for(const k of new Set([...Object.keys(pd[f]||{}),...Object.keys(nd[f]||{})]))
+                if(pd[f]?.[k]!==nd[f]?.[k])stage(`campaigns/${c}/player/doors/${canonical(place)}/${f}/${k}`,'PUT',{value:nd[f]?.[k]??null});
+            }
+          } else if(player && ['rolls','pings','presence','rollcall','initiative'].includes(field)) {
             if(field==='initiative'){
               if(b.initiative?.round!==a.initiative?.round||b.initiative?.turn!==a.initiative?.turn)throw Object.assign(Error('Only the GM controls initiative turn and round'),{status:403});
               const prev=a.initiative?.rows||{},next=b.initiative?.rows||{};
