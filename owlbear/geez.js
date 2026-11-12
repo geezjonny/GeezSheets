@@ -112,17 +112,21 @@ export function partyRows(pcs) {
 // Floating sheet window: a popover that stays open (no click-away) at a remembered screen spot.
 export const FLOAT = 'com.geezsheets/float', FLOAT_ON = 'geez.obr.float.on', FLOAT_POS = 'geez.obr.float.pos', FLOAT_CHAR = 'geez.obr.float.char';
 export const FLOAT_W = 420, FLOAT_H = 640;
-export function openFloat(pos, char) {
+export async function openFloat(pos, char) {
     if (!pos) try { pos = JSON.parse(localStorage.getItem(FLOAT_POS)); } catch {}
+    pos ||= { left: 90, top: 90 };
+    // keep the header on screen, or a stray drag leaves a window nobody can reach to close
+    const [vw, vh] = await Promise.all([OBR.viewport.getWidth(), OBR.viewport.getHeight()]).catch(() => [800, 600]);
+    pos = { left: Math.max(0, Math.min(pos.left, vw - 160)), top: Math.max(0, Math.min(pos.top, vh - 60)) };
     try {
         localStorage.setItem(FLOAT_ON, '1');
-        if (pos) localStorage.setItem(FLOAT_POS, JSON.stringify(pos));
+        localStorage.setItem(FLOAT_POS, JSON.stringify(pos));
         if (char) localStorage.setItem(FLOAT_CHAR, char);
     } catch {}
     const corner = { horizontal: 'LEFT', vertical: 'TOP' };
     return OBR.popover.open({
         id: FLOAT, url: page('float.html'), width: FLOAT_W, height: FLOAT_H,
-        anchorReference: 'POSITION', anchorPosition: pos || { left: 90, top: 90 }, anchorOrigin: corner, transformOrigin: corner,
+        anchorReference: 'POSITION', anchorPosition: pos, anchorOrigin: corner, transformOrigin: corner,
         disableClickAway: true, marginThreshold: 0,
     });
 }

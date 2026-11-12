@@ -47,14 +47,6 @@ OBR.onReady(async () => {
     $('full').textContent = full ? 'Quick' : 'Full';
     if (char) { const url = full ? sheetUrl(char, role, mine) : page('quick.html?char=' + encodeURIComponent(char)); if ($('sheet').src !== url) $('sheet').src = url; }
   };
-  $('full').onclick = () => { put('geez.obr.float.full', get('geez.obr.float.full', '') === '1' ? '' : '1'); show($('pick').value); };
-  let list = [];
-  try { list = await characters(); } catch (e) { $('note').textContent = 'Could not load characters: ' + e.message; }
-  $('pick').innerHTML = '<option value="">Choose…</option>' + list.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
-  $('pick').value = get(FLOAT_CHAR, '') || mine;
-  show($('pick').value);
-  $('pick').onchange = () => { put(FLOAT_CHAR, $('pick').value); show($('pick').value); };
-
   const min = (on) => {
     document.body.classList.toggle('min', on); put('geez.obr.float.min', on ? '1' : '');
     OBR.popover.setHeight(FLOAT, on ? Math.ceil(document.querySelector('header').offsetHeight) : FLOAT_H);
@@ -77,6 +69,14 @@ OBR.onReady(async () => {
     openFloat({ left: Math.max(0, Math.round(pos.left + dx)), top: Math.max(0, Math.round(pos.top + dy)) });
   };
   $('grip').onpointercancel = () => { start = null; $('grip').classList.remove('drag'); };
+  $('full').onclick = () => { put('geez.obr.float.full', get('geez.obr.float.full', '') === '1' ? '' : '1'); show($('pick').value); };
+  let list = [];
+  try { list = await characters(); } catch (e) { $('note').textContent = 'Could not load characters: ' + e.message; }
+  $('pick').innerHTML = '<option value="">Choose…</option>' + list.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  $('pick').value = get(FLOAT_CHAR, '') || mine;
+  show($('pick').value);
+  $('pick').onchange = () => { put(FLOAT_CHAR, $('pick').value); show($('pick').value); };
+
 });
 </script>
 </body>

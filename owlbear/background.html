@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><title>GeezSheets background</title></head>
 <body>
 <script type="module">
-import { OBR, KEY, POPOVER, LABELS, page, buildLabel, buildShape, buildText, shareParty, hpColor, openFloat, FLOAT_ON } from './geez.js';
+import { OBR, KEY, POPOVER, LABELS, page, buildLabel, buildShape, buildText, shareParty, hpColor } from './geez.js';
 import { buildWall, buildLight } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
 import { sceneItems, loadPending, dropPending, MAPKEY, DOOR } from './dd2vtt.js';
 // Right-click a character token: open its GeezSheets sheet (or, for an unlinked token, let the GM link it).
@@ -28,7 +28,7 @@ OBR.onReady(async () => {
   const who = (t) => pcs[t.metadata[KEY]] || byName.get(norm(t.name)) || byName.get(norm(t.text?.plainText));
   const names = () => {
     const m = new Map(), dup = new Set();
-    for (const p of Object.values(pcs)) for (const n of new Set([norm(p.name), norm(p.name).split(/s+/)[0]])) {
+    for (const p of Object.values(pcs)) for (const n of new Set([norm(p.name), norm(p.name).split(/\s+/)[0]])) {
       if (!n) continue;
       if (m.has(n) && m.get(n) !== p) dup.add(n); else m.set(n, p);
     }
@@ -128,8 +128,6 @@ OBR.onReady(async () => {
   OBR.scene.onReadyChange(placePending);
   placePending();
 
-  // the floating party panel comes back after a reload if it was open
-  try { if (localStorage.getItem(FLOAT_ON) === '1') openFloat(); } catch {}
   OBR.scene.items.onChange(sync);
   OBR.scene.onReadyChange(sync);
   addEventListener('storage', (e) => { if (e.key === LABELS) sync(); });
