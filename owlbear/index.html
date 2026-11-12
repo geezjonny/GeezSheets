@@ -24,7 +24,7 @@
 <body>
 <header>
   <select id="pick" aria-label="Character"><option value="">Loading characters…</option></select>
-  <button id="floatBtn" title="Keep a small party panel open on the board (drag its title to move it)">Float</button>
+  <button id="floatBtn" title="Open this sheet in a window that stays on the board (drag its grip to move it)">Float</button>
   <button id="partyBtn" title="Everyone's HP and status">Party</button>
   <button id="link" hidden title="Make this token open the chosen character's sheet">Link token</button>
 </header>
@@ -67,7 +67,7 @@ OBR.onReady(async () => {
     if (!mine) note(role === 'GM' ? 'Pick any character to open their sheet.' : 'Pick your character. You can change it any time.');
   }
 
-  $('floatBtn').onclick = () => openFloat();
+  $('floatBtn').onclick = () => openFloat(null, $('pick').value || mine);
   listenParty((pcs) => { $('rows').innerHTML = partyRows(pcs); });
   $('partyBtn').onclick = () => { if ($('party').hidden) partyView(true); else show($('pick').value); };
   $('rows').onclick = (e) => { const b = e.target.closest('.pc'); if (b) { $('pick').value = b.dataset.id; note(''); show(b.dataset.id); } };   // just a look: doesn't change a player's own pick

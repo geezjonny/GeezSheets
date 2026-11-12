@@ -3,61 +3,63 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GeezSheets party</title>
-<link rel="stylesheet" href="party.css">
+<title>GeezSheets sheet</title>
 <style>
   :root { color-scheme: dark; }
-  html, body { margin: 0; background: #0f172a; color: #e2e8f0; font: 12px Inter, system-ui, sans-serif; overflow: hidden; }
+  html, body { margin: 0; height: 100%; background: #0f172a; color: #e2e8f0; font: 12px Inter, system-ui, sans-serif; overflow: hidden; }
+  body { display: flex; flex-direction: column; }
   header { display: flex; gap: 4px; align-items: center; padding: 4px 6px; border-bottom: 1px solid #334155; user-select: none; }
-  #grip { flex: 1; cursor: grab; padding: 3px 2px; font-weight: 600; white-space: nowrap; }
+  #grip { cursor: grab; padding: 3px 4px; font-size: 14px; }
   #grip.drag { cursor: grabbing; color: #f59e0b; }
   select, button { font: inherit; color: inherit; background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 2px 6px; }
-  select { max-width: 92px; }
+  select { flex: 1; min-width: 0; }
   button:hover { border-color: #f59e0b; }
-  #rows { max-height: 560px; overflow: auto; padding: 5px 6px 0; }
-  .pc { padding: 5px 7px; margin-bottom: 5px; }
-  .bar { margin-top: 3px; }
-  body.min #rows { display: none; }
+  #note { padding: 10px; color: #94a3b8; }
+  #note:empty { display: none; }
+  iframe { flex: 1; width: 100%; border: 0; }
+  body.min iframe, body.min #note { display: none; }
 </style>
 </head>
 <body>
 <header>
-  <div id="grip" title="Drag to move">⠿ Party</div>
-  <select id="camp" aria-label="Campaign"></select>
+  <div id="grip" title="Drag to move">⠿</div>
+  <select id="pick" aria-label="Character"><option value="">Loading…</option></select>
   <button id="min" title="Minimise">–</button>
   <button id="close" title="Close">×</button>
 </header>
-<div id="rows">Loading…</div>
+<div id="note"></div>
+<iframe id="sheet" title="Character sheet" hidden></iframe>
 <script type="module">
-import { OBR, POPOVER, FLOAT, FLOAT_ON, FLOAT_POS, page, esc, listenParty, partyRows, openFloat } from './geez.js';
+import { OBR, FLOAT, FLOAT_ON, FLOAT_POS, FLOAT_CHAR, FLOAT_H, esc, characters, sheetUrl, openFloat } from './geez.js';
 const $ = (id) => document.getElementById(id);
 const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
 const put = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
 
-OBR.onReady(() => {
-  let pcs = {};
-  const fit = () => OBR.popover.setHeight(FLOAT, Math.ceil(document.body.scrollHeight));
-  const render = () => {
-    const camps = [...new Set(Object.values(pcs).map((p) => p.campaign))].sort();
-    const want = get('geez.obr.float.camp', '');
-    $('camp').hidden = camps.length < 2;
-    $('camp').innerHTML = '<option value="">All</option>' + camps.map((c) => `<option value="${esc(c)}">${esc(c || 'No campaign')}</option>`).join('');
-    $('camp').value = camps.includes(want) ? want : '';
-    const shown = Object.fromEntries(Object.entries(pcs).filter(([, p]) => !$('camp').value || p.campaign === $('camp').value));
-    $('rows').innerHTML = partyRows(shown);
-    fit();
+// A character sheet in a window that stays on the board.
+OBR.onReady(async () => {
+  const role = await OBR.player.getRole(), name = await OBR.player.getName();
+  const mine = get(`geez.obr.${OBR.room.id}.${name}`, '');   // a player's own pick from the main popover
+  const show = (char) => {
+    $('note').textContent = char ? '' : 'Pick a character.';
+    $('sheet').hidden = !char;
+    if (char) { const url = sheetUrl(char, role, mine); if ($('sheet').src !== url) $('sheet').src = url; }
   };
-  document.body.classList.toggle('min', get('geez.obr.float.min', '') === '1');
-  listenParty((p) => { pcs = p; render(); });
-  $('camp').onchange = () => { put('geez.obr.float.camp', $('camp').value); render(); };
-  $('min').onclick = () => { put('geez.obr.float.min', document.body.classList.toggle('min') ? '1' : ''); fit(); };
-  $('close').onclick = () => { put(FLOAT_ON, '0'); OBR.popover.close(FLOAT); };
-  $('rows').onclick = (e) => {
-    const b = e.target.closest('.pc');
-    if (b) OBR.popover.open({ id: POPOVER, url: page('index.html?char=' + encodeURIComponent(b.dataset.id)), width: 440, height: 720 });
-  };
+  let list = [];
+  try { list = await characters(); } catch (e) { $('note').textContent = 'Could not load characters: ' + e.message; }
+  $('pick').innerHTML = '<option value="">Choose…</option>' + list.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+  $('pick').value = get(FLOAT_CHAR, '') || mine;
+  show($('pick').value);
+  $('pick').onchange = () => { put(FLOAT_CHAR, $('pick').value); show($('pick').value); };
 
-  // Drag the title: Owlbear can't move a popover live, so it reopens at the drop spot.
+  const min = (on) => {
+    document.body.classList.toggle('min', on); put('geez.obr.float.min', on ? '1' : '');
+    OBR.popover.setHeight(FLOAT, on ? Math.ceil(document.querySelector('header').offsetHeight) : FLOAT_H);
+  };
+  if (get('geez.obr.float.min', '') === '1') min(true);
+  $('min').onclick = () => min(!document.body.classList.contains('min'));
+  $('close').onclick = () => { put(FLOAT_ON, '0'); OBR.popover.close(FLOAT); };
+
+  // Drag the grip: Owlbear can't move a popover live, so it reopens at the drop spot.
   // shortcut: moves on release only (no live follow); upgrade if Owlbear adds a move API.
   let start = null;
   $('grip').onpointerdown = (e) => { start = { x: e.screenX, y: e.screenY }; $('grip').setPointerCapture(e.pointerId); $('grip').classList.add('drag'); };
