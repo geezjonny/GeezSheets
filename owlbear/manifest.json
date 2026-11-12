@@ -1,9 +1,9 @@
 {
   "name": "GeezSheets",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "manifest_version": 1,
   "author": "Geez",
-  "description": "GeezSheets in Owlbear: live party HP and status, sheets on tokens, dd2vtt maps with walls, doors and lights.",
+  "description": "GeezSheets in Owlbear: live party HP, sheets on tokens, dd2vtt maps with room-by-room fog, walls, doors and lights.",
   "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
   "action": {
     "title": "GeezSheets",

@@ -4,8 +4,8 @@
 <body>
 <script type="module">
 import { OBR, KEY, POPOVER, LABELS, page, buildLabel, buildShape, buildText, shareParty, hpColor, openFloat, FLOAT_ON } from './geez.js';
-import { buildWall, buildLight } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
-import { sceneItems, loadPending, dropPending, MAPKEY, DOOR } from './dd2vtt.js';
+import { buildWall, buildLight, buildPath } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
+import { sceneItems, loadPending, dropPending, inRoom, MAPKEY, DOOR, ROOM } from './dd2vtt.js';
 // Right-click a character token: open its GeezSheets sheet (or, for an unlinked token, let the GM link it).
 OBR.onReady(async () => {
   OBR.contextMenu.create({
@@ -115,16 +115,37 @@ OBR.onReady(async () => {
       for (const [name, map] of Object.entries(pend)) {
         const img = free.find((i) => i.name === name);
         if (!img) continue;
-        const items = sceneItems({ buildWall, buildLight, buildShape }, img, await OBR.scene.grid.getDpi(), map, map.opts);
+        const items = sceneItems({ buildWall, buildLight, buildShape, buildPath }, img, await OBR.scene.grid.getDpi(), map, map.opts);
         await OBR.scene.items.updateItems([img.id], (d) => { for (const i of d) i.metadata[MAPKEY] = { name }; });
         await OBR.scene.items.addItems(items);
         dropPending(name);
-        OBR.notification.show(`${name}: ${map.walls.length} walls, ${map.doors.length} doors, ${map.lights.length} lights placed`, 'SUCCESS');
+        OBR.notification.show(`${name}: ${[map.opts?.roomFog && (map.rooms || []).length + ' fog rooms', map.opts?.walls !== false && `${map.walls.length} walls, ${map.doors.length} doors, ${map.lights.length} lights`].filter(Boolean).join(', ')} placed`, 'SUCCESS');
       }
     } catch (e) { console.warn('GeezSheets dd2vtt:', e); }
     finally { placing = false; }
   }
   OBR.scene.items.onChange(placePending);
+
+  // Rooms tool (GM): click inside a room to reveal it, click again to fog it. A revealed room is a hidden fog shape.
+  const TOOL = 'com.geezsheets/rooms', ROOMS = (i) => i.layer === 'FOG' && i.metadata[ROOM];
+  const setRooms = async (pick, visible) => {
+    const ids = (await OBR.scene.items.getItems(ROOMS)).filter(pick).map((i) => i.id);
+    if (ids.length) await OBR.scene.items.updateItems(ids, (d) => { for (const i of d) i.visible = visible ?? !i.visible; });
+  };
+  OBR.tool.create({ id: TOOL, icons: [{ icon: page('rooms.svg'), label: 'Rooms: click a room to reveal or fog it', filter: { roles: ['GM'] } }], defaultMode: TOOL + '/reveal' });
+  OBR.tool.createMode({
+    id: TOOL + '/reveal', icons: [{ icon: page('rooms.svg'), label: 'Reveal / fog a room', filter: { activeTools: [TOOL] } }],
+    cursors: [{ cursor: 'pointer' }],
+    async onToolClick(_, e) {
+      // the smallest room under the pointer (rooms meet along walls, so a click on a wall can touch two)
+      const hit = (await OBR.scene.items.getItems(ROOMS)).filter((i) => inRoom(i, e.pointerPosition))
+        .sort((a, b) => a.metadata[ROOM].area - b.metadata[ROOM].area)[0];
+      if (hit) await setRooms((i) => i.id === hit.id);
+      return false;
+    },
+  });
+  OBR.tool.createAction({ id: TOOL + '/all', icons: [{ icon: page('icon.svg'), label: 'Reveal every room', filter: { activeTools: [TOOL] } }], onClick: () => setRooms(() => true, false) });
+  OBR.tool.createAction({ id: TOOL + '/none', icons: [{ icon: page('rooms.svg'), label: 'Fog every room', filter: { activeTools: [TOOL] } }], onClick: () => setRooms(() => true, true) });
   OBR.scene.onReadyChange(placePending);
   placePending();
 
