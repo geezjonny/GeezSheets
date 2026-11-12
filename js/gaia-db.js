@@ -126,7 +126,8 @@
         const tokens = {};
         for (const [id, t] of Object.entries(state.tokens || {})) {
           if (t.entity && t.map) (tokens[battleMap(t.map)] ||= {})[t.entity] = {...t, f:t.floor ?? t.f};
-          else tokens[battleMap(id)] = t;
+          // A battle can have tokens under its scene map (where writes go) and under its place (migration leftovers): merge, scene map wins.
+          else { const k=battleMap(id); tokens[k] = sceneMap(id)?.id===canonical(id) ? {...tokens[k], ...t} : {...t, ...tokens[k]}; }
         }
         state.tokens = tokens;
       }
@@ -415,6 +416,13 @@
                 const flat=Object.entries(value).find(([,t])=>t.entity===canonical(id)&&t.map===canonicalMap(map));
                 if(flat){if(!pos)delete value[flat[0]];else value[flat[0]]={...flat[1],...pos,entity:canonical(id),map:canonicalMap(map),floor:pos.f??pos.floor??0};}
                 else {const key=canonicalMap(map);value[key]||={};if(pos)value[key][canonical(id)]=translate(pos,false);else delete value[key][canonical(id)];}
+              }
+              // Grouped battle: store the whole (merged) set under the scene map and drop the place-keyed duplicate,
+              // so a stale copy can't override saves or bring removed tokens back.
+              const key=canonicalMap(map),flatIds=new Set(Object.values(value).filter(t=>t?.entity).map(t=>t.entity));
+              if(value[key]&&!value[key].entity){
+                value[key]=translate(Object.fromEntries(Object.entries(b.tokens?.[map]||{}).filter(([id])=>!flatIds.has(canonical(id)))),false);
+                for(const k of Object.keys(value))if(k!==key&&!value[k]?.entity&&battleMap(k)===battleMap(key))delete value[k];
               }
             }
             stage('campaigns/'+c+'/state/tokens','PUT',{value,expected:raw.campaigns[c]?.state?.tokens??null});
