@@ -21,8 +21,5 @@ The window title shows what it is connected to.
   and asks again.
 - Questions ("how much HP does Ashara have?") read live records and never propose changes.
 - Journal notes (`/note ...`) and chat history stay on this PC in `data/companion.sqlite`.
-- Firebase transport: `js/gaia-core/firebase-store.mjs` (copy of `GeezSuite/core/firebase-store.mjs`).
+- Firebase transport: `js/gaia-core/firebase-store.mjs`.
 
-## Test
-`npm test` (offline, fake Gaia running the real actions) and `npm run test:real` (real Firebase `/v2-test`, deleted
-afterwards). Both use `GeezSuite/data/gaia-v2.json` as the starting data and a scripted model instead of Ollama.

@@ -14,20 +14,6 @@ The wrappers select `?db=gaia&gaia=firebase` on non-localhost addresses, using o
 
 Do not use live legacy Firebase pages for this session: Gaia mode routes compatibility paths into the selected v2 root. It does not write to rodeo, characters, geezvtt, session, campaigns, maps or dice at the database root.
 
-## Uploading
-
-From GeezSuite:
-
-```powershell
-node tools/upload-v2.mjs --dry-run
-node tools/upload-v2.mjs --target v2-test/my-rehearsal
-node tools/upload-v2.mjs --delete v2-test/my-rehearsal
-```
-
-The input defaults to data/gaia-v2.json; override with `--file <json>`. With no target (or with --dry-run), conversion writes gaia-firebase.dry-run.json locally and makes no network requests. Set `--out <file>` to choose its output. Sizes per part and total are printed. Only one-segment v2-test run IDs are accepted for test writes/deletion.
-
-Production upload requires the explicit flags `--target v2 --yes-really`. It refuses an existing /v2 unless --overwrite is also supplied. Production deletion is unsupported. During this implementation /v2 was never uploaded or changed; run the real test below before arranging the production import yourself.
-
 ## Data layout and files
 
 The selected root mirrors worlds/gaia/entities, worlds/gaia/links, campaigns and apps. Legacy apps/sheets/files moves to `files/<encoded filename>`. Embedded data URLs in input snapshots are extracted to deterministic filenames as well. Uploaded pictures are data URLs under that files subtree and are fetched only when a map requests them, never by the initial subscriptions. World/location pictures work; battle scenes render data.scene, with built-in material/prop assets instead of a published map painting.
@@ -38,7 +24,7 @@ The supplied snapshot converts to 305,880 JSON bytes: worlds 201,631; campaigns 
 
 ## Shared validation and synchronization
 
-GeezSuite/core/write.mjs is the shared write boundary used by the Node server and Firebase transport. It includes schema checks, role/PC ownership, campaign creation/rename, proposals, standard actions including map.publish, and change preparation. Schema loading and IDs work in both Node and browsers. The browser ships an exact copy of the required core modules in js/gaia-core; after editing canonical core files run `node tools/sync-gaia-core.mjs` from GeezSheets and commit the refreshed package.
+js/gaia-core/write.mjs is the shared write boundary used by the Node server and Firebase transport. It includes schema checks, role/PC ownership, campaign creation/rename, proposals, standard actions including map.publish, and change preparation. Schema loading and IDs work in both Node and browsers. js/gaia-core is the only copy of the Gaia core (GeezSuite no longer has one); edit it here.
 
 The adapter projects canonical records into the legacy RTDB-shaped view used by existing pages. source.id/source.mirrors preserve aliases between legacy sheet/map/board IDs and canonical IDs. Unknown entity fields survive patches. Deletion uses _sheetsDeleted tombstones. Migrated grouped tokens and canonical flat tokens are supported; PC/NPC HP lives on the entity, creature-instance HP on the token.
 
@@ -56,32 +42,3 @@ All cooperating Gaia browser writers use _writer. It has no expiring lease that 
 - The fake models asynchronous compat events, shared pages/frames, multi-path atomic updates, transactions and RTDB null/empty-container removal. It does not establish deployed rules, real network latency, SDK reconnect behavior or onDisconnect recovery. Those require the real test and a network rehearsal.
 - The HTTP adapter still sends several requests for a multi-plan compatibility write. Firebase batches those plans atomically; the HTTP transport retains its existing request semantics.
 
-## Verification
-
-From GeezSheets, the offline test uses installed Edge and Playwright at %APPDATA%/npm/node_modules/@playwright/mcp/node_modules/playwright. It starts its own static server and shares one in-memory fake across independent browser contexts and embedded sheets. External requests are blocked in fake mode.
-
-```powershell
-node tools/gaia-firebase.test.mjs --fake
-node tools/gaia-db.test.mjs
-node tools/geez2vtt.test.mjs
-node tools/gaia-campaign.test.mjs
-```
-
-The real Firebase test is one command from GeezSheets:
-
-```powershell
-node tools/gaia-firebase.test.mjs
-```
-
-It shallow-reads live top-level keys, uploads a converted copy to a random /v2-test/sheets-<UUID>, tests independent GM/player/sheet pages, ownership, bidirectional live HP, concurrent writes, token movement, initiative next, campaign creation/rename, Attach .geez2vtt and wall rendering in a second browser, world picture files and reload. Its finally block deletes only its own run even on assertion failure, confirms removal, and compares live top-level keys (excluding the test namespace). Cleanup failure causes a failing exit and prints the run path at startup for manual recovery. It never targets /v2 or any legacy live subtree.
-
-From GeezSuite, run:
-
-```powershell
-node tools/test-core.mjs
-node tools/test-actions.mjs
-node tools/test-shorthand.mjs
-node tools/test-corpus.mjs data/shorthand-corpus.jsonl
-```
-
-Tests compare data/gaia-v2.json byte-for-byte afterward. The uploader dry run also leaves its source untouched. The real Firebase test was left for the operator; offline verification does not establish Friday readiness on the deployed database.
