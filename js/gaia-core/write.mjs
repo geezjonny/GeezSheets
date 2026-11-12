@@ -177,7 +177,8 @@ export function executeWrite(snapshot,schema,path,method,body,auth){
         const previous=existing(target), active=lookup(db,['campaigns',campaign,'state','active_map']);
         if (Object.keys(body).some(k=>!['x','y','floor'].includes(k)) || Object.values(body).some(v=>typeof v!=='number'||!Number.isFinite(v))) fail(400,'Expected numeric token x/y/floor');
         if (auth.role!=='gm' && (entities[entity]?.kind!=='pc'||!auth.pcs.includes(entity)||entities[entity].campaign!=null&&entities[entity].campaign!==campaign||active!=null&&active!==map||lookup(db,['campaigns',campaign,'state','session','lockMove']))) fail(403,'Players may move only their own PC in their campaign on the active map');
-        send(200,commit(target,{...previous,...body},'patch'));return;
+        // Grouped records keep the floor in f (GM saves); a player's floor change updates it too, so the two never disagree.
+        send(200,commit(target,{...previous,...body,...(body.floor!==undefined?{f:body.floor}:{})},'patch'));return;
       }
       // Sheets compatibility storage. GM-only (the role gate above applies).
       // Values use an envelope so scalars, arrays and deletion remain unambiguous.

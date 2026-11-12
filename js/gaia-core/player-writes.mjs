@@ -60,7 +60,7 @@ export function playerWrite(db, parts, body, auth, equal) {
   if(portal.locked)deny('That door is locked');
   const {cols,rows}=map.data.scene.grid,st=db.campaigns[campaign].state.tokens||{};
   const at=(k,pc)=>st[k]?.[pc]||Object.values(st).find(t=>t?.entity===pc&&t.map===k);
-  const near=pcs.some(pc=>[place,map.id].some(k=>{const t=at(k,pc.id);return t&&(Number(t.f??t.floor)||0)===level&&segDist(t.x*cols,t.y*rows,portal.a,portal.b)<=1.5;}));
+  const near=pcs.some(pc=>[place,map.id].some(k=>{const t=at(k,pc.id);return t&&(Number(t.floor??t.f)||0)===level&&segDist(t.x*cols,t.y*rows,portal.a,portal.b)<=1.5;}));
   if(!near)deny('Stand next to the door to open or close it');
   return {path:`apps/sheets/table3d/${db.apps.sheets?.campaignIds?.[campaign]||'world__'+campaign}/${place}/doors/${level}/${door}`,value};
  }else deny('This write requires a GM');
