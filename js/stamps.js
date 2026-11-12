@@ -14,6 +14,16 @@
 // Colours: INK lines, PAPER fills, d.fill(colour, fn) to fill with another colour.
 
 export const INK = '#211b15', PAPER = '#82704f';
+const BLOOD = '#5e1512', CHALK = '#7a2a20', GLOW = '#5b3f8c', STEEL = '#8d8b84', GRIP = '#4a3b2c';
+// Rune shapes: line segments in a unit box (-.5..5). runeAt picks one by number so circles look varied but repeatable.
+const RUNES = [
+    [[0, -.5, 0, .5], [0, -.5, .35, -.2], [0, -.1, .35, -.4]], [[-.25, -.5, -.25, .5], [-.25, -.4, .25, 0], [.25, 0, -.25, .4]],
+    [[0, -.5, 0, .5], [-.3, -.2, .3, .2]], [[-.3, -.5, -.3, .5], [.3, -.5, .3, .5], [-.3, -.1, .3, .2]],
+    [[0, -.5, 0, .5], [-.3, .5, 0, .1], [.3, .5, 0, .1]], [[-.3, .5, 0, -.5], [0, -.5, .3, .5], [-.15, 0, .15, 0]],
+    [[-.3, -.5, .3, .5], [.3, -.5, -.3, .5]], [[0, -.5, .3, 0], [.3, 0, 0, .5], [0, .5, -.3, 0], [-.3, 0, 0, -.5]],
+    [[-.25, -.5, -.25, .5], [-.25, -.5, .25, -.25], [.25, -.25, -.25, 0], [-.25, 0, .25, .5]],
+];
+function runeAt(d, x, y, s, k) { for (const [a, b, A, B] of RUNES[k % RUNES.length]) d.line(x + a * s, y + b * s, x + A * s, y + B * s); }
 
 export const STAMPS = {
     // ---- furniture ----
@@ -112,6 +122,60 @@ export const STAMPS = {
         for (const y of [-1.6, .4, 2.2]) { d.ring(0, y, .18); d.thick(.06, () => d.line(-1.1, y, 1.1, y)); }
         d.box(-.6, 2.5, 1.2, .6);
     },
+
+    // ---- grim: bones, blood, candles ----
+    skull(d) { d.ell(0, -.06, .27, .28); d.box(-.14, .14, .28, .14); d.dot(-.1, -.05, .065); d.dot(.1, -.05, .065); d.fill(INK, () => d.poly([[0, .03], [-.04, .1], [.04, .1]])); for (let i = -1; i <= 1; i++) d.line(i * .07, .16, i * .07, .28); },
+    skull_pile(d, c) { for (const [x, y, s, a] of [[-.28, -.25, .45, .8], [.3, -.25, .45, -.6], [-.2, .15, .6, -.3], [.2, .12, .6, .35], [0, -.12, .65, 0]]) { c.save(); c.translate(x, y); c.rotate(a); c.scale(s, s); STAMPS.skull(d, c); c.restore(); } },
+    skull_pike(d, c) { d.fill(GRIP, () => d.thick(.07, () => d.line(.05, .05, .42, .42))); d.ring(.42, .42, .05); c.save(); c.scale(.8, .8); STAMPS.skull(d, c); c.restore(); d.fill(STEEL, () => d.poly([[0, -.42], [.05, -.24], [-.05, -.24]])); },
+    skeleton(d, c) {
+        c.save(); c.translate(0, -.72); c.scale(.55, .55); STAMPS.skull(d, c); c.restore();
+        d.thick(.05, () => d.line(0, -.55, 0, .2));
+        for (let i = 0; i < 4; i++) { const y = -.45 + i * .13, w = .26 - i * .03; c.beginPath(); c.moveTo(-w, y + .05); c.quadraticCurveTo(0, y - .06, w, y + .05); c.stroke(); }
+        d.ell(0, .25, .18, .1);
+        d.bone(-.12, -.5, -.32, -.05); d.bone(-.32, -.05, -.3, .35); d.bone(.12, -.5, .34, -.1); d.bone(.34, -.1, .4, .3);
+        d.bone(-.1, .32, -.16, .62); d.bone(-.16, .62, -.18, .92); d.bone(.1, .32, .15, .62); d.bone(.15, .62, .2, .92);
+    },
+    corpse(d, c) { d.poly([[0, -.88], [.2, -.75], [.24, -.45], [.32, -.3], [.3, .3], [.2, .7], [.14, .9], [-.14, .9], [-.2, .7], [-.3, .3], [-.32, -.3], [-.24, -.45], [-.2, -.75]]); for (const y of [-.55, -.2, .15, .5, .78]) d.line(-.28, y, .28, y + .06); d.fill(BLOOD, () => { c.beginPath(); c.ellipse(.08, -.05, .14, .1, .4, 0, 7); c.fill(); }); },
+    open_grave(d, c) { d.ell(0, 0, .46, .95); d.hatch(-.46, -.95, .92, 1.9, .11); d.fill('#2a221b', () => d.box(-.28, -.72, .56, 1.44)); },
+    blood_pool(d, c) { d.fill(BLOOD, () => { c.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r = .3 + d.r() * .12; i ? c.lineTo(Math.cos(a) * r, Math.sin(a) * r * .8) : c.moveTo(Math.cos(a) * r, Math.sin(a) * r * .8); } c.closePath(); c.fill(); c.stroke(); for (let i = 0; i < 6; i++) { const a = d.r() * 7, r = .42 + d.r() * .06; c.beginPath(); c.arc(Math.cos(a) * r, Math.sin(a) * r * .8, .025 + d.r() * .03, 0, 7); c.fill(); } }); },
+    blood_splatter(d, c) { d.fill(BLOOD, () => { c.beginPath(); c.arc(0, 0, .14, 0, 7); c.fill(); for (let i = 0; i < 9; i++) { const a = d.r() * 7, l = .18 + d.r() * .22; c.save(); c.strokeStyle = BLOOD; c.lineWidth = .03 + d.r() * .03; d.line(0, 0, Math.cos(a) * l, Math.sin(a) * l); c.restore(); c.beginPath(); c.arc(Math.cos(a) * (l + .05), Math.sin(a) * (l + .05), .02 + d.r() * .025, 0, 7); c.fill(); } }); },
+    blood_trail(d, c) { d.fill(BLOOD, () => { for (let i = 0; i < 14; i++) { const y = -.9 + i * .12, x = Math.sin(i * .7) * .15 + (d.r() - .5) * .08; c.beginPath(); c.ellipse(x, y, .03 + d.r() * .05, .05 + d.r() * .05, d.r(), 0, 7); c.fill(); } c.beginPath(); c.ellipse(.1, .78, .2, .13, .3, 0, 7); c.fill(); }); },
+    candle(d) { d.ell(0, .1, .15, .06); d.fill('#e8dcc0', () => d.ring(0, .03, .09)); d.flame(0, -.05, .08); },
+    candle_cluster(d, c) { d.fill('#cbbb94', () => d.ell(0, .08, .42, .3)); for (const [x, y, s] of [[-.3, -.15, .75], [.28, -.12, .7], [0, -.12, 1.1], [-.22, .12, 1], [.18, .16, .85]]) { c.save(); c.translate(x, y); c.scale(s, s); STAMPS.candle(d, c); c.restore(); } },
+    cobweb(d, c) { c.save(); c.globalAlpha = .8; for (let i = 0; i < 6; i++) { const a = i * Math.PI / 10; d.line(-.5, -.5, -.5 + Math.cos(a) * 1, -.5 + Math.sin(a) * 1); } for (const r of [.25, .45, .65, .85]) { c.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 10, rr = r * (i % 2 ? .93 : 1); i ? c.lineTo(-.5 + Math.cos(a) * rr, -.5 + Math.sin(a) * rr) : c.moveTo(-.5 + Math.cos(a) * rr, -.5 + Math.sin(a) * rr); } c.stroke(); } c.restore(); },
+
+    // ---- ritual: circles, glyphs, runes ----
+    ritual_circle(d, c) {
+        c.save(); c.strokeStyle = CHALK; d.thick(.045, () => d.circle(0, 0, .92)); d.circle(0, 0, .78);
+        const pts = [...Array(5)].map((_, i) => { const a = -Math.PI / 2 + i * Math.PI * 4 / 5; return [Math.cos(a) * .78, Math.sin(a) * .78]; });
+        d.thick(.035, () => d.poly(pts, false));
+        for (let i = 0; i < 20; i++) { const a = i * Math.PI / 10 + .16; c.save(); c.translate(Math.cos(a) * .85, Math.sin(a) * .85); c.rotate(a + Math.PI / 2); runeAt(d, 0, 0, .09, i * 7); c.restore(); }
+        c.restore();
+        for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; c.save(); c.translate(Math.cos(a) * .97, Math.sin(a) * .97); c.scale(.5, .5); STAMPS.candle(d, c); c.restore(); }
+    },
+    rune_circle(d, c) {
+        c.save(); c.strokeStyle = GLOW; d.circle(0, 0, .92); d.thick(.04, () => d.circle(0, 0, .72)); d.circle(0, 0, .34);
+        for (let i = 0; i < 16; i++) { const a = i * Math.PI / 8; c.save(); c.translate(Math.cos(a) * .82, Math.sin(a) * .82); c.rotate(a + Math.PI / 2); runeAt(d, 0, 0, .13, i * 5 + 2); c.restore(); }
+        for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; d.line(Math.cos(a) * .34, Math.sin(a) * .34, Math.cos(a) * .72, Math.sin(a) * .72); }
+        d.thick(.04, () => runeAt(d, 0, 0, .4, 3)); c.restore();
+    },
+    glyph(d, c) { c.save(); c.strokeStyle = CHALK; d.circle(0, 0, .4); d.thick(.045, () => runeAt(d, 0, 0, .5, 4)); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; d.line(Math.cos(a) * .4, Math.sin(a) * .4, Math.cos(a) * .46, Math.sin(a) * .46); } c.restore(); },
+    rune_stone(d) { d.poly([[-.22, -.38], [.18, -.42], [.34, -.05], [.26, .36], [-.2, .4], [-.36, .02]]); d.thick(.04, () => runeAt(d, 0, 0, .42, 1)); d.line(-.28, .25, -.18, .32); },
+    sacrificial_altar(d, c) { d.rect(.86, 1.7); d.box(-.36, -.78, .72, 1.56); d.line(-.36, -.55, .36, -.55); d.line(-.36, .55, .36, .55); STAMPS.blood_pool(d, c); d.fill(BLOOD, () => { c.fillRect(-.02, .3, .04, .5); c.fillRect(-.02, -.8, .04, .45); }); for (const [x, y] of [[-.33, -.75], [.33, -.75], [-.33, .75], [.33, .75]]) { c.save(); c.translate(x, y); c.scale(.55, .55); STAMPS.candle(d, c); c.restore(); } },
+    grimoire(d, c) { d.poly([[-.45, -.3], [0, -.25], [.45, -.3], [.45, .3], [0, .35], [-.45, .3]]); d.line(0, -.25, 0, .35); for (const [x, k] of [[-.22, 0], [.22, 5]]) { c.save(); c.strokeStyle = BLOOD; runeAt(d, x, -.05, .2, k); c.restore(); d.line(x - .14, .18, x + .14, .18); d.line(x - .14, .24, x + .1, .24); } },
+
+    // ---- weapons (lying on the floor) ----
+    sword(d, c) { c.rotate(-.6); d.fill(STEEL, () => d.poly([[0, -.6], [.055, -.5], [.055, .12], [-.055, .12], [-.055, -.5]])); d.line(0, -.5, 0, .1); d.box(-.18, .12, .36, .05); d.fill(GRIP, () => d.box(-.03, .17, .06, .2)); d.ring(0, .41, .045); },
+    dagger(d, c) { c.rotate(.4); d.fill(STEEL, () => d.poly([[0, -.35], [.05, -.25], [.05, .05], [-.05, .05], [-.05, -.25]])); d.box(-.12, .05, .24, .04); d.fill(GRIP, () => d.box(-.03, .09, .06, .14)); d.ring(0, .26, .035); },
+    axe(d, c) { c.rotate(.5); d.fill(GRIP, () => d.box(-.03, -.5, .06, 1)); d.fill(STEEL, () => d.poly([[.03, -.42], [.26, -.52], [.32, -.32], [.26, -.12], [.03, -.22]])); },
+    spear(d, c) { c.rotate(.78); d.fill(GRIP, () => d.thick(.05, () => d.line(0, -.4, 0, .66))); d.fill(STEEL, () => d.poly([[0, -.68], [.07, -.5], [0, -.4], [-.07, -.5]])); },
+    mace(d, c) { c.rotate(-.4); d.fill(GRIP, () => d.box(-.03, -.1, .06, .55)); d.fill(STEEL, () => d.ring(0, -.22, .14)); for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; d.line(Math.cos(a) * .14, -.22 + Math.sin(a) * .14, Math.cos(a) * .22, -.22 + Math.sin(a) * .22); } },
+    bow(d, c) { c.rotate(-.3); d.thick(.05, () => { c.beginPath(); c.arc(-.35, 0, .55, -1, 1); c.stroke(); }); d.line(Math.cos(-1) * .55 - .35, Math.sin(-1) * .55, Math.cos(1) * .55 - .35, Math.sin(1) * .55); },
+    crossbow(d, c) { c.rotate(.3); d.fill(GRIP, () => d.box(-.05, -.3, .1, .72)); d.thick(.05, () => { c.beginPath(); c.moveTo(-.4, -.18); c.quadraticCurveTo(0, -.36, .4, -.18); c.stroke(); }); d.line(-.4, -.18, 0, -.02); d.line(.4, -.18, 0, -.02); d.fill(STEEL, () => d.poly([[0, -.42], [.035, -.34], [-.035, -.34]])); },
+    arrows(d, c) { for (const [x, a] of [[-.15, -.15], [0, .05], [.15, .2]]) { c.save(); c.translate(x, 0); c.rotate(a); d.line(0, -.42, 0, .38); d.fill(STEEL, () => d.poly([[0, -.48], [.04, -.4], [-.04, -.4]])); d.line(0, .28, -.06, .4); d.line(0, .28, .06, .4); c.restore(); } },
+    shield(d) { d.ring(0, 0, .4); d.circle(0, 0, .33); for (const x of [-.18, 0, .18]) d.line(x, -.3, x, .3); d.fill(STEEL, () => d.ring(0, 0, .1)); },
+    weapon_pile(d, c) { for (const [k, x, y, a, s] of [['shield', -.15, .1, 0, .7], ['sword', .1, -.05, .3, .8], ['axe', -.2, -.15, -.4, .65], ['spear', .15, .15, .2, .7], ['dagger', .28, -.28, 1.2, .8]]) { c.save(); c.translate(x, y); c.rotate(a); c.scale(s, s); STAMPS[k](d, c); c.restore(); } },
+    armor_stand(d, c) { d.ring(0, 0, .12); d.fill(STEEL, () => d.poly([[-.3, -.3], [.3, -.3], [.36, -.12], [.24, .3], [-.24, .3], [-.36, -.12]])); d.line(0, -.3, 0, .3); d.line(-.22, -.05, .22, -.05); for (const x of [-.42, .42]) d.ell(x, -.22, .1, .08); },
 
     // ---- anything unknown: a plain sketched bundle, never text ----
     unknown(d, c) { c.beginPath(); c.roundRect(-.38, -.3, .76, .6, .16); c.fill(); c.stroke(); d.hatch(-.38, -.3, .76, .6, .12); d.line(-.38, 0, .38, 0); },

@@ -1450,5 +1450,368 @@ window.GEEZ_PROPS = [
     "tags": [
       "vehicles"
     ]
+  },
+  {
+    "id": "skull",
+    "name": "Skull",
+    "src": "props/skull.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "skull_pile",
+    "name": "Skull Pile",
+    "src": "props/skull_pile.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "skull_pike",
+    "name": "Skull on a Pike",
+    "src": "props/skull_pike.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "skeleton",
+    "name": "Skeleton",
+    "src": "props/skeleton.png",
+    "w": 1,
+    "h": 2,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "corpse",
+    "name": "Shrouded Corpse",
+    "src": "props/corpse.png",
+    "w": 1,
+    "h": 2,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "open_grave",
+    "name": "Open Grave",
+    "src": "props/open_grave.png",
+    "w": 1,
+    "h": 2,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "blood_pool",
+    "name": "Blood Pool",
+    "src": "props/blood_pool.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "blood_splatter",
+    "name": "Blood Splatter",
+    "src": "props/blood_splatter.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "blood_trail",
+    "name": "Blood Trail",
+    "src": "props/blood_trail.png",
+    "w": 1,
+    "h": 2,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "candle",
+    "name": "Candle",
+    "src": "props/candle.png",
+    "w": 1,
+    "h": 1,
+    "light": {
+      "range": 2,
+      "color": "#ffb35c"
+    },
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "candle_cluster",
+    "name": "Candle Cluster",
+    "src": "props/candle_cluster.png",
+    "w": 1,
+    "h": 1,
+    "light": {
+      "range": 3,
+      "color": "#ffb35c"
+    },
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "cobweb",
+    "name": "Cobweb",
+    "src": "props/cobweb.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "grim"
+    ]
+  },
+  {
+    "id": "ritual_circle",
+    "name": "Ritual Circle",
+    "src": "props/ritual_circle.png",
+    "w": 2,
+    "h": 2,
+    "light": {
+      "range": 3,
+      "color": "#ffb35c"
+    },
+    "blocks": false,
+    "tags": [
+      "ritual"
+    ]
+  },
+  {
+    "id": "rune_circle",
+    "name": "Rune Circle",
+    "src": "props/rune_circle.png",
+    "w": 2,
+    "h": 2,
+    "light": {
+      "range": 3,
+      "color": "#9d6bff"
+    },
+    "blocks": false,
+    "tags": [
+      "ritual"
+    ]
+  },
+  {
+    "id": "glyph",
+    "name": "Glyph",
+    "src": "props/glyph.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "ritual"
+    ]
+  },
+  {
+    "id": "rune_stone",
+    "name": "Rune Stone",
+    "src": "props/rune_stone.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "ritual"
+    ]
+  },
+  {
+    "id": "sacrificial_altar",
+    "name": "Sacrificial Altar",
+    "src": "props/sacrificial_altar.png",
+    "w": 1,
+    "h": 2,
+    "light": {
+      "range": 2,
+      "color": "#ffb35c"
+    },
+    "blocks": false,
+    "tags": [
+      "ritual"
+    ]
+  },
+  {
+    "id": "grimoire",
+    "name": "Grimoire",
+    "src": "props/grimoire.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "ritual"
+    ]
+  },
+  {
+    "id": "sword",
+    "name": "Sword",
+    "src": "props/sword.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "dagger",
+    "name": "Dagger",
+    "src": "props/dagger.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "axe",
+    "name": "Axe",
+    "src": "props/axe.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "spear",
+    "name": "Spear",
+    "src": "props/spear.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "mace",
+    "name": "Mace",
+    "src": "props/mace.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "bow",
+    "name": "Bow",
+    "src": "props/bow.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "crossbow",
+    "name": "Crossbow",
+    "src": "props/crossbow.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "arrows",
+    "name": "Arrows",
+    "src": "props/arrows.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "shield",
+    "name": "Shield",
+    "src": "props/shield.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "weapon_pile",
+    "name": "Weapon Pile",
+    "src": "props/weapon_pile.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
+  },
+  {
+    "id": "armor_stand",
+    "name": "Armor Stand",
+    "src": "props/armor_stand.png",
+    "w": 1,
+    "h": 1,
+    "light": null,
+    "blocks": false,
+    "tags": [
+      "weapons"
+    ]
   }
 ];
