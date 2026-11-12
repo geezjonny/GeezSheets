@@ -14,21 +14,57 @@
   button:hover { border-color: #f59e0b; }
   #note { padding: 6px 10px; color: #94a3b8; }
   #note:empty { display: none; }
+  #party { flex: 1; overflow: auto; padding: 6px 8px; }
+  #party h4 { margin: 10px 2px 4px; color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .pc { display: block; width: 100%; text-align: left; margin: 0 0 6px; padding: 7px 9px; cursor: pointer; }
+  .pc .top { display: flex; justify-content: space-between; gap: 8px; }
+  .pc .ac { color: #94a3b8; }
+  .bar { position: relative; height: 16px; margin-top: 5px; border-radius: 5px; background: #334155; overflow: hidden; }
+  .bar i { position: absolute; inset: 0 auto 0 0; }
+  .bar i.temp { background: #38bdf8; opacity: .6; }
+  .bar span { position: relative; display: block; text-align: center; font-size: 11px; line-height: 16px; font-weight: 600; text-shadow: 0 1px 2px #000; }
+  .tags:not(:empty) { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .tags b { font-weight: 500; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: #475569; }
+  .tags b.conc { background: #6d28d9; } .tags b.down { background: #7f1d1d; }
+  #party label { display: flex; gap: 6px; align-items: center; color: #94a3b8; margin: 2px 2px 8px; }
+  button.on { border-color: #f59e0b; color: #f59e0b; }
   iframe { flex: 1; width: 100%; border: 0; background: transparent; }
 </style>
 </head>
 <body>
 <header>
   <select id="pick" aria-label="Character"><option value="">Loading characters…</option></select>
+  <button id="partyBtn" title="Everyone's HP and status">Party</button>
   <button id="link" hidden title="Make this token open the chosen character's sheet">Link token</button>
 </header>
 <div id="note"></div>
+<div id="party" hidden><label><input type="checkbox" id="labels"> Show HP on tokens</label><div id="rows">Loading…</div></div>
 <iframe id="sheet" title="Character sheet" hidden></iframe>
 <script type="module">
-import { OBR, KEY, characters, sheetUrl } from './geez.js';
+import { OBR, KEY, LABELS, characters, sheetUrl, watchParty, hpColor } from './geez.js';
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
 const note = (t) => { $('note').textContent = t || ''; };
+const esc = (t) => String(t).replace(/[<&>"]/g, (m) => `&#${m.charCodeAt(0)};`);
+
+// Party view: everyone's HP bar, AC and status, live. Click a row to open that sheet.
+function partyRows(pcs) {
+  const byCamp = {};
+  for (const p of Object.values(pcs)) (byCamp[p.campaign] ||= []).push(p);
+  const camps = Object.keys(byCamp).sort();
+  return camps.map((c) => (camps.length > 1 ? `<h4>${esc(c || 'No campaign')}</h4>` : '') + byCamp[c].sort((a, b) => a.name.localeCompare(b.name)).map((p) => {
+    const tot = Math.max(p.max, p.hp + p.temp) || 1, pct = (v) => Math.max(0, Math.min(100, v / tot * 100)).toFixed(1);
+    const tags = [
+      p.hp <= 0 && p.max ? `<b class="down">Down · saves ${p.saves.ok}✓ ${p.saves.fail}✗</b>` : '',
+      p.conc ? `<b class="conc">◎ ${esc(p.conc)}</b>` : '',
+      p.exhaustion ? `<b>Exhaustion ${p.exhaustion}</b>` : '',
+      ...p.conditions.map((x) => `<b>${esc(x)}</b>`),
+    ].join('');
+    return `<button class="pc" data-id="${esc(p.id)}"><div class="top"><b>${esc(p.name)}</b><span class="ac">AC ${esc(p.ac)}</span></div>
+      <div class="bar"><i style="width:${pct(p.hp)}%;background:${hpColor(p)}"></i><i class="temp" style="left:${pct(p.hp)}%;width:${pct(p.temp)}%"></i>
+      <span>${p.hp} / ${p.max}${p.temp ? ` +${p.temp}` : ''}</span></div><div class="tags">${tags}</div></button>`;
+  }).join('')).join('') || 'No characters.';
+}
 
 OBR.onReady(async () => {
   const role = await OBR.player.getRole(), name = await OBR.player.getName();
@@ -37,9 +73,11 @@ OBR.onReady(async () => {
   try { mine = localStorage.getItem(MINE) || ''; } catch {}
   try { list = await characters(); } catch (e) { note('Could not load characters: ' + e.message); return; }
 
+  const partyView = (on) => { $('party').hidden = !on; $('partyBtn').classList.toggle('on', on); if (on) $('sheet').hidden = true; };
   const show = (char) => {
     const f = $('sheet');
-    if (!char) { f.hidden = true; return; }
+    if (!char) { f.hidden = true; partyView(true); return; }
+    partyView(false);
     const url = sheetUrl(char, role, mine);
     if (f.src !== url) f.src = url;
     f.hidden = false;
@@ -58,6 +96,12 @@ OBR.onReady(async () => {
     $('pick').value = mine; show(mine);
     if (!mine) note(role === 'GM' ? 'Pick any character to open their sheet.' : 'Pick your character. You can change it any time.');
   }
+
+  watchParty((pcs) => { $('rows').innerHTML = partyRows(pcs); });
+  $('partyBtn').onclick = () => { if ($('party').hidden) partyView(true); else show($('pick').value); };
+  $('rows').onclick = (e) => { const b = e.target.closest('.pc'); if (b) { $('pick').value = b.dataset.id; note(''); show(b.dataset.id); } };   // just a look: doesn't change a player's own pick
+  try { $('labels').checked = localStorage.getItem(LABELS) !== '0'; } catch {}
+  $('labels').onchange = () => { try { localStorage.setItem(LABELS, $('labels').checked ? '1' : '0'); } catch {} };
 
   $('pick').onchange = () => {
     const c = $('pick').value;

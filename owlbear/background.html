@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><title>GeezSheets background</title></head>
 <body>
 <script type="module">
-import { OBR, KEY, POPOVER, page } from './geez.js';
+import { OBR, KEY, POPOVER, LABELS, page, buildLabel, watchParty, hpColor } from './geez.js';
 // Right-click a character token: open its GeezSheets sheet (or, for an unlinked token, let the GM link it).
 OBR.onReady(() => {
   OBR.contextMenu.create({
@@ -15,6 +15,44 @@ OBR.onReady(() => {
       await OBR.popover.open({ id: POPOVER, url: page('index.html?' + q), width: 440, height: 720 });
     },
   });
+
+  // HP labels under linked tokens. Local items: each player draws their own, so nothing extra is saved in the room.
+  const TAG = 'com.geezsheets/hp';
+  let pcs = {}, busy = false, again = false;
+  const shown = () => { try { return localStorage.getItem(LABELS) !== '0'; } catch { return true; } };
+  const text = (p) => [`${p.hp <= 0 && p.max ? '☠ ' : '♥ '}${p.hp}/${p.max}${p.temp ? ' +' + p.temp : ''}`, p.conc && '◎', ...p.conditions].filter(Boolean).join(' · ');
+  async function sync() {
+    if (busy) { again = true; return; }
+    busy = true;
+    try {
+      if (!(await OBR.scene.isReady())) return;
+      const tokens = await OBR.scene.items.getItems((i) => i.metadata[KEY] && i.visible);
+      const labels = await OBR.scene.local.getItems((i) => i.metadata[TAG]);
+      const want = new Map(shown() ? tokens.filter((t) => pcs[t.metadata[KEY]]).map((t) => [t.id, pcs[t.metadata[KEY]]]) : []);
+      const have = new Map(labels.map((l) => [l.attachedTo, l]));
+      const gone = labels.filter((l) => !want.has(l.attachedTo)).map((l) => l.id);
+      if (gone.length) await OBR.scene.local.deleteItems(gone);
+      const stale = labels.filter((l) => want.has(l.attachedTo) && (l.text.plainText !== text(want.get(l.attachedTo)) || l.style.backgroundColor !== hpColor(want.get(l.attachedTo))));
+      if (stale.length) await OBR.scene.local.updateItems(stale.map((l) => l.id), (ls) => {
+        for (const l of ls) { const p = want.get(l.attachedTo); l.text.plainText = text(p); l.style.backgroundColor = hpColor(p); }
+      });
+      const add = [];
+      for (const [id, p] of want) {
+        if (have.has(id)) continue;
+        const b = await OBR.scene.items.getItemBounds([id]);
+        add.push(buildLabel().plainText(text(p)).position({ x: b.center.x, y: b.max.y }).attachedTo(id)
+          .layer('ATTACHMENT').locked(true).disableHit(true).disableAttachmentBehavior(['SCALE', 'ROTATION'])
+          .backgroundColor(hpColor(p)).backgroundOpacity(0.85).fontSize(16).pointerDirection('UP').pointerHeight(0)
+          .metadata({ [TAG]: true }).build());
+      }
+      if (add.length) await OBR.scene.local.addItems(add);
+    } catch (e) { console.warn('GeezSheets HP labels:', e); }
+    finally { busy = false; if (again) { again = false; sync(); } }
+  }
+  watchParty((p) => { pcs = p; sync(); });
+  OBR.scene.items.onChange(sync);
+  OBR.scene.onReadyChange(sync);
+  addEventListener('storage', (e) => { if (e.key === LABELS) sync(); });
 });
 </script>
 </body>
