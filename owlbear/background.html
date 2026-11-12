@@ -4,6 +4,8 @@
 <body>
 <script type="module">
 import { OBR, KEY, POPOVER, LABELS, page, buildLabel, buildShape, buildText, shareParty, hpColor, openFloat, FLOAT_ON } from './geez.js';
+import { buildWall, buildLight } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
+import { sceneItems, loadPending, dropPending, MAPKEY, DOOR } from './dd2vtt.js';
 // Right-click a character token: open its GeezSheets sheet (or, for an unlinked token, let the GM link it).
 OBR.onReady(async () => {
   OBR.contextMenu.create({
@@ -84,6 +86,48 @@ OBR.onReady(async () => {
   }
   role = await OBR.player.getRole();
   shareParty((p) => { pcs = p; byName = names(); sync(); });
+  // dd2vtt maps (import.html): right-click a map picture to import its walls; right-click a door handle to open / close it.
+  OBR.contextMenu.create({
+    id: 'com.geezsheets/dd2vtt',
+    icons: [{ icon: page('icon.svg'), label: 'Walls from dd2vtt', filter: { roles: ['GM'], max: 1, every: [{ key: 'layer', value: 'MAP' }, { key: 'type', value: 'IMAGE' }] } }],
+    onClick: (c) => OBR.modal.open({ id: 'com.geezsheets/import', url: page('import.html?item=' + encodeURIComponent(c.items[0].id)), width: 460, height: 520 }),
+  });
+  OBR.contextMenu.create({
+    id: 'com.geezsheets/door',
+    icons: [{ icon: page('icon.svg'), label: 'Open / close door', filter: { roles: ['GM'], every: [{ key: ['metadata', DOOR, 'wall'], value: undefined, operator: '!=' }] } }],
+    async onClick(c) {
+      const flip = new Map(c.items.map((h) => [h.metadata[DOOR].wall, !h.metadata[DOOR].closed]));
+      await OBR.scene.items.updateItems([...flip.keys()], (d) => { for (const w of d) { w.blocking = flip.get(w.id); w.metadata[DOOR] = { closed: w.blocking }; } });
+      await OBR.scene.items.updateItems(c.items.map((h) => h.id), (d) => { for (const h of d) {
+        const closed = flip.get(h.metadata[DOOR].wall);
+        h.metadata[DOOR] = { ...h.metadata[DOOR], closed }; h.style.fillColor = closed ? '#dc2626' : '#16a34a';
+      } });
+    },
+  });
+  // "New scene" uploads wait in this browser until the GM opens the scene; then the walls go on the uploaded picture.
+  let placing = false;
+  async function placePending() {
+    const pend = loadPending();
+    if (role !== 'GM' || placing || !Object.keys(pend).length || !(await OBR.scene.isReady())) return;
+    placing = true;
+    try {
+      const free = await OBR.scene.items.getItems((i) => i.type === 'IMAGE' && i.layer === 'MAP' && !i.metadata[MAPKEY]);
+      for (const [name, map] of Object.entries(pend)) {
+        const img = free.find((i) => i.name === name);
+        if (!img) continue;
+        const items = sceneItems({ buildWall, buildLight, buildShape }, img, await OBR.scene.grid.getDpi(), map, map.opts);
+        await OBR.scene.items.updateItems([img.id], (d) => { for (const i of d) i.metadata[MAPKEY] = { name }; });
+        await OBR.scene.items.addItems(items);
+        dropPending(name);
+        OBR.notification.show(`${name}: ${map.walls.length} walls, ${map.doors.length} doors, ${map.lights.length} lights placed`, 'SUCCESS');
+      }
+    } catch (e) { console.warn('GeezSheets dd2vtt:', e); }
+    finally { placing = false; }
+  }
+  OBR.scene.items.onChange(placePending);
+  OBR.scene.onReadyChange(placePending);
+  placePending();
+
   // the floating party panel comes back after a reload if it was open
   try { if (localStorage.getItem(FLOAT_ON) === '1') openFloat(); } catch {}
   OBR.scene.items.onChange(sync);

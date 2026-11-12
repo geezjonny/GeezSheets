@@ -26,6 +26,7 @@
   <select id="pick" aria-label="Character"><option value="">Loading characters…</option></select>
   <button id="floatBtn" title="Open this sheet in a window that stays on the board (drag its grip to move it)">Float</button>
   <button id="partyBtn" title="Everyone's HP and status">Party</button>
+  <button id="mapBtn" hidden title="Import a dd2vtt map: picture, walls, doors and lights">Map</button>
   <button id="link" hidden title="Make this token open the chosen character's sheet">Link token</button>
 </header>
 <div id="note"></div>
@@ -38,6 +39,7 @@ const qs = new URLSearchParams(location.search);
 const note = (t) => { $('note').textContent = t || ''; };
 OBR.onReady(async () => {
   const role = await OBR.player.getRole(), name = await OBR.player.getName();
+  if (role === 'GM') { $('mapBtn').hidden = false; $('mapBtn').onclick = () => OBR.modal.open({ id: 'com.geezsheets/import', url: new URL('import.html', location.href).href, width: 460, height: 520 }); }
   const MINE = `geez.obr.${OBR.room.id}.${name}`;   // each player's own character, remembered per room
   let mine = '', list = [];
   try { mine = localStorage.getItem(MINE) || ''; } catch {}
