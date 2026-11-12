@@ -68,3 +68,37 @@ export function sheetUrl(char, role, mine) {
     else { q.set('player', ''); if (mine) q.set('pc', mine); }
     return u.href.replace(/=(&|$)/g, '$1');
 }
+
+export const esc = (t) => String(t).replace(/[<&>"]/g, (m) => `&#${m.charCodeAt(0)};`);
+
+// Party view: everyone's HP bar, AC and status, live. Click a row to open that sheet.
+export function partyRows(pcs) {
+  const byCamp = {};
+  for (const p of Object.values(pcs)) (byCamp[p.campaign] ||= []).push(p);
+  const camps = Object.keys(byCamp).sort();
+  return camps.map((c) => (camps.length > 1 ? `<h4 class="camp">${esc(c || 'No campaign')}</h4>` : '') + byCamp[c].sort((a, b) => a.name.localeCompare(b.name)).map((p) => {
+    const tot = Math.max(p.max, p.hp + p.temp) || 1, pct = (v) => Math.max(0, Math.min(100, v / tot * 100)).toFixed(1);
+    const tags = [
+      p.hp <= 0 && p.max ? `<b class="down">Down · saves ${p.saves.ok}✓ ${p.saves.fail}✗</b>` : '',
+      p.conc ? `<b class="conc">◎ ${esc(p.conc)}</b>` : '',
+      p.exhaustion ? `<b>Exhaustion ${p.exhaustion}</b>` : '',
+      ...p.conditions.map((x) => `<b>${esc(x)}</b>`),
+    ].join('');
+    return `<button class="pc" data-id="${esc(p.id)}"><div class="top"><b>${esc(p.name)}</b><span class="ac">AC ${esc(p.ac)}</span></div>
+      <div class="bar"><i style="width:${pct(p.hp)}%;background:${hpColor(p)}"></i><i class="temp" style="left:${pct(p.hp)}%;width:${pct(p.temp)}%"></i>
+      <span>${p.hp} / ${p.max}${p.temp ? ` +${p.temp}` : ''}</span></div><div class="tags">${tags}</div></button>`;
+  }).join('')).join('') || 'No characters.';
+}
+
+// Floating party panel: a popover that stays open (no click-away) at a remembered screen spot.
+export const FLOAT = 'com.geezsheets/float', FLOAT_ON = 'geez.obr.float.on', FLOAT_POS = 'geez.obr.float.pos';
+export function openFloat(pos) {
+    if (!pos) try { pos = JSON.parse(localStorage.getItem(FLOAT_POS)); } catch {}
+    try { localStorage.setItem(FLOAT_ON, '1'); if (pos) localStorage.setItem(FLOAT_POS, JSON.stringify(pos)); } catch {}
+    const corner = { horizontal: 'LEFT', vertical: 'TOP' };
+    return OBR.popover.open({
+        id: FLOAT, url: page('float.html'), width: 260, height: 300,
+        anchorReference: 'POSITION', anchorPosition: pos || { left: 90, top: 90 }, anchorOrigin: corner, transformOrigin: corner,
+        disableClickAway: true, marginThreshold: 0,
+    });
+}

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeezSheets party</title>
+<link rel="stylesheet" href="party.css">
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #0f172a; color: #e2e8f0; font: 12px Inter, system-ui, sans-serif; overflow: hidden; }
+  header { display: flex; gap: 4px; align-items: center; padding: 4px 6px; border-bottom: 1px solid #334155; user-select: none; }
+  #grip { flex: 1; cursor: grab; padding: 3px 2px; font-weight: 600; white-space: nowrap; }
+  #grip.drag { cursor: grabbing; color: #f59e0b; }
+  select, button { font: inherit; color: inherit; background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 2px 6px; }
+  select { max-width: 92px; }
+  button:hover { border-color: #f59e0b; }
+  #rows { max-height: 560px; overflow: auto; padding: 5px 6px 0; }
+  .pc { padding: 5px 7px; margin-bottom: 5px; }
+  .bar { margin-top: 3px; }
+  body.min #rows { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div id="grip" title="Drag to move">⠿ Party</div>
+  <select id="camp" aria-label="Campaign"></select>
+  <button id="min" title="Minimise">–</button>
+  <button id="close" title="Close">×</button>
+</header>
+<div id="rows">Loading…</div>
+<script type="module">
+import { OBR, POPOVER, FLOAT, FLOAT_ON, FLOAT_POS, page, esc, watchParty, partyRows, openFloat } from './geez.js';
+const $ = (id) => document.getElementById(id);
+const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+const put = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+OBR.onReady(() => {
+  let pcs = {};
+  const fit = () => OBR.popover.setHeight(FLOAT, Math.ceil(document.body.scrollHeight));
+  const render = () => {
+    const camps = [...new Set(Object.values(pcs).map((p) => p.campaign))].sort();
+    const want = get('geez.obr.float.camp', '');
+    $('camp').hidden = camps.length < 2;
+    $('camp').innerHTML = '<option value="">All</option>' + camps.map((c) => `<option value="${esc(c)}">${esc(c || 'No campaign')}</option>`).join('');
+    $('camp').value = camps.includes(want) ? want : '';
+    const shown = Object.fromEntries(Object.entries(pcs).filter(([, p]) => !$('camp').value || p.campaign === $('camp').value));
+    $('rows').innerHTML = partyRows(shown);
+    fit();
+  };
+  document.body.classList.toggle('min', get('geez.obr.float.min', '') === '1');
+  watchParty((p) => { pcs = p; render(); });
+  $('camp').onchange = () => { put('geez.obr.float.camp', $('camp').value); render(); };
+  $('min').onclick = () => { put('geez.obr.float.min', document.body.classList.toggle('min') ? '1' : ''); fit(); };
+  $('close').onclick = () => { put(FLOAT_ON, '0'); OBR.popover.close(FLOAT); };
+  $('rows').onclick = (e) => {
+    const b = e.target.closest('.pc');
+    if (b) OBR.popover.open({ id: POPOVER, url: page('index.html?char=' + encodeURIComponent(b.dataset.id)), width: 440, height: 720 });
+  };
+
+  // Drag the title: Owlbear can't move a popover live, so it reopens at the drop spot.
+  // shortcut: moves on release only (no live follow); upgrade if Owlbear adds a move API.
+  let start = null;
+  $('grip').onpointerdown = (e) => { start = { x: e.screenX, y: e.screenY }; $('grip').setPointerCapture(e.pointerId); $('grip').classList.add('drag'); };
+  $('grip').onpointerup = (e) => {
+    if (!start) return;
+    $('grip').classList.remove('drag');
+    const dx = e.screenX - start.x, dy = e.screenY - start.y; start = null;
+    if (Math.abs(dx) + Math.abs(dy) < 4) return;
+    let pos = { left: 90, top: 90 };
+    try { pos = JSON.parse(get(FLOAT_POS, '')) || pos; } catch {}
+    openFloat({ left: Math.max(0, Math.round(pos.left + dx)), top: Math.max(0, Math.round(pos.top + dy)) });
+  };
+  $('grip').onpointercancel = () => { start = null; $('grip').classList.remove('drag'); };
+});
+</script>
+</body>
+</html>
