@@ -127,7 +127,11 @@
         for (const [id, t] of Object.entries(state.tokens || {})) {
           if (t.entity && t.map) (tokens[battleMap(t.map)] ||= {})[t.entity] = {...t, f:t.floor ?? t.f};
           // A battle can have tokens under its scene map (where writes go) and under its place (migration leftovers): merge, scene map wins.
-          else { const k=battleMap(id); tokens[k] = sceneMap(id)?.id===canonical(id) ? {...tokens[k], ...t} : {...t, ...tokens[k]}; }
+          else {
+            // Player moves PATCH {floor} (the only floor field they may write) over a stored f: floor is the newer one.
+            const g = Object.fromEntries(Object.entries(t || {}).map(([tid,p]) => { if (p?.floor === undefined) return [tid,p]; const {floor,...rest} = p; return [tid,{...rest,f:floor}]; }));
+            const k=battleMap(id); tokens[k] = sceneMap(id)?.id===canonical(id) ? {...tokens[k], ...g} : {...g, ...tokens[k]};
+          }
         }
         state.tokens = tokens;
       }
@@ -196,9 +200,13 @@
         }
         patch['data.inventory']=copy(after.inventory||{});
       }
+      // No saved combat stats yet (an NPC made in the VTT): the combat actions refuse, so the GM's first stats are written directly.
+      // Imported placeholders (hp_max 0) count too: every hp action needs a saved max of at least 1.
+      const noCombat=!player&&e.kind!=='pc'&&!(Number(e.data.statblock?.combat?.hp_max)>=1);
       for(const [p,v] of Object.entries(changes)) {
         if(p==='id')continue;
         if(p==='name') {patch.name=v;continue;}
+        if(noCombat&&p.startsWith('combat')) {patch['data.statblock.'+p]=copy(v);continue;}
         const b=e.kind==='pc'?'data.':'data.statblock.';
         if(p==='combat.hp_current') action('hp.set',{amount:v});
         else if(p==='combat.elevation')action('elevation.set',{feet:v});
@@ -310,7 +318,8 @@
           // HP edits made from the inspector use the same actions as sheets.
           if(['pc','npc','creature'].includes(e.kind)) {
             const prev=a[group][id]?.traits||{}, next=value.traits||{};
-            if(next.hp!==prev.hp)stage('actions/hp.set','POST',{args:{entity:e.id,amount:Number(next.hp)}});
+            // hp.set needs saved combat stats; an NPC made in the VTT has none, and a refused action fails the whole save batch.
+            if(next.hp!==prev.hp&&(e.kind==='pc'?e.data.combat:e.data.statblock?.combat))stage('actions/hp.set','POST',{args:{entity:e.id,amount:Number(next.hp)}});
           }
           stage('entities/'+e.id,'PATCH',patch);
         } else stage('entities','POST',{...body,data:{...(body.kind==='npc'?{profile:{}}:body.kind==='creature'?{statblock:{}}:{}),...body.data}}); // new NPCs need an (empty) profile to validate
@@ -406,7 +415,10 @@
               if(canonical(id)!==selectedId())throw Object.assign(Error('Players may move only their own PC token'),{status:403});
               if(Object.keys(diff(prev,pos)).some(k=>!['x','y','f'].includes(k)))throw Object.assign(Error('Players may move token x/y (and floor, by stairs) only'),{status:403});
               const flat=Object.entries(raw.campaigns[c].state.tokens||{}).find(([,t])=>t.entity===canonical(id)&&t.map===canonicalMap(map));
-              stage(`campaigns/${c}/tokens/${flat?flat[0]:canonicalMap(map)+'/'+canonical(id)}`,'PATCH',{x:pos.x,y:pos.y,...(pos.f!==undefined&&pos.f!==(prev?.f??0)?{floor:pos.f}:{})});
+              // Grouped: patch the record that exists (scene map first; a battle not yet tidied by a GM save may hold it under its place, or under a pre-upload id).
+              const st=raw.campaigns[c].state.tokens||{},holds=k=>!st[k]?.entity&&battleMap(k)===battleMap(map)&&Object.keys(st[k]||{}).find(t=>canonical(t)===canonical(id));
+              const group=[canonicalMap(map),...Object.keys(st)].find(holds);
+              stage(`campaigns/${c}/tokens/${flat?flat[0]:group?group+'/'+holds(group):canonicalMap(map)+'/'+canonical(id)}`,'PATCH',{x:pos.x,y:pos.y,...(pos.f!==undefined&&pos.f!==(prev?.f??0)?{floor:pos.f}:{})});
             }
           } else if(field==='tokens' && Object.keys(b.tokens||{}).some(id=>sceneMap(id))) {
             const value=copy(raw.campaigns[c]?.state?.tokens||{});
@@ -449,7 +461,7 @@
     }
     function write(path,v,update=false) {
       const editBase=copy(tree);v=copy(v);
-      const result=queue.then(async()=>{for(let attempt=0;attempt<2;attempt++){try{return await persist(path,v,update,undefined,editBase);}catch(e){if(e.status!==409||attempt===1)throw e;if(backend)await (await backend).refresh();}}});
+      const result=queue.then(async()=>{for(let attempt=0;attempt<3;attempt++){try{return await persist(path,v,update,undefined,editBase);}catch(e){if(e.status!==409||attempt===2)throw e;if(backend)await (await backend).refresh();}}});
       queue=result.catch(()=>{});return result;
     }
 
@@ -466,7 +478,7 @@
         set:v => write(path,v), update:v => write(path,v,true), remove:() => write(path,null),
         push(v) {const r=ref(path+'/k'+crypto.randomUUID().replaceAll('-','')); if(v!==undefined){const p=r.set(v);r.then=p.then.bind(p);r.catch=p.catch.bind(p);}return r;},
         transaction(fn) {
-          const result=queue.then(async()=>{for(let attempt=0;attempt<2;attempt++){try{return await persist(path,null,false,fn);}catch(e){if(e.status!==409||attempt===1)throw e;if(backend)await (await backend).refresh();}}});
+          const result=queue.then(async()=>{for(let attempt=0;attempt<3;attempt++){try{return await persist(path,null,false,fn);}catch(e){if(e.status!==409||attempt===2)throw e;if(backend)await (await backend).refresh();}}});
           queue=result.catch(()=>{});return result;
         }
       };

@@ -40,6 +40,13 @@ export function onStairs(stair, x, y) {
     const dx=x-stair.x-w/2,dy=y-stair.y-h/2;
     return Math.abs(dx*Math.cos(angle)-dy*Math.sin(angle))<=w/2+1e-9 && Math.abs(dx*Math.sin(angle)+dy*Math.cos(angle))<=h/2+1e-9;
 }
+// Cells from (x,y) to the nearest edge of a (rotated) stair rectangle; 0 when on it.
+export function stairDistance(stair, x, y) {
+    const w=stair.w||1,h=stair.h||2,angle=-(stair.rot||0)*Math.PI/180;
+    const dx=x-stair.x-w/2,dy=y-stair.y-h/2;
+    const lx=Math.abs(dx*Math.cos(angle)-dy*Math.sin(angle))-w/2,ly=Math.abs(dx*Math.sin(angle)+dy*Math.cos(angle))-h/2;
+    return Math.hypot(Math.max(0,lx),Math.max(0,ly));
+}
 export function floorList(meta) { return [...new Set((Array.isArray(meta?.floors) ? meta.floors : Object.values(meta?.floors || {0:0})).map(Number).filter(Number.isFinite))].sort((a,b)=>a-b); }
 
 // Keep guessed tiles until the referenced image has decoded. Failures are cached too.
@@ -264,7 +271,23 @@ export function createBridge(a) {
         else{(ed.decals||={})[a.uid('decal')]={x,y,kind:tool.toLowerCase(),s:1,rot:0,f:shownFloor()};tool='';a.changed();}
     },true);
     document.addEventListener('keydown',e=>{if(!a.gaia||a.db().view.level!=='VTT'||!['PageUp','PageDown'].includes(e.key)||e.target.closest('input,textarea,select'))return;e.preventDefault();(document.getElementById('floorCrumb')||panel).querySelector('[data-step="'+(e.key==='PageUp'?1:-1)+'"]')?.click();});
-    a.viewport.addEventListener('click',e=>{if(!a.gaia||a.player||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label,#appHeader'))return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=[...Object.values(layer().stairs||{}),...Object.values(a.edits?.(current())?.stairs||{})].find(o=>onStairs(o,p.x/g,p.y/g));if(stair&&floorList(data.meta).includes(stair.to)){floor=stair.to;redraw();}});
+    // A click that ends a drag (a token dropped on the stairs, a map pan) is not someone using the stairs.
+    let downAt=null;a.viewport.addEventListener('pointerdown',e=>{downAt={x:e.clientX,y:e.clientY};},true);
+    a.viewport.addEventListener('click',e=>{if(!a.gaia||!a.ui.scene||a.ui.mode!=='pan'||e.target.closest('button,input,select,label,#appHeader,[data-token-id]')||downAt&&Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y)>6)return;const p=a.content(e.clientX,e.clientY),g=a.ui.scene.ppg;const stair=[...Object.values(layer().stairs||{}),...Object.values(a.edits?.(current())?.stairs||{})].find(o=>onStairs(o,p.x/g,p.y/g));
+        if(!stair||!floorList(data.meta).includes(+stair.to))return;
+        if(!a.player){floor=+stair.to;redraw();return;}
+        // Players take the stairs like a door: click them while your token is within a square.
+        if(a.locked()){a.status('The GM has locked token movement.');return;}
+        const s=a.ui.scene,cols=s.w/g,rows=s.h/g;
+        const own=Object.entries(tokens()).find(([id,q])=>{const t=token(id);return t?.traits.pc&&t.name===a.name()&&onFloor(q);});
+        if(!own){a.status('Your token is not on this floor');return;}
+        const [id,q]=own;
+        // on or next to the stairs, diagonals included (0.71)
+        if(stairDistance(stair,q.x*cols,q.y*rows)>1){a.status('Get within a square of the stairs to use them');return;}
+        const w=stair.w||1,h=stair.h||2;
+        a.status('Taking the stairs '+(+stair.to>shownFloor()?'up':'down'));
+        a.move(current(),id,{...q,x:(stair.x+w/2)/cols,y:(stair.y+h/2)/rows,f:+stair.to});   // land on the stairs on the new floor
+    });
     // Stairs under a token (cell units) on floor f: the map's own stairs plus ones placed in Build.
     function stairAt(x,y,f=shownFloor()){const ed=a.db().battles?.[current()]?.edits||{},e=+f?ed.floors?.[f]:ed;return [...Object.values(layer(f).stairs||{}),...Object.values(e?.stairs||{})].find(o=>o.to!=null&&o.to!==''&&+o.to!==+f&&onStairs(o,x,y));}
     return {stairAt,emptyFloor:()=>!a.player&&emptyFloor!==null&&shownFloor()===emptyFloor?emptyFloor:null,fogPreview:()=>fogPreview,setFogPreview(v){fogPreview=!!v;redraw();},inspectToken(id){inspectId=id;controls();},panel:()=>panelMode,setPanel(m){panelMode=m||null;if(panelMode!=='decor'){tool='';pathPoints=[];}controls();},watch,scene,geometry,lights,token,tokens,onFloor,floor:shownFloor,layer,meta:()=>data.meta,traps:()=>traps,invalidate,drawBase,drawDoor,drawProp,drawFog,annotations,roofs,covered,atmosphere,controls,startWeather,

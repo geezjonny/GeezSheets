@@ -806,18 +806,35 @@
                 on(path, cb) { const sb = { path, cb }; subs.add(sb); cb(getIn(read(), path) ?? null); return () => subs.delete(sb); }
             };
         })();
+        // A refused save used to be a 3-second toast, and the next reload silently replaced the work. Keep it on screen.
+        function saveBanner(msg) {
+            let b = document.getElementById('saveErrBanner');
+            if (!msg) { b?.remove(); return; }
+            if (!b) {
+                b = document.createElement('div'); b.id = 'saveErrBanner'; b.setAttribute('role', 'alert');
+                b.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:95;max-width:min(560px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;background:#450a0a;border:2px solid #dc2626;color:#fecaca;font:600 13px Inter,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5);cursor:pointer';
+                b.title = 'Click to dismiss'; b.onclick = () => b.remove();
+                document.body.appendChild(b);
+            }
+            b.textContent = '⚠ ' + msg + ' Your last change is NOT saved and will be lost on reload. (click to dismiss)';
+        }
         function fbWriteFailed(err) {
+            console.error('Save failed', err);
+            saveBanner(/permission/i.test(err?.code || err?.message || '') ? 'The database refused a save (permissions).' : 'Save failed: ' + (err?.message || err) + '.');
             if (/permission/i.test(err?.code || err?.message || '')) {
                 showStatus('Not saved: the database refused it (check the Realtime Database rules).');
                 if (!PLAYER && typeof showAuthBanner === 'function') showAuthBanner(true);
             } else showStatus('Firebase write failed: ' + (err?.message || err));
         }
+        // Writes still in flight; leaving the page now would drop them (see the beforeunload guard).
+        let pendingWrites = 0;
+        const tracked = (p) => { pendingWrites++; return Promise.resolve(p).catch(fbWriteFailed).finally(() => pendingWrites--); };
         const FbRemote = {
             ref: (path) => rtdb.ref(FB_ROOT + '/' + path),
-            update(path, obj) { return this.ref(path).update(obj).catch(fbWriteFailed); },
-            set(path, v) { return this.ref(path).set(v).catch(fbWriteFailed); },
-            push(path, v) { const r = this.ref(path).push(); r.set(v).catch(fbWriteFailed); return r.key; },
-            remove(path) { return this.ref(path).remove().catch(fbWriteFailed); },
+            update(path, obj) { return tracked(this.ref(path).update(obj)); },
+            set(path, v) { return tracked(this.ref(path).set(v)); },
+            push(path, v) { const r = this.ref(path).push(); tracked(r.set(v)); return r.key; },
+            remove(path) { return tracked(this.ref(path).remove()); },
             txn(path, fn) { return this.ref(path).transaction(fn).then(r => r.committed).catch(e => { fbWriteFailed(e); return false; }); },
             on(path, cb) { const r = this.ref(path); const h = (snap) => cb(snap.val()); r.on('value', h, err => showStatus('Firebase read failed: ' + err.message)); return () => r.off('value', h); }
         };
@@ -965,7 +982,8 @@
                 for (const tid of Object.keys(b.tokens || {})) {
                     if (c.things[tid] || !src.things[tid]) continue;
                     const pc = src.things[tid].traits?.pc || /^PC\b/.test(src.things[tid].traits?.role || '');
-                    c.things[tid] = { id: tid, type: 'npc', name: pc ? src.things[tid].name : 'Unknown', traits: { stub: true, pc, ...(pc ? { hp: src.things[tid].traits?.hp, size: src.things[tid].traits?.size, avatar: src.things[tid].traits?.avatar } : { size: src.things[tid].traits?.size }) }, properties: [], notes: '', board: null };
+                    // On the map but not known: players see the creature (its picture and size), not who it is. Not on their board.
+                    c.things[tid] = { id: tid, type: 'npc', name: pc ? src.things[tid].name : 'Unknown', traits: { stub: true, pc, size: src.things[tid].traits?.size, avatar: src.things[tid].traits?.avatar, ...(pc ? { hp: src.things[tid].traits?.hp } : {}) }, properties: [], notes: '', board: null };
                 }
             }
             if (!c.maps[camp]) c.maps[camp] = newMap(camp, src.maps[camp]?.name || 'World', null, null, 64);
@@ -1155,7 +1173,8 @@
             // token positions also live on the live channel, which wins over the saved ones
             for (const bid of Object.keys(live.tokens || {})) {
                 if (db.things[bid]?.traits?.table3d || (bid === db.view.battleId && GH?.meta())) continue;
-                const pos = Object.fromEntries(Object.entries(db.battles[bid]?.tokens || {}).map(([tid, t]) => [tid, { x: t.x, y: t.y, f:t.f || 0, ...(t.light ? {light:t.light} : {}) }]));
+                // whole token: hidden flags and conditions live here too
+                const pos = Object.fromEntries(Object.entries(db.battles[bid]?.tokens || {}).map(([tid, t]) => [tid, { ...t, f:t.f || 0 }]));
                 live.tokens[bid] = pos;
                 Live.set(livePath('tokens/' + bid), Object.keys(pos).length ? pos : null);
             }
@@ -1281,7 +1300,9 @@
                 delete m.pins[id];
                 for (const [rid, r] of Object.entries(m.roads || {})) if (r.from === id || r.to === id) delete m.roads[rid];
             }
-            for (const b of Object.values(db.battles)) if (b && b.tokens) delete b.tokens[id];
+            // tokens also live on the live channel, which rebuilds the battles on load: clear them there too
+            for (const [bid, b] of Object.entries(db.battles)) if (b?.tokens?.[id]) { delete b.tokens[id]; if (!PLAYER) Live.remove(livePath(`tokens/${bid}/${id}`)); }
+            if (db.battles[id] && !PLAYER) Live.remove(livePath('tokens/' + id));
             delete db.battles[id];
             delete db.things[id];
             if (db.view.battleId === id) db.view.battleId = null;
@@ -3424,8 +3445,7 @@
             live.tokens[battleId] = { ...(live.tokens[battleId] || {}), [thingId]: pos };
             if (!PLAYER) save();
             renderView();
-            // Walked onto stairs (not already standing on them): go to their floor.
-            if (!floorChange) { const f = pos.f ?? 0, s = stairUnder(pos, f); if (s && s !== stairUnder(before, f)) { showStatus('Taking the stairs ' + (+s.to > f ? 'up' : 'down')); moveToken(battleId, thingId, { x: pos.x, y: pos.y, f: +s.to }); } }
+            // Stairs no longer move a token that steps on them: players click the stairs (table3d-layer.js), like a door.
         }
         function mergeLiveTokens() {
             let dirty = false;
@@ -4601,7 +4621,7 @@
             if (level === 'VTT' && ui.armed === PARTY && ui.loaded && ui.scene) { placeParty(p); return; }
             if (level === 'VTT' && ui.armed && ui.loaded && ui.scene) {
                 const id = ui.armed;
-                const placed = snapToCell(ui.scene, p.x, p.y, tokenSize(db.things[id]));
+                const placed = { ...snapToCell(ui.scene, p.x, p.y, tokenSize(db.things[id])), f: GH?.floor() ?? 0 };   // the floor on screen, like placeParty
                 (db.battles[db.view.battleId] ||= { tokens: {} }).tokens[id] = placed;
                 Live.update(livePath('tokens/' + db.view.battleId), { [id]: placed });
                 disarm();
@@ -5558,7 +5578,7 @@
                 const pos = b.tokens?.[t.id];
                 const bt = db.things[bid];
                 const scene = bt?.traits?.dd2vtt && dd2vttCache.get(bt.traits.dd2vtt);
-                if (pos && scene) b.tokens[t.id] = snapToCell(scene, pos.x * scene.w, pos.y * scene.h, t.traits.size);
+                if (pos && scene) b.tokens[t.id] = { ...pos, ...snapToCell(scene, pos.x * scene.w, pos.y * scene.h, t.traits.size) };   // keep flags/conditions
             }
             changed({ keepInspector: true });
             fillNpc(t);
@@ -6687,7 +6707,12 @@
             Live.set(livePath('presence/' + presenceKey()), { name: PLAYER ? (playerName || 'Player') : 'DM', dm: !PLAYER, where: where || '', level: db.view.level, t: Date.now() });
         }
         setInterval(beat, 20000);
-        addEventListener('beforeunload', () => { try { Live.remove(livePath('presence/' + presenceKey())); } catch {} });
+        addEventListener('beforeunload', (e) => {
+            // A change still waiting to save (300 ms debounce, or queued behind the Gaia writer lock) would be lost.
+            const busy = saveTimer || pendingWrites > 0;
+            try { Live.remove(livePath('presence/' + presenceKey())); } catch {}
+            if (busy) { e.preventDefault(); e.returnValue = ''; }
+        });
         function renderPresence() {
             const now = Date.now();
             const list = Object.values(presence).filter(p => p && now - (p.t || 0) < 60000).sort((a, b) => (b.dm - a.dm) || String(a.name).localeCompare(String(b.name)));
@@ -6845,6 +6870,28 @@
                 box.querySelector('[data-known]').onchange = e => { t.traits ||= {}; if (e.target.value) t.traits.knownStatus = e.target.value; else delete t.traits.knownStatus; changed({ keepInspector: true }); };
                 pane.append(box);
             }
+            // DM: the NPC's stats, in its character sheet (characters/npcs) like sheet-made NPCs, so token HP bars and status badges follow
+            pane.querySelector('[data-npc-stats]')?.remove();
+            if (!PLAYER && rtdb && t.type === 'npc' && !t.traits?.pc && !t.traits?.stub) {
+                const sh = sheetFor(t) || {}, c = sh.combat || {}, st = sh.stats || {};
+                const num = (k, v, label, w = 'w-12') => `<label class="flex flex-col items-center gap-0.5 text-[10px] text-slate-400">${label}<input data-stat="${k}" type="number" value="${esc(v ?? '')}" class="${w} text-center bg-slate-950 border border-slate-700 rounded px-1 py-0.5 text-xs text-slate-100"></label>`;
+                const box = document.createElement('div'); box.dataset.npcStats = '';
+                box.className = 'bg-slate-900/70 border border-slate-800 rounded-xl p-3 space-y-2';
+                box.innerHTML = `<div class="text-[10px] uppercase tracking-wider font-bold text-rose-300">Stats</div>
+                    <div class="flex flex-wrap gap-2 items-end">${num('combat/hp_current', c.hp_current, 'HP')}<span class="pb-1 text-slate-500">/</span>${num('combat/hp_max', c.hp_max, 'Max')}${num('combat/ac', c.ac, 'AC')}${num('combat/speed', parseInt(c.speed) || '', 'Speed', 'w-14')}</div>
+                    <div class="grid grid-cols-6 gap-1">${['str', 'dex', 'con', 'int', 'wis', 'cha'].map(k => num('stats/' + k, st[k], k.toUpperCase(), 'w-full')).join('')}</div>`;
+                box.querySelectorAll('[data-stat]').forEach(inp => inp.onchange = () => {
+                    if (inp.value.trim() === '') return;
+                    const k = inp.dataset.stat, n = Math.trunc(Number(inp.value));
+                    if (!Number.isFinite(n)) return;
+                    const upd = { [k]: k === 'combat/speed' ? String(n) : k === 'combat/hp_current' ? Math.max(0, n) : n };
+                    // first max on a fresh NPC: start it at full health
+                    if (k === 'combat/hp_max' && (c.hp_current === undefined || c.hp_current === '')) upd['combat/hp_current'] = n;
+                    inp.blur();
+                    rtdb.ref(`characters/npcs/${t.traits?.charId || t.id}`).update(upd).catch(fbWriteFailed);
+                });
+                pane.append(box);
+            }
             // DM: this creature's token on the open battle map
             const bid = db.view.battleId, tok = db.view.level === 'VTT' && db.battles[bid]?.tokens?.[t.id];
             if (!PLAYER && tok) {
@@ -6879,6 +6926,8 @@
                     const c = b.dataset.cond, cur = new Set(conds);
                     cur.has(c) ? cur.delete(c) : cur.add(c);
                     tok.conditions = [...cur];
+                    // with the live token, like the hidden flags: the battle copy is rebuilt from it on load
+                    Live.update(livePath(`tokens/${bid}/${t.id}`), { conditions: tok.conditions.length ? tok.conditions : null });
                     changed({ keepInspector: true }); renderSheetPane();
                 });
             }
