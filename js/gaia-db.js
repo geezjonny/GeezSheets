@@ -23,6 +23,12 @@
     let selected = qs.get('pc') || qs.get('char') || localStorage.getItem('geezvtt.player.'+(qs.get('campaign')||localStorage.getItem('geezvtt.player.lastCampaign')||'world__daddies')+'.name') || '';
     const selectedId = () => oldToNew.get(selected) || raw?.entities.find(e=>e.kind==='pc'&&e.name===selected)?.id || selected;
     const identity = () => player ? 'player:' + selectedId() : 'gm';
+    // Campaign for player projection: ?campaign / ?live, else the selected PC's own campaign (so sheet.html?char=<pc> is enough).
+    const scope = () => {
+      const q = qs.get('campaign') || qs.get('live'); if (q) return q.replace(/^world__/, '');
+      const pc = player && selected && raw?.entities.find(e => e.kind === 'pc' && (e.id === selected || e.name === selected || [e.source?.id, ...(e.source?.mirrors || [])].some(p => p?.split('/').at(-1) === selected)));
+      return pc?.campaign || 'daddies';
+    };
     const firebaseMode=base.startsWith('firebase');
     const backend=firebaseMode?import('./gaia-firebase.mjs').then(m=>m.connect(base,event=>{
       if(!raw||loading||writing)pendingEvents.push(event);
@@ -50,12 +56,12 @@
     }
     function project() {
       const { entities, links, campaigns, apps } = raw;
+      const own=scope();
       oldToNew.clear(); newToOld.clear(); sheetIds.clear();
       for (const e of entities) {
         const paths = [e.source?.id, ...(e.source?.mirrors || [])].filter(Boolean);
         const prefix = e.kind === 'map' ? 'geezvtt/campaign/maps/' : 'geezvtt/campaign/things/';
-        const scope=(qs.get('campaign')||'world__daddies').replace(/^world__/,'');
-        const path = (player && paths.find(p=>p.startsWith(prefix)&&p.endsWith('__'+scope))) || paths.find(p => p.startsWith(prefix)) || e.source?.id;
+        const path = (player && paths.find(p=>p.startsWith(prefix)&&p.endsWith('__'+own))) || paths.find(p => p.startsWith(prefix)) || e.source?.id;
         const id = path?.split('/').at(-1) || e.id;
         newToOld.set(e.id, id); oldToNew.set(id, e.id); oldToNew.set(e.id, e.id);
         for (const p of paths) { oldToNew.set(p, e.id); oldToNew.set(p.split('/').at(-1), e.id); }
@@ -82,7 +88,7 @@
         }
         const reveal = campaigns[e.campaign]?.reveals?.[e.id] || Object.values(campaigns).map(c => c.reveals?.[e.id]).find(Boolean);
         campaign.things[id] = { ...extra, id, type: ({place:'location',pc:'npc',creature:'npc'})[e.kind] || e.kind, name:e.name,
-          campaign: apps.sheets?.campaignIds?.[e.campaign] || 'world__' + (e.campaign || (player ? (qs.get('campaign')||'world__daddies').replace(/^world__/,'') : Object.keys(campaigns)[0])), notes:d.description || d.text || extra.notes || '', board:extra.board || reveal?.board || null,
+          campaign: apps.sheets?.campaignIds?.[e.campaign] || 'world__' + (e.campaign || (player ? scope() : Object.keys(campaigns)[0])), notes:d.description || d.text || extra.notes || '', board:extra.board || reveal?.board || null,
           traits: { ...extra.traits, ...(e.kind === 'place' ? { scene: d.scene || entities.find(m=>m.kind==='map' && (m.id===e.data.childMap || m.data.parent_place===e.id))?.data.scene || null, category:d.place_kind, ...(d.childMap ? {childMap:d.childMap} : {}) } : {}), ...(combat ? {hp:combat.hp_current, ac:combat.ac} : {}), ...(e.kind === 'pc' ? {pc:true, charId:sid} : {}), ...(['npc','creature'].includes(e.kind) ? {charId:sid} : {}), ...(d.token || {}), ...(d.status ? {status:d.status} : {}) }, properties:copy(extra.properties || []) };
         if (e.kind === 'map' || d.dd2vtt) campaign.things[id].traits.dd2vtt = d.dd2vtt;
       }
@@ -102,7 +108,7 @@
           if(r.card && typeof r.card==='object')party.cards[old(id)]=copy(r.card);
           const t = campaign.things[old(id)];
           // Player projection uses pc-known; only the selected campaign's reveals grant it.
-          if (t && (!player || c === (qs.get('campaign') || qs.get('live') || 'world__daddies').replace(/^world__/, ''))) {
+          if (t && (!player || c === scope())) {
             t.properties = t.properties.filter(p => p.key !== 'pc-known'); t.properties.push({key:'pc-known',value:'true'});
             // Visited clears the players' fog. Older data kept it only in the legacy card properties.
             const ent = entities.find(x => x.id === id), legacyVisited = Object.values(ent?.data?._legacy || {}).some(v => (v?.properties || []).some(p => p.key === 'pc-visited' && /^(true|yes|y|1|x)$/i.test(String(p.value))));
@@ -125,7 +131,7 @@
         state.tokens = tokens;
       }
       if (player) for (const t of Object.values(campaign.things)) {
-        const c = (qs.get('campaign') || 'world__daddies').replace(/^world__/, '');
+        const c = scope();
         if (!campaigns[c]?.reveals?.[canonical(t.id)]?.known) t.properties = t.properties.filter(p => p.key !== 'pc-known' && p.key !== 'pc-visited');
       }
       if(apps.sheets?.dmCampaign)tree.geezvtt.live._dmCampaign=copy(apps.sheets.dmCampaign);

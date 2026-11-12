@@ -1179,7 +1179,10 @@ const Dice = (() => {
       if(camp)unsub=onValue(ref(db,`${LIVE_ROOT}/${camp}/rolls`),snap=>{rolls=snap.val()||{};renderLog();});
       renderLog();
     };
+    const followDm=()=>onValue(ref(db,`${LIVE_ROOT}/_dmCampaign`),snap=>move(snap.val()?.id||null,snap.val()?.name));
     if(PARAMS.get('live'))move(PARAMS.get('live'));
+    // A player's own sheet (sheet.html?char=<pc>) follows that PC's campaign once it has loaded.
+    else if(ONLY&&!IS_GM){let tries=0;const wait=()=>allPcs[0]?.campaign?move(allPcs[0].campaign):++tries<100?setTimeout(wait,300):followDm();wait();}
     else onValue(ref(db,`${LIVE_ROOT}/_dmCampaign`),snap=>move(snap.val()?.id||null,snap.val()?.name));
   }
 
