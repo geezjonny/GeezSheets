@@ -1,6 +1,6 @@
 // GeezSheets for Owlbear Rodeo: shared bits for the popover and the background page.
-import OBR, { buildLabel } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
-export { OBR, buildLabel };
+import OBR, { buildLabel, buildShape, buildText } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
+export { OBR, buildLabel, buildShape, buildText };
 
 export const KEY = 'com.geezsheets/char';           // token metadata: which GeezSheets character it is
 export const POPOVER = 'com.geezsheets/sheet';
