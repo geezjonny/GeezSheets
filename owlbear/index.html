@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GeezSheets</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0f172a; color: #e2e8f0; font: 13px Inter, system-ui, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid #334155; }
+  select, button { font: inherit; color: inherit; background: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 5px 8px; }
+  select { flex: 1; min-width: 0; }
+  button:hover { border-color: #f59e0b; }
+  #note { padding: 6px 10px; color: #94a3b8; }
+  #note:empty { display: none; }
+  iframe { flex: 1; width: 100%; border: 0; background: transparent; }
+</style>
+</head>
+<body>
+<header>
+  <select id="pick" aria-label="Character"><option value="">Loading characters…</option></select>
+  <button id="link" hidden title="Make this token open the chosen character's sheet">Link token</button>
+</header>
+<div id="note"></div>
+<iframe id="sheet" title="Character sheet" hidden></iframe>
+<script type="module">
+import { OBR, KEY, characters, sheetUrl } from './geez.js';
+const $ = (id) => document.getElementById(id);
+const qs = new URLSearchParams(location.search);
+const note = (t) => { $('note').textContent = t || ''; };
+
+OBR.onReady(async () => {
+  const role = await OBR.player.getRole(), name = await OBR.player.getName();
+  const MINE = `geez.obr.${OBR.room.id}.${name}`;   // each player's own character, remembered per room
+  let mine = '', list = [];
+  try { mine = localStorage.getItem(MINE) || ''; } catch {}
+  try { list = await characters(); } catch (e) { note('Could not load characters: ' + e.message); return; }
+
+  const show = (char) => {
+    const f = $('sheet');
+    if (!char) { f.hidden = true; return; }
+    const url = sheetUrl(char, role, mine);
+    if (f.src !== url) f.src = url;
+    f.hidden = false;
+  };
+  $('pick').innerHTML = '<option value="">Choose a character…</option>' + list.map((c) => `<option value="${c.id}">${c.name.replace(/[<&>"]/g, (m) => `&#${m.charCodeAt(0)};`)}</option>`).join('');
+
+  // Opened from a token's menu: ?char= (linked) or ?item= (not linked yet)
+  const item = qs.get('item'), fromToken = qs.get('char');
+  if (fromToken) {
+    $('pick').value = fromToken; show(fromToken);
+    if (!list.some((c) => c.id === fromToken)) note('This token is linked to a character that no longer exists.');
+  } else if (item) {
+    if (role === 'GM') { note('Choose who this token is, then Link token.'); $('link').hidden = false; }
+    else note('This token is not linked to a character sheet yet. Ask the GM.');
+  } else {
+    $('pick').value = mine; show(mine);
+    if (!mine) note(role === 'GM' ? 'Pick any character to open their sheet.' : 'Pick your character. You can change it any time.');
+  }
+
+  $('pick').onchange = () => {
+    const c = $('pick').value;
+    // the toolbar button is "my sheet": remember a player's pick (the GM just browses)
+    if (!item && !fromToken && role !== 'GM') { mine = c; try { localStorage.setItem(MINE, c); } catch {} }
+    note(''); show(c);
+  };
+  $('link').onclick = async () => {
+    const c = $('pick').value;
+    if (!c) { note('Choose a character first.'); return; }
+    await OBR.scene.items.updateItems([item], (items) => { for (const i of items) i.metadata[KEY] = c; });
+    $('link').hidden = true; note('Linked. Right-click the token any time to open this sheet.');
+  };
+});
+</script>
+</body>
+</html>

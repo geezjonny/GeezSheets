@@ -1,0 +1,16 @@
+{
+  "name": "GeezSheets",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "author": "Geez",
+  "description": "Your GeezSheets character sheets inside Owlbear Rodeo: live HP, rolls and spells, and a right-click Character sheet on tokens.",
+  "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
+  "action": {
+    "title": "GeezSheets",
+    "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
+    "popover": "https://geezjonny.github.io/GeezSheets/owlbear/index.html",
+    "height": 720,
+    "width": 440
+  },
+  "background_url": "https://geezjonny.github.io/GeezSheets/owlbear/background.html"
+}

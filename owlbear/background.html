@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>GeezSheets background</title></head>
+<body>
+<script type="module">
+import { OBR, KEY, POPOVER, page } from './geez.js';
+// Right-click a character token: open its GeezSheets sheet (or, for an unlinked token, let the GM link it).
+OBR.onReady(() => {
+  OBR.contextMenu.create({
+    id: 'com.geezsheets/context',
+    icons: [{ icon: page('icon.svg'), label: 'Character sheet', filter: { max: 1, every: [{ key: 'layer', value: 'CHARACTER' }] } }],
+    async onClick(context) {
+      const it = context.items[0], char = it?.metadata?.[KEY];
+      const q = char ? 'char=' + encodeURIComponent(char) : 'item=' + encodeURIComponent(it.id);
+      await OBR.popover.open({ id: POPOVER, url: page('index.html?' + q), width: 440, height: 720 });
+    },
+  });
+});
+</script>
+</body>
+</html>
