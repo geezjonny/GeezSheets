@@ -2,7 +2,7 @@
 
 Written 2026-11-12. The goal: run the table in Owlbear Rodeo (OBR) with our own extensions, so the GeezSheets site is no longer needed at the table.
 
-Sources: the SDK's own type definitions (`@owlbear-rodeo/sdk@3.1.0` from npm, the version `owlbear/geez.js` already loads), the OBR blog, and web search of the extension store. docs.owlbear.rodeo and extensions.owlbear.rodeo were blocked from this session, so anything marked *(check)* comes from search results or memory and wasn't confirmed against the docs.
+Sources: the SDK's own type definitions (`@owlbear-rodeo/sdk@3.1.0` from npm, the version the extension loads), the OBR blog, and web search of the extension store. docs.owlbear.rodeo and extensions.owlbear.rodeo were blocked from this session, so anything marked *(check)* comes from search results or memory and wasn't confirmed against the docs.
 
 ## 1. How an extension works
 
@@ -114,7 +114,9 @@ What makes ours better is that every one of these is a separate island, while ou
 | NPC desk, world editor, map converter | — | — | Stay on the site (prep tools, not table tools) |
 
 ## 4. Plan
-**Recommendation: one extension (GeezSheets), several modules.** One manifest means one install for the players. Context menus, tools, popovers and modals are unlimited, and GM-only parts hide by `role`. Shared code stays in `owlbear/geez.js`.
+**Recommendation: one extension (GeezSheets), several modules.** One manifest means one install for the players. Context menus, tools, popovers and modals are unlimited, and GM-only parts hide by `role`. Shared code stays in `owlbear/dd2vtt.js`.
+
+**Update (2.0.0):** the character sheet, party HP and token HP bars were removed from the extension. It now does maps only: dd2vtt import, room-by-room fog with the Rooms tool, and optional walls, doors and lights.
 
 Don't change anything that Friday 2026-11-13 depends on. After a good session:
 

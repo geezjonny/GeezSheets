@@ -55,7 +55,8 @@ const say = (t, err) => { $('msg').textContent = t || ''; $('msg').className = e
 let map = null, name = '';
 
 OBR.onReady(async () => {
-  $('close').onclick = () => OBR.modal.close(ID);
+  // opened from the toolbar button (a popover) or from a map's right-click menu (?modal)
+  $('close').onclick = () => (qs.has('modal') ? OBR.modal.close(ID) : OBR.action.close());
   if (await OBR.player.getRole() !== 'GM') { say('Only the GM can import maps.', true); $('drop').hidden = true; return; }
 
   const load = async (f) => {
