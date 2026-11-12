@@ -32,7 +32,7 @@
 <div id="party" hidden><label><input type="checkbox" id="labels"> Show HP on tokens</label><div id="rows">Loading…</div></div>
 <iframe id="sheet" title="Character sheet" hidden></iframe>
 <script type="module">
-import { OBR, KEY, LABELS, characters, sheetUrl, esc, watchParty, partyRows, openFloat } from './geez.js';
+import { OBR, KEY, LABELS, characters, sheetUrl, esc, listenParty, partyRows, openFloat } from './geez.js';
 const $ = (id) => document.getElementById(id);
 const qs = new URLSearchParams(location.search);
 const note = (t) => { $('note').textContent = t || ''; };
@@ -68,7 +68,7 @@ OBR.onReady(async () => {
   }
 
   $('floatBtn').onclick = () => openFloat();
-  watchParty((pcs) => { $('rows').innerHTML = partyRows(pcs); });
+  listenParty((pcs) => { $('rows').innerHTML = partyRows(pcs); });
   $('partyBtn').onclick = () => { if ($('party').hidden) partyView(true); else show($('pick').value); };
   $('rows').onclick = (e) => { const b = e.target.closest('.pc'); if (b) { $('pick').value = b.dataset.id; note(''); show(b.dataset.id); } };   // just a look: doesn't change a player's own pick
   try { $('labels').checked = localStorage.getItem(LABELS) !== '0'; } catch {}

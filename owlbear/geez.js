@@ -60,6 +60,22 @@ export function watchParty(cb) {
     return () => es.close();
 }
 
+// One Firebase stream per tab: each stream holds a connection open and Chrome allows only ~6 per site
+// across all tabs, so the background page streams and shares the party with the popover and the float panel.
+const CHAN = 'com.geezsheets/party';
+export function shareParty(cb) {
+    const ch = new BroadcastChannel(CHAN);
+    let last = null;
+    ch.onmessage = (e) => { if (e.data === 'want' && last) ch.postMessage(last); };
+    return watchParty((p) => { last = p; ch.postMessage(p); cb(p); });
+}
+export function listenParty(cb) {
+    const ch = new BroadcastChannel(CHAN);
+    const own = setTimeout(() => watchParty(cb), 4000);   // no background page answered: stream it ourselves
+    ch.onmessage = (e) => { if (e.data && e.data !== 'want') { clearTimeout(own); cb(e.data); } };
+    ch.postMessage('want');
+}
+
 // The live sheet. GM: full edit (same ?gm key as the site). Player: the server lets them change only their own PC.
 export function sheetUrl(char, role, mine) {
     const u = new URL('../sheet.html', import.meta.url), q = u.searchParams;

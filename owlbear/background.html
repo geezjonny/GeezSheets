@@ -3,7 +3,7 @@
 <head><meta charset="utf-8"><title>GeezSheets background</title></head>
 <body>
 <script type="module">
-import { OBR, KEY, POPOVER, LABELS, page, buildLabel, buildShape, buildText, watchParty, hpColor, openFloat, FLOAT_ON } from './geez.js';
+import { OBR, KEY, POPOVER, LABELS, page, buildLabel, buildShape, buildText, shareParty, hpColor, openFloat, FLOAT_ON } from './geez.js';
 // Right-click a character token: open its GeezSheets sheet (or, for an unlinked token, let the GM link it).
 OBR.onReady(async () => {
   OBR.contextMenu.create({
@@ -83,7 +83,7 @@ OBR.onReady(async () => {
     finally { busy = false; if (again) { again = false; sync(); } }
   }
   role = await OBR.player.getRole();
-  watchParty((p) => { pcs = p; byName = names(); sync(); });
+  shareParty((p) => { pcs = p; byName = names(); sync(); });
   // the floating party panel comes back after a reload if it was open
   try { if (localStorage.getItem(FLOAT_ON) === '1') openFloat(); } catch {}
   OBR.scene.items.onChange(sync);

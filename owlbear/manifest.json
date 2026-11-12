@@ -1,6 +1,6 @@
 {
   "name": "GeezSheets",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "manifest_version": 1,
   "author": "Geez",
   "description": "GeezSheets character sheets in Owlbear: live party HP and status, HP labels on tokens, right-click Character sheet.",

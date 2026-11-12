@@ -29,7 +29,7 @@
 </header>
 <div id="rows">Loading…</div>
 <script type="module">
-import { OBR, POPOVER, FLOAT, FLOAT_ON, FLOAT_POS, page, esc, watchParty, partyRows, openFloat } from './geez.js';
+import { OBR, POPOVER, FLOAT, FLOAT_ON, FLOAT_POS, page, esc, listenParty, partyRows, openFloat } from './geez.js';
 const $ = (id) => document.getElementById(id);
 const get = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
 const put = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
@@ -48,7 +48,7 @@ OBR.onReady(() => {
     fit();
   };
   document.body.classList.toggle('min', get('geez.obr.float.min', '') === '1');
-  watchParty((p) => { pcs = p; render(); });
+  listenParty((p) => { pcs = p; render(); });
   $('camp').onchange = () => { put('geez.obr.float.camp', $('camp').value); render(); };
   $('min').onclick = () => { put('geez.obr.float.min', document.body.classList.toggle('min') ? '1' : ''); fit(); };
   $('close').onclick = () => { put(FLOAT_ON, '0'); OBR.popover.close(FLOAT); };
