@@ -119,7 +119,7 @@ What makes ours better is that every one of these is a separate island, while ou
 Don't change anything that Friday 2026-11-13 depends on. After a good session:
 
 1. **Initiative + dice log** (biggest table win, all broadcast/room metadata, no Firebase writes needed beyond what the sheet already does).
-2. **Map importer**: `.geez2vtt` → scene with walls, doors, lights; door toggle context menu. Reuses `js/geez2vtt.js` and the dd2vtt export already in the repo.
+2. **Map importer**: done in 1.5.0 (`owlbear/import.html`, `owlbear/dd2vtt.js`): dd2vtt → picture, walls, doors (GM handles to open/close), lights, all attached to the map picture.
 3. **Rollcall + handouts + sound board** (broadcast).
 4. **Monster stat blocks + NPC HP** on tokens.
 5. **Effects**: realm shift, weather, night.

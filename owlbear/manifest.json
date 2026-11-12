@@ -1,9 +1,9 @@
 {
   "name": "GeezSheets",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "manifest_version": 1,
   "author": "Geez",
-  "description": "GeezSheets character sheets in Owlbear: live party HP and status, HP labels on tokens, right-click Character sheet.",
+  "description": "GeezSheets in Owlbear: live party HP and status, sheets on tokens, dd2vtt maps with walls, doors and lights.",
   "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
   "action": {
     "title": "GeezSheets",

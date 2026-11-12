@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Import map</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #0f172a; color: #e2e8f0; font: 13px Inter, system-ui, sans-serif; }
+  main { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  h1 { font-size: 16px; margin: 0; display: flex; justify-content: space-between; align-items: center; }
+  button, select { font: inherit; color: inherit; background: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 6px 10px; }
+  button:hover:not(:disabled) { border-color: #f59e0b; }
+  button:disabled { opacity: .45; }
+  button.go { background: #92400e; border-color: #f59e0b; }
+  #drop { border: 2px dashed #475569; border-radius: 10px; padding: 18px; text-align: center; color: #94a3b8; cursor: pointer; }
+  #drop.over { border-color: #f59e0b; color: #f59e0b; }
+  #info { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; }
+  #info[hidden] { display: none; }
+  #thumb { width: 96px; height: 96px; object-fit: contain; background: #020617; border-radius: 6px; }
+  label { display: flex; gap: 6px; align-items: center; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  #msg { color: #94a3b8; min-height: 1.2em; }
+  #msg.err { color: #f87171; }
+  small { color: #94a3b8; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Import dd2vtt <button id="close" title="Close">✕</button></h1>
+  <div id="drop">Drop a <b>.dd2vtt</b> / <b>.uvtt</b> file here, or click to choose<input id="file" type="file" accept=".dd2vtt,.uvtt,.df2vtt,.json" hidden></div>
+  <div id="info" hidden><img id="thumb" alt=""><div id="sum"></div></div>
+  <label>Lights <select id="ltype">
+    <option value="SECONDARY">Map lights: seen where a character can see</option>
+    <option value="PRIMARY">Reveal: light the area for everyone</option>
+  </select></label>
+  <label><input type="checkbox" id="handles" checked> Door handles (GM only; right-click to open / close)</label>
+  <label><input type="checkbox" id="fog" checked> New scene starts in fog</label>
+  <div class="row">
+    <button id="scene" class="go" disabled title="Upload the picture as a new scene; walls, doors and lights go on when you open it">New scene</button>
+    <button id="here" disabled title="Fit walls, doors and lights onto the selected map picture (or the biggest one)">Add to this scene</button>
+    <button id="clear" title="Remove the imported walls, doors and lights from the selected (or biggest) map">Remove from map</button>
+  </div>
+  <div id="msg"></div>
+  <small>Walls, doors and lights are attached to the map picture: move or scale the picture and they follow.</small>
+</main>
+<script type="module">
+import OBR, { buildWall, buildLight, buildShape, buildImageUpload, buildSceneUpload } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
+import { parse, pictureBlob, sceneItems, pickMap, savePending, MAPKEY, PART } from './dd2vtt.js';
+const $ = (id) => document.getElementById(id);
+const ID = 'com.geezsheets/import';
+const qs = new URLSearchParams(location.search);
+const say = (t, err) => { $('msg').textContent = t || ''; $('msg').className = err ? 'err' : ''; };
+let map = null, name = '';
+
+OBR.onReady(async () => {
+  $('close').onclick = () => OBR.modal.close(ID);
+  if (await OBR.player.getRole() !== 'GM') { say('Only the GM can import maps.', true); $('drop').hidden = true; return; }
+
+  const load = async (f) => {
+    if (!f) return;
+    say('Reading ' + f.name + '…');
+    try {
+      map = parse(await f.text());
+      name = f.name.replace(/\.[^.]+$/, '');
+      $('thumb').src = map.image ? URL.createObjectURL(pictureBlob(map.image)) : '';
+      $('sum').innerHTML = `<b>${name.replace(/[<&]/g, '')}</b><br>${map.w} × ${map.h} squares · ${map.ppg} px per square<br>`
+        + `${map.walls.length} walls · ${map.doors.length} doors · ${map.lights.length} lights<br>${map.image ? 'Picture included' : '<i>No picture in this file</i>'}`;
+      $('info').hidden = false;
+      $('scene').disabled = !map.image; $('here').disabled = false;
+      say(map.image ? '' : 'No picture: put the map picture in the scene yourself, select it, then Add to this scene.');
+    } catch (e) { map = null; $('scene').disabled = $('here').disabled = true; say('Could not read that file: ' + e.message, true); }
+  };
+  $('drop').onclick = () => $('file').click();
+  $('file').onchange = () => load($('file').files[0]);
+  $('drop').ondragover = (e) => { e.preventDefault(); $('drop').classList.add('over'); };
+  $('drop').ondragleave = () => $('drop').classList.remove('over');
+  $('drop').ondrop = (e) => { e.preventDefault(); $('drop').classList.remove('over'); load(e.dataTransfer.files[0]); };
+  const opts = () => ({ lightType: $('ltype').value, handles: $('handles').checked });
+
+  // The map picture to fit to: ?item= (right-clicked map), else the selection, else the biggest map picture.
+  async function target() {
+    if (!(await OBR.scene.isReady())) throw Error('Open a scene first.');
+    const images = await OBR.scene.items.getItems((i) => i.type === 'IMAGE');
+    const want = qs.get('item'), sel = want ? [want] : (await OBR.player.getSelection()) || [];
+    const img = pickMap(images, sel);
+    if (!img) throw Error('No map picture in this scene. Use New scene, or add the picture and select it.');
+    return img;
+  }
+  async function clear(img) {
+    const parts = await OBR.scene.items.getItems((i) => i.metadata[PART] === img.id);
+    if (parts.length) await OBR.scene.items.deleteItems(parts.map((i) => i.id));
+    await OBR.scene.items.updateItems([img.id], (d) => { for (const i of d) delete i.metadata[MAPKEY]; });
+    return parts.length;
+  }
+
+  $('here').onclick = async () => {
+    try {
+      const img = await target(), dpi = await OBR.scene.grid.getDpi();
+      const old = await clear(img);
+      const items = sceneItems({ buildWall, buildLight, buildShape }, img, dpi, map, opts());
+      await OBR.scene.items.addItems(items);
+      await OBR.scene.items.updateItems([img.id], (d) => { for (const i of d) i.metadata[MAPKEY] = { name }; });
+      say(`Placed on "${img.name}": ${map.walls.length} walls, ${map.doors.length} doors, ${map.lights.length} lights${old ? ' (replaced the old ones)' : ''}.`);
+      OBR.notification.show(`Walls, doors and lights placed on ${img.name}`, 'SUCCESS');
+    } catch (e) { say(e.message, true); }
+  };
+
+  $('scene').onclick = async () => {
+    try {
+      $('scene').disabled = true; say('Uploading the picture to your Owlbear storage…');
+      savePending(name, map, opts());   // placed by the background page when the scene opens
+      const base = buildImageUpload(pictureBlob(map.image)).dpi(map.ppg).name(name).locked(true).build();
+      await OBR.assets.uploadScenes([buildSceneUpload().name(name).baseMap(base).fogFilled($('fog').checked).gridType('SQUARE').build()]);
+      say(`Scene "${name}" uploaded. Open it: walls, doors and lights go on as it loads (in this browser).`);
+    } catch (e) { say('Upload failed: ' + e.message, true); }
+    finally { $('scene').disabled = !map?.image; }
+  };
+
+  $('clear').onclick = async () => {
+    try { const img = await target(), n = await clear(img); say(n ? `Removed ${n} imported items from "${img.name}".` : `Nothing imported on "${img.name}".`); }
+    catch (e) { say(e.message, true); }
+  };
+});
+</script>
+</body>
+</html>
