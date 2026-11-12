@@ -4932,7 +4932,6 @@
         // ---------------------------------------------------------------------
         function select(type, id) {
             ui.selection = type ? { type, id } : null;
-            if (type) { setSidebar(true); showTab('tabInspectorBtn'); }   // a selection opens the inspector
             if (db.view.level === 'DM_BOARD') { highlightCards(); drawStrings(); }
             else renderView();
             refreshInspector();
@@ -5179,10 +5178,11 @@
             renderSheetPane();
             // a token clicked on a battle map opens that person's sheet in the sidebar instead
             const sheetMode = t && ui.selection.type === 'thing' && t.type === 'npc' && db.view.level === 'VTT';
-            
+            $('cardPop').classList.toggle('hidden', !t || sheetMode);
             $('inspectorContent').classList.toggle('hidden', !t || sheetMode);
             if (sheetMode) { if (sheetId !== t.id) openSheet(t.id); return; }
             if (!t) return;
+            requestAnimationFrame(positionPop);
             const s = ui.selection;
             const isThing = s.type === 'thing';
             const type = isThing ? t.type : s.type;
@@ -5811,7 +5811,7 @@
             });
             if (which === 'tabWorldBtn' && window.WorldDM) WorldDM.render();
         }
-        const showInspectorTab = () => { setSidebar(true); showTab('tabInspectorBtn'); };
+        const showInspectorTab = () => {};   // cards open on the canvas now; the sidebar tab is for character sheets
         $('tabInspectorBtn').onclick = () => showTab('tabInspectorBtn');
         $('tabNpcListBtn').onclick = () => showTab('tabNpcListBtn');
         $('tabWorldBtn').onclick = () => showTab('tabWorldBtn');
@@ -6660,6 +6660,7 @@
         $('railScene').onclick = () => { closeFlyouts(); GH?.setPanel?.(GH.panel?.() === 'scene' ? null : 'scene'); updateToolRail(); };
         $('railCallRoll').onclick = () => $('callRollBtn').click();
         // Floating windows that used to be sidebar tabs.
+        $('sheetPop').appendChild($('sheetPane'));
         $('sheetPopClose').onclick = () => { sheetId = null; renderSheetPane(); if (ui.selection) select(null); };
         // Add NPC: make a new one, or pick an existing one (on a battle map it is then placed with a click).
         $('npcPop').innerHTML = `<div class="p-2 flex flex-col gap-2 w-64">
@@ -6772,6 +6773,7 @@
         // ---- The card window on the canvas ----
         let lastClick = { left: innerWidth / 2, top: innerHeight / 2, right: innerWidth / 2, bottom: innerHeight / 2 };
         document.addEventListener('pointerdown', (e) => { if (!e.target.closest('#cardPop')) lastClick = { left: e.clientX, top: e.clientY, right: e.clientX, bottom: e.clientY }; }, true);
+        $('cardPop').appendChild($('inspectorContent'));
         $('cardPopClose').onclick = () => select(null);
         function popAnchor() {
             const sel = ui.selection;
@@ -6815,6 +6817,7 @@
             const t = sheetId && db.things[sheetId];
             $('noSelectionMsg').classList.toggle('hidden', !!t);
             $('sheetPane').classList.toggle('hidden', !t);
+            $('sheetPop').classList.toggle('hidden', !t);   // the sheet floats over the map when a character is clicked
             if (!t) return;
             const pane = $('sheetPane');
             if (pane.contains(document.activeElement)) return;
@@ -6931,9 +6934,11 @@
         }
 
         // ---- Hide / show the right sidebar ( ] key ) ----
+        // No sidebar any more: sheets, NPCs and initiative float over the map.
         function setSidebar(open) {
+            open = false;
             $('rightSidebar').classList.toggle('hidden', !open);
-            $('sidebarOpenBtn').classList.toggle('hidden', open);
+            $('sidebarOpenBtn').classList.toggle('hidden', true);
             try { localStorage.setItem('geezvtt.sidebar', open ? 'open' : 'closed'); } catch {}
             if (db.view.level === 'DM_BOARD') drawStrings();
         }
@@ -6944,7 +6949,7 @@
             if (e.key !== ']' || e.target.closest('input, textarea, select')) return;
             setSidebar(!sidebarOpen());
         });
-        { let saved = 'open'; try { saved = localStorage.getItem('geezvtt.sidebar') || 'open'; } catch {} setSidebar(saved === 'open'); }
+        setSidebar(false);
 
         // ---- Connect: live channel always; campaign/party through Firebase when configured ----
         function rerenderAll() {
