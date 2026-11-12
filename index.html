@@ -64,8 +64,14 @@
         }
     </style>
 <style>
-  #toolRail .mode-btn, #toolRail > button { padding: .55rem !important; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
-  #toolRail .mode-btn i, #toolRail > button i { font-size: 1rem !important; }
+  #toolRail .mode-btn, #toolRail > button { padding: .35rem !important; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+  #toolRail .mode-btn i, #toolRail > button i { font-size: .85rem !important; }
+  #toolRail, #toolRail .rail-group { gap: 2px !important; }
+  #toolRail .rail-group { padding: 3px !important; }
+  /* drag handles for the movable bars (makeMovable) */
+  .bar-grip { cursor: grab; touch-action: none; color: #94a3b8; font-size: 11px; line-height: 1; padding: 3px 4px; border-radius: 6px; user-select: none; }
+  .bar-grip:hover { color: #f59e0b; }
+  .bar-grip:active { cursor: grabbing; }
   /* tooltips sit to the right of the rail ("left-18" isn't a real Tailwind size, so they had no position) */
   #toolRail > button { position: relative; }
   #toolRail > button > span { left: calc(100% + 12px) !important; right: auto !important; top: 50% !important; transform: translateY(-50%); z-index: 60 !important; }
@@ -6605,6 +6611,31 @@
             f.style.top = b.offsetTop + 'px'; f.style.display = open ? 'flex' : 'none'; updateToolRail();
         });
         document.addEventListener('pointerdown', e => { if (!e.target.closest('#toolRail .geez-flyout, #toolRail [data-fly]')) closeFlyouts(); }, true);
+
+        // Breadcrumb bar and tool rail: drag the grip to move, double-click it to put the bar back. Remembered per browser.
+        function makeMovable(el, key, horizontal) {
+            const grip = document.createElement('div');
+            grip.className = 'bar-grip'; grip.title = 'Drag to move · double-click to reset';
+            grip.innerHTML = `<i class="fa-solid fa-grip-${horizontal ? 'vertical' : 'lines'}"></i>`;
+            el.prepend(grip);
+            const set = (p, prop) => el.style.setProperty(prop, p, 'important');   // !important beats the mobile rules in vttcore.css
+            const place = (x, y) => {
+                const r = el.getBoundingClientRect();
+                x = clamp(x, 0, innerWidth - Math.min(r.width, 60)); y = clamp(y, 0, innerHeight - Math.min(r.height, 40));
+                set('fixed', 'position'); set(x + 'px', 'left'); set(y + 'px', 'top'); set('auto', 'right'); set('auto', 'bottom'); set('none', 'transform'); set('auto', 'margin-right');
+                if (!horizontal) set(`calc(100vh - ${y + 8}px)`, 'max-height');
+                return { x, y };
+            };
+            const reset = () => { ['position', 'left', 'top', 'right', 'bottom', 'transform', 'margin-right', 'max-height'].forEach(p => el.style.removeProperty(p)); try { localStorage.removeItem(key); } catch {} };
+            try { const s = JSON.parse(localStorage.getItem(key) || 'null'); if (s) requestAnimationFrame(() => place(s.x, s.y)); } catch {}
+            let d = null;
+            grip.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); const r = el.getBoundingClientRect(); d = { dx: e.clientX - r.left, dy: e.clientY - r.top }; grip.setPointerCapture(e.pointerId); });
+            grip.addEventListener('pointermove', e => { if (d) d.at = place(e.clientX - d.dx, e.clientY - d.dy); });
+            grip.addEventListener('pointerup', () => { if (d?.at) try { localStorage.setItem(key, JSON.stringify(d.at)); } catch {} d = null; });
+            grip.addEventListener('dblclick', reset);
+        }
+        makeMovable($('crumbPill'), 'geez.pos.crumbs', true);
+        makeMovable($('toolRail'), 'geez.pos.rail', false);
         $('railDecor').onclick = () => { GH?.setPanel?.(GH.panel?.() === 'decor' ? null : 'decor'); updateToolRail(); };
         $('railScene').onclick = () => { closeFlyouts(); GH?.setPanel?.(GH.panel?.() === 'scene' ? null : 'scene'); updateToolRail(); };
         $('railCallRoll').onclick = () => $('callRollBtn').click();
@@ -6821,7 +6852,8 @@
                 const box = document.createElement('div');
                 box.dataset.tokbox = '';
                 box.className = 'bg-slate-900/70 border border-slate-800 rounded-xl p-3 space-y-2';
-                box.innerHTML = `<div class="text-[10px] uppercase tracking-wider font-bold text-indigo-300">Token on this map</div><label class="text-xs flex gap-2"><input data-token-light type="checkbox" ${battleTokens(bid)[t.id]?.light?.on ? 'checked' : ''}>Light <input data-light-range type="number" min="1" max="100" value="${battleTokens(bid)[t.id]?.light?.range || 4}" class="w-12 bg-slate-950 border border-slate-700 rounded"> cells</label>
+                box.innerHTML = `<div class="flex items-center justify-between"><span class="text-[10px] uppercase tracking-wider font-bold text-indigo-300">Token on this map</span><button data-token-remove class="text-[11px] text-slate-400 hover:text-red-400" title="Take this token off the map (the character stays)"><i class="fa-solid fa-xmark"></i> Remove from map</button></div>
+                    <label class="text-xs flex items-center gap-2">Size <select data-token-size class="flex-1 bg-slate-950 border border-slate-700 rounded px-1 py-0.5">${$('npcSize').innerHTML}</select></label><label class="text-xs flex gap-2"><input data-token-light type="checkbox" ${battleTokens(bid)[t.id]?.light?.on ? 'checked' : ''}>Light <input data-light-range type="number" min="1" max="100" value="${battleTokens(bid)[t.id]?.light?.range || 4}" class="w-12 bg-slate-950 border border-slate-700 rounded"> cells</label>
                     <div class="grid grid-cols-3 gap-1.5 text-[11px]">
                         ${[['hidden', 'Hidden'], ['hideName', 'Hide name'], ['hideHp', 'Hide HP']].map(([k, l]) => `<label class="flex items-center gap-1 bg-slate-950 border border-slate-800 rounded px-1.5 py-1"><input type="checkbox" data-tflag="${k}" ${tok[k] ? 'checked' : ''} class="accent-indigo-500">${l}</label>`).join('')}
                     </div>
@@ -6829,6 +6861,19 @@
                 pane.appendChild(box);
                 const setLight = () => moveToken(bid, t.id, { ...battleTokens(bid)[t.id], light:{on:box.querySelector('[data-token-light]').checked,range:Math.max(1,Number(box.querySelector('[data-light-range]').value)||4)} });
                 box.querySelector('[data-token-light]').onchange = setLight; box.querySelector('[data-light-range]').onchange = setLight;
+                const sizeSel = box.querySelector('[data-token-size]'), curSize = String(tokenSize(t));
+                if (![...sizeSel.options].some(o => o.value === curSize)) sizeSel.add(new Option(`Custom (${curSize}×${curSize})`, curSize), sizeSel.querySelector('[value="custom"]'));
+                sizeSel.value = curSize;
+                sizeSel.onchange = () => {
+                    let n = parseFloat(sizeSel.value);
+                    if (sizeSel.value === 'custom') { n = parseFloat(prompt('Token size in squares (e.g. 5 for 5×5):', curSize)); if (!(n > 0 && n <= 50)) { sizeSel.value = curSize; return; } }
+                    (t.traits ||= {}).size = n;
+                    // re-snap on this map so big tokens line up with the grid; keeps flags, conditions and light
+                    const cur = battleTokens(bid)[t.id];
+                    if (cur && ui.scene) moveToken(bid, t.id, { ...cur, ...snapToCell(ui.scene, cur.x * ui.scene.w, cur.y * ui.scene.h, n) });
+                    sizeSel.blur(); changed({ keepInspector: true }); renderSheetPane();   // blur: renderSheetPane skips while focus is inside
+                };
+                box.querySelector('[data-token-remove]').onclick =() => { delete db.battles[bid].tokens[t.id]; Live.remove(livePath(`tokens/${bid}/${t.id}`)); ui.vision = null; changed({ keepInspector: true }); renderSheetPane(); };
                 box.querySelectorAll('[data-tflag]').forEach(cb => cb.onchange = () => { tok[cb.dataset.tflag] = cb.checked; Live.update(livePath(`tokens/${bid}/${t.id}`),{[cb.dataset.tflag]:cb.checked}); changed({ keepInspector: true }); });
                 box.querySelectorAll('[data-cond]').forEach(b => b.onclick = () => {
                     const c = b.dataset.cond, cur = new Set(conds);
