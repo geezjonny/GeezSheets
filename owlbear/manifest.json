@@ -3,7 +3,7 @@
   "version": "1.1.0",
   "manifest_version": 1,
   "author": "Geez",
-  "description": "Your GeezSheets character sheets inside Owlbear Rodeo: a live party HP and status view, HP labels on linked tokens, and a right-click Character sheet on tokens.",
+  "description": "GeezSheets character sheets in Owlbear: live party HP and status, HP labels on tokens, right-click Character sheet.",
   "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
   "action": {
     "title": "GeezSheets",
