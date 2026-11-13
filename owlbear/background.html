@@ -6,10 +6,44 @@
 import OBR, { buildWall, buildLight, buildShape, buildPath } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
 import { reach, feet, plain } from './move.js';
 import { hpBars, who } from './hp.js';
+import { WATER, buildWaterEffect } from './water.js';
 import { sceneItems, loadPending, dropPending, inRoom, MAPKEY, DOOR, ROOM } from './dd2vtt.js';
 const page = (p) => new URL(p, location.href).href;
 OBR.onReady(async () => {
   const role = await OBR.player.getRole();
+  OBR.contextMenu.create({
+    id: WATER,
+    icons: [{ icon: page('icon.svg'), label: 'Add water', filter: { roles: ['GM'], max: 1, every: [{ key: 'layer', value: 'MAP' }, { key: 'type', value: 'IMAGE' }] } }],
+    onClick: (c) => OBR.scene.items.updateItems([c.items[0].id], (d) => {
+      for (const i of d) i.metadata[WATER] = { preset: i.metadata[WATER]?.preset || 'sea' };
+    }),
+  });
+  // Every client renders shared water maps locally, including after refresh or scene changes.
+  let waterRun = Promise.resolve();
+  const waterKeys = new Map();
+  async function syncWater() {
+    if (!(await OBR.scene.isReady())) { waterKeys.clear(); return; }
+    const maps = await OBR.scene.items.getItems((i) => i.type === 'IMAGE' && i.layer === 'MAP' && i.metadata[WATER]);
+    const effects = await OBR.scene.local.getItems((i) => i.type === 'EFFECT' && i.metadata[WATER]);
+    const dpi = await OBR.scene.grid.getDpi();
+    const stale = effects.filter((e) => !maps.some((i) => i.id === e.metadata[WATER].map));
+    if (stale.length) await OBR.scene.local.deleteItems(stale.map((e) => e.id));
+    for (const id of waterKeys.keys()) if (!maps.some((i) => i.id === id)) waterKeys.delete(id);
+    for (const i of maps) {
+      const key = JSON.stringify([i.image, i.grid, i.position, i.scale, i.rotation, i.visible, i.zIndex, i.metadata[WATER], dpi]);
+      const old = effects.find((e) => e.metadata[WATER].map === i.id);
+      if (old && waterKeys.get(i.id) === key) continue;
+      const effect = await buildWaterEffect(i);
+      if (old) await OBR.scene.local.updateItems([old.id], (d) => { Object.assign(d[0], effect, { id: old.id }); });
+      else await OBR.scene.local.addItems([effect]);
+      waterKeys.set(i.id, key);
+    }
+  }
+  const queueWater = () => { waterRun = waterRun.then(syncWater).catch((e) => console.warn('GeezSheets water:', e)); };
+  OBR.scene.items.onChange(queueWater);
+  OBR.scene.grid.onChange(queueWater);
+  OBR.scene.onReadyChange(queueWater);
+  queueWater();
   // dd2vtt maps (import.html): right-click a map picture to import its walls; right-click a door handle to open / close it.
   OBR.contextMenu.create({
     id: 'com.geezsheets/dd2vtt',
