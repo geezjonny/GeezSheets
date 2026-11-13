@@ -3,7 +3,7 @@
   "version": "2.1.0",
   "manifest_version": 1,
   "author": "Geez",
-  "description": "dd2vtt maps in Owlbear (room fog, walls, doors, lights), live GeezSheets HP bars on PC tokens, and movement range on the active initiative turn.",
+  "description": "dd2vtt maps, HP bars and movement range.",
   "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
   "action": {
     "title": "Import dd2vtt map",

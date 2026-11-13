@@ -7,6 +7,8 @@ The end of the clip crossfades into its start, so the loop has no visible jump:
     python tools/make_loop.py river.mp4 --start 5 --length 20 --fade 2
     python tools/make_loop.py river.mp4 --width 2048 --fps 24 --crf 34 -o maps/river.webm
     python tools/make_loop.py already-loops.mp4 --fade 0      # just re-encode a clip that already loops
+    python tools/make_loop.py                                 # asks: drag videos into the window, Enter
+    (or drop videos onto make_loop.bat)
 
 How the crossfade works: it reads LENGTH + FADE seconds from START. The output is LENGTH seconds long;
 during its last FADE seconds the picture blends into the clip's first FADE seconds, so the final frame
@@ -33,7 +35,7 @@ def probe(path):
 
 def main():
     ap = argparse.ArgumentParser(description='Make a seamless looping WebM from a video.')
-    ap.add_argument('video', type=Path)
+    ap.add_argument('video', type=Path, nargs='*', help='video file(s); none = ask for them')
     ap.add_argument('-o', '--out', type=Path, help='output file (default: <name>.loop.webm next to the input)')
     ap.add_argument('--start', type=float, default=0, help='seconds into the video to begin (default 0)')
     ap.add_argument('--length', type=float, help='loop length in seconds (default: as long as the video allows)')
@@ -43,7 +45,46 @@ def main():
     ap.add_argument('--crf', type=int, default=32, help='quality: lower is better and bigger; 28-38 is sensible (default 32)')
     ap.add_argument('--fast', action='store_true', help='encode faster, slightly bigger file')
     a = ap.parse_args()
+    if a.out and len(a.video) > 1:
+        sys.exit('-o only works with one video.')
+    for v in a.video:
+        convert(v, a)
+    if a.video:
+        return
+    while True:  # no files given: double-clicked, so let the user drag files into the window
+        line = input('\nDrag a video here and press Enter (empty = quit): ').strip()
+        if not line:
+            return
+        for v in paths(line):
+            try:
+                convert(v, a)
+            except (SystemExit, subprocess.CalledProcessError) as e:
+                print(f'Failed: {e}')
 
+
+def paths(line):
+    """Split dropped paths: cmd quotes ones with spaces, PowerShell wraps them in & '...'."""
+    line = line.removeprefix('& ').strip()
+    parts, cur, quote = [], '', None
+    for ch in line:
+        if quote:
+            if ch == quote:
+                quote = None
+            else:
+                cur += ch
+        elif ch in '"\'':
+            quote = ch
+        elif ch == ' ':
+            if cur:
+                parts.append(cur)
+            cur = ''
+        else:
+            cur += ch
+    return [Path(x) for x in parts + ([cur] if cur else [])]
+
+
+def convert(video, a):
+    a.video = video
     if not a.video.exists():
         sys.exit(f'No such file: {a.video}')
     duration, w, h, fps = probe(a.video)
