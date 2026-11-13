@@ -4,6 +4,7 @@
 <body>
 <script type="module">
 import OBR, { buildWall, buildLight, buildShape, buildPath } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
+import { reach, feet, plain } from './move.js';
 import { sceneItems, loadPending, dropPending, inRoom, MAPKEY, DOOR, ROOM } from './dd2vtt.js';
 const page = (p) => new URL(p, location.href).href;
 OBR.onReady(async () => {
@@ -81,6 +82,53 @@ OBR.onReady(async () => {
   OBR.tool.createAction({ id: TOOL + '/none', icons: [{ icon: page('rooms.svg'), label: 'Fog every room', filter: { activeTools: [TOOL] } }], onClick: () => setRooms(() => true, true) });
   OBR.scene.onReadyChange(placePending);
   placePending();
+
+  // Movement range: when Owlbear's Initiative Tracker makes a token active, every client draws (locally, not synced)
+  // the squares it can reach from where its turn started, around blocking walls and closed doors.
+  // Speed: the GeezSheets sheet whose name matches the token (characters/pcs), else an SRD monster, else 30 ft.
+  const INIT = 'rodeo.owlbear.initiative-tracker/metadata', RANGE = 'com.geezsheets/range';
+  let monsters;
+  async function speedOf(tok) {
+    const names = [tok.text?.plainText, tok.name].map(plain).filter(Boolean);
+    try {
+      // shortcut: fetches every PC sheet once per turn; fine for one party, move to a name index if it gets slow
+      const pcs = await (await fetch('https://geezsheets-default-rtdb.firebaseio.com/characters/pcs.json')).json();
+      const pc = Object.entries(pcs || {}).find(([id, c]) => names.some((n) => n === id || n === plain(c?.name) || n === plain(c?.name).split(' ')[0]));
+      if (feet(pc?.[1].combat?.speed)) return feet(pc[1].combat.speed);
+    } catch (e) { console.warn('GeezSheets speed:', e); }
+    monsters ??= fetch(page('../data/monsters.json')).then((r) => r.json()).then((l) => new Map(l.map((m) => [plain(m.name), feet(m.speed)]))).catch(() => new Map());
+    const m = await monsters;
+    return names.map((n) => m.get(n)).find(Boolean) || 30;
+  }
+  // shortcut: ignores wall rotation and hex grids
+  const wallSegs = (w) => {
+    const P = w.points.map((p) => ({ x: w.position.x + p.x * w.scale.x, y: w.position.y + p.y * w.scale.y }));
+    return P.slice(1).map((b, k) => [P[k], b]);
+  };
+  let turn, start, speed, drawn = '', run = Promise.resolve();
+  async function drawRange() {
+    if (!(await OBR.scene.isReady())) { drawn = ''; return; }
+    const items = await OBR.scene.items.getItems();
+    const tok = items.find((i) => i.metadata[INIT]?.active && (role === 'GM' || i.visible));
+    if (tok?.id !== turn) { turn = tok?.id; start = tok?.position; speed = tok && speedOf(tok); }
+    const walls = items.filter((i) => i.type === 'WALL' && i.blocking);
+    const key = turn ? turn + ':' + walls.map((w) => w.id).join() : '';
+    if (key === drawn) return;
+    drawn = key;
+    const old = await OBR.scene.local.getItems((i) => i.metadata[RANGE]);
+    if (old.length) await OBR.scene.local.deleteItems(old.map((i) => i.id));
+    if (!tok) return;
+    const dpi = await OBR.scene.grid.getDpi(), per = (await OBR.scene.grid.getScale()).parsed?.multiplier || 5;
+    const cells = reach({ i: Math.floor(start.x / dpi), j: Math.floor(start.y / dpi) }, Math.floor((await speed) / per), dpi, walls.flatMap(wallSegs));
+    const g = dpi * 0.06, s = dpi - 2 * g;
+    const commands = cells.flatMap(([i, j]) => { const x = i * dpi + g, y = j * dpi + g; return [[0, x, y], [1, x + s, y], [1, x + s, y + s], [1, x, y + s], [5]]; });
+    await OBR.scene.local.addItems([buildPath().commands(commands).fillColor('#38bdf8').fillOpacity(0.22).strokeOpacity(0).strokeWidth(0)
+      .layer('DRAWING').locked(true).disableHit(true).name('Movement').metadata({ [RANGE]: true }).build()]);
+  }
+  const queueRange = () => { run = run.then(drawRange).catch((e) => console.warn('GeezSheets range:', e)); };
+  OBR.scene.items.onChange(queueRange);
+  OBR.scene.onReadyChange(queueRange);
+  queueRange();
 });
 </script>
 </body>
