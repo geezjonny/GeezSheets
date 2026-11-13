@@ -1481,21 +1481,22 @@
             bt.traits.dd2vtt = `blank:${cols}x${rows}`;
             save();
         }
-        // Drop a dd2vtt on a scene: only its walls, doors and lights (the picture is ignored), top-left on the drop square, as your own edits.
+        // Drop a dd2vtt on a scene: its picture goes down with its top-left on the drop square, and its walls, doors and lights become your own.
         async function placeDd2vtt(f, bid, at) {
-            let j;
-            try { j = JSON.parse((await f.text()).replace(/^﻿/, '')); if (!j.resolution) throw 0; }
-            catch { showStatus(`${f.name} doesn't look like a dd2vtt file.`); return; }
-            const ed = editsOf(bid), o = j.resolution.map_origin || { x: 0, y: 0 }, r3 = v => +v.toFixed(3);
-            const ox = Math.max(0, Math.round(at.x)) - o.x, oy = Math.max(0, Math.round(at.y)) - o.y;   // dd2vtt points are already in squares
-            const seg = (a, b) => ({ x1: r3(ox + a.x), y1: r3(oy + a.y), x2: r3(ox + b.x), y2: r3(oy + b.y) });
-            const walls = (j.line_of_sight || []).concat(j.objects_line_of_sight || []), doors = j.portals || [], lights = j.lights || [];
-            walls.forEach(line => { for (let i = 0; i < line.length - 1; i++) (ed.addWalls ||= {})[uid('w')] = { ...seg(line[i], line[i + 1]), mat: ui.swatch.wall }; });
-            doors.forEach(({ bounds: [a, b] = [] }) => { if (a && b) (ed.addDoors ||= {})[uid('dr')] = { ...seg(a, b), mat: ui.swatch.door }; });
-            lights.forEach(l => { if (l.position) (ed.addLights ||= {})[uid('l')] = { x: r3(ox + l.position.x), y: r3(oy + l.position.y), range: r3(l.range || 4) }; });
+            const ed = editsOf(bid);
+            await putFile(f.name, f);
+            dd2vttCache.delete(f.name);
+            const ps = await loadDd2vtt(f.name).catch(() => null);
+            if (!ps) { showStatus(`${f.name} doesn't look like a dd2vtt file.`); return; }
+            const g = ps.ppg, ox = Math.max(0, Math.round(at.x)), oy = Math.max(0, Math.round(at.y)), r3 = v => +v.toFixed(3);
+            const seg = (a, b) => ({ x1: r3(ox + a.x / g), y1: r3(oy + a.y / g), x2: r3(ox + b.x / g), y2: r3(oy + b.y / g) });
+            ps.walls.forEach(line => { for (let i = 0; i < line.length - 1; i++) (ed.addWalls ||= {})[uid('w')] = { ...seg(line[i], line[i + 1]), mat: ui.swatch.wall }; });
+            ps.doors.forEach(([a, b]) => { if (a && b) (ed.addDoors ||= {})[uid('dr')] = { ...seg(a, b), mat: ui.swatch.door }; });
+            ps.lights.forEach(l => { (ed.addLights ||= {})[uid('l')] = { x: r3(ox + l.x / g), y: r3(oy + l.y / g), range: r3(l.r / g) || 4 }; });
+            (ed.pieces ||= {})[uid('pc')] = { file: f.name, x: ox, y: oy, w: r3(ps.w / g), h: r3(ps.h / g) };
             ui.vision = null;
             changed({ keepInspector: true });
-            showStatus(`Placed ${f.name}: ${walls.length} walls, ${doors.length} doors, ${lights.length} lights`);
+            showStatus(`Placed ${f.name}: ${ps.walls.length} walls, ${ps.doors.length} doors, ${ps.lights.length} lights`);
         }
         async function loadDd2vtt(name) {
             if (rtdb?.gaia) return null;
@@ -2072,6 +2073,12 @@
                 if (!scene) { clearCanvases(); showEmpty(`Can't find ${bt.traits.dd2vtt}`, PLAYER ? 'Ask the DM to put a copy of this file in the battlemap/ folder.' : 'Put a copy in the battlemap/ folder next to this page (same file name), or attach it again from the battle map card.', false); return; }
                 if (ui.size.w !== scene.w || ui.size.h !== scene.h) setCanvasSize(scene.w, scene.h);
                 if (!scene.table3d) mapCtx.drawImage(scene.img, 0, 0);
+                // dd2vtt pictures dropped onto a scene, under the walls and tokens
+                for (const pc of Object.values(floorEdits(bt.id).pieces || {})) {
+                    const ps = await loadDd2vtt(pc.file).catch(() => null);
+                    if (seq !== renderSeq) return;
+                    if (ps) mapCtx.drawImage(ps.img, pc.x * scene.ppg, pc.y * scene.ppg, pc.w * scene.ppg, pc.h * scene.ppg);
+                }
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
                 markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
                 ui.scene = scene; GH?.startWeather();
