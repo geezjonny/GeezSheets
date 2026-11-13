@@ -11,21 +11,16 @@ import { sceneItems, loadPending, dropPending, inRoom, MAPKEY, DOOR, ROOM } from
 const page = (p) => new URL(p, location.href).href;
 OBR.onReady(async () => {
   const role = await OBR.player.getRole();
+  // One "Water" entry on every map: adds water if missing, then opens the settings (with Remove).
+  // A metadata '!=' filter never matched in OBR, which hid the settings entry.
   OBR.contextMenu.create({
     id: WATER,
-    icons: [{ icon: page('icon.svg'), label: 'Add water', filter: { roles: ['GM'], max: 1, every: [{ key: 'layer', value: 'MAP' }, { key: 'type', value: 'IMAGE' }, { key: ['metadata', WATER], value: undefined }] } }],
-    async onClick(c) {
+    icons: [{ icon: page('icon.svg'), label: 'Water', filter: { roles: ['GM'], max: 1, every: [{ key: 'layer', value: 'MAP' }, { key: 'type', value: 'IMAGE' }] } }],
+    async onClick(c, elementId) {
       if (await OBR.player.getRole() !== 'GM') return;
       await OBR.scene.items.updateItems([c.items[0].id], (d) => {
         for (const i of d) i.metadata[WATER] ??= { preset: 'sea' };
       });
-    },
-  });
-  OBR.contextMenu.create({
-    id: WATER + '/settings',
-    icons: [{ icon: page('icon.svg'), label: 'Water settings', filter: { roles: ['GM'], max: 1, every: [{ key: 'layer', value: 'MAP' }, { key: 'type', value: 'IMAGE' }, { key: ['metadata', WATER], value: undefined, operator: '!=' }] } }],
-    async onClick(c, elementId) {
-      if (await OBR.player.getRole() !== 'GM') return;
       await OBR.popover.open({ id: WATER + '/panel', url: page('water-panel.html?item=' + encodeURIComponent(c.items[0].id)), width: 300, height: 410, anchorElementId: elementId });
     },
   });
