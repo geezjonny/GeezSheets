@@ -1303,6 +1303,8 @@
             // tokens also live on the live channel, which rebuilds the battles on load: clear them there too
             for (const [bid, b] of Object.entries(db.battles)) if (b?.tokens?.[id]) { delete b.tokens[id]; if (!PLAYER) Live.remove(livePath(`tokens/${bid}/${id}`)); }
             if (db.battles[id] && !PLAYER) Live.remove(livePath('tokens/' + id));
+            // a battle map's floors, doors, props and traps (3D table): the published scene and its live state
+            if (!PLAYER && t.type === 'location') { Live.remove(livePath('table3d/' + id)); Live.remove(`table3d/${liveCamp()}/${id}`); }
             delete db.battles[id];
             delete db.things[id];
             if (db.view.battleId === id) db.view.battleId = null;
