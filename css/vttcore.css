@@ -1,0 +1,51 @@
+/* Ink VTT controls: cream/ink and white on bronze (WCAG AA). */
+.geez-vtt-controls{background:#fff8e8;color:#2a2119;border:1px solid #8a6526;border-radius:8px;padding:8px;font:12px/1.5 system-ui;max-width:100%;box-sizing:border-box}
+.geez-vtt-controls button,.geez-template-label{background:#8a6526!important;color:#fff!important;border:1px solid #6b4c1b!important;border-radius:5px;padding:7px 9px;min-height:36px;font:600 12px system-ui;cursor:pointer;margin:2px}
+.geez-vtt-controls input:not([type=checkbox]),.geez-vtt-controls select{background:#fffdf7!important;color:#2a2119!important;border:1px solid #8a6526;border-radius:4px;min-height:34px;padding:3px;max-width:160px}
+.geez-vtt-controls input[type=number]{width:70px}.geez-vtt-controls label{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px}.geez-vtt-controls input[type=checkbox]{accent-color:#8a6526}
+.geez-vtt-controls button:focus-visible,.geez-template-label:focus-visible{outline:3px solid #2a2119;outline-offset:2px}
+.geez-template-tool{position:absolute;left:8px;bottom:48px;z-index:42;width:270px;max-width:calc(100% - 16px)}
+.geez-template-tool summary{cursor:pointer;font-weight:700;padding:4px;min-height:30px}.geez-template-fields{display:flex;flex-wrap:wrap;gap:4px}.geez-template-label{pointer-events:auto;transform:translate(-50%,-50%);white-space:nowrap;min-height:28px;padding:3px 6px}
+.geez-concentration-prompt{border:2px solid #a3362d;border-radius:5px;padding:6px;margin-top:6px;font-weight:700}
+.geez-token-elevation{position:absolute;top:-20px;left:50%;transform:translateX(-50%);background:#fff8e8;color:#2a2119;border:1px solid #8a6526;border-radius:4px;padding:1px 4px;white-space:nowrap;font:bold 10px system-ui;pointer-events:none}
+.geez-token-concentration{position:absolute;inset:-5px;border:2px dashed #8a6526;border-radius:50%;pointer-events:none}.geez-token-concentration b{position:absolute;top:0;left:-5px;background:#fff8e8;color:#2a2119;border-radius:50%;font:700 10px system-ui;padding:2px}
+#geezConcentrationAlerts{position:absolute;top:8px;left:8px;z-index:43;max-width:280px;max-height:40%;overflow:auto}#geezConcentrationAlerts:empty{display:none}
+/* Area templates open as a flyout from the left toolbar button. */
+.geez-template-tool{left:84px!important;bottom:auto!important;top:50%;transform:translateY(-50%)}
+.geez-template-tool summary{display:none}
+.geez-template-tool:not(:has(details[open])){display:none}
+/* Rail flyouts pull out to the right of the VTT rail; the build bar runs along the bottom. */
+.geez-flyout{position:absolute;left:calc(100% + 8px);display:none;flex-direction:row;gap:4px;padding:6px;border-radius:16px;width:max-content;z-index:31}
+.geez-flyout .mode-btn .absolute,.geez-buildbar .mode-btn .absolute{left:50%!important;transform:translateX(-50%)}
+.geez-flyout .mode-btn .absolute{top:calc(100% + 6px)}
+.geez-buildbar{position:absolute;left:84px;bottom:16px;display:none;flex-direction:row;flex-wrap:wrap;gap:2px;padding:6px;border-radius:16px;max-width:calc(100% - 100px);z-index:30}
+.geez-buildbar .mode-btn .absolute{bottom:calc(100% + 6px);top:auto}
+/* No top bar: the header's pieces float over the map as pills; the gaps between them click through. */
+#appHeader{position:absolute;top:8px;left:8px;right:8px;z-index:40;height:auto;min-height:0;padding:0;flex-wrap:wrap;background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;pointer-events:none}
+#appHeader>*{pointer-events:auto}
+#appHeader #crumbPill{flex:0 1 auto;margin-right:auto;min-height:38px;padding:3px 10px 3px 4px;border-radius:12px;background:#f6f0e2f5;border:1px solid #cdbb98;box-shadow:0 6px 18px -10px #5c4d3a}
+#appHeader #breadcrumbNav{flex:0 1 auto;overflow:hidden}
+#appHeader #campaignSelect{border:0;background:transparent;font-weight:700}
+@media (max-width:640px){
+ #appHeader{gap:6px}
+ #appHeader #presenceBar{display:none!important}
+ #appHeader #crumbPill{order:10;flex:1 1 100%;margin-right:0;overflow-x:auto;scrollbar-width:none}
+ #appHeader #campaignSelect{max-width:120px}
+ #toolRail{top:104px!important;transform:none!important;max-height:calc(100% - 190px);overflow-y:auto;scrollbar-width:none}
+ .geez-buildbar{left:8px;right:8px;max-width:none;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;bottom:64px}
+}
+/* Zoom sits above the dice pill in the bottom-right corner. */
+#zoomPill{right:12px;bottom:64px}
+/* Initiative bar: turn order runs left to right. */
+#initPop section{border:0!important;padding:0!important;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+#initPop section>h4{margin:0}
+#initPop #initList{display:flex;gap:6px;overflow-x:auto;max-width:100%}
+#initPop #initList>div{flex:0 0 auto;max-width:200px}
+#initPop #initDmControls{display:flex;flex-wrap:wrap;gap:4px;padding:0}
+#initPop #initDmControls.hidden{display:none}
+#initPop #initDmControls button{padding:4px 8px}
+#npcPop #tabNpcList{flex:none}
+/* No right sidebar or its reopen tab: sheets, NPCs and initiative float over the map. */
+#rightSidebar,#sidebarOpenBtn{display:none!important}
+/* No 3D button. */
+#open3dBtn{display:none!important}

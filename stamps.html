@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geez Stamps</title>
+<style>
+  :root { --page:#efe6d2; --ink:#211b15; --card:#c9b48a; --line:#a8916a; }
+  body { margin:0; padding:16px; background:var(--page); color:var(--ink); font:14px Georgia, serif; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  p { margin:0 0 12px; max-width:70ch; }
+  .bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  input, button { font:inherit; padding:4px 8px; border:1px solid var(--line); border-radius:6px; background:#f7f0e1; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); gap:8px; }
+  figure { margin:0; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px; text-align:center; }
+  figcaption { font-size:11px; word-break:break-word; }
+  .alias { opacity:.65; }
+</style>
+</head>
+<body>
+<h1>Geez Stamps</h1>
+<p>Every map stamp, drawn by <code>js/stamps.js</code>. To redraw one, edit its function there and press Refresh. Stamps sharing a drawing (a family or an alias) are labelled with what they borrow.</p>
+<div class="bar">
+  <input id="q" placeholder="Filter, or type any name to preview it (e.g. skull)" size="40" aria-label="Filter stamps">
+  <label><input id="dir" type="checkbox"> Stairs: show down</label>
+  <button id="refresh">Refresh</button>
+</div>
+<div class="grid" id="grid"></div>
+<script src="js/props.js"></script>
+<script type="module">
+let mod;
+async function load() { mod = await import('./js/stamps.js?t=' + Date.now()); draw(); }
+function draw() {
+  const { STAMPS, stampKey, drawStamp } = mod, q = document.getElementById('q').value.trim().toLowerCase().replace(/\s+/g, '_');
+  const catalogue = (window.PROPS || window.GEEZ_PROPS || []).map(p => p.id);
+  let ids = [...new Set([...catalogue, ...Object.keys(STAMPS), 'stairs_up', 'stairs_down'])];
+  if (q) { ids = ids.filter(id => id.includes(q)); if (!ids.includes(q)) ids.unshift(q); }
+  const grid = document.getElementById('grid'); grid.innerHTML = '';
+  for (const id of ids) {
+    const f = document.createElement('figure'), cv = document.createElement('canvas'), big = id === 'blackship';
+    cv.width = cv.height = 96; const g = big ? 11 : 48;
+    drawStamp(cv.getContext('2d'), { id, x: 48 / g, y: 48 / g, scale: 1, dir: id === 'stairs' ? (document.getElementById('dir').checked ? 'down' : 'up') : undefined }, g);
+    const key = stampKey(id);
+    f.append(cv); f.insertAdjacentHTML('beforeend', `<figcaption>${id.replaceAll('_', ' ')}${key !== id ? `<br><span class="alias">draws as ${key.replaceAll('_', ' ')}</span>` : ''}</figcaption>`);
+    grid.append(f);
+  }
+}
+document.getElementById('q').oninput = draw;
+document.getElementById('dir').onchange = draw;
+document.getElementById('refresh').onclick = load;
+load();
+</script>
+</body>
+</html>

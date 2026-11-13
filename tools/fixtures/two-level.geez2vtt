@@ -1,0 +1,1401 @@
+{
+  "format": "geez2vtt",
+  "version": 1,
+  "name": "Two floors",
+  "grid": {
+    "cols": 29,
+    "rows": 22,
+    "cell_ft": 5
+  },
+  "floors": [
+    {
+      "level": 0,
+      "name": "Prison",
+      "elevation": 0,
+      "source": "prison_01.dd2vtt",
+      "cells": {
+        "0,0": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "0,1": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "0,2": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "0,3": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "0,4": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "0,5": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "0,6": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "0,7": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "1,0": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "1,1": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "1,2": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "1,3": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "1,4": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "1,5": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "1,6": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "1,7": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "2,0": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "2,1": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "2,2": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "2,3": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "2,4": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "2,5": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "2,6": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "2,7": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "3,0": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "3,1": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "3,2": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "3,3": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "3,4": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "3,5": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "3,6": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "3,7": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,0": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,1": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,2": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,3": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,4": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,5": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,6": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,7": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,0": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,1": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,2": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,3": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,4": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,5": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,6": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,7": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "6,0": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "6,1": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "6,2": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "6,3": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "6,4": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "6,5": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "6,6": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "6,7": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "7,0": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "7,1": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "7,2": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "7,3": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "7,4": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "7,5": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "7,6": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "7,7": {
+          "floor": "stone",
+          "terrain": "dirt",
+          "elevation": 0
+        }
+      },
+      "walls": [
+        {
+          "a": [
+            3.94000149,
+            7.96611452
+          ],
+          "b": [
+            3.94000149,
+            16.016119
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            3.94611263
+          ],
+          "b": [
+            3.94000149,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            5.95000267,
+            18.02612
+          ],
+          "b": [
+            10.9800043,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            16.010006,
+            18.02612
+          ],
+          "b": [
+            10.9800043,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21.0400085,
+            18.02612
+          ],
+          "b": [
+            16.010006,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            3.94611263
+          ],
+          "b": [
+            8.970004,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            14.0000057,
+            3.94611263
+          ],
+          "b": [
+            8.970004,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            19.0200081,
+            3.94611263
+          ],
+          "b": [
+            14.0000057,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            19.0200081,
+            3.94611263
+          ],
+          "b": [
+            23.0500088,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            8.976115
+          ],
+          "b": [
+            25.060009,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            16.016119
+          ],
+          "b": [
+            25.060009,
+            8.976115
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            18.02612
+          ],
+          "b": [
+            21.0400085,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            7.96000338,
+            6.966114
+          ],
+          "b": [
+            8.970004,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            7.96000338,
+            3.94611263
+          ],
+          "b": [
+            7.96000338,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            9.980004,
+            6.966114
+          ],
+          "b": [
+            10.9800043,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            3.94611263
+          ],
+          "b": [
+            10.9800043,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            12.9900055,
+            6.966114
+          ],
+          "b": [
+            14.0000057,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            12.9900055,
+            3.94611263
+          ],
+          "b": [
+            12.9900055,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            15.0000067,
+            6.966114
+          ],
+          "b": [
+            16.010006,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            16.010006,
+            3.94611263
+          ],
+          "b": [
+            16.010006,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            6.966114
+          ],
+          "b": [
+            23.0500088,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            3.94611263
+          ],
+          "b": [
+            22.0400085,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            24.05001,
+            6.966114
+          ],
+          "b": [
+            25.060009,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            23.0500088,
+            3.94611263
+          ],
+          "b": [
+            25.060009,
+            3.94611263
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            23.0500088,
+            7.96611452
+          ],
+          "b": [
+            23.0500088,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            23.0500088,
+            7.96611452
+          ],
+          "b": [
+            25.060009,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            14.0061169
+          ],
+          "b": [
+            18.0200062,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            9.976116
+          ],
+          "b": [
+            18.0200062,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            11.9961157
+          ],
+          "b": [
+            22.0400085,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            7.96611452
+          ],
+          "b": [
+            22.0400085,
+            9.976116
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            7.96611452
+          ],
+          "b": [
+            22.0400085,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            9.976116
+          ],
+          "b": [
+            18.0200062,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            15.0061169
+          ],
+          "b": [
+            18.0200062,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21.0400085,
+            15.0061169
+          ],
+          "b": [
+            21.0400085,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21.0400085,
+            15.0061169
+          ],
+          "b": [
+            20.0300083,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            19.0200081,
+            15.0061169
+          ],
+          "b": [
+            18.0200062,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            22.0400085,
+            15.0061169
+          ],
+          "b": [
+            22.0400085,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            16.016119
+          ],
+          "b": [
+            25.060009,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            25.060009,
+            15.0061169
+          ],
+          "b": [
+            24.05001,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            23.0500088,
+            15.0061169
+          ],
+          "b": [
+            22.0400085,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            12.9900055,
+            15.0061169
+          ],
+          "b": [
+            12.9900055,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            16.010006,
+            15.0061169
+          ],
+          "b": [
+            16.010006,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            16.010006,
+            15.0061169
+          ],
+          "b": [
+            15.0000067,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            14.0000057,
+            15.0061169
+          ],
+          "b": [
+            12.9900055,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            7.96000338,
+            15.0061169
+          ],
+          "b": [
+            7.96000338,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            15.0061169
+          ],
+          "b": [
+            10.9800043,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            15.0061169
+          ],
+          "b": [
+            9.980004,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            8.970004,
+            15.0061169
+          ],
+          "b": [
+            7.96000338,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            5.95000267,
+            18.02612
+          ],
+          "b": [
+            3.94000149,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            16.016119
+          ],
+          "b": [
+            3.94000149,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            15.0061169
+          ],
+          "b": [
+            6.960003,
+            18.02612
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            15.0061169
+          ],
+          "b": [
+            5.95000267,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            4.950002,
+            15.0061169
+          ],
+          "b": [
+            3.94000149,
+            15.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            5.95000267,
+            7.96611452
+          ],
+          "b": [
+            5.95000267,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            7.96611452
+          ],
+          "b": [
+            5.95000267,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3.94000149,
+            6.966114
+          ],
+          "b": [
+            4.950002,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            5.95000267,
+            6.966114
+          ],
+          "b": [
+            6.960003,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            3.94611263
+          ],
+          "b": [
+            6.960003,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            14.0061169
+          ],
+          "b": [
+            6.960003,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            11.9961157
+          ],
+          "b": [
+            6.960003,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            7.96611452
+          ],
+          "b": [
+            10.9800043,
+            14.0061169
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            6.960003,
+            7.96611452
+          ],
+          "b": [
+            6.960003,
+            9.976116
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            10.9800043,
+            7.96611452
+          ],
+          "b": [
+            6.960003,
+            7.96611452
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            6.966114
+          ],
+          "b": [
+            19.0200081,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            18.0200062,
+            3.94611263
+          ],
+          "b": [
+            18.0200062,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            20.0300083,
+            6.966114
+          ],
+          "b": [
+            21.0400085,
+            6.966114
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21.0400085,
+            3.94611263
+          ],
+          "b": [
+            21.0400085,
+            6.966114
+          ],
+          "material": "stone"
+        }
+      ],
+      "portals": [
+        {
+          "a": [
+            8.970004,
+            6.966114
+          ],
+          "b": [
+            9.980004,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            14.0000057,
+            6.966114
+          ],
+          "b": [
+            15.0000067,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            23.0500088,
+            6.966114
+          ],
+          "b": [
+            24.05001,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            23.0500088,
+            14.0061169
+          ],
+          "b": [
+            24.05001,
+            14.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            24.05001,
+            14.0061169
+          ],
+          "b": [
+            25.060009,
+            14.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            22.0400085,
+            11.9961157
+          ],
+          "b": [
+            22.0400085,
+            10.9861155
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            22.0400085,
+            10.9861155
+          ],
+          "b": [
+            22.0400085,
+            9.976116
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            20.0300083,
+            15.0061169
+          ],
+          "b": [
+            19.0200081,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            24.05001,
+            15.0061169
+          ],
+          "b": [
+            23.0500088,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            15.0000067,
+            15.0061169
+          ],
+          "b": [
+            14.0000057,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            9.980004,
+            15.0061169
+          ],
+          "b": [
+            8.970004,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            5.95000267,
+            15.0061169
+          ],
+          "b": [
+            4.950002,
+            15.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            3.94000149,
+            14.0061169
+          ],
+          "b": [
+            4.950002,
+            14.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            4.950002,
+            14.0061169
+          ],
+          "b": [
+            5.95000267,
+            14.0061169
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            4.950002,
+            6.966114
+          ],
+          "b": [
+            5.95000267,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            6.960003,
+            10.9861155
+          ],
+          "b": [
+            6.960003,
+            11.9961157
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            6.960003,
+            9.976116
+          ],
+          "b": [
+            6.960003,
+            10.9861155
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        },
+        {
+          "a": [
+            19.0200081,
+            6.966114
+          ],
+          "b": [
+            20.0300083,
+            6.966114
+          ],
+          "kind": "door",
+          "material": "wood",
+          "closed": true,
+          "reviewed": false
+        }
+      ],
+      "lights": [
+        {
+          "x": 5.00824261,
+          "y": 10.996254,
+          "range": 4,
+          "intensity": 3,
+          "color": "#FFEBBF"
+        },
+        {
+          "x": 4.18996334,
+          "y": 12.4932928,
+          "range": 4,
+          "intensity": 3,
+          "color": "#FFEBBF"
+        },
+        {
+          "x": 4.18996239,
+          "y": 9.477244,
+          "range": 4,
+          "intensity": 3,
+          "color": "#FFEBBF"
+        }
+      ],
+      "props": [
+        {
+          "id": "barrel",
+          "x": 3,
+          "y": 3,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "future-prop",
+          "x": 5,
+          "y": 3,
+          "rotation": 0,
+          "scale": 1
+        },
+        {
+          "id": "stairs",
+          "x": 4,
+          "y": 4,
+          "rotation": 0,
+          "scale": 1,
+          "to_level": -1
+        }
+      ]
+    },
+    {
+      "level": -1,
+      "name": "Cellar",
+      "elevation": -10,
+      "cells": {
+        "1,1": {
+          "floor": "wood",
+          "elevation": 0
+        }
+      },
+      "props": [
+        {
+          "id": "stairs",
+          "x": 4,
+          "y": 4,
+          "rotation": 0,
+          "scale": 1,
+          "to_level": 0
+        }
+      ]
+    }
+  ]
+}

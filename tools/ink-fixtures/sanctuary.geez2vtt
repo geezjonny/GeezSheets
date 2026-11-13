@@ -1,0 +1,1337 @@
+{
+  "format": "geez2vtt",
+  "version": 1,
+  "style": "ink",
+  "name": "The Blackthorn Sanctuary",
+  "grid": {
+    "cols": 24,
+    "rows": 20,
+    "cell_ft": 5
+  },
+  "floors": [
+    {
+      "level": 0,
+      "name": "Sanctuary",
+      "elevation": 0,
+      "cells": {
+        "3,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,3": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,3": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "18,3": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,3": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,3": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "3,4": {
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,4": {
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,4": {
+          "terrain": "sand",
+          "elevation": 0
+        },
+        "7,4": {
+          "terrain": "sand",
+          "elevation": 0
+        },
+        "8,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,4": {
+          "terrain": "grass",
+          "elevation": 0
+        },
+        "10,4": {
+          "terrain": "grass",
+          "elevation": 0
+        },
+        "11,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,4": {
+          "terrain": "water",
+          "elevation": -5
+        },
+        "13,4": {
+          "terrain": "water",
+          "elevation": -5
+        },
+        "14,4": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,4": {
+          "terrain": "mud",
+          "elevation": 0
+        },
+        "16,4": {
+          "terrain": "mud",
+          "elevation": 0
+        },
+        "17,4": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "18,4": {
+          "terrain": "snow",
+          "elevation": 0
+        },
+        "19,4": {
+          "terrain": "snow",
+          "elevation": 0
+        },
+        "20,4": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "3,5": {
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "4,5": {
+          "terrain": "dirt",
+          "elevation": 0
+        },
+        "5,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,5": {
+          "terrain": "sand",
+          "elevation": 0
+        },
+        "7,5": {
+          "terrain": "sand",
+          "elevation": 0
+        },
+        "8,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,5": {
+          "terrain": "grass",
+          "elevation": 0
+        },
+        "10,5": {
+          "terrain": "grass",
+          "elevation": 0
+        },
+        "11,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,5": {
+          "terrain": "water",
+          "elevation": -5
+        },
+        "13,5": {
+          "terrain": "water",
+          "elevation": -5
+        },
+        "14,5": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,5": {
+          "terrain": "mud",
+          "elevation": 0
+        },
+        "16,5": {
+          "terrain": "mud",
+          "elevation": 0
+        },
+        "17,5": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "18,5": {
+          "terrain": "snow",
+          "elevation": 0
+        },
+        "19,5": {
+          "terrain": "snow",
+          "elevation": 0
+        },
+        "20,5": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "3,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,6": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,6": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "18,6": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,6": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,6": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "3,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "4,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "5,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "7,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "8,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "10,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "11,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "13,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "14,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "16,7": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "17,7": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "18,7": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "19,7": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "20,7": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "3,8": {
+          "terrain": "lava",
+          "elevation": 0
+        },
+        "4,8": {
+          "terrain": "lava",
+          "elevation": 0
+        },
+        "5,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "6,8": {
+          "terrain": "ice",
+          "elevation": 0
+        },
+        "7,8": {
+          "terrain": "ice",
+          "elevation": 0
+        },
+        "8,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "9,8": {
+          "terrain": "rocks",
+          "elevation": 0
+        },
+        "10,8": {
+          "terrain": "rocks",
+          "elevation": 0
+        },
+        "11,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "12,8": {
+          "terrain": "gravel",
+          "elevation": 0
+        },
+        "13,8": {
+          "terrain": "gravel",
+          "elevation": 0
+        },
+        "14,8": {
+          "floor": "stone",
+          "elevation": 0
+        },
+        "15,8": {
+          "terrain": "carpet",
+          "elevation": 0
+        },
+        "16,8": {
+          "terrain": "carpet",
+          "elevation": 0
+        },
+        "17,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "18,8": {
+          "terrain": "cobble",
+          "elevation": 0
+        },
+        "19,8": {
+          "terrain": "cobble",
+          "elevation": 0
+        },
+        "20,8": {
+          "floor": "stone",
+          "elevation": 5
+        },
+        "3,9": {
+          "terrain": "lava",
+          "elevation": 0
+        },
+        "4,9": {
+          "terrain": "lava",
+          "elevation": 0
+        },
+        "5,9": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "6,9": {
+          "terrain": "ice",
+          "elevation": 0
+        },
+        "7,9": {
+          "terrain": "ice",
+          "elevation": 0
+        },
+        "8,9": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "9,9": {
+          "terrain": "rocks",
+          "elevation": 0
+        },
+        "10,9": {
+          "terrain": "rocks",
+          "elevation": 0
+        },
+        "11,9": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "12,9": {
+          "terrain": "gravel",
+          "elevation": 0
+        },
+        "13,9": {
+          "terrain": "gravel",
+          "elevation": 0
+        },
+        "14,9": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "15,9": {
+          "terrain": "carpet",
+          "elevation": 0
+        },
+        "16,9": {
+          "terrain": "carpet",
+          "elevation": 0
+        },
+        "17,9": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "18,9": {
+          "terrain": "cobble",
+          "elevation": 0
+        },
+        "19,9": {
+          "terrain": "cobble",
+          "elevation": 0
+        },
+        "20,9": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "3,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "4,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "5,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "6,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "7,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "8,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "9,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "10,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "11,10": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "12,10": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "13,10": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "14,10": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "15,10": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "16,10": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "17,10": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "18,10": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "19,10": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "20,10": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "3,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "4,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "5,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "6,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "7,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "8,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "9,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "10,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "11,11": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "12,11": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "13,11": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "14,11": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "15,11": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "16,11": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "17,11": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "18,11": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "19,11": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "20,11": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "3,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "4,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "5,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "6,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "7,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "8,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "9,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "10,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "11,12": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "12,12": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "13,12": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "14,12": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "15,12": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "16,12": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "17,12": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "18,12": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "19,12": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "20,12": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "3,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "4,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "5,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "6,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "7,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "8,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "9,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "10,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "11,13": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "12,13": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "13,13": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "14,13": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "15,13": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "16,13": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "17,13": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "18,13": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "19,13": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "20,13": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "3,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "4,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "5,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "6,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "7,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "8,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "9,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "10,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "11,14": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "12,14": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "13,14": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "14,14": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "15,14": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "16,14": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "17,14": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "18,14": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "19,14": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "20,14": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "3,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "4,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "5,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "6,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "7,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "8,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "9,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "10,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "11,15": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "12,15": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "13,15": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "14,15": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "15,15": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "16,15": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "17,15": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "18,15": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "19,15": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "20,15": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "3,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "4,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "5,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "6,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "7,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "8,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "9,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "10,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "11,16": {
+          "floor": "wood",
+          "elevation": 0
+        },
+        "12,16": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "13,16": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "14,16": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "15,16": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "16,16": {
+          "floor": "tile",
+          "elevation": 0
+        },
+        "17,16": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "18,16": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "19,16": {
+          "floor": "tile",
+          "elevation": 5
+        },
+        "20,16": {
+          "floor": "tile",
+          "elevation": 5
+        }
+      },
+      "walls": [
+        {
+          "a": [
+            3,
+            3
+          ],
+          "b": [
+            11,
+            3
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            12,
+            3
+          ],
+          "b": [
+            21,
+            3
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21,
+            3
+          ],
+          "b": [
+            21,
+            17
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            21,
+            17
+          ],
+          "b": [
+            3,
+            17
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            3,
+            17
+          ],
+          "b": [
+            3,
+            3
+          ],
+          "material": "stone"
+        },
+        {
+          "a": [
+            12,
+            10
+          ],
+          "b": [
+            12,
+            16
+          ],
+          "material": "wood"
+        },
+        {
+          "a": [
+            17,
+            10
+          ],
+          "b": [
+            20,
+            10
+          ],
+          "material": "palisade"
+        }
+      ],
+      "portals": [
+        {
+          "a": [
+            11,
+            3
+          ],
+          "b": [
+            12,
+            3
+          ],
+          "kind": "door",
+          "material": "iron",
+          "closed": true,
+          "reviewed": true
+        },
+        {
+          "a": [
+            21,
+            6
+          ],
+          "b": [
+            21,
+            7
+          ],
+          "kind": "window",
+          "material": "wood",
+          "closed": true,
+          "reviewed": true
+        },
+        {
+          "a": [
+            3,
+            10
+          ],
+          "b": [
+            3,
+            12
+          ],
+          "kind": "arch",
+          "material": "stone",
+          "closed": false,
+          "reviewed": true
+        }
+      ],
+      "lights": [
+        {
+          "x": 10,
+          "y": 9,
+          "range": 12,
+          "intensity": 1,
+          "color": "#ffbb66"
+        }
+      ],
+      "props": [
+        {
+          "id": "table",
+          "x": 4,
+          "y": 11,
+          "rotation": 25,
+          "scale": 0.8
+        },
+        {
+          "id": "chair",
+          "x": 6.1,
+          "y": 11,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "bed",
+          "x": 8.2,
+          "y": 11,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "barrel",
+          "x": 10.3,
+          "y": 11,
+          "rotation": 25,
+          "scale": 0.8
+        },
+        {
+          "id": "crate",
+          "x": 12.4,
+          "y": 11,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "chest",
+          "x": 14.5,
+          "y": 11,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "bookshelf",
+          "x": 16.6,
+          "y": 11,
+          "rotation": 25,
+          "scale": 0.8
+        },
+        {
+          "id": "altar",
+          "x": 18.700000000000003,
+          "y": 11,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "statue",
+          "x": 4,
+          "y": 12.6,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "pillar",
+          "x": 6.1,
+          "y": 12.6,
+          "rotation": 25,
+          "scale": 0.8
+        },
+        {
+          "id": "tree",
+          "x": 8.2,
+          "y": 12.6,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "bush",
+          "x": 10.3,
+          "y": 12.6,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "boulder",
+          "x": 12.4,
+          "y": 12.6,
+          "rotation": 25,
+          "scale": 0.8
+        },
+        {
+          "id": "campfire",
+          "x": 14.5,
+          "y": 12.6,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "brazier",
+          "x": 16.6,
+          "y": 12.6,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "torch_sconce",
+          "x": 18.700000000000003,
+          "y": 12.6,
+          "rotation": 25,
+          "scale": 0.8
+        },
+        {
+          "id": "stairs",
+          "x": 4,
+          "y": 14.2,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "ladder",
+          "x": 6.1,
+          "y": 14.2,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "well",
+          "x": 8.2,
+          "y": 14.2,
+          "rotation": 25,
+          "scale": 0.8
+        },
+        {
+          "id": "cart",
+          "x": 10.3,
+          "y": 14.2,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "fountain",
+          "x": 12.4,
+          "y": 14.2,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "coffin",
+          "x": 14.5,
+          "y": 14.2,
+          "rotation": 25,
+          "scale": 0.8
+        },
+        {
+          "id": "anvil",
+          "x": 16.6,
+          "y": 14.2,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "cauldron",
+          "x": 18.700000000000003,
+          "y": 14.2,
+          "rotation": 0,
+          "scale": 0.8
+        },
+        {
+          "id": "anchor",
+          "x": 4,
+          "y": 15.8,
+          "rotation": 25,
+          "scale": 0.8
+        }
+      ]
+    }
+  ]
+}
