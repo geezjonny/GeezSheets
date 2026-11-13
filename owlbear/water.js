@@ -39,16 +39,16 @@ float edges(float2 p, float period, float spin, float t) {
   return d2 - d1;
 }
 half4 main(float2 coord) {
-  float t = fract(time / seconds);
+  float phase = time / seconds, t = fract(phase);
   float2 uv = coord / tileSize;
-  float2 m = fract(uv - flow * t);
+  float2 m = fract(uv - flow * phase);
   float2 w = warp * (swirl(m, 4.0, 0.0, t) * 2.0 + swirl(m, 8.0, 0.37, t)) * 2.0 / cells * 3.0;
-  float2 a = (fract(uv - flow * t + w)) * cells;               // big ripples, follow the flow
+  float2 a = (fract(uv - flow * phase + w)) * cells;               // big ripples, follow the flow
   float r = edges(a, cells, 1.0, t);
   // big slow patches: darker deep water and thinner, broken ripples
-  float2 dq = fract(uv - flow * t) * 6.0 + w * cells + 0.5 * float2(cos(TAU * t), sin(TAU * t));
+  float2 dq = fract(uv - flow * phase) * 6.0 + w * cells + 0.5 * float2(cos(TAU * t), sin(TAU * t));
   float deep = 0.65 * vnoise(dq, 6.0) + 0.35 * vnoise(dq * 2.0, 12.0);
-  float width = rip * mix(0.15, 1.4, vnoise(fract(uv - flow * t) * 5.0 + w * cells, 5.0));
+  float width = rip * mix(0.15, 1.4, vnoise(fract(uv - flow * phase) * 5.0 + w * cells, 5.0));
   float3 col = mix(c0, c0 * 0.8, smoothstep(0.6, 0.605, deep));
   // toon shadow: the same ripple sampled a little up-left, drawn darker underneath
   float rs = edges(a - float2(0.06, 0.06), cells, 1.0, t);
@@ -59,16 +59,40 @@ half4 main(float2 coord) {
   float o = foam * 0.8;
   float lit = 1.0 - smoothstep(width, width + 0.006, edges(a + float2(o, o), cells, 1.0, t));
   float rim = band * (1.0 - lit);
-  float breakup = smoothstep(0.4, 0.45, vnoise(fract(uv - flow * t) * 14.0 + w * cells * 2.0, 14.0));
+  float breakup = smoothstep(0.4, 0.45, vnoise(fract(uv - flow * phase) * 14.0 + w * cells * 2.0, 14.0));
   col = mix(col, c2, rim * breakup);
   return half4(col, 1.0);
 }`;
 
 const rgb = (hex) => Object.fromEntries(['x', 'y', 'z'].map((axis, n) => [axis, parseInt(hex.slice(1 + n * 2, 3 + n * 2), 16) / 255]));
 
+export function waterSettings(settings = {}) {
+  const preset = Object.hasOwn(PRESETS, settings.preset) ? settings.preset : 'sea', p = PRESETS[preset];
+  return {
+    preset,
+    speed: Number.isFinite(settings.speed) ? Math.max(0, Math.min(6, settings.speed)) : p.speed,
+    direction: Number.isFinite(settings.direction) ? ((settings.direction % 360) + 360) % 360 : 0,
+    c0: /^#[0-9a-f]{6}$/i.test(settings.c0) ? settings.c0 : p.c0,
+    c1: /^#[0-9a-f]{6}$/i.test(settings.c1) ? settings.c1 : p.c1,
+  };
+}
+
+// Only settings changes are shared; each client's background reconciles its local effect.
+export async function updateWaterSettings(mapId, changes) {
+  if (await OBR.player.getRole() !== 'GM') throw Error('Only the GM can change water.');
+  await OBR.scene.items.updateItems([mapId], (items) => {
+    for (const item of items) {
+      if (item.type !== 'IMAGE' || item.layer !== 'MAP' || !item.metadata[WATER]) continue;
+      if (changes === null) delete item.metadata[WATER];
+      else item.metadata[WATER] = waterSettings(changes.preset === undefined ? { ...item.metadata[WATER], ...changes } : changes);
+    }
+  });
+}
+
 // Effect items are local-only; the shared map metadata is the durable source.
 export async function buildWaterEffect(item, preset = item.metadata[WATER]?.preset || 'sea') {
-  const name = Object.hasOwn(PRESETS, preset) ? preset : 'sea', p = PRESETS[name];
+  const settings = waterSettings({ ...item.metadata[WATER], preset }), p = PRESETS[settings.preset];
+  const direction = settings.direction * Math.PI / 180;
   const dpi = await OBR.scene.grid.getDpi(), k = dpi / item.grid.dpi;
   const angle = item.rotation * Math.PI / 180;
   const x = -item.grid.offset.x * k * item.scale.x, y = -item.grid.offset.y * k * item.scale.y;
@@ -77,11 +101,11 @@ export async function buildWaterEffect(item, preset = item.metadata[WATER]?.pres
     .position({ x: item.position.x + x * Math.cos(angle) - y * Math.sin(angle), y: item.position.y + x * Math.sin(angle) + y * Math.cos(angle) })
     .scale(item.scale).rotation(item.rotation).visible(item.visible)
     .layer('MAP').zIndex(item.zIndex + 0.001).disableAutoZIndex(true).locked(true).disableHit(true).name('Water')
-    .metadata({ [WATER]: { map: item.id, preset: name } })
+    .metadata({ [WATER]: { map: item.id, ...settings } })
     .uniforms([
       { name: 'tileSize', value: { x: 5 * dpi / Math.abs(item.scale.x), y: 5 * dpi / Math.abs(item.scale.y) } },
-      { name: 'seconds', value: p.dur }, { name: 'flow', value: { x: p.speed, y: 0 } },
+      { name: 'seconds', value: p.dur }, { name: 'flow', value: { x: settings.speed * Math.cos(direction), y: settings.speed * Math.sin(direction) } },
       ...['cells', 'rip', 'foam', 'warp'].map((name) => ({ name, value: p[name] })),
-      ...['c0', 'c1', 'c2'].map((name) => ({ name, value: rgb(p[name]) })),
+      ...['c0', 'c1', 'c2'].map((name) => ({ name, value: rgb(settings[name] ?? p[name]) })),
     ]).build();
 }

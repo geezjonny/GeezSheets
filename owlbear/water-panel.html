@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Water settings</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #0f172a; color: #e2e8f0; font: 13px Inter, system-ui, sans-serif; }
+  main { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-size: 16px; margin: 0; display: flex; justify-content: space-between; align-items: center; }
+  button, select { font: inherit; color: inherit; background: #1e293b; border: 1px solid #475569; border-radius: 8px; padding: 6px 10px; }
+  button:hover:not(:disabled), button[aria-pressed="true"] { border-color: #f59e0b; }
+  button[aria-pressed="true"] { background: #92400e; }
+  button:disabled { opacity: .45; }
+  fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  fieldset[hidden] { display: none; }
+  label { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+  input[type="range"] { min-width: 0; width: 125px; accent-color: #f59e0b; }
+  input[type="color"] { width: 48px; height: 28px; padding: 0; border: 1px solid #475569; background: #1e293b; }
+  .directions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+  .directions button { padding: 6px; min-width: 29px; }
+  #remove { color: #fca5a5; }
+  #msg { color: #94a3b8; min-height: 1.2em; margin: 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Water settings <button id="close" aria-label="Close">&#215;</button></h1>
+  <fieldset id="settings" disabled hidden>
+    <label>Preset <select id="preset"></select></label>
+    <label>Flow speed <input id="speed" type="range" min="0" max="6" step="0.25"><output id="speed-value" for="speed"></output></label>
+    <div>Flow direction <div id="directions" class="directions" role="group" aria-label="Flow direction"></div></div>
+    <label>Deep colour <input id="c0" type="color"></label>
+    <label>Shallow colour <input id="c1" type="color"></label>
+    <button id="remove">Remove water</button>
+  </fieldset>
+  <p id="msg" role="status" aria-live="polite"></p>
+</main>
+<script type="module">
+import OBR from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
+import { WATER, PRESETS, waterSettings, updateWaterSettings } from './water.js';
+const $ = (id) => document.getElementById(id);
+const ID = WATER + '/panel', mapId = new URLSearchParams(location.search).get('item');
+let run = Promise.resolve(), pending = 0;
+const close = () => OBR.popover.close(ID);
+$('close').onclick = close;
+
+function render(items) {
+  const map = items.find((i) => i.id === mapId && i.type === 'IMAGE' && i.layer === 'MAP' && i.metadata[WATER]);
+  $('settings').disabled = !map;
+  if (!map) { $('msg').textContent = 'This map no longer has water.'; return; }
+  const settings = waterSettings(map.metadata[WATER]);
+  for (const key of ['preset', 'speed', 'c0', 'c1']) $(key).value = settings[key];
+  $('speed-value').textContent = settings.speed;
+  for (const button of $('directions').children) button.setAttribute('aria-pressed', String(Number(button.value) === settings.direction));
+}
+
+function save(changes) {
+  pending++;
+  // Serialize input events so a quick slider drag cannot overwrite a later preset or removal.
+  run = run.then(async () => {
+    await updateWaterSettings(mapId, changes);
+    if (changes === null) await close();
+    $('msg').textContent = '';
+  }).catch((e) => { $('msg').textContent = 'Could not save water: ' + e.message; })
+    .finally(async () => {
+      pending--;
+      if (!pending) await refresh();
+    });
+}
+
+async function refresh() {
+  try {
+    if (await OBR.player.getRole() !== 'GM') {
+      $('settings').disabled = true;
+      $('settings').hidden = true;
+      $('msg').textContent = 'Only the GM can change water.';
+      return;
+    }
+    $('settings').hidden = false;
+    if (!(await OBR.scene.isReady())) { $('settings').disabled = true; return; }
+    render(await OBR.scene.items.getItems((i) => i.id === mapId));
+  } catch (e) { $('settings').disabled = true; $('msg').textContent = e.message; }
+}
+
+OBR.onReady(async () => {
+  for (const preset of Object.keys(PRESETS)) $('preset').add(new Option(preset, preset));
+  for (const [direction, arrow, name] of [[0, '→', 'East'], [45, '↘', 'Southeast'], [90, '↓', 'South'], [135, '↙', 'Southwest'], [180, '←', 'West'], [225, '↖', 'Northwest'], [270, '↑', 'North'], [315, '↗', 'Northeast']]) {
+    const button = document.createElement('button');
+    button.textContent = arrow; button.value = direction; button.title = name; button.setAttribute('aria-label', name);
+    button.onclick = () => {
+      for (const b of $('directions').children) b.setAttribute('aria-pressed', String(b === button));
+      save({ direction });
+    };
+    $('directions').append(button);
+  }
+  $('preset').onchange = () => {
+    const settings = waterSettings({ preset: $('preset').value });
+    render([{ id: mapId, type: 'IMAGE', layer: 'MAP', metadata: { [WATER]: settings } }]);
+    save(settings);
+  };
+  $('speed').oninput = () => { $('speed-value').textContent = $('speed').value; save({ speed: Number($('speed').value) }); };
+  for (const key of ['c0', 'c1']) $(key).oninput = () => save({ [key]: $(key).value });
+  $('remove').onclick = () => { $('settings').disabled = true; save(null); };
+  OBR.scene.items.onChange(() => { if (!pending) refresh(); });
+  OBR.scene.onReadyChange(refresh);
+  OBR.player.onChange(refresh);
+  await refresh();
+});
+</script>
+</body>
+</html>
