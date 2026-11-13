@@ -1,16 +1,16 @@
 {
   "name": "GeezSheets",
-  "version": "1.5.1",
+  "version": "2.0.0",
   "manifest_version": 1,
   "author": "Geez",
-  "description": "GeezSheets in Owlbear: live party HP and status, sheets on tokens, dd2vtt maps with walls, doors and lights.",
+  "description": "dd2vtt maps in Owlbear: picture, room-by-room fog with a Rooms tool, walls, doors and lights.",
   "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
   "action": {
-    "title": "GeezSheets",
+    "title": "Import dd2vtt map",
     "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
-    "popover": "https://geezjonny.github.io/GeezSheets/owlbear/index.html",
-    "height": 720,
-    "width": 440
+    "popover": "https://geezjonny.github.io/GeezSheets/owlbear/import.html",
+    "height": 520,
+    "width": 460
   },
   "background_url": "https://geezjonny.github.io/GeezSheets/owlbear/background.html"
 }
