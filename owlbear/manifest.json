@@ -3,7 +3,7 @@
   "version": "2.1.0",
   "manifest_version": 1,
   "author": "Geez",
-  "description": "dd2vtt maps, HP bars and movement range.",
+  "description": "dd2vtt maps, HP, movement.",
   "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
   "action": {
     "title": "Import dd2vtt map",
