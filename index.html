@@ -1453,51 +1453,6 @@
             img.src = c.toDataURL('image/jpeg', 0.8);
             return { img, ppg, w: c.width, h: c.height, walls: [], doors: [], lights: [], blank: true };
         }
-        // The furthest square anything on a scene reaches: x/y/x1/x2 numbers (plus w/h) and 'col_row' keys, any depth.
-        function contentExtent(o, e = { x: 0, y: 0 }) {
-            if (!o || typeof o !== 'object') return e;
-            for (const [k, v] of Object.entries(o)) {
-                const m = /^(\d+)_(\d+)$/.exec(k);
-                if (m) { e.x = Math.max(e.x, +m[1] + 1); e.y = Math.max(e.y, +m[2] + 1); }
-                if (typeof v === 'number') {
-                    if (/^x\d?$/.test(k)) e.x = Math.max(e.x, v + (+o.w || 0));
-                    else if (/^y\d?$/.test(k)) e.y = Math.max(e.y, v + (+o.h || 0));
-                } else contentExtent(v, e);
-            }
-            return e;
-        }
-        // A blank battle map is a scene: it grows right and down so there are always 10 empty squares past what's on it.
-        // shortcut: grows right/down only and stops at 100 squares (canvas memory); left/up growth would need every stored coordinate shifted.
-        function growScene(bt) {
-            const bs = blankSize(bt.traits?.dd2vtt), b = db.battles[bt.id];
-            if (!bs || !b) return;
-            const e = contentExtent(b.edits);
-            for (const p of Object.values(b.tokens || {})) { e.x = Math.max(e.x, p.x * bs.cols); e.y = Math.max(e.y, p.y * bs.rows); }
-            const fit = (n, have) => n + 4 <= have ? have : Math.min(100, Math.ceil((n + 10) / 10) * 10);
-            const cols = Math.max(bs.cols, fit(e.x, bs.cols)), rows = Math.max(bs.rows, fit(e.y, bs.rows));
-            if (cols === bs.cols && rows === bs.rows) return;
-            // tokens are stored as 0..1 of the map, so keep them on their squares
-            for (const p of Object.values(b.tokens || {})) { p.x *= bs.cols / cols; p.y *= bs.rows / rows; }
-            bt.traits.dd2vtt = `blank:${cols}x${rows}`;
-            save();
-        }
-        // Drop a dd2vtt on a scene: its picture goes down with its top-left on the drop square, and its walls, doors and lights become your own.
-        async function placeDd2vtt(f, bid, at) {
-            const ed = editsOf(bid);
-            await putFile(f.name, f);
-            dd2vttCache.delete(f.name);
-            const ps = await loadDd2vtt(f.name).catch(() => null);
-            if (!ps) { showStatus(`${f.name} doesn't look like a dd2vtt file.`); return; }
-            const g = ps.ppg, ox = Math.max(0, Math.round(at.x)), oy = Math.max(0, Math.round(at.y)), r3 = v => +v.toFixed(3);
-            const seg = (a, b) => ({ x1: r3(ox + a.x / g), y1: r3(oy + a.y / g), x2: r3(ox + b.x / g), y2: r3(oy + b.y / g) });
-            ps.walls.forEach(line => { for (let i = 0; i < line.length - 1; i++) (ed.addWalls ||= {})[uid('w')] = { ...seg(line[i], line[i + 1]), mat: ui.swatch.wall }; });
-            ps.doors.forEach(([a, b]) => { if (a && b) (ed.addDoors ||= {})[uid('dr')] = { ...seg(a, b), mat: ui.swatch.door }; });
-            ps.lights.forEach(l => { (ed.addLights ||= {})[uid('l')] = { x: r3(ox + l.x / g), y: r3(oy + l.y / g), range: r3(l.r / g) || 4 }; });
-            (ed.pieces ||= {})[uid('pc')] = { file: f.name, x: ox, y: oy, w: r3(ps.w / g), h: r3(ps.h / g) };
-            ui.vision = null;
-            changed({ keepInspector: true });
-            showStatus(`Placed ${f.name}: ${ps.walls.length} walls, ${ps.doors.length} doors, ${ps.lights.length} lights`);
-        }
         async function loadDd2vtt(name) {
             if (rtdb?.gaia) return null;
             if (!name) return null;
@@ -2067,18 +2022,11 @@
                 const grimScene = GH?.scene();
                 if(rtdb?.gaia && !bt.traits?.scene){clearCanvases();showEmpty('Attach a battle map','Attach or drop a .dd2vtt or .geez2vtt here.',false);return;}
                 if (!grimScene && !bt.traits?.table3d && !bt.traits?.dd2vtt) { clearCanvases(); showEmpty(`${bt.name} has no dd2vtt yet`, 'Select its marker on the location map and attach a dd2vtt file.', false); return; }
-                if (!PLAYER && !grimScene) growScene(bt);
                 const scene = grimScene || (bt.traits?.table3d && !bt.traits.dd2vtt ? await loadDd2vtt('blank:20x20') : await loadDd2vtt(bt.traits.dd2vtt));
                 if (seq !== renderSeq) return;
                 if (!scene) { clearCanvases(); showEmpty(`Can't find ${bt.traits.dd2vtt}`, PLAYER ? 'Ask the DM to put a copy of this file in the battlemap/ folder.' : 'Put a copy in the battlemap/ folder next to this page (same file name), or attach it again from the battle map card.', false); return; }
                 if (ui.size.w !== scene.w || ui.size.h !== scene.h) setCanvasSize(scene.w, scene.h);
                 if (!scene.table3d) mapCtx.drawImage(scene.img, 0, 0);
-                // dd2vtt pictures dropped onto a scene, under the walls and tokens
-                for (const pc of Object.values(floorEdits(bt.id).pieces || {})) {
-                    const ps = await loadDd2vtt(pc.file).catch(() => null);
-                    if (seq !== renderSeq) return;
-                    if (ps) mapCtx.drawImage(ps.img, pc.x * scene.ppg, pc.y * scene.ppg, pc.w * scene.ppg, pc.h * scene.ppg);
-                }
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
                 markerCtx.clearRect(0, 0, markerCanvas.width, markerCanvas.height);
                 ui.scene = scene; GH?.startWeather();
@@ -5428,7 +5376,7 @@
                     <label class="text-[10px] text-slate-400 block">dd2vtt file</label>
                     <div class="text-xs truncate ${f ? 'text-slate-200' : 'text-slate-500'}">${bs ? `Blank grid ${bs.cols} × ${bs.rows}` : f ? esc(f) : 'None attached'}</div>
                     <button id="attachDd2vttBtn" class="${BTN_GHOST}"><i class="fa-solid fa-upload"></i>${f ? 'Replace dd2vtt' : 'Attach dd2vtt'}</button>
-                    <button id="blankGridBtn" class="${BTN_GHOST}"><i class="fa-solid fa-table-cells"></i>${bs ? 'Resize scene' : 'Scene (build, or drop dd2vtts on it)'}</button>
+                    <button id="blankGridBtn" class="${BTN_GHOST}"><i class="fa-solid fa-table-cells"></i>${bs ? 'Resize blank grid' : 'Blank grid (draw your own)'}</button>
                     <button id="launchVttBtn" class="${BTN_VTT}" ${f ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'}><i class="fa-solid fa-dungeon"></i>Open in VTT</button>${placeBtn}`;
                 $('attachDd2vttBtn').onclick = () => $('dd2vttInput').click();
                 $('blankGridBtn').onclick = () => {
@@ -5440,7 +5388,7 @@
                     t.traits.dd2vtt = `blank:${cols}x${rows}`;
                     db.battles[t.id] ||= { tokens: {} };
                     changed();
-                    showStatus(`Scene ready. Open it in the VTT, build rooms and floors, or drop .dd2vtt files on it. It grows as you build.`);
+                    showStatus(`Blank ${cols} × ${rows} grid ready. Open it in the VTT and draw walls, doors, lights and floors.`);
                 };
                 if (f) $('launchVttBtn').onclick = () => openBattle(t.id);
             } else {
@@ -5763,14 +5711,6 @@
             } catch(error){showStatus(error.message);}
         }
         viewport.addEventListener('dragover',e=>{if(rtdb?.gaia&&!PLAYER&&db.view.level==='VTT')e.preventDefault();});
-        const sceneDrop = () => !rtdb?.gaia && !PLAYER && db.view.level === 'VTT' && ui.scene?.blank;
-        viewport.addEventListener('dragover', e => { if (sceneDrop()) e.preventDefault(); });
-        viewport.addEventListener('drop', e => {
-            if (!sceneDrop() || !e.dataTransfer.files[0]) return;
-            e.preventDefault();
-            const p = toContent(e.clientX, e.clientY);
-            placeDd2vtt(e.dataTransfer.files[0], db.view.battleId, { x: p.x / ui.scene.ppg, y: p.y / ui.scene.ppg }).catch(err => showStatus('Could not place that map: ' + err.message));
-        });
         viewport.addEventListener('drop',e=>{if(!rtdb?.gaia||PLAYER||db.view.level!=='VTT')return;e.preventDefault();e.stopImmediatePropagation();attachGeez2vtt(e.dataTransfer.files[0],db.things[db.view.battleId]);},true);
         $('dd2vttInput').addEventListener('change', async (e) => {
             const f = e.target.files[0]; e.target.value = '';
