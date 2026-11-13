@@ -1,9 +1,9 @@
 {
   "name": "GeezSheets",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "manifest_version": 1,
   "author": "Geez",
-  "description": "dd2vtt maps in Owlbear: picture, room-by-room fog with a Rooms tool, walls, doors and lights.",
+  "description": "dd2vtt maps in Owlbear (room fog, walls, doors, lights), live GeezSheets HP bars on PC tokens, and movement range on the active initiative turn.",
   "icon": "https://geezjonny.github.io/GeezSheets/owlbear/icon.svg",
   "action": {
     "title": "Import dd2vtt map",

@@ -5,6 +5,7 @@
 <script type="module">
 import OBR, { buildWall, buildLight, buildShape, buildPath } from 'https://cdn.jsdelivr.net/npm/@owlbear-rodeo/sdk@3.1.0/+esm';
 import { reach, feet, plain } from './move.js';
+import { hpBars, who } from './hp.js';
 import { sceneItems, loadPending, dropPending, inRoom, MAPKEY, DOOR, ROOM } from './dd2vtt.js';
 const page = (p) => new URL(p, location.href).href;
 OBR.onReady(async () => {
@@ -85,17 +86,12 @@ OBR.onReady(async () => {
 
   // Movement range: when Owlbear's Initiative Tracker makes a token active, every client draws (locally, not synced)
   // the squares it can reach from where its turn started, around blocking walls and closed doors.
-  // Speed: the GeezSheets sheet whose name matches the token (characters/pcs), else an SRD monster, else 30 ft.
+  // Speed: the GeezSheets sheet whose name matches the token (live, from hp.js), else an SRD monster, else 30 ft.
   const INIT = 'rodeo.owlbear.initiative-tracker/metadata', RANGE = 'com.geezsheets/range';
   let monsters;
   async function speedOf(tok) {
     const names = [tok.text?.plainText, tok.name].map(plain).filter(Boolean);
-    try {
-      // shortcut: fetches every PC sheet once per turn; fine for one party, move to a name index if it gets slow
-      const pcs = await (await fetch('https://geezsheets-default-rtdb.firebaseio.com/characters/pcs.json')).json();
-      const pc = Object.entries(pcs || {}).find(([id, c]) => names.some((n) => n === id || n === plain(c?.name) || n === plain(c?.name).split(' ')[0]));
-      if (feet(pc?.[1].combat?.speed)) return feet(pc[1].combat.speed);
-    } catch (e) { console.warn('GeezSheets speed:', e); }
+    if (who(tok)?.speed) return who(tok).speed;   // the live sheet, same match as the HP bars
     monsters ??= fetch(page('../data/monsters.json')).then((r) => r.json()).then((l) => new Map(l.map((m) => [plain(m.name), feet(m.speed)]))).catch(() => new Map());
     const m = await monsters;
     return names.map((n) => m.get(n)).find(Boolean) || 30;
@@ -129,6 +125,9 @@ OBR.onReady(async () => {
   OBR.scene.items.onChange(queueRange);
   OBR.scene.onReadyChange(queueRange);
   queueRange();
+
+  // HP bars on PC tokens (hp.js)
+  hpBars(role);
 });
 </script>
 </body>
