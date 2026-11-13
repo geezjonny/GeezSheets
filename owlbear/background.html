@@ -45,8 +45,9 @@ OBR.onReady(async () => {
       const old = effects.find((e) => e.metadata[WATER].map === i.id);
       if (old && waterKeys.get(i.id) === key) continue;
       const effect = await buildWaterEffect(i);
-      if (old) await OBR.scene.local.updateItems([old.id], (d) => { Object.assign(d[0], effect, { id: old.id }); });
-      else await OBR.scene.local.addItems([effect]);
+      // OBR doesn't re-apply updated uniforms on an existing effect, so replace it.
+      if (old) await OBR.scene.local.deleteItems([old.id]);
+      await OBR.scene.local.addItems([effect]);
       waterKeys.set(i.id, key);
     }
   }
