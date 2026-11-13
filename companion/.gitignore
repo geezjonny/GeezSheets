@@ -1,4 +1,0 @@
-*.log
-data/*.sqlite*
-geezsheets-default-rtdb-export.json
-node_modules/

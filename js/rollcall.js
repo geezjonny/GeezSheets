@@ -96,12 +96,12 @@ export function rollAnswer(c, call, { mode = call.mode || 'normal', extras = {},
 export async function answerCall(api, call, rid, { name, charId = null, c = null, by = name, ...opts }) {
     if (!call?.open) return null;
     const r = rollAnswer(c, call, opts);
-    const res = { call:call.id, name, dice: r.dice, mod: r.mod, total: r.total, detail: r.detail, nat: r.nat, t: Date.now() };
+    const res = { name, dice: r.dice, mod: r.mod, total: r.total, detail: r.detail, nat: r.nat, t: Date.now() };
     if (charId) res.charId = charId;
     const ok = await api.txn(`rollcall/results/${rid}`, (cur) => (cur ? undefined : res));
     if (!ok) return null;
-    await api.push('rolls', { by, expr: callTitle(call), detail: r.detail, total: r.total, nat: r.nat, dice: r.dice, ts: res.t, call: call.id, ...(charId ? { char: charId } : {}) });
-    if (call.kind === 'init' && charId) await api.update('initiative/rows', { ['pc_' + charId]: { name, charId, init: r.total } });
+    api.push('rolls', { by, expr: callTitle(call), detail: r.detail, total: r.total, nat: r.nat, dice: r.dice, ts: res.t, call: call.id, ...(charId ? { char: charId } : {}) });
+    if (call.kind === 'init' && charId) api.update('initiative/rows', { ['pc_' + charId]: { name, charId, init: r.total } });
     return res;
 }
 

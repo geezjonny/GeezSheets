@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>
-  // GeezSheets on Gaia (data in Firebase /v2). Always Firebase, also when opened from this PC; ?gaia=... overrides (tests).
-  (function(){const q=new URLSearchParams(location.search);if(q.get('db')==='gaia'&&q.has('gaia'))return;q.set('db','gaia');
-  if(!q.has('gaia'))q.set('gaia','firebase');
-  location.replace(location.pathname+'?'+q.toString().replace(/=(&|$)/g,'$1')+location.hash);})();
-</script>
-
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Party · GeezVTT</title>
@@ -221,7 +214,6 @@ body.embed .state-screen{min-height:60vh}
 /* ── Coin purse ── */
 .coin-row{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap}
 .coin-label{font-family:var(--font);font-size:.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-right:2px}
-.coin-adj{border:0;background:transparent;color:inherit;font:inherit;padding:0 3px;cursor:pointer;opacity:.7}.coin-adj:hover{opacity:1}
 .coin{display:flex;align-items:center;gap:3px;font-family:var(--mono);font-size:.7rem;font-weight:700;padding:2px 7px;border-radius:999px;border:1px solid}
 .coin.pp{color:#c4b5fd;border-color:rgba(196,181,253,.3);background:rgba(196,181,253,.07)}
 .coin.gp{color:#facc15;border-color:rgba(250,204,21,.3);background:rgba(250,204,21,.07)}
@@ -283,9 +275,6 @@ body.embed .state-screen{min-height:60vh}
 .roll-show .what{font-family:var(--mono);font-size:11px;color:var(--dim)}
 .temp-badge input{background:transparent;color:inherit;border:0;border-bottom:1px solid currentColor;font:inherit;text-align:center;padding:0 2px}.death-panel{padding:8px}.death-panel:empty{display:none}.death-panel button{min-height:32px;margin:3px}.call-banner{margin:12px;padding:12px;border:2px solid var(--gold);border-radius:12px;background:var(--panel2)}.call-banner button,.call-banner select,.call-banner input{min-height:36px;margin:4px;max-width:100%}.call-banner fieldset{padding:8px;min-width:0}.call-options{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 </style>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English:ital@0;1&family=Crimson+Pro:wght@400;600&display=swap">
-<link rel="stylesheet" href="css/vttcore.css">
-<link rel="stylesheet" href="css/ink-ui.css">
 </head>
 <body>
 <div id="dice3dOverlay" style="position:fixed;inset:0;pointer-events:none;z-index:9999"></div>
@@ -345,11 +334,10 @@ body.embed .state-screen{min-height:60vh}
 </div>
 <div id="rollShow" class="roll-show" hidden><div id="rollWho" class="who"></div><div id="rollNum" class="num">–</div><div id="rollWhat" class="what"></div></div>
 
-<script src="js/firebase-config.js"></script>
+<script src="js/geez-config.js"></script>
 
 <script type="module">
 // Same Firebase project/config as the VTT (js/rodeo-firebase.js)
-import {concentrationControls} from './js/vttcore.js';
 import { callTitle, callMod, answerCall, EXTRAS, passed, sgn } from './js/rollcall.js';
 import { db, ref, get, set, update, remove, push, onValue, runTransaction } from "./js/rodeo-firebase.js";
 const $   = id => document.getElementById(id);
@@ -668,7 +656,6 @@ function buildCard(char) {
         <button class="hp-btn dmg"  onclick="window.adjustHp(${jsarg(char.id)},false)">&#8722; Dmg</button>
       </div>
     </div>
-    <div id="concentration-${esc(char.id)}"></div>
     <div id="death-${esc(char.id)}" class="death-panel">${deathHtml(char.id,c)}</div>
     <button class="panel-btn" data-charid="${esc(char.id)}" onclick="window.rollInitiative(this.dataset.charid)">Roll initiative</button>
     <div class="stats-row">
@@ -686,10 +673,13 @@ function buildCard(char) {
       return parts.length?`<div class="equipped-row">${parts.join('')}</div>`:'';
     })()}
     ${(()=>{
-      const cp=char.coin_purse||(IS_GM?{}:null); if(!cp) return '';
-      // The GM gets - / + on each coin (Shift = 10 at a time).
-      const adj=(k,d)=>IS_GM?`<button class="coin-adj" title="${d<0?'Spend':'Add'} ${k} (Shift: 10)" onclick="window.coinAdj(${jsarg(char.id)},'${k}',${d},event)">${d<0?'−':'+'}</button>`:'';
-      const coins=[['pp','◈'],['gp','◉'],['ep','◈'],['sp','◎'],['cp','○']].map(([k,i])=>`<div class="coin ${k}">${adj(k,-1)}${i} ${esc(cp[k]??0)}${k}${adj(k,1)}</div>`);
+      const cp=char.coin_purse; if(!cp) return '';
+      const coins=[];
+      coins.push(`<div class="coin pp">◈ ${esc(cp.pp??0)}pp</div>`);
+      coins.push(`<div class="coin gp">◉ ${esc(cp.gp??0)}gp</div>`);
+      coins.push(`<div class="coin ep">◈ ${esc(cp.ep??0)}ep</div>`);
+      coins.push(`<div class="coin sp">◎ ${esc(cp.sp??0)}sp</div>`);
+      coins.push(`<div class="coin cp">○ ${esc(cp.cp??0)}cp</div>`);
       return `<div class="coin-row"><span class="coin-label">💰</span>${coins.join('')}</div>`;
     })()}
     <div class="ability-grid">${abilityBoxes}</div>
@@ -821,7 +811,7 @@ window.toggleSlot = function(pip) {
   const pips=[...pip.parentElement.querySelectorAll('.slot-pip')];
   const clamped=Math.max(0,Math.min(max,pip.classList.contains('used')?idx:idx+1));
   pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
-  set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(e=>toast('Not saved: '+e.message));
+  set(ref(db,`characters/pcs/${charId}/spellcasting/slots_used/${lvl}`),clamped).catch(console.error);
 };
 
 window.toggleCharge = function(pip) {
@@ -832,7 +822,7 @@ window.toggleCharge = function(pip) {
   const clamped = Math.max(0,Math.min(max,newUsed));
   pips.forEach((p,i)=>p.classList.toggle('used',i<clamped));
   const newCurrent = max - clamped;
-  set(ref(db,`characters/pcs/${charId}/abilities/${abKey}/current`),newCurrent).catch(e=>toast('Not saved: '+e.message));
+  set(ref(db,`characters/pcs/${charId}/abilities/${abKey}/current`),newCurrent).catch(console.error);
 };
 
 window.adjustHp = async function(charId, isHeal) {
@@ -840,8 +830,7 @@ window.adjustHp = async function(charId, isHeal) {
   const delta = parseInt(deltaEl?.value,10)||1;
   if(!deltaEl||delta<=0)return;
   try {
-    if(!isHeal&&db.gaia)await db.damage(charId,delta);
-    else await runTransaction(ref(db,`characters/pcs/${charId}/combat`), c => {
+    await runTransaction(ref(db,`characters/pcs/${charId}/combat`), c => {
       if(!c)return c;
       const cur=Number(c.hp_current)||0, tmp=Math.max(0,Number(c.temp_hp)||0);
       const hp=isHeal?Math.min(Number(c.hp_max)||1,cur+delta):Math.max(0,cur-Math.max(0,delta-tmp));
@@ -850,7 +839,7 @@ window.adjustHp = async function(charId, isHeal) {
       return {...c,hp_current:hp,temp_hp:isHeal?tmp:Math.max(0,tmp-delta),death_saves:hp>0?{success:0,fail:0}:saves};
     });
     deltaEl.value='';
-  } catch(e) { toast('HP not saved: '+e.message); }
+  } catch(e) { console.error('HP save failed:',e); }
 };
 
 document.addEventListener('keydown', e => {
@@ -865,12 +854,12 @@ function deathHtml(id,c) {
  const d=c.death_saves||{};
  return ['success','fail'].map(k=>`<div>${k} ${[1,2,3].map(n=>`<button data-id="${esc(id)}" data-kind="${k}" data-n="${n}" aria-label="${k} ${n}" aria-pressed="${count(d[k])>=n}" onclick="window.deathPip(this)">${count(d[k])>=n?'&#9679;':'&#9675;'}</button>`).join('')}</div>`).join('')+`<b>${count(d.fail)===3?'Dead':count(d.success)===3?'Stable':''}</b><button data-id="${esc(id)}" onclick="window.rollDeath(this.dataset.id)">Roll death save</button>`;
 }
-window.setTemp=el=>set(ref(db,`characters/pcs/${el.id.slice(5)}/combat/temp_hp`),Math.max(0,Math.trunc(Number(el.value)||0))).catch(e=>toast('Not saved: '+e.message));
+window.setTemp=el=>set(ref(db,`characters/pcs/${el.id.slice(5)}/combat/temp_hp`),Math.max(0,Math.trunc(Number(el.value)||0))).catch(console.error);
 window.deathPip=el=>runTransaction(ref(db,`characters/pcs/${el.dataset.id}/combat`),c=>{
  if(!c||Number(c.hp_current)!==0)return;
  const d=c.death_saves||{},k=el.dataset.kind,n=Number(el.dataset.n);
  return {...c,death_saves:{success:count(d.success),fail:count(d.fail),[k]:count(d[k])>=n?n-1:n}};
-}).catch(e=>toast('Not saved: '+e.message));
+}).catch(console.error);
 function liveApi(camp=Dice.camp) {
  if(!camp)throw new Error('No game open.');
  const r=p=>ref(db,`geezvtt/live/${camp}/${p}`);
@@ -931,7 +920,6 @@ async function submitCall(f) {
  catch(e){f.querySelector('[data-error]').textContent=e.message;}finally{btn.disabled=false;}
 }
 window.answerSheetCall=btn=>submitCall(btn.closest('fieldset'));
-window.coinAdj=(id,k,d,e)=>{if(!IS_GM)return;e?.currentTarget?.blur();const pc=allPcs.find(p=>p.id===id),cur=Number(pc?.coin_purse?.[k]||0),n=Math.max(0,cur+d*(e?.shiftKey?10:1));if(n===cur)return;update(ref(db,`characters/pcs/${id}/coin_purse`),{[k]:n}).catch(err=>console.error('Coin change failed:',err.message));};
 
 const combatUnsubs = {};
 function watchCharacter(charId) {
@@ -939,8 +927,6 @@ function watchCharacter(charId) {
   combatUnsubs[charId] = onValue(ref(db,`characters/pcs/${charId}/combat`), snap => {
     if(!snap.exists())return;
     const c=snap.val(), hpCur=c.hp_current??0, hpMax=c.hp_max??1;
-    const conc=$(`concentration-${charId}`);
-    if(conc)concentrationControls(conc,{combat:c,editable:IS_GM||charId===(PARAMS.get('pc')||ONLY),save:v=>update(ref(db,`characters/pcs/${charId}/combat`),v),roll:async()=>{const pc=allPcs.find(p=>p.id===charId),mod=callMod(pc,{kind:'save',key:'con'}).mod,r=Dice.rollExpr(`1d20${mod>=0?'+':''}${mod}`);await logPcRoll(pc,'Concentration CON save',r,Dice.camp);}});
     const pct=Math.max(0,Math.min(1,hpCur/hpMax));
     const bar=$(`hpbar-${charId}`), val=$(`hpval-${charId}`);
     if(bar){bar.style.width=Math.round(pct*100)+'%';bar.style.backgroundColor=hpColor(hpCur,hpMax);}
@@ -1143,10 +1129,10 @@ const Dice = (() => {
     push(ref(db, `${LIVE_ROOT}/${camp}/rolls`), entry).catch(e => toastDice('Roll not sent: ' + e.message));
     showRoll(entry);
     // the old pages watch dice/last, so single-die results show there too
-    if (!db.gaia && r.first) set(ref(db, 'dice/last'), { sides: r.first.sides, result: r.first.result, roller: entry.by, t: entry.ts }).catch(() => {});
+    if (r.first) set(ref(db, 'dice/last'), { sides: r.first.sides, result: r.first.result, roller: entry.by, t: entry.ts }).catch(() => {});
     // keep the shared log short (same as the VTT)
     const keys = Object.entries(rolls).sort((a, b) => (a[1].ts || 0) - (b[1].ts || 0)).map(([k]) => k);
-    (!PLAYER ? keys : []).slice(0, Math.max(0, keys.length - 40)).forEach(k => remove(ref(db, `${LIVE_ROOT}/${camp}/rolls/${k}`)));
+    keys.slice(0, Math.max(0, keys.length - 40)).forEach(k => remove(ref(db, `${LIVE_ROOT}/${camp}/rolls/${k}`)));
   }
 
   function renderLog() {
@@ -1179,10 +1165,7 @@ const Dice = (() => {
       if(camp)unsub=onValue(ref(db,`${LIVE_ROOT}/${camp}/rolls`),snap=>{rolls=snap.val()||{};renderLog();});
       renderLog();
     };
-    const followDm=()=>onValue(ref(db,`${LIVE_ROOT}/_dmCampaign`),snap=>move(snap.val()?.id||null,snap.val()?.name));
     if(PARAMS.get('live'))move(PARAMS.get('live'));
-    // A player's own sheet (sheet.html?char=<pc>) follows that PC's campaign once it has loaded.
-    else if(ONLY&&!IS_GM){let tries=0;const wait=()=>allPcs[0]?.campaign?move(allPcs[0].campaign):++tries<100?setTimeout(wait,300):followDm();wait();}
     else onValue(ref(db,`${LIVE_ROOT}/_dmCampaign`),snap=>move(snap.val()?.id||null,snap.val()?.name));
   }
 

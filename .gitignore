@@ -1,4 +1,0 @@
-tools/out/
-
-# 241 MB source zip: over GitHub's 100 MB file limit
-tokens/*.zip
