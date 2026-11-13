@@ -54,7 +54,7 @@ OBR.onReady(async () => {
     const ids = (await OBR.scene.items.getItems(ROOMS)).filter(pick).map((i) => i.id);
     if (ids.length) await OBR.scene.items.updateItems(ids, (d) => { for (const i of d) i.visible = visible ?? !i.visible; });
   };
-  OBR.tool.create({ id: TOOL, icons: [{ icon: page('rooms.svg'), label: 'Rooms: click a room to reveal or fog it', filter: { roles: ['GM'] } }], defaultMode: TOOL + '/reveal' });
+  OBR.tool.create({ id: TOOL, icons: [{ icon: page('rooms.svg'), label: 'Rooms & lights: reveal / fog rooms, add lights', filter: { roles: ['GM'] } }], defaultMode: TOOL + '/reveal' });
   OBR.tool.createMode({
     id: TOOL + '/reveal', icons: [{ icon: page('rooms.svg'), label: 'Reveal / fog a room', filter: { activeTools: [TOOL] } }],
     cursors: [{ cursor: 'pointer' }],
@@ -63,6 +63,17 @@ OBR.onReady(async () => {
       const hit = (await OBR.scene.items.getItems(ROOMS)).filter((i) => inRoom(i, e.pointerPosition))
         .sort((a, b) => a.metadata[ROOM].area - b.metadata[ROOM].area)[0];
       if (hit) await setRooms((i) => i.id === hit.id);
+      return false;
+    },
+  });
+  // Add light: click to drop a light (6 squares / 30 ft), unlocked so the GM can drag or delete it.
+  OBR.tool.createMode({
+    id: TOOL + '/light', icons: [{ icon: page('light.svg'), label: 'Add light', filter: { activeTools: [TOOL] } }],
+    cursors: [{ cursor: 'crosshair' }],
+    async onToolClick(_, e) {
+      const cell = await OBR.scene.grid.getDpi();
+      await OBR.scene.items.addItems([buildLight().position(e.pointerPosition).attenuationRadius(cell * 6).sourceRadius(cell * 0.2)
+        .falloff(1).innerAngle(360).outerAngle(360).lightType('SECONDARY').name('Light').build()]);
       return false;
     },
   });
