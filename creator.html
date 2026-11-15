@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Geez Character Creator</title>
+<style>
+  :root {
+    --bg: #0c1218; --panel: #121a24; --panel2: #18222f; --fg: #e7eef7; --muted: #8fa0b5; --line: rgba(170,205,255,.16);
+    --accent: #5be7ff; --accent-fg: #06222a; --danger: #ff8d7f;
+    --font: "Inter", "Segoe UI", system-ui, sans-serif; --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--fg); font: 14px/1.4 var(--font); overflow: hidden; }
+  .app { display: grid; grid-template-columns: minmax(0, 1fr) 390px; height: 100%; }
+  .stage { position: relative; min-height: 0; }
+  #stage { position: absolute; inset: 0; }
+  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .hud { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 14px; }
+  .hud > * { pointer-events: auto; }
+  .title { font: 600 1.15rem/1.1 var(--display); letter-spacing: .01em; }
+  .sub { color: var(--muted); font-size: .78rem; margin-top: 3px; }
+  .views { align-self: center; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 5px; background: rgba(14,22,31,.78); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(8px); }
+  .panel { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; min-height: 0; padding: 0 0 24px; }
+  .panel header { position: sticky; top: 0; z-index: 2; background: var(--panel); padding: 14px 16px 10px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  details { border-bottom: 1px solid var(--line); }
+  summary { cursor: pointer; padding: 12px 16px; font: 600 .78rem var(--display); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); list-style: none; display: flex; justify-content: space-between; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; } details[open] > summary::after { content: "–"; }
+  .body { padding: 2px 16px 14px; display: grid; gap: 12px; }
+  .field > label, .field > .lbl { display: block; font-size: .72rem; color: var(--muted); margin-bottom: 5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  button, input, textarea { font: inherit; color: var(--fg); }
+  .chip, .btn { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; cursor: pointer; min-height: 32px; }
+  .chip:hover, .btn:hover { border-color: rgba(170,205,255,.4); }
+  .chip[aria-pressed="true"], .views button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+  .chip[disabled] { opacity: .35; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+  .views button { background: transparent; border: 1px solid transparent; border-radius: 8px; padding: 7px 11px; cursor: pointer; min-height: 34px; }
+  .sw { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sw button { width: 28px; height: 28px; border-radius: 7px; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+  .sw button[aria-pressed="true"] { border-color: var(--accent); outline: 2px solid var(--bg); outline-offset: -4px; }
+  input[type=text], textarea { width: 100%; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  textarea { min-height: 70px; resize: vertical; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; }
+  .note { color: var(--muted); font-size: .75rem; }
+  .saved { display: grid; gap: 6px; }
+  .saved .item { display: flex; gap: 8px; align-items: center; justify-content: space-between; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  .saved .item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--accent); color: var(--accent-fg); padding: 8px 14px; border-radius: 10px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+  .toast.on { opacity: 1; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #err { color: var(--danger); }
+  @media (max-width: 860px) {
+    body { overflow: auto; } .app { grid-template-columns: 1fr; grid-template-rows: 58vh auto; height: auto; min-height: 100%; }
+    .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; } .panel header { position: static; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="stage" aria-label="Character preview">
+    <div id="stage"></div>
+    <div class="hud">
+      <div><div class="title">Character Creator</div><div class="sub"><span id="count">…</span> voxels · drag to orbit, scroll to zoom</div><div id="err" hidden></div></div>
+      <div class="views" role="group" aria-label="Camera view">
+        <button data-view="front" type="button">Front</button><button data-view="three" type="button" aria-pressed="true">¾</button>
+        <button data-view="side" type="button">Side</button><button data-view="back" type="button">Back</button>
+        <button data-view="face" type="button">Face</button><button id="spin" type="button" aria-pressed="false">Spin</button>
+      </div>
+    </div>
+  </section>
+  <aside class="panel" aria-label="Character options">
+    <header>
+      <div class="row"><input id="name" type="text" maxlength="40" aria-label="Character name" placeholder="Name"></div>
+      <div class="row"><button class="btn primary" id="rand" type="button">Randomize</button><button class="btn" id="reroll" type="button" title="New look, keep race, gender and class">Reroll look</button><button class="btn" id="reset" type="button">Reset</button></div>
+      <div class="note" id="info"></div>
+    </header>
+    <div id="form"></div>
+    <details open>
+      <summary>Save and share</summary>
+      <div class="body">
+        <div class="row"><button class="btn primary" id="save" type="button">Save in this browser</button><button class="btn" id="token" type="button">Download token PNG</button></div>
+        <div class="row"><button class="btn" id="link" type="button">Copy share link</button><button class="btn" id="json" type="button">Copy recipe</button><button class="btn" id="look" type="button">Copy NPC look</button></div>
+        <div class="field"><label for="paste">Load a recipe or share link</label><textarea id="paste" placeholder="Paste a recipe, a #c=… link, or base64 text"></textarea><div class="row" style="margin-top:6px"><button class="btn" id="load" type="button">Load</button></div></div>
+        <div class="field"><span class="lbl">Saved characters</span><div class="saved" id="saved"></div></div>
+      </div>
+    </details>
+  </aside>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script type="importmap">
+{ "imports": { "three": "./zoom-ink-test/vendor/three/three.module.js", "three/addons/": "./zoom-ink-test/vendor/three/addons/" } }
+</script>
+<script type="module">
+import { buildCharacter } from './js/creator/build.js';
+import { DEFAULT, normalize, withClass, fromPartial, randomize, encode, decode, toLook } from './js/creator/recipe.js';
+import * as P from './js/creator/parts.js';
+import { createView } from './js/creator/view.js';
+
+const $ = (id) => document.getElementById(id);
+const LS = 'geez.creator.v1', LS_SAVED = 'geez.creator.saved.v1';
+const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } } };
+const toast = (m) => { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), 1800); };
+async function copy(text, what) {
+  try { await navigator.clipboard.writeText(text); toast(`${what} copied`); }
+  catch { const ta = $('paste'); ta.value = text; ta.select(); toast(`${what} is in the box below: press copy`); }
+}
+
+// race and class details come from the suite's own data files (shown as a one-line summary)
+const facts = { races: {}, classes: {} };
+fetch('data/races.json').then((r) => r.json()).then((l) => l.forEach((x) => { facts.races[x.index] = x; })).then(refreshInfo).catch(() => {});
+fetch('data/classes.json').then((r) => r.json()).then((l) => l.forEach((x) => { facts.classes[x.index] = x; })).then(refreshInfo).catch(() => {});
+
+let recipe = decode(location.hash) || normalize(store.get(LS) || DEFAULT);
+const view = createView($('stage'), { reduceMotion: matchMedia('(prefers-reduced-motion: reduce)').matches });
+
+// ---------------------------------------------------------------- form
+const labelsOf = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'string' && v[0] !== '#' ? v : k.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase())]));
+const FIELDS = [
+  { title: 'Who', open: true, fields: [
+    { id: 'race', label: 'Race', chips: () => Object.fromEntries(P.RACE_IDS.map((k) => [k, P.RACES[k].label])) },
+    { id: 'gender', label: 'Build', chips: () => ({ man: 'Masculine', woman: 'Feminine' }) },
+    { id: 'klass', label: 'Class (sets outfit, headgear and weapon)', chips: () => ({ ...Object.fromEntries(Object.keys(P.CLASSES).map((k) => [k, k[0].toUpperCase() + k.slice(1)])), custom: 'Custom' }), apply: (v) => withClass(recipe, v) },
+  ] },
+  { title: 'Face', open: true, fields: [
+    { id: 'skin', label: 'Skin', swatches: () => P.SKINS[recipe.race].map((c, i) => ({ value: i, color: c, title: (P.SKIN_NAMES[recipe.race] || [])[i] || `Tone ${i + 1}` })) },
+    { id: 'eyes', label: 'Eye shape', chips: () => P.EYE_STYLES },
+    { id: 'eyeColor', label: 'Eye colour', swatches: () => Object.entries(P.EYE_COLORS).map(([k, c]) => ({ value: k, color: c, title: k })) },
+    { id: 'eyeGlow', label: 'Glowing eyes', chips: () => ({ false: 'Off', true: 'On' }), bool: true },
+    { id: 'brows', label: 'Brows', chips: () => P.BROWS }, { id: 'nose', label: 'Nose', chips: () => P.NOSES, off: () => recipe.race === 'dragonborn' },
+    { id: 'mouth', label: 'Mouth', chips: () => P.MOUTHS, off: () => recipe.race === 'dragonborn' },
+    { id: 'mark', label: 'Marks and paint', chips: () => P.MARKS },
+    { id: 'paint', label: 'Paint colour', swatches: () => Object.entries(P.PAINTS).map(([k, c]) => ({ value: k, color: c, title: k })), show: () => ['war-stripes', 'cheek-lines', 'forehead-mark'].includes(recipe.mark) },
+  ] },
+  { title: 'Hair and beard', open: false, fields: [
+    { id: 'hairStyle', label: 'Hair', chips: () => P.HAIR_STYLES, off: () => recipe.race === 'dragonborn' },
+    { id: 'hairColor', label: 'Hair colour', swatches: () => Object.entries(P.HAIR_COLORS).map(([k, c]) => ({ value: k, color: c, title: k })) },
+    { id: 'beard', label: 'Beard', chips: () => P.BEARDS, off: () => recipe.race === 'dragonborn' },
+    { id: 'beardColor', label: 'Beard colour', swatches: () => [{ value: 'same', color: P.HAIR_COLORS[recipe.hairColor], title: 'Match hair' }, ...Object.entries(P.HAIR_COLORS).map(([k, c]) => ({ value: k, color: c, title: k }))], show: () => recipe.beard !== 'none' },
+  ] },
+  { title: 'Gear', open: false, fields: [
+    { id: 'outfit', label: 'Outfit', chips: () => P.OUTFITS, gear: true }, { id: 'headgear', label: 'Headgear', chips: () => P.HEADGEAR, gear: true }, { id: 'weapon', label: 'Weapon', chips: () => P.WEAPONS, gear: true },
+    { id: 'primary', label: 'Main colour', swatches: () => Object.entries(P.CLOTH).map(([k, c]) => ({ value: k, color: c, title: k })), gear: true },
+    { id: 'secondary', label: 'Second colour', swatches: () => Object.entries(P.CLOTH).map(([k, c]) => ({ value: k, color: c, title: k })), gear: true },
+    { id: 'trim', label: 'Trim metal', swatches: () => Object.entries(P.METALS).map(([k, c]) => ({ value: k, color: c, title: k })), gear: true },
+    { id: 'metal', label: 'Armor and weapon metal', swatches: () => Object.entries(P.METALS).map(([k, c]) => ({ value: k, color: c, title: k })), gear: true },
+    { id: 'magic', label: 'Magic colour', swatches: () => Object.entries(P.MAGIC).map(([k, c]) => ({ value: k, color: c, title: k })), show: () => recipe.weapon === 'staff' || ['wizard-hat', 'circlet'].includes(recipe.headgear), gear: true },
+  ] },
+];
+const sectionState = {};
+function drawForm() {
+  const form = $('form'); form.innerHTML = '';
+  for (const s of FIELDS) {
+    const d = document.createElement('details'); d.open = sectionState[s.title] ?? s.open; d.addEventListener('toggle', () => { sectionState[s.title] = d.open; });
+    d.innerHTML = `<summary>${s.title}</summary>`; const body = document.createElement('div'); body.className = 'body'; d.append(body);
+    for (const f of s.fields) {
+      if (f.show && !f.show()) continue;
+      const wrap = document.createElement('div'); wrap.className = 'field'; wrap.innerHTML = `<span class="lbl"></span>`; wrap.firstChild.textContent = f.label;
+      const cur = f.bool ? String(!!recipe[f.id]) : recipe[f.id], off = f.off && f.off();
+      if (f.chips) {
+        const box = document.createElement('div'); box.className = 'chips';
+        for (const [v, label] of Object.entries(labelsOf(f.chips()))) {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = label; b.disabled = !!off; b.setAttribute('aria-pressed', String(String(cur) === String(v)));
+          b.addEventListener('click', () => change(f, f.bool ? v === 'true' : v)); box.append(b);
+        }
+        wrap.append(box);
+      } else {
+        const box = document.createElement('div'); box.className = 'sw'; box.setAttribute('role', 'group'); box.setAttribute('aria-label', f.label);
+        for (const o of f.swatches()) {
+          const b = document.createElement('button'); b.type = 'button'; b.style.background = o.color; b.title = o.title; b.setAttribute('aria-label', `${f.label}: ${o.title}`); b.setAttribute('aria-pressed', String(String(cur) === String(o.value)));
+          b.addEventListener('click', () => change(f, o.value)); box.append(b);
+        }
+        wrap.append(box);
+      }
+      if (off) { const n = document.createElement('div'); n.className = 'note'; n.textContent = 'Not used by this race.'; wrap.append(n); }
+      body.append(wrap);
+    }
+    form.append(d);
+  }
+}
+function change(f, value) {
+  const next = f.apply ? f.apply(value) : normalize({ ...recipe, [f.id]: value, ...(f.gear ? { klass: 'custom' } : {}) });
+  set(next);
+}
+
+// ---------------------------------------------------------------- state
+let pending = false;
+function set(next, { quiet } = {}) {
+  recipe = normalize(next); $('name').value = recipe.name;
+  if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; render(); }); }
+  drawForm(); refreshInfo();
+  store.set(LS, recipe); try { history.replaceState(null, '', '#c=' + encode(recipe)); } catch { /* sandboxed frame */ }
+  document.dispatchEvent(new CustomEvent('geez-creator-change', { detail: { recipe, look: toLook(recipe) } }));
+}
+let framedFor = null;
+function render() {
+  try {
+    const info = view.setCharacter(buildCharacter(recipe)); $('count').textContent = info.count.toLocaleString('en-US'); $('err').hidden = true;
+    if (framedFor !== recipe.race) { view.goView(view.view, framedFor === null); framedFor = recipe.race; }   // re-frame only when the body size changes
+  }
+  catch (e) { $('err').hidden = false; $('err').textContent = 'Could not build this character: ' + e.message; console.error(e); }
+}
+function refreshInfo() {
+  const r = facts.races[recipe.race], c = facts.classes[recipe.klass];
+  $('info').textContent = [r && `${r.size}, speed ${r.speed}`, c && `${c.name}: d${c.hit_die} hit die`].filter(Boolean).join(' · ');
+}
+
+// ---------------------------------------------------------------- buttons
+document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => { document.querySelectorAll('[data-view]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); view.goView(b.dataset.view); }));
+$('spin').addEventListener('click', (e) => { view.spin(!view.spinning); e.currentTarget.setAttribute('aria-pressed', String(view.spinning)); });
+$('name').addEventListener('input', (e) => set({ ...recipe, name: e.target.value }));
+$('rand').addEventListener('click', () => set(randomize((Math.random() * 1e9) | 0, { name: recipe.name })));
+$('reroll').addEventListener('click', () => set(randomize((Math.random() * 1e9) | 0, { name: recipe.name, race: recipe.race, gender: recipe.gender, klass: recipe.klass })));
+$('reset').addEventListener('click', () => set(DEFAULT));
+$('link').addEventListener('click', () => copy(location.href.split('#')[0] + '#c=' + encode(recipe), 'Share link'));
+$('json').addEventListener('click', () => copy(JSON.stringify(recipe), 'Recipe'));
+$('look').addEventListener('click', () => copy(JSON.stringify(toLook(recipe)), 'NPC look'));
+$('load').addEventListener('click', () => { const r = decode($('paste').value); if (r) { set(r); toast('Loaded'); } else toast('That is not a valid recipe'); });
+$('token').addEventListener('click', async () => { const blob = await view.snapshot({ size: 512, view: 'bust' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (recipe.name || 'character').replace(/[^\w-]+/g, '_') + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); });
+function drawSaved() {
+  const list = store.get(LS_SAVED) || [], box = $('saved'); box.innerHTML = list.length ? '' : '<div class="note">Nothing saved yet.</div>';
+  list.forEach((s, i) => {
+    const it = document.createElement('div'); it.className = 'item'; const l = document.createElement('span'); l.textContent = `${s.name} · ${P.RACES[s.race]?.label || s.race}`;
+    const row = document.createElement('div'); row.className = 'row'; for (const [t, fn] of [['Load', () => set(s)], ['Delete', () => { list.splice(i, 1); store.set(LS_SAVED, list); drawSaved(); }]]) { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = t; b.addEventListener('click', fn); row.append(b); }
+    it.append(l, row); box.append(it);
+  });
+}
+$('save').addEventListener('click', () => { const list = (store.get(LS_SAVED) || []).filter((s) => s.name !== recipe.name); list.unshift(recipe); store.set(LS_SAVED, list.slice(0, 40)); drawSaved(); toast('Saved in this browser'); });
+addEventListener('hashchange', () => { const r = decode(location.hash); if (r && JSON.stringify(r) !== JSON.stringify(recipe)) set(r); });
+
+// hooks for the rest of the suite
+window.GeezCreator = { getRecipe: () => recipe, setRecipe: (r) => set(fromPartial(r)), getLook: () => toLook(recipe), build: () => buildCharacter(recipe), snapshot: (o) => view.snapshot(o), view, normalize, randomize };
+window.__ready = true;
+
+set(recipe); drawSaved();
+</script>
+</body>
+</html>
