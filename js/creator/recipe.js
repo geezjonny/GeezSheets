@@ -7,7 +7,7 @@ const one = (list, v, d) => (Object.keys(list).includes(v) ? v : d);
 export const DEFAULT = {
   v: VERSION, name: 'Wanderer', race: 'human', gender: 'man', skin: 1, klass: 'wizard',
   hairStyle: 'short', hairColor: 'brown', beard: 'none', beardColor: 'same',
-  eyes: 'round', eyeColor: 'blue', eyeGlow: false, brows: 'thin', nose: 'dot', mouth: 'smile',
+  eyes: 'round', eyeColor: 'blue', eyeGlow: false, brows: 'thin', nose: 'dot', mouth: 'neutral',
   mark: 'none', paint: 'red',
   outfit: 'robe', headgear: 'wizard-hat', weapon: 'staff', primary: 'indigo', secondary: 'violet', trim: 'gold', metal: 'gold', magic: 'cyan',
   seed: 1,
@@ -30,7 +30,7 @@ export function normalize(input = {}) {
   r.eyeGlow = !!r.eyeGlow;
   r.brows = one(P.BROWS, r.brows, 'thin');
   r.nose = one(P.NOSES, r.nose, 'dot');
-  r.mouth = one(P.MOUTHS, r.mouth, 'smile');
+  r.mouth = one(P.MOUTHS, r.mouth, 'neutral');
   r.mark = one(P.MARKS, r.mark, 'none');
   r.paint = one(P.PAINTS, r.paint, 'red');
   r.outfit = one(P.OUTFITS, r.outfit, 'robe');

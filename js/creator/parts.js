@@ -45,7 +45,7 @@ export const EYE_STYLES = { round: 'Round', wide: 'Wide', sharp: 'Sharp', narrow
 export const EYE_COLORS = { blue: '#3ea8ff', green: '#3fcf6a', brown: '#8a5a32', amber: '#e0a020', grey: '#9aa8b8', violet: '#9a5af0', red: '#e0443a', gold: '#ffd23c' };
 export const BROWS = { thin: 'Thin', thick: 'Bold', none: 'None' };
 export const NOSES = { dot: 'Dot', none: 'None', small: 'Small', normal: 'Normal', big: 'Big' };
-export const MOUTHS = { smile: 'Smile', neutral: 'Neutral', open: 'Open', frown: 'Frown', grin: 'Grin' };
+export const MOUTHS = { neutral: 'Neutral', smile: 'Smile', open: 'Open', frown: 'Frown', grin: 'Grin' };
 export const MARKS = { none: 'None', 'scar-eye': 'Scar over eye', 'scar-cheek': 'Scar on cheek', 'war-stripes': 'War stripes', 'cheek-lines': 'Cheek lines', 'forehead-mark': 'Forehead mark' };
 export const PAINTS = { red: '#c0392b', white: '#f0ece4', blue: '#2e6fd0', black: '#14141c', gold: '#e2b43c' };
 
