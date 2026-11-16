@@ -10,7 +10,7 @@ export const DEFAULT = {
   eyes: 'round', eyeColor: 'blue', eyeGlow: false, brows: 'thick', nose: 'normal', mouth: 'smile',
   mark: 'none', paint: 'red',
   outfit: 'robe', headgear: 'wizard-hat', weapon: 'staff', primary: 'indigo', secondary: 'violet', trim: 'gold', metal: 'gold', magic: 'cyan',
-  seed: 1,
+  seed: 1, round: 2,
 };
 
 /** Fill gaps, clamp every field to a valid option, and apply race rules (e.g. dragonborn have no hair). */
@@ -41,6 +41,7 @@ export function normalize(input = {}) {
   r.trim = one(P.METALS, r.trim, 'gold');
   r.metal = one(P.METALS, r.metal, 'steel');
   r.magic = one(P.MAGIC, r.magic, 'cyan');
+  r.round = [0, 1, 2].includes(+r.round) ? +r.round : 2;
   r.seed = Number.isFinite(+r.seed) ? Math.floor(+r.seed) : 1;
   if (P.RACES[r.race].head === 'dragon') { r.hairStyle = 'bald'; r.beard = 'none'; r.nose = 'normal'; }
   return r;
