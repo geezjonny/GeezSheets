@@ -162,46 +162,53 @@ function hair(g, r, D, C) {
 }
 
 // ---------------------------------------------------------------- face
+// 16-bit chibi face on a flat plane: small wide-set eyes low on the face (dark lash, iris that runs dark to light, a white
+// highlight), a thin flat brow, a dot for a nose, a tiny mouth and a touch of blush. Nothing sticks out unless asked.
 function face(g, r, D, C) {
-  const Y = (h) => D.headY0 + h, R = P.RACES[r.race], dragon = R.head === 'dragon', woman = r.gender === 'woman';
-  const glow = r.eyeGlow ? { glow: true, tag: 'eye' } : { tag: 'eye' };
-  // eyes: lash row at hy 9, then rows below; the outer columns are white, the inner two are iris, pupils look ahead
-  const rows = r.eyes === 'wide' ? [8, 7, 6] : r.eyes === 'narrow' ? [8] : [8, 7];
-  for (const e of [{ xs: [-6, -5, -4, -3], pupil: -4 }, { xs: [5, 4, 3, 2], pupil: 3 }]) {
-    e.xs.forEach((x, i) => {
-      g.set(x, Y(9), 7, LASH);
-      for (const hy of rows) {
-        if (r.eyes === 'sharp' && i === 0 && hy === rows[rows.length - 1]) { g.set(x, Y(hy), 7, C.skin, { skin: true }); continue; }
-        const white = i === 0 || i === 3;
-        g.set(x, Y(hy), 7, white ? EYE_WHITE : x === e.pupil ? PUPIL : C.eye, white || x === e.pupil ? { tag: 'eye' } : glow);
-      }
-    });
-    if (r.eyes === 'sharp' || woman) g.set(e.xs[0], Y(10), 7, LASH);
-    if (woman && r.eyes !== 'narrow') g.set(e.xs[0] + (e.xs[0] < 0 ? -1 : 1), Y(9), 7, LASH);
-  }
-  for (const x of [-6, -5, -4, 3, 4, 5]) g.set(x, Y(6), 7, C.lid, { skin: true });                      // under-eye shade
-  for (const x of [-7, -6, 6, 5]) for (const hy of [5, 6]) g.set(x, Y(hy), 7, C.blush, { skin: true }); // cheeks
-  // brows
-  const bc = dragon ? shade(C.skin, 0.7) : r.hairStyle === 'bald' && r.beard === 'none' ? '#3a2a1e' : r.hairColor === 'white' || r.hairColor === 'grey' ? '#dedcec' : shade(C.hair, 1);
-  if (r.brows === 'thick' || dragon) { g.sym(-7, Y(10), 7, -3, Y(10), 8, bc); g.sym(-7, Y(11), 7, -5, Y(11), 8, bc); }
-  else if (r.brows === 'thin') g.sym(-6, Y(10), 7, -3, Y(10), 7, bc);
+  const Y = (h) => D.headY0 + h, R = P.RACES[r.race], dragon = R.head === 'dragon', woman = r.gender === 'woman', sk = { skin: true };
+  const iris = { mid: C.eye, low: shade(C.eye, 0.72) };
+  const glow = r.eyeGlow ? { glow: true, tag: 'eye' } : { tag: 'eye' }, tag = { tag: 'eye' };   // glow eyes light up the iris only
+  const put = (x, hy, c, o) => { g.set(x, Y(hy), 7, c, o); g.set(mx(x), Y(hy), 7, c, o); };     // always symmetrical
+  // eyes. xs go outer -> inner on the left; the right eye is the mirror image, so highlights sit on the outer side.
+  const styles = {
+    round:  { xs: [-5, -4], rows: [[8, 'lash'], [7, 'hl', 'mid'], [6, 'mid', 'mid'], [5, 'low', 'low']] },
+    wide:   { xs: [-6, -5, -4], rows: [[7, 'lash'], [6, 'hl', 'mid', 'mid'], [5, 'low', 'low', 'low']] },
+    sharp:  { xs: [-5, -4], rows: [[7, 'lash'], [6, 'hl', 'mid'], [5, null, 'low']], flick: true },
+    narrow: { xs: [-5, -4], rows: [[6, 'lash'], [5, 'mid', 'mid']] },
+    dot:    { xs: [-4], rows: [[6, 'mid'], [5, 'low']] },
+  };
+  const e = styles[r.eyes];
+  for (const [hy, ...cells] of e.rows) cells.forEach((cell, i) => {
+    const x = e.xs[i]; if (!cell) return;
+    if (cell === 'lash') put(x, hy, LASH);
+    else if (cell === 'hl') put(x, hy, '#ffffff', tag);
+    else put(x, hy, iris[cell], glow);
+  });
+  if (e.flick || (woman && r.eyes !== 'dot')) put(e.xs[0] - 1, e.rows[0][0], LASH);                // outer lash flick
+  // blush under and outside the eyes
+  for (const x of [-7, -6]) put(x, 4, C.blush, sk);
+  // brows: flat, hair coloured
+  const bc = dragon ? shade(C.skin, 0.7) : r.hairStyle === 'bald' && r.beard === 'none' ? '#3a2a1e' : r.hairColor === 'white' || r.hairColor === 'grey' ? '#dedcec' : shade(C.hair, 0.9);
+  if (r.brows === 'thin' || dragon) for (const x of [-6, -5, -4]) put(x, 10, bc);
+  if (r.brows === 'thick') { for (const x of [-6, -5, -4, -3]) put(x, 10, bc); for (const x of [-6, -5]) put(x, 11, bc); }
   if (dragon) return;
-  // nose
-  let size = r.nose; if (R.noseBonus && size !== 'big') size = size === 'small' ? 'normal' : 'big';
-  const sk = { skin: true };
-  if (size === 'small') { g.box(-1, Y(5), 8, 0, Y(6), 8, C.skinLight, sk); }
-  else {
-    g.box(-1, Y(7), 8, 0, Y(7), 8, C.skinLight, sk);
-    const deep = size === 'big' ? 10 : 9;
-    for (const hy of [6, 5]) for (const x of [-1, 0]) for (let z = 8; z <= deep; z++) g.set(x, Y(hy), z, z === deep && hy === 5 ? C.skinLight : C.skinLight, sk);
-    for (const x of size === 'big' ? [-2, -1, 0, 1] : [-1, 0]) { g.set(x, Y(4), 8, C.skinShade, sk); g.set(x, Y(4), 9, x === -1 || x === 0 ? '#7a4a3a' : C.skinShade, sk); }
+  // nose: a flat dot by default; real bumps only when chosen
+  const nz = (x, hy, z, c) => g.set(x, Y(hy), z, c, sk);
+  if (r.nose === 'dot') for (const x of [-1, 0]) nz(x, 4, 7, C.skinShade);
+  if (r.nose === 'small') for (const x of [-1, 0]) { nz(x, 4, 7, C.skinShade); nz(x, 4, 8, C.skinLight); }
+  if (r.nose === 'normal' || r.nose === 'big') {
+    const deep = r.nose === 'big' ? 10 : 9;
+    for (const hy of [5, 4]) for (const x of [-1, 0]) for (let z = 8; z <= deep; z++) nz(x, hy, z, hy === 4 ? C.skinLight : C.skinLight);
+    for (const x of [-1, 0]) nz(x, 3, 8, '#7a4a3a');
   }
-  // mouth
-  const m = r.mouth;
-  if (m === 'grin') { g.box(-3, Y(2), 7, 2, Y(2), 7, TEETH); g.box(-3, Y(1), 7, 2, Y(1), 7, C.lip); }
-  else { g.box(-3, Y(2), 7, 2, Y(2), 7, C.lip); g.box(-2, Y(1), 7, 1, Y(1), 7, C.lip2); }
-  if (m === 'smile') for (const x of [-4, 3]) g.set(x, Y(3), 7, C.skinShade, sk);
-  if (m === 'frown') for (const x of [-4, 3]) g.set(x, Y(1), 7, C.skinShade, sk);
+  // mouth: tiny and low
+  const m = r.mouth, mp = (x, hy, c) => g.set(x, Y(hy), 7, c);
+  if (m === 'neutral') { mp(-1, 2, C.lip); mp(0, 2, C.lip); }
+  if (m === 'smile') { mp(-1, 2, C.lip); mp(0, 2, C.lip); mp(-2, 3, C.lip); mp(1, 3, C.lip); }
+  if (m === 'frown') { mp(-1, 3, C.lip); mp(0, 3, C.lip); mp(-2, 2, C.lip); mp(1, 2, C.lip); }
+  if (m === 'open') { for (const x of [-1, 0]) { mp(x, 2, '#5a1f28'); mp(x, 1, C.lip2); } mp(-2, 3, C.lip); mp(1, 3, C.lip); mp(-1, 3, C.lip); mp(0, 3, C.lip); }
+  if (m === 'grin') { for (const x of [-2, -1, 0, 1]) { mp(x, 3, C.lip); mp(x, 2, TEETH); } mp(-3, 3, C.skinShade); mp(2, 3, C.skinShade); }
+  if (r.nose === 'normal' || r.nose === 'big') { /* the bump sits above the mouth; nothing to avoid */ }
 }
 
 function beard(g, r, D, C) {
@@ -232,9 +239,9 @@ function raceFeatures(g, r, D, C) {
     if (!big) g.ball(-0.5, Math.max(1, w - 10), -8, 1.8, '#7a2a3a');
   }
   if (R.head === 'dragon') {
-    g.box(-4, Y(1), 8, 3, Y(6), 13, (x, y, z) => (y === Y(6) ? shade(C.skin, 0.8) : (x + y) % 2 ? shade(C.skin, 0.94) : C.skin), sk);   // snout
-    for (const x of [-3, 2]) { g.set(x, Y(5), 13, '#1a1014'); g.set(x, Y(5), 12, '#1a1014'); }                                           // nostrils
-    g.box(-3, Y(2), 13, 2, Y(2), 13, '#7a2a30'); for (const x of [-3, 2]) g.box(x, Y(0), 13, x, Y(1), 13, TEETH);
+    g.box(-4, Y(0), 8, 3, Y(4), 13, (x, y, z) => (y === Y(4) ? shade(C.skin, 0.8) : (x + y) % 2 ? shade(C.skin, 0.94) : C.skin), sk);   // snout
+    for (const x of [-3, 2]) { g.set(x, Y(3), 13, '#1a1014'); g.set(x, Y(3), 12, '#1a1014'); }                                           // nostrils
+    g.box(-3, Y(1), 13, 2, Y(1), 13, '#7a2a30'); for (const x of [-3, 2]) g.box(x, Y(0), 13, x, Y(0), 13, TEETH);
     for (const x of [-5, -2, 1, 4]) g.tube([[x + 0.5, Y(13), -6], [x + 0.5, Y(17), -9]], 1.4, 0.5, shade(C.skin, 0.8));                  // crest
     g.sym(8, Y(3), -2, 9, Y(8), 3, shade(C.skin, 1.12));                                                                                 // cheek frills
   }
@@ -244,11 +251,11 @@ function marks(g, r, D, C) {
   if (r.mark === 'none') return;
   const Y = (h) => D.headY0 + h, scar = mix(C.skin, '#f0d0c4', 0.55), paint = (x, hy, c = C.paint) => { const v = g.get(x, Y(hy), 7); if (v && v.skin) g.set(x, Y(hy), 7, c, { skin: true }); };
   const m = r.mark;
-  if (m === 'scar-eye') for (const [x, hy] of [[-7, 11], [-7, 10], [-6, 9], [-6, 8], [-5, 7], [-5, 6], [-4, 5], [-3, 4]]) paint(x, hy, scar);
-  if (m === 'scar-cheek') for (const [x, hy] of [[5, 6], [4, 5], [3, 4], [2, 3], [5, 4], [3, 6]]) paint(x, hy, scar);
-  if (m === 'war-stripes') for (const s of [1, -1]) for (const [x, hy] of [[-7, 6], [-6, 6], [-5, 6], [-4, 6], [-7, 5], [-6, 5], [-5, 5]]) paint(s === 1 ? x : mx(x), hy);
-  if (m === 'cheek-lines') for (const s of [1, -1]) for (const x of [-6, -4]) for (const hy of [4, 5, 6]) paint(s === 1 ? x : mx(x), hy);
-  if (m === 'forehead-mark') for (const [x, hy] of [[-1, 12], [0, 12], [-2, 13], [-1, 13], [0, 13], [1, 13], [-1, 14], [0, 14]]) paint(x, hy);
+  if (m === 'scar-eye') for (const [x, hy] of [[-7, 10], [-6, 9], [-6, 8], [-6, 7], [-6, 6], [-6, 5], [-5, 4], [-5, 3]]) paint(x, hy, scar);
+  if (m === 'scar-cheek') for (const [x, hy] of [[6, 5], [5, 4], [4, 3], [3, 2], [6, 3], [4, 5]]) paint(x, hy, scar);
+  if (m === 'war-stripes') for (const s of [1, -1]) for (const [x, hy] of [[-7, 4], [-6, 4], [-5, 4], [-4, 4], [-7, 3], [-6, 3], [-5, 3]]) paint(s === 1 ? x : mx(x), hy);
+  if (m === 'cheek-lines') for (const s of [1, -1]) for (const x of [-7, -5]) for (const hy of [2, 3, 4]) paint(s === 1 ? x : mx(x), hy);
+  if (m === 'forehead-mark') for (const [x, hy] of [[-1, 12], [0, 12], [-2, 11], [-1, 11], [0, 11], [1, 11], [-1, 10], [0, 10]]) paint(x, hy);
 }
 
 // ---------------------------------------------------------------- headgear

@@ -7,7 +7,7 @@ const one = (list, v, d) => (Object.keys(list).includes(v) ? v : d);
 export const DEFAULT = {
   v: VERSION, name: 'Wanderer', race: 'human', gender: 'man', skin: 1, klass: 'wizard',
   hairStyle: 'short', hairColor: 'brown', beard: 'none', beardColor: 'same',
-  eyes: 'round', eyeColor: 'blue', eyeGlow: false, brows: 'thick', nose: 'normal', mouth: 'smile',
+  eyes: 'round', eyeColor: 'blue', eyeGlow: false, brows: 'thin', nose: 'dot', mouth: 'smile',
   mark: 'none', paint: 'red',
   outfit: 'robe', headgear: 'wizard-hat', weapon: 'staff', primary: 'indigo', secondary: 'violet', trim: 'gold', metal: 'gold', magic: 'cyan',
   seed: 1,
@@ -28,8 +28,8 @@ export function normalize(input = {}) {
   r.eyes = one(P.EYE_STYLES, r.eyes, 'round');
   r.eyeColor = one(P.EYE_COLORS, r.eyeColor, 'blue');
   r.eyeGlow = !!r.eyeGlow;
-  r.brows = one(P.BROWS, r.brows, 'thick');
-  r.nose = one(P.NOSES, r.nose, 'normal');
+  r.brows = one(P.BROWS, r.brows, 'thin');
+  r.nose = one(P.NOSES, r.nose, 'dot');
   r.mouth = one(P.MOUTHS, r.mouth, 'smile');
   r.mark = one(P.MARKS, r.mark, 'none');
   r.paint = one(P.PAINTS, r.paint, 'red');
@@ -42,7 +42,7 @@ export function normalize(input = {}) {
   r.metal = one(P.METALS, r.metal, 'steel');
   r.magic = one(P.MAGIC, r.magic, 'cyan');
   r.seed = Number.isFinite(+r.seed) ? Math.floor(+r.seed) : 1;
-  if (P.RACES[r.race].head === 'dragon') { r.hairStyle = 'bald'; r.beard = 'none'; r.nose = 'normal'; }
+  if (P.RACES[r.race].head === 'dragon') { r.hairStyle = 'bald'; r.beard = 'none'; r.nose = 'none'; }
   return r;
 }
 
