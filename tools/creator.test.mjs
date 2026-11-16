@@ -50,15 +50,6 @@ for (const [field, opts] of Object.entries({ hairStyle: P.HAIR_STYLES, beard: P.
 }
 for (const [field, opts] of Object.entries({ eyeColor: P.EYE_COLORS, hairColor: P.HAIR_COLORS, primary: P.CLOTH })) assert.ok(new Set(Object.keys(opts).map((v) => sig(buildCharacter(normalize({ ...DEFAULT, [field]: v }))))).size > 1, `${field}: colours do not change the model`);
 
-// 5b. roundness: round and soft shapes carve the head corners and thin the body; blocky keeps the full box
-const bareHead = { ...DEFAULT, klass: 'custom', headgear: 'none', weapon: 'none', hairStyle: 'bald' };
-const shapes = [0, 1, 2].map((round) => buildCharacter(normalize({ ...bareHead, round })));
-const corner = (b) => b.voxels.has(`7,${b.meta.headY0 + 15},7`);
-assert.ok(corner(shapes[0]) && !corner(shapes[2]), 'round heads lose their top corners');
-assert.ok(shapes[0].voxels.size > shapes[1].voxels.size && shapes[1].voxels.size > shapes[2].voxels.size, 'more roundness, fewer voxels');
-for (const b of shapes) { let eyes = 0; for (const v of b.voxels.values()) if (v.tag === 'eye') eyes++; assert.ok(eyes >= 8, 'eyes survive every shape'); }
-assert.equal(normalize({ round: 7 }).round, 2);
-
 // 6. race rules and recipe plumbing
 assert.equal(normalize({ race: 'dragonborn', hairStyle: 'long', beard: 'full' }).hairStyle, 'bald');
 assert.equal(normalize({ race: 'nope' }).race, 'human');

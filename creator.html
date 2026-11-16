@@ -124,7 +124,6 @@ const FIELDS = [
   { title: 'Who', open: true, fields: [
     { id: 'race', label: 'Race', chips: () => Object.fromEntries(P.RACE_IDS.map((k) => [k, P.RACES[k].label])) },
     { id: 'gender', label: 'Build', chips: () => ({ man: 'Masculine', woman: 'Feminine' }) },
-    { id: 'round', label: 'Shape', chips: () => P.ROUNDS },
     { id: 'klass', label: 'Class (sets outfit, headgear and weapon)', chips: () => ({ ...Object.fromEntries(Object.keys(P.CLASSES).map((k) => [k, k[0].toUpperCase() + k.slice(1)])), custom: 'Custom' }), apply: (v) => withClass(recipe, v) },
   ] },
   { title: 'Face', open: true, fields: [

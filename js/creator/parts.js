@@ -48,9 +48,6 @@ export const MOUTHS = { neutral: 'Neutral', smile: 'Smile', frown: 'Frown', grin
 export const MARKS = { none: 'None', 'scar-eye': 'Scar over eye', 'scar-cheek': 'Scar on cheek', 'war-stripes': 'War stripes', 'cheek-lines': 'Cheek lines', 'forehead-mark': 'Forehead mark' };
 export const PAINTS = { red: '#c0392b', white: '#f0ece4', blue: '#2e6fd0', black: '#14141c', gold: '#e2b43c' };
 
-// Silhouette roundness: corner radius for the head and the superellipse exponent for torso and limbs (bigger = boxier).
-export const ROUNDS = { 0: 'Blocky', 1: 'Soft', 2: 'Round' };
-export const ROUND_HEAD_R = [0, 2.4, 4.6], ROUND_EXP = [99, 5, 2.6];
 export const OUTFITS = { robe: 'Robe', tunic: 'Tunic', armor: 'Armor' };
 export const HEADGEAR = { none: 'None', 'wizard-hat': 'Wizard hat', hood: 'Hood', helm: 'Helm', 'horned-helm': 'Horned helm', circlet: 'Circlet', headband: 'Headband', 'leaf-crown': 'Leaf crown', 'feather-cap': 'Feather cap' };
 export const WEAPONS = { none: 'None', staff: 'Staff', sword: 'Sword', axe: 'Axe', mace: 'Mace', dagger: 'Dagger', bow: 'Bow' };
