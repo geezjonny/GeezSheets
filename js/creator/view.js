@@ -1,7 +1,7 @@
 // The three.js side of the creator: renders a built character, handles camera views, blinking, snapshots.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { hash, shade } from './voxels.js';
+import { hash, shade, mix } from './voxels.js';
 
 const S = 0.1;                                   // world units per voxel
 const BG = 0x0c1218;
@@ -31,7 +31,7 @@ export function createView(stage, { reduceMotion = false } = {}) {
   floor.rotation.x = -Math.PI / 2; floor.position.y = -0.5 * S; floor.receiveShadow = true; scene.add(floor);
 
   // ---- lights: warm key with shadows, soft front fill, cool rim, cyan staff light
-  scene.add(new THREE.HemisphereLight(0xc4d6ff, 0x30283a, 1.25));
+  const hemi = new THREE.HemisphereLight(0xc4d6ff, 0x30283a, 1.25); scene.add(hemi);
   const key = new THREE.DirectionalLight(0xffe0b0, 2.6); key.position.set(3.5, 9, 9); key.castShadow = true; key.shadow.mapSize.set(2048, 2048);
   Object.assign(key.shadow.camera, { left: -5, right: 5, top: 9, bottom: -2, near: 1, far: 30 }); key.shadow.bias = -0.0004; key.shadow.normalBias = 0.025; scene.add(key);
   const fill = new THREE.DirectionalLight(0xbdd0ff, 0.8); fill.position.set(-5, 3, 9); scene.add(fill);
@@ -41,6 +41,35 @@ export function createView(stage, { reduceMotion = false } = {}) {
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: sprTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); halo.visible = false; scene.add(halo);
   const motes = Array.from({ length: 16 }, (_, i) => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: 0xffffff })); m.userData = { a: i * 2.4, r: 0.35 + (i % 4) * 0.1, s: 0.5 + (i % 5) * 0.12, h: (i * 0.37) % 1 }; m.visible = false; scene.add(m); return m; });
 
+  // ---- cozy diorama: a small grass island with flowers and stones, under a sunny sky (the sky is CSS behind the transparent canvas)
+  const island = new THREE.Group(); island.visible = false; scene.add(island);
+  {
+    const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
+    const greens = ['#86d66a', '#7acb60', '#8fdc72', '#74c25c'];
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { g.fillStyle = greens[Math.floor(hash(x, y, 5) * greens.length)]; g.fillRect(x * 8, y * 8, 8, 8); }
+    for (let i = 0; i < 40; i++) { g.fillStyle = hash(i, 1, 2) > 0.5 ? '#a6e88a' : '#62b04e'; g.fillRect(Math.floor(hash(i, 2, 3) * 15) * 8 + 2, Math.floor(hash(i, 3, 4) * 15) * 8 + 2, 4, 4); }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3); t.magFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
+    const top = new THREE.MeshStandardMaterial({ map: t, roughness: 1 }), dirt = new THREE.MeshStandardMaterial({ color: 0xb9854f, roughness: 1 });
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(3.9, 4.2, 0.6, 48), [dirt, top, dirt]); base.position.y = -0.05 - 0.3; base.receiveShadow = true; island.add(base);
+    const flowers = new THREE.InstancedMesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), new THREE.MeshStandardMaterial({ roughness: 0.8 }), 46), m4 = new THREE.Matrix4(), col = new THREE.Color();
+    const petals = ['#ffffff', '#ffd84a', '#ff9eb8', '#b9d8ff', '#ffb36b'];
+    for (let i = 0; i < 46; i++) { const a = hash(i, 7, 1) * Math.PI * 2, r = 1.9 + hash(i, 8, 2) * 1.8; m4.makeTranslation(Math.cos(a) * r, -0.05 + 0.05, Math.sin(a) * r); flowers.setMatrixAt(i, m4); flowers.setColorAt(i, col.set(petals[i % petals.length])); }
+    island.add(flowers);
+    for (let i = 0; i < 6; i++) { const a = hash(i, 3, 9) * Math.PI * 2, r = 2.6 + hash(i, 4, 9) * 1.1, s2 = 0.18 + hash(i, 5, 9) * 0.16; const rock = new THREE.Mesh(new THREE.BoxGeometry(s2 * 1.4, s2, s2 * 1.1), new THREE.MeshStandardMaterial({ color: 0xb8bcc4, roughness: 1 })); rock.position.set(Math.cos(a) * r, -0.05 + s2 / 2, Math.sin(a) * r); rock.rotation.y = a; rock.castShadow = rock.receiveShadow = true; island.add(rock); }
+  }
+  let look = 'classic';
+  function setLook(next) {
+    if (next === look) return; look = next; const cozy = look === 'cozy';
+    scene.background = cozy ? null : new THREE.Color(BG); scene.fog = cozy ? null : new THREE.Fog(BG, 16, 34); renderer.setClearColor(0x000000, 0);
+    floor.visible = !cozy; island.visible = cozy;
+    hemi.color.set(cozy ? 0xe4f4ff : 0xc4d6ff); hemi.groundColor.set(cozy ? 0xa9d58c : 0x30283a); hemi.intensity = cozy ? 1.7 : 1.25;
+    key.color.set(cozy ? 0xfff0d0 : 0xffe0b0); key.intensity = cozy ? 2.3 : 2.6; fill.intensity = cozy ? 0.55 : 0.8; rim.intensity = cozy ? 0.35 : 1.1; renderer.toneMappingExposure = cozy ? 1.12 : 1.05;
+  }
+  const tone = (c) => (look === 'cozy' ? mix(c, '#fff6e4', 0.1) : c);         // cozy colours sit a little softer and warmer
+  let hopAt = -1e9, first = true;
+
+  const clock = new THREE.Clock();
+
   // ---- the character
   const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
   const bodyMat = new THREE.MeshStandardMaterial({ roughness: 0.88, metalness: 0 }), glowMat = new THREE.MeshBasicMaterial({ toneMapped: false });
@@ -48,6 +77,7 @@ export function createView(stage, { reduceMotion = false } = {}) {
   let body = null, glow = null, eyeIdx = [], eyeOrig = [], orb = null, info = { height: 7, headY0: 34, count: 0 };
 
   function setCharacter({ voxels, meta }) {
+    setLook(meta.look || 'classic');
     if (body) { mage.remove(body); body.dispose(); } if (glow) { mage.remove(glow); glow.dispose(); }
     const has = (x, y, z) => voxels.has(x + ',' + y + ',' + z), vis = [], glo = [];
     for (const [k, v] of voxels) {
@@ -57,7 +87,7 @@ export function createView(stage, { reduceMotion = false } = {}) {
     body = new THREE.InstancedMesh(cubeGeo, bodyMat, Math.max(1, vis.length)); glow = new THREE.InstancedMesh(cubeGeo, glowMat, Math.max(1, glo.length));
     const m4 = new THREE.Matrix4(), col = new THREE.Color(), SC = 0.985;
     eyeIdx = []; eyeOrig = [];
-    vis.forEach((v, i) => { m4.makeScale(SC, SC, SC).setPosition(v.x, v.y, v.z); body.setMatrixAt(i, m4); body.setColorAt(i, col.set(shade(v.c, 1 + (hash(v.x, v.y, v.z) - 0.5) * 0.07))); if (v.tag === 'eye') { eyeIdx.push(i); eyeOrig.push(col.clone()); } });
+    vis.forEach((v, i) => { m4.makeScale(SC, SC, SC).setPosition(v.x, v.y, v.z); body.setMatrixAt(i, m4); body.setColorAt(i, col.set(shade(tone(v.c), 1 + (hash(v.x, v.y, v.z) - 0.5) * 0.07))); if (v.tag === 'eye') { eyeIdx.push(i); eyeOrig.push(col.clone()); } });
     glo.forEach((v, i) => { m4.makeScale(SC, SC, SC).setPosition(v.x, v.y, v.z); glow.setMatrixAt(i, m4); glow.setColorAt(i, col.set(v.c)); });
     if (!vis.length) body.count = 0; if (!glo.length) glow.count = 0;
     body.castShadow = body.receiveShadow = true;
@@ -67,6 +97,7 @@ export function createView(stage, { reduceMotion = false } = {}) {
     const on = !!orb; orbLight.visible = halo.visible = on; motes.forEach((m) => { m.visible = on; });
     if (on) { const c = new THREE.Color(meta.orb.color); orbLight.color.copy(c); halo.material.color.copy(c); motes.forEach((m) => m.material.color.copy(c).lerp(new THREE.Color(0xffffff), 0.4)); orbLight.position.copy(orb); halo.position.copy(orb); }
     resize();
+    if (!first) hopAt = clock.getElapsedTime(); first = false;
     return info;
   }
 
@@ -97,13 +128,14 @@ export function createView(stage, { reduceMotion = false } = {}) {
   // ---- loop
   const lid = new THREE.Color('#a8765a'); let blinkAt = 2.5, blinkUntil = 0, frozen = false;
   const setEyes = (closed) => { if (!body || !body.instanceColor) return; eyeIdx.forEach((i, k) => body.setColorAt(i, closed ? lid : eyeOrig[k])); body.instanceColor.needsUpdate = true; };
-  const clock = new THREE.Clock();
   (function frame() {
     requestAnimationFrame(frame);
     const t = frozen ? 0 : clock.getElapsedTime();
     if (tween) { const k = Math.min(1, (performance.now() - tween.t0) / tween.d), e = k * k * (3 - 2 * k); camera.position.lerpVectors(tween.p0, tween.p1, e); controls.target.lerpVectors(tween.q0, tween.q1, e); if (k >= 1) tween = null; }
     if (!reduce && !frozen) {
-      mage.position.y = Math.sin(t * 1.7) * 0.012;
+      const hop = Math.max(0, 1 - (t - hopAt) / 0.5), hopY = hop > 0 ? Math.sin((1 - hop) * Math.PI) * 0.28 : 0;
+      if (look === 'cozy') { mage.position.y = Math.abs(Math.sin(t * 2.2)) * 0.03 + hopY; mage.rotation.z = Math.sin(t * 1.1) * 0.025; mage.scale.y = 1 + Math.sin(t * 4.4) * 0.012; }
+      else { mage.position.y = Math.sin(t * 1.7) * 0.012; mage.rotation.z = 0; mage.scale.y = 1; }
       if (orb) {
         const pulse = 1 + Math.sin(t * 3.1) * 0.08 + Math.sin(t * 7.3) * 0.03;
         orbLight.intensity = 14 * pulse; halo.scale.setScalar(1.7 * pulse); halo.position.y = orb.y + mage.position.y; orbLight.position.y = halo.position.y;
@@ -120,10 +152,10 @@ export function createView(stage, { reduceMotion = false } = {}) {
     const keep = { w: stage.clientWidth, h: stage.clientHeight, pr: renderer.getPixelRatio(), pos: camera.position.clone(), tgt: controls.target.clone(), bg: scene.background, fog: scene.fog, aspect: camera.aspect, fov: camera.fov };
     const [p, t] = spec(view);
     renderer.setPixelRatio(1); renderer.setSize(size, size, false); camera.aspect = 1; camera.fov = view === 'bust' ? 26 : 32; camera.position.set(...p); camera.lookAt(new THREE.Vector3(...t)); camera.updateProjectionMatrix();
-    scene.background = null; scene.fog = null; floor.visible = false; renderer.setClearColor(0x000000, 0);
+    keep.floor = floor.visible; keep.island = island.visible; scene.background = null; scene.fog = null; floor.visible = false; island.visible = false; renderer.setClearColor(0x000000, 0);
     renderer.render(scene, camera);
     return new Promise((res) => renderer.domElement.toBlob((b) => {
-      scene.background = keep.bg; scene.fog = keep.fog; floor.visible = true; renderer.setPixelRatio(keep.pr); camera.fov = keep.fov; camera.aspect = keep.aspect;
+      scene.background = keep.bg; scene.fog = keep.fog; floor.visible = keep.floor; island.visible = keep.island; renderer.setPixelRatio(keep.pr); camera.fov = keep.fov; camera.aspect = keep.aspect;
       camera.position.copy(keep.pos); controls.target.copy(keep.tgt); resize(); res(b);
     }, 'image/png'));
   }
@@ -131,6 +163,6 @@ export function createView(stage, { reduceMotion = false } = {}) {
   return {
     setCharacter, goView, resize, snapshot, get view() { return current; },
     spin: (on) => { controls.autoRotate = !!on; }, get spinning() { return controls.autoRotate; },
-    freeze: () => { frozen = true; mage.position.y = 0; }, renderer, camera, controls,
+    freeze: () => { frozen = true; mage.position.y = 0; mage.rotation.z = 0; mage.scale.y = 1; }, renderer, camera, controls,
   };
 }

@@ -22,8 +22,18 @@ for (const race of P.RACE_IDS) for (const klass of Object.keys(P.CLASSES)) for (
   assert.equal(ymin, 0, `${race}/${klass}: should stand on y=0 (got ${ymin})`);
   assert.ok(Math.min(...xs) >= -24 && Math.max(...xs) <= 24 && Math.min(...zs) >= -24 && Math.max(...zs) <= 24, `${race}/${klass}: out of bounds`);
   assert.ok(eyes >= 8, `${race}/${klass}: eyes missing (${eyes})`);
-  if (klass === 'wizard' || klass === 'sorcerer' || klass === 'druid' || klass === 'warlock') assert.ok(meta.orb, `${race}/${klass}: staff orb missing`);
+  if (['wizard', 'sorcerer', 'warlock'].includes(klass)) assert.ok(meta.orb, `${race}/${klass}: magic light missing`);
   built++;
+}
+
+// 2b. every class is recognisable: a unique headgear + weapon + offhand + emblem, and the model really differs between classes
+const ids = Object.keys(P.CLASSES), gear = new Set(ids.map((k) => ['outfit', 'headgear', 'weapon', 'offhand'].map((f) => P.CLASSES[k][f]).join('/')));
+assert.equal(gear.size, ids.length, 'two classes share the same outfit/headgear/weapon/offhand');
+assert.equal(new Set(ids.map((k) => P.CLASSES[k].emblem)).size, ids.length, 'two classes share an emblem');
+for (const k of ids) assert.ok(P.EMBLEMS[P.CLASSES[k].emblem], `${k}: emblem glyph missing`);
+for (const look of ['cozy', 'classic']) {
+  const sigs = new Set(ids.map((k) => [...buildCharacter(withClass(normalize({ race: 'human', look }), k)).voxels].map(([key, v]) => key + v.c).sort().join('|')));
+  assert.equal(sigs.size, ids.length, `${look}: two classes build the same model`);
 }
 
 // 3. race proportions: halfling/gnome < dwarf < human < elf < dragonborn (head-to-toe, hats excluded)

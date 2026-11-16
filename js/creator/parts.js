@@ -50,8 +50,10 @@ export const MARKS = { none: 'None', 'scar-eye': 'Scar over eye', 'scar-cheek': 
 export const PAINTS = { red: '#c0392b', white: '#f0ece4', blue: '#2e6fd0', black: '#14141c', gold: '#e2b43c' };
 
 export const OUTFITS = { robe: 'Robe', tunic: 'Tunic', armor: 'Armor' };
-export const HEADGEAR = { none: 'None', 'wizard-hat': 'Wizard hat', hood: 'Hood', helm: 'Helm', 'horned-helm': 'Horned helm', circlet: 'Circlet', headband: 'Headband', 'leaf-crown': 'Leaf crown', 'feather-cap': 'Feather cap' };
-export const WEAPONS = { none: 'None', staff: 'Staff', sword: 'Sword', axe: 'Axe', mace: 'Mace', dagger: 'Dagger', bow: 'Bow' };
+export const HEADGEAR = { none: 'None', halo: 'Halo', 'wizard-hat': 'Wizard hat', hood: 'Hood', helm: 'Helm', 'horned-helm': 'Horned helm', circlet: 'Circlet', headband: 'Headband', 'leaf-crown': 'Leaf crown', 'feather-cap': 'Feather cap' };
+export const WEAPONS = { none: 'None', staff: 'Wizard staff', branch: 'Druid staff', bo: 'Bo staff', orb: 'Floating orb', sword: 'Sword', axe: 'Axe', mace: 'Mace', dagger: 'Dagger', bow: 'Bow' };
+export const OFFHANDS = { none: 'None', shield: 'Shield', tome: 'Spell tome', lute: 'Lute', dagger: 'Dagger' };
+export const LOOKS = { cozy: 'Cozy', classic: 'Classic' };
 
 export const CLOTH = {
   crimson: '#a8323f', rust: '#b5582a', saffron: '#d9962a', olive: '#6f7a2f', forest: '#2f6f3e', teal: '#1f7a7a', azure: '#2f6fb0',
@@ -61,17 +63,34 @@ export const METALS = { steel: '#a8b2c4', iron: '#6c7486', bronze: '#b07a3a', go
 export const MAGIC = { cyan: '#5be7ff', violet: '#b48cff', fire: '#ff9a3c', green: '#6dff9a', red: '#ff5a5a' };
 
 // Class presets: gear only. Appearance (race, face, hair) is never touched by picking a class.
+// Each class has its own headgear + weapon + offhand + chest emblem, so you can tell them apart at a glance, even in the cozy style.
 export const CLASSES = {
-  barbarian: { outfit: 'tunic', headgear: 'horned-helm', weapon: 'axe',    primary: 'brown',    secondary: 'rust',     trim: 'bronze', metal: 'iron' },
-  bard:      { outfit: 'tunic', headgear: 'feather-cap', weapon: 'dagger', primary: 'plum',     secondary: 'saffron',  trim: 'gold',   metal: 'silver' },
-  cleric:    { outfit: 'armor', headgear: 'none',        weapon: 'mace',   primary: 'bone',     secondary: 'azure',    trim: 'gold',   metal: 'steel' },
-  druid:     { outfit: 'robe',  headgear: 'leaf-crown',  weapon: 'staff',  primary: 'forest',   secondary: 'olive',    trim: 'bronze', metal: 'bronze', magic: 'green' },
-  fighter:   { outfit: 'armor', headgear: 'helm',        weapon: 'sword',  primary: 'crimson',  secondary: 'charcoal', trim: 'silver', metal: 'steel' },
-  monk:      { outfit: 'tunic', headgear: 'headband',    weapon: 'none',   primary: 'saffron',  secondary: 'rust',     trim: 'bronze', metal: 'bronze' },
-  paladin:   { outfit: 'armor', headgear: 'helm',        weapon: 'sword',  primary: 'bone',     secondary: 'azure',    trim: 'gold',   metal: 'silver' },
-  ranger:    { outfit: 'tunic', headgear: 'hood',        weapon: 'bow',    primary: 'olive',    secondary: 'brown',    trim: 'bronze', metal: 'iron' },
-  rogue:     { outfit: 'tunic', headgear: 'hood',        weapon: 'dagger', primary: 'charcoal', secondary: 'plum',     trim: 'iron',   metal: 'steel' },
-  sorcerer:  { outfit: 'robe',  headgear: 'circlet',     weapon: 'staff',  primary: 'crimson',  secondary: 'plum',     trim: 'gold',   metal: 'gold',   magic: 'fire' },
-  warlock:   { outfit: 'robe',  headgear: 'hood',        weapon: 'staff',  primary: 'plum',     secondary: 'charcoal', trim: 'iron',   metal: 'iron',   magic: 'violet' },
-  wizard:    { outfit: 'robe',  headgear: 'wizard-hat',  weapon: 'staff',  primary: 'indigo',   secondary: 'violet',   trim: 'gold',   metal: 'gold',   magic: 'cyan' },
+  barbarian: { outfit: 'tunic', headgear: 'horned-helm', weapon: 'axe',    offhand: 'none',   primary: 'brown',    secondary: 'rust',     trim: 'bronze', metal: 'iron',   emblem: 'axe' },
+  bard:      { outfit: 'tunic', headgear: 'feather-cap', weapon: 'none',   offhand: 'lute',   primary: 'plum',     secondary: 'saffron',  trim: 'gold',   metal: 'silver', emblem: 'note' },
+  cleric:    { outfit: 'armor', headgear: 'halo',        weapon: 'mace',   offhand: 'shield', primary: 'bone',     secondary: 'azure',    trim: 'gold',   metal: 'steel',  emblem: 'sun' },
+  druid:     { outfit: 'robe',  headgear: 'leaf-crown',  weapon: 'branch', offhand: 'none',   primary: 'forest',   secondary: 'olive',    trim: 'bronze', metal: 'bronze', emblem: 'leaf', magic: 'green' },
+  fighter:   { outfit: 'armor', headgear: 'helm',        weapon: 'sword',  offhand: 'shield', primary: 'crimson',  secondary: 'charcoal', trim: 'silver', metal: 'steel',  emblem: 'sword' },
+  monk:      { outfit: 'tunic', headgear: 'headband',    weapon: 'bo',     offhand: 'none',   primary: 'saffron',  secondary: 'rust',     trim: 'bronze', metal: 'bronze', emblem: 'ring' },
+  paladin:   { outfit: 'armor', headgear: 'halo',        weapon: 'sword',  offhand: 'shield', primary: 'bone',     secondary: 'azure',    trim: 'gold',   metal: 'silver', emblem: 'cross' },
+  ranger:    { outfit: 'tunic', headgear: 'hood',        weapon: 'bow',    offhand: 'none',   primary: 'olive',    secondary: 'brown',    trim: 'bronze', metal: 'iron',   emblem: 'arrow' },
+  rogue:     { outfit: 'tunic', headgear: 'hood',        weapon: 'dagger', offhand: 'dagger', primary: 'charcoal', secondary: 'plum',     trim: 'iron',   metal: 'steel',  emblem: 'dagger' },
+  sorcerer:  { outfit: 'robe',  headgear: 'circlet',     weapon: 'orb',    offhand: 'none',   primary: 'crimson',  secondary: 'plum',     trim: 'gold',   metal: 'gold',   emblem: 'flame', magic: 'fire' },
+  warlock:   { outfit: 'robe',  headgear: 'hood',        weapon: 'none',   offhand: 'tome',   primary: 'plum',     secondary: 'charcoal', trim: 'iron',   metal: 'iron',   emblem: 'eye', magic: 'violet' },
+  wizard:    { outfit: 'robe',  headgear: 'wizard-hat',  weapon: 'staff',  offhand: 'none',   primary: 'indigo',   secondary: 'violet',   trim: 'gold',   metal: 'gold',   emblem: 'star', magic: 'cyan' },
+};
+
+// Chest emblems: 5x5 glyphs drawn in the trim colour on the left chest, whatever the outfit.
+export const EMBLEMS = {
+  axe:    ['###..', '####.', '#####', '.#...', '.#...'],
+  note:   ['..###', '..#.#', '..#..', '###..', '###..'],
+  sun:    ['#.#.#', '.###.', '#####', '.###.', '#.#.#'],
+  leaf:   ['.##..', '###..', '####.', '..###', '...##'],
+  sword:  ['..#..', '..#..', '..#..', '#####', '..#..'],
+  ring:   ['.###.', '#...#', '#...#', '#...#', '.###.'],
+  cross:  ['..#..', '..#..', '#####', '..#..', '..#..'],
+  arrow:  ['..#..', '.###.', '#.#.#', '..#..', '..#..'],
+  dagger: ['..#..', '..#..', '.###.', '..#..', '..#..'],
+  flame:  ['..#..', '.##..', '.###.', '#####', '.###.'],
+  eye:    ['.....', '.###.', '##.##', '.###.', '.....'],
+  star:   ['..#..', '..#..', '#####', '..#..', '..#..'],
 };

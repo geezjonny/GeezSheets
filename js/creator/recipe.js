@@ -9,7 +9,7 @@ export const DEFAULT = {
   hairStyle: 'short', hairColor: 'brown', beard: 'none', beardColor: 'same',
   eyes: 'round', eyeColor: 'blue', eyeGlow: false, brows: 'thin', nose: 'dot', mouth: 'neutral',
   mark: 'none', paint: 'red',
-  outfit: 'robe', headgear: 'wizard-hat', weapon: 'staff', primary: 'indigo', secondary: 'violet', trim: 'gold', metal: 'gold', magic: 'cyan',
+  look: 'cozy', outfit: 'robe', headgear: 'wizard-hat', weapon: 'staff', offhand: 'none', primary: 'indigo', secondary: 'violet', trim: 'gold', metal: 'gold', magic: 'cyan',
   seed: 1,
 };
 
@@ -33,9 +33,11 @@ export function normalize(input = {}) {
   r.mouth = one(P.MOUTHS, r.mouth, 'neutral');
   r.mark = one(P.MARKS, r.mark, 'none');
   r.paint = one(P.PAINTS, r.paint, 'red');
+  r.look = r.look === 'classic' ? 'classic' : 'cozy';
   r.outfit = one(P.OUTFITS, r.outfit, 'robe');
   r.headgear = one(P.HEADGEAR, r.headgear, 'none');
   r.weapon = one(P.WEAPONS, r.weapon, 'none');
+  r.offhand = one(P.OFFHANDS, r.offhand, 'none');
   r.primary = one(P.CLOTH, r.primary, 'indigo');
   r.secondary = one(P.CLOTH, r.secondary, 'violet');
   r.trim = one(P.METALS, r.trim, 'gold');
@@ -49,10 +51,12 @@ export function normalize(input = {}) {
 /** Apply a class preset's gear (outfit, headgear, weapon, colours). Appearance is left alone. */
 export function withClass(r, klass) {
   const c = P.CLASSES[klass];
-  return normalize(c ? { ...r, ...c, klass } : { ...r, klass: 'custom' });
+  if (!c) return normalize({ ...r, klass: 'custom' });
+  const { emblem, ...gear } = c;                         // the emblem is looked up from the class when building, not stored
+  return normalize({ ...r, ...gear, klass });
 }
 
-const GEAR = ['outfit', 'headgear', 'weapon', 'primary', 'secondary', 'trim', 'metal', 'magic'];
+const GEAR = ['outfit', 'headgear', 'weapon', 'offhand', 'primary', 'secondary', 'trim', 'metal', 'magic'];
 /** For callers that hand over a partial recipe: a class with no explicit gear brings the class's gear. */
 export function fromPartial(partial = {}) {
   const hasGear = GEAR.some((k) => k in partial);
@@ -91,7 +95,7 @@ export function decode(text) {
 
 // ---- the NPC "look" that zoom-ink-test/figures.js reads (race, gender, hair text, clothing, armour, weapon, seed)
 const HAIR_TEXT = { bald: 'bald', short: 'cropped short', long: 'long', ponytail: 'tied back', topknot: 'in a topknot', mohawk: 'wild and unkempt', braids: 'long and braided' };
-const WEAPON_TEXT = { staff: 'quarterstaff', sword: 'longsword', axe: 'handaxe', mace: 'mace', dagger: 'dagger', bow: 'shortbow' };
+const WEAPON_TEXT = { staff: 'quarterstaff', branch: 'quarterstaff', bo: 'quarterstaff', orb: null, sword: 'longsword', axe: 'handaxe', mace: 'mace', dagger: 'dagger', bow: 'shortbow' };
 export function toLook(input) {
   const r = normalize(input);
   const hair = r.headgear === 'hood' ? 'hidden under a hood' : r.hairStyle === 'bald' ? 'bald' : `${r.hairColor}, ${HAIR_TEXT[r.hairStyle]}`;

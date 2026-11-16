@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Geez Character Creator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800&display=swap">
 <style>
   :root {
     --bg: #0c1218; --panel: #121a24; --panel2: #18222f; --fg: #e7eef7; --muted: #8fa0b5; --line: rgba(170,205,255,.16);
@@ -51,6 +52,22 @@
   .saved .item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--accent); color: var(--accent-fg); padding: 8px 14px; border-radius: 10px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
   .toast.on { opacity: 1; }
+  /* Cozy style: a sunny stage, cream panels, leaf-green accents. The 3D canvas is transparent, so the sky is this gradient. */
+  body.cozy { --panel: #fffaf0; --panel2: #f4ebd6; --fg: #3b3322; --muted: #8b7c5e; --line: rgba(110,85,40,.2); --accent: #6cc04f; --accent-fg: #0f2a06; --font: "Nunito", "Segoe UI", system-ui, sans-serif; --display: "Nunito", "Segoe UI", system-ui, sans-serif; color-scheme: light; background: #cfeaff; }
+  body.cozy #stage { background:
+      radial-gradient(circle at 80% 12%, #fff6c4 0, rgba(255,246,196,.55) 3%, rgba(255,246,196,0) 18%),
+      radial-gradient(ellipse 9% 4.5% at 20% 17%, rgba(255,255,255,.95), rgba(255,255,255,0)), radial-gradient(ellipse 7% 4% at 25% 15%, rgba(255,255,255,.9), rgba(255,255,255,0)), radial-gradient(ellipse 7% 3.5% at 15% 18%, rgba(255,255,255,.85), rgba(255,255,255,0)),
+      radial-gradient(ellipse 8% 4% at 62% 27%, rgba(255,255,255,.9), rgba(255,255,255,0)), radial-gradient(ellipse 6% 3.5% at 67% 25%, rgba(255,255,255,.85), rgba(255,255,255,0)),
+      radial-gradient(ellipse 7% 3.5% at 42% 10%, rgba(255,255,255,.85), rgba(255,255,255,0)),
+      linear-gradient(#92d4ff 0%, #c4eaff 52%, #f4f2d4 100%); }
+  body.cozy .hud .title, body.cozy .hud .sub, body.cozy .tag { color: #2f4a35; text-shadow: 0 1px 0 rgba(255,255,255,.6); }
+  body.cozy .views { background: rgba(255,250,240,.88); }
+  body.cozy .chip, body.cozy .btn, body.cozy .views button, body.cozy input[type=text], body.cozy textarea { border-radius: 12px; }
+  body.cozy .views button { color: var(--fg); } body.cozy .chip, body.cozy .btn { color: var(--fg); }
+  body.cozy .sw button { box-shadow: inset 0 0 0 1px rgba(0,0,0,.18); }
+  .tag { margin-top: 10px; display: inline-block; font: 700 .95rem var(--display); padding: 6px 12px; border-radius: 999px; background: rgba(14,22,31,.6); border: 1px solid var(--line); }
+  body.cozy .tag { background: rgba(255,250,240,.9); }
+  .tag small { font-weight: 600; opacity: .75; margin-left: 6px; }
   button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   #err { color: var(--danger); }
   @media (max-width: 860px) {
@@ -64,7 +81,7 @@
   <section class="stage" aria-label="Character preview">
     <div id="stage"></div>
     <div class="hud">
-      <div><div class="title">Character Creator</div><div class="sub"><span id="count">…</span> voxels · drag to orbit, scroll to zoom</div><div id="err" hidden></div></div>
+      <div><div class="title">Character Creator</div><div class="sub"><span id="count">…</span> voxels · drag to orbit, scroll to zoom</div><div id="err" hidden></div><div class="tag" id="tag" aria-live="polite"></div></div>
       <div class="views" role="group" aria-label="Camera view">
         <button data-view="front" type="button">Front</button><button data-view="three" type="button" aria-pressed="true">¾</button>
         <button data-view="side" type="button">Side</button><button data-view="back" type="button">Back</button>
@@ -122,6 +139,7 @@ const view = createView($('stage'), { reduceMotion: matchMedia('(prefers-reduced
 const labelsOf = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'string' && v[0] !== '#' ? v : k.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase())]));
 const FIELDS = [
   { title: 'Who', open: true, fields: [
+    { id: 'look', label: 'Style', chips: () => P.LOOKS },
     { id: 'race', label: 'Race', chips: () => Object.fromEntries(P.RACE_IDS.map((k) => [k, P.RACES[k].label])) },
     { id: 'gender', label: 'Build', chips: () => ({ man: 'Masculine', woman: 'Feminine' }) },
     { id: 'klass', label: 'Class (sets outfit, headgear and weapon)', chips: () => ({ ...Object.fromEntries(Object.keys(P.CLASSES).map((k) => [k, k[0].toUpperCase() + k.slice(1)])), custom: 'Custom' }), apply: (v) => withClass(recipe, v) },
@@ -143,12 +161,12 @@ const FIELDS = [
     { id: 'beardColor', label: 'Beard colour', swatches: () => [{ value: 'same', color: P.HAIR_COLORS[recipe.hairColor], title: 'Match hair' }, ...Object.entries(P.HAIR_COLORS).map(([k, c]) => ({ value: k, color: c, title: k }))], show: () => recipe.beard !== 'none' },
   ] },
   { title: 'Gear', open: false, fields: [
-    { id: 'outfit', label: 'Outfit', chips: () => P.OUTFITS, gear: true }, { id: 'headgear', label: 'Headgear', chips: () => P.HEADGEAR, gear: true }, { id: 'weapon', label: 'Weapon', chips: () => P.WEAPONS, gear: true },
+    { id: 'outfit', label: 'Outfit', chips: () => P.OUTFITS, gear: true }, { id: 'headgear', label: 'Headgear', chips: () => P.HEADGEAR, gear: true }, { id: 'weapon', label: 'Weapon (right hand)', chips: () => P.WEAPONS, gear: true }, { id: 'offhand', label: 'Offhand (left hand)', chips: () => P.OFFHANDS, gear: true },
     { id: 'primary', label: 'Main colour', swatches: () => Object.entries(P.CLOTH).map(([k, c]) => ({ value: k, color: c, title: k })), gear: true },
     { id: 'secondary', label: 'Second colour', swatches: () => Object.entries(P.CLOTH).map(([k, c]) => ({ value: k, color: c, title: k })), gear: true },
     { id: 'trim', label: 'Trim metal', swatches: () => Object.entries(P.METALS).map(([k, c]) => ({ value: k, color: c, title: k })), gear: true },
     { id: 'metal', label: 'Armor and weapon metal', swatches: () => Object.entries(P.METALS).map(([k, c]) => ({ value: k, color: c, title: k })), gear: true },
-    { id: 'magic', label: 'Magic colour', swatches: () => Object.entries(P.MAGIC).map(([k, c]) => ({ value: k, color: c, title: k })), show: () => recipe.weapon === 'staff' || ['wizard-hat', 'circlet'].includes(recipe.headgear), gear: true },
+    { id: 'magic', label: 'Magic colour', swatches: () => Object.entries(P.MAGIC).map(([k, c]) => ({ value: k, color: c, title: k })), show: () => ['staff', 'orb'].includes(recipe.weapon) || recipe.offhand === 'tome' || ['wizard-hat', 'circlet'].includes(recipe.headgear), gear: true },
   ] },
 ];
 const sectionState = {};
@@ -200,6 +218,9 @@ let framedFor = null;
 function render() {
   try {
     const info = view.setCharacter(buildCharacter(recipe)); $('count').textContent = info.count.toLocaleString('en-US'); $('err').hidden = true;
+    document.body.classList.toggle('cozy', recipe.look === 'cozy');
+    const kl = recipe.klass === 'custom' ? 'Custom' : recipe.klass[0].toUpperCase() + recipe.klass.slice(1);
+    $('tag').innerHTML = ''; $('tag').append(document.createTextNode(recipe.name), Object.assign(document.createElement('small'), { textContent: `${P.RACES[recipe.race].label} ${kl}` }));
     if (framedFor !== recipe.race) { view.goView(view.view, framedFor === null); framedFor = recipe.race; }   // re-frame only when the body size changes
   }
   catch (e) { $('err').hidden = false; $('err').textContent = 'Could not build this character: ' + e.message; console.error(e); }

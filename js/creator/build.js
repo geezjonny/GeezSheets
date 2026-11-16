@@ -15,12 +15,14 @@ export function buildCharacter(input) {
     top: R.legH + R.torsoH - 1, headY0: R.legH + R.torsoH,
   };
   D.sx = D.hw + 1;                                   // outer x of the shoulder yoke, where the arms start
+  D.cozy = r.look === 'cozy';
   D.arm = D.waist + 2;                               // bottom of the sleeves: hands hang at the hips, so the arms are a third shorter
   const g = new Grid(), meta = { orb: null, headY0: D.headY0, top: D.top, height: 0 };
   const C = colours(r);
   boots(g, r, D, C);
   if (r.outfit === 'robe') robe(g, D, C); else if (r.outfit === 'tunic') tunic(g, D, C); else armor(g, D, C);
   hands(g, r, D, C);
+  emblem(g, r, D, C);
   head(g, r, D, C);
   hair(g, r, D, C);
   face(g, r, D, C);
@@ -29,6 +31,8 @@ export function buildCharacter(input) {
   marks(g, r, D, C);
   headgear(g, r, D, C);
   weapon(g, r, D, C, meta);
+  offhand(g, r, D, C, meta);
+  meta.look = r.look; meta.klass = r.klass;
   for (const k of [...g.m.keys()]) if (+k.split(',')[1] < 0) g.m.delete(k);   // nothing below the floor
   meta.height = Math.max(...[...g.m.keys()].map((k) => +k.split(',')[1])) + 1;
   return { voxels: g.m, meta, recipe: r };
@@ -51,7 +55,13 @@ function colours(r) {
 // ---------------------------------------------------------------- body
 function boots(g, r, D, C) {
   const R = P.RACES[r.race], toe = R.bigFeet ? 7 : 6, mat = r.outfit === 'armor' ? C.metalD : C.boot;
-  g.sym(-6, 0, -3, -2, D.boot, toe, (x, y, z) => (y <= 0 ? C.bootD : z >= 4 && y <= 2 ? (r.outfit === 'armor' ? C.metal : C.bootL) : mat));
+  const shoe = (x, y, z) => (y <= 0 ? C.bootD : z >= 4 && y <= 2 ? (r.outfit === 'armor' ? C.metal : C.bootL) : mat);
+  if (D.cozy) {                                                          // stubby round shoes: a short shaft and a rounded toe cap
+    g.sym(-6, 0, -3, -2, D.boot, 3, shoe);
+    for (const cx of [3, -4]) g.ell(cx, 1.4, 3.2, 3.2, 2.5, 3.6, (x, y, z) => (y < 0 ? null : y <= 0 ? C.bootD : y >= 3 ? mat : C.bootL));
+    return;
+  }
+  g.sym(-6, 0, -3, -2, D.boot, toe, shoe);
 }
 
 function robe(g, D, C) {
@@ -126,6 +136,11 @@ function armor(g, D, C) {
 
 function hands(g, r, D, C) {
   const { sx } = D, waist = D.arm, armored = r.outfit === 'armor', c = (y) => (armored ? (y === waist - 1 ? C.metalD : C.metal) : (y === waist - 1 ? C.skinShade : C.skin));
+  if (D.cozy) {                                                          // round mitten hands, no fingers
+    g.ell(sx + 2, waist - 2, 2, 2.3, 2.6, 2.6, (x, y) => (armored ? C.metal : y <= waist - 3 ? C.skinShade : C.skin));
+    g.ell(-1 - (sx + 2), waist - 2, 1.5, 2.3, 2.6, 2.6, (x, y) => (armored ? C.metal : y <= waist - 3 ? C.skinShade : C.skin));
+    return;
+  }
   g.box(sx + 1, waist - 4, 0, sx + 3, waist - 1, 4, (x, y) => c(y));                                  // right hand (grips the weapon)
   g.box(mx(sx + 3), waist - 4, -1, mx(sx + 1), waist - 1, 2, (x, y) => c(y));                         // left hand
 }
@@ -151,6 +166,15 @@ function hair(g, r, D, C) {
   if (r.hairStyle === 'bald') return;
   const Y = (h) => D.headY0 + h, test = hairPredicate(r.hairStyle), dark = shade(C.hair, 0.7);
   for (let x = -8; x <= 7; x++) for (let hy = 0; hy <= 15; hy++) for (let z = -8; z <= 7; z++) if (test(x, hy, z)) g.set(x, Y(hy), z, C.hair);
+  if (D.cozy && r.hairStyle !== 'mohawk') {                                // chunky hair: one extra voxel of volume around the crown and back, plus bangs
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    for (let x = -9; x <= 8; x++) for (let hy = -1; hy <= 16; hy++) for (let z = -9; z <= 8; z++) {
+      const inside = x >= -8 && x <= 7 && hy >= 0 && hy <= 15 && z >= -8 && z <= 7;
+      if (inside || (z >= 6 && hy < 13) || hy < 5) continue;
+      if (test(clamp(x, -8, 7), clamp(hy, 0, 15), clamp(z, -8, 7))) g.set(x, Y(hy), z, C.hair);
+    }
+    for (let x = -7; x <= 6; x++) { if ((x + 8) % 4 !== 1) { g.set(x, Y(12), 7, C.hair); g.set(x, Y(12), 8, C.hair); } if ((x + 8) % 4 === 3) g.set(x, Y(11), 8, C.hair); }
+  }
   const s = r.hairStyle;
   if (s === 'long') {
     for (let y = Y(-1); y >= Y(-8); y--) { const w = Math.round(7 - (Y(-1) - y) * 0.15), zb = -5 - (y > Y(-4) ? 1 : 0); for (let x = -w; x <= w - 1; x++) for (let z = -9; z <= zb; z++) g.set(x, y, z, C.hair); }
@@ -164,7 +188,9 @@ function hair(g, r, D, C) {
 // ---------------------------------------------------------------- face
 // A serious, adult 16-bit face on a flat plane. Depth comes from shading, not from sticking things out:
 // a heavy upper lid, shadow above and below the eye, a shaded nose bridge, cheekbone and jaw shadows, muted lips.
-function face(g, r, D, C) {
+function face(g, r, D, C) { return D.cozy ? faceCozy(g, r, D, C) : faceClassic(g, r, D, C); }
+
+function faceClassic(g, r, D, C) {
   const Y = (h) => D.headY0 + h, R = P.RACES[r.race], dragon = R.head === 'dragon', woman = r.gender === 'woman', sk = { skin: true };
   const dim = (k) => mix(C.skin, '#14101a', k);                                   // skin pushed toward shadow
   const put = (x, hy, c, o) => { g.set(x, Y(hy), 7, c, o); g.set(mx(x), Y(hy), 7, c, o); };   // always symmetrical
@@ -221,6 +247,37 @@ function face(g, r, D, C) {
   if (m === 'grin') { for (const x of [-2, -1]) { mp(x, 3, lip); mp(x, 2, TEETH); mp(x, 1, lip2); } mp(-3, 3, dim(0.16)); }
 }
 
+// Cozy faces: big flat face, two black bead eyes with a tiny highlight and no whites, blush, a tiny mouth.
+function faceCozy(g, r, D, C) {
+  const Y = (h) => D.headY0 + h, R = P.RACES[r.race], dragon = R.head === 'dragon', sk = { skin: true };
+  const put = (x, hy, c, o) => { g.set(x, Y(hy), 7, c, o); g.set(mx(x), Y(hy), 7, c, o); };
+  const ink = r.eyeGlow ? C.eye : shade(mix(C.eye, '#0a0810', 0.6), 0.65), tag = { tag: 'eye' }, glow = r.eyeGlow ? { glow: true, tag: 'eye' } : tag;
+  const styles = {
+    round:  { xs: [-5, -4], rows: [[7, 'hl', 'ink'], [6, 'ink', 'ink'], [5, 'ink', 'ink']] },
+    wide:   { xs: [-6, -5, -4], rows: [[7, 'hl', 'ink', 'ink'], [6, 'ink', 'ink', 'ink'], [5, 'ink', 'ink', 'ink']] },
+    sharp:  { xs: [-5, -4], rows: [[7, 'hl', 'ink'], [6, 'ink', 'ink'], [5, null, 'ink']] },
+    narrow: { xs: [-5, -4], rows: [[6, 'ink', 'ink'], [5, 'ink', 'ink']] },
+    dot:    { xs: [-4], rows: [[6, 'ink'], [5, 'ink']] },
+  };
+  const e = styles[r.eyes];
+  for (const [hy, ...cells] of e.rows) cells.forEach((cell, i) => { if (cell) put(e.xs[i], hy, cell === 'hl' ? '#ffffff' : ink, cell === 'hl' ? tag : glow); });
+  for (const x of [-7, -6]) put(x, 4, C.blush, sk);                                   // rosy cheeks
+  const bc = shade(C.hair, 0.8);
+  if (r.brows === 'thin') for (const x of [-5, -4]) put(x, 9, bc);
+  if (r.brows === 'thick') for (const x of [-6, -5, -4, -3]) put(x, 9, bc);
+  if (dragon) return;
+  if (r.nose !== 'none') {
+    const depth = { dot: 0, small: 1, normal: 2, big: 3 }[r.nose];
+    for (const x of [-1, 0]) { g.set(x, Y(4), 7, C.skinShade, sk); for (let z = 8; z < 8 + depth; z++) g.set(x, Y(4), z, C.skinLight, sk); if (depth > 1) for (let z = 8; z < 8 + depth; z++) g.set(x, Y(5), z, C.skinLight, sk); }
+  }
+  const lip = mix(C.skin, '#b8505a', 0.7), m = r.mouth, mp = (x, hy, c) => put(x, hy, c);
+  if (m === 'neutral') mp(-1, 2, lip);
+  if (m === 'smile') { mp(-1, 2, lip); mp(-2, 3, lip); }
+  if (m === 'frown') { mp(-1, 3, lip); mp(-2, 2, lip); }
+  if (m === 'open') { mp(-1, 2, '#5a1f28'); mp(-1, 1, '#d8707a'); mp(-2, 3, lip); mp(-1, 3, lip); }
+  if (m === 'grin') { mp(-1, 2, TEETH); mp(-2, 2, TEETH); mp(-1, 3, lip); mp(-2, 3, lip); mp(-3, 3, C.skinShade); }
+}
+
 function beard(g, r, D, C) {
   if (r.beard === 'none' || P.RACES[r.race].head === 'dragon') return;
   const Y = (h) => D.headY0 + h, b = r.beard, col = (x, y, z) => ((x + 20) % 3 === 0 ? shade(C.beard, 0.86) : C.beard);
@@ -249,9 +306,10 @@ function raceFeatures(g, r, D, C) {
     if (!big) g.ball(-0.5, Math.max(1, w - 10), -8, 1.8, '#7a2a3a');
   }
   if (R.head === 'dragon') {
-    g.box(-4, Y(1), 8, 3, Y(6), 13, (x, y, z) => (y === Y(6) ? shade(C.skin, 0.8) : (x + y) % 2 ? shade(C.skin, 0.94) : C.skin), sk);   // snout
-    for (const x of [-3, 2]) { g.set(x, Y(5), 13, '#1a1014'); g.set(x, Y(5), 12, '#1a1014'); }                                           // nostrils
-    g.box(-3, Y(2), 13, 2, Y(2), 13, '#7a2a30'); for (const x of [-3, 2]) g.box(x, Y(0), 13, x, Y(1), 13, TEETH);
+    const sy = D.cozy ? [0, 4, 3, 1, 0] : [1, 6, 5, 2, 0];      // snout bottom, top, nostril row, mouth row, fang row
+    g.box(-4, Y(sy[0]), 8, 3, Y(sy[1]), 13, (x, y, z) => (y === Y(sy[1]) ? shade(C.skin, 0.8) : (x + y) % 2 ? shade(C.skin, 0.94) : C.skin), sk);   // snout
+    for (const x of [-3, 2]) { g.set(x, Y(sy[2]), 13, '#1a1014'); g.set(x, Y(sy[2]), 12, '#1a1014'); }                                           // nostrils
+    g.box(-3, Y(sy[3]), 13, 2, Y(sy[3]), 13, '#7a2a30'); for (const x of [-3, 2]) g.box(x, Y(sy[4]), 13, x, Y(sy[3] - 1 < sy[4] ? sy[4] : sy[3] - 1), 13, TEETH);
     for (const x of [-5, -2, 1, 4]) g.tube([[x + 0.5, Y(13), -6], [x + 0.5, Y(17), -9]], 1.4, 0.5, shade(C.skin, 0.8));                  // crest
     g.sym(8, Y(3), -2, 9, Y(8), 3, shade(C.skin, 1.12));                                                                                 // cheek frills
   }
@@ -261,6 +319,14 @@ function marks(g, r, D, C) {
   if (r.mark === 'none') return;
   const Y = (h) => D.headY0 + h, scar = mix(C.skin, '#f0d0c4', 0.55), paint = (x, hy, c = C.paint) => { const v = g.get(x, Y(hy), 7); if (v && v.skin) g.set(x, Y(hy), 7, c, { skin: true }); };
   const m = r.mark;
+  if (D.cozy) {
+    if (m === 'scar-eye') for (const [x, hy] of [[-7, 10], [-6, 9], [-6, 8], [-6, 7], [-6, 6], [-6, 5], [-5, 4], [-5, 3]]) paint(x, hy, scar);
+    if (m === 'scar-cheek') for (const [x, hy] of [[6, 5], [5, 4], [4, 3], [3, 2], [6, 3], [4, 5]]) paint(x, hy, scar);
+    if (m === 'war-stripes') for (const s of [1, -1]) for (const [x, hy] of [[-7, 4], [-6, 4], [-5, 4], [-4, 4], [-7, 3], [-6, 3], [-5, 3]]) paint(s === 1 ? x : mx(x), hy);
+    if (m === 'cheek-lines') for (const s of [1, -1]) for (const x of [-7, -5]) for (const hy of [2, 3, 4]) paint(s === 1 ? x : mx(x), hy);
+    if (m === 'forehead-mark') for (const [x, hy] of [[-1, 11], [0, 11], [-2, 10], [-1, 10], [0, 10], [1, 10], [-1, 9], [0, 9]]) paint(x, hy);
+    return;
+  }
   if (m === 'scar-eye') for (const [x, hy] of [[-7, 11], [-7, 10], [-6, 9], [-6, 8], [-5, 7], [-5, 6], [-4, 5], [-3, 4]]) paint(x, hy, scar);
   if (m === 'scar-cheek') for (const [x, hy] of [[5, 6], [4, 5], [3, 4], [2, 3], [5, 4], [3, 6]]) paint(x, hy, scar);
   if (m === 'war-stripes') for (const s of [1, -1]) for (const [x, hy] of [[-7, 6], [-6, 6], [-5, 6], [-4, 6], [-7, 5], [-6, 5], [-5, 5]]) paint(s === 1 ? x : mx(x), hy);
@@ -273,6 +339,10 @@ const perimeter = (x, z) => x === -8 || x === 7 || z === -8 || z === 7;
 function headgear(g, r, D, C) {
   const Y = (h) => D.headY0 + h, hg = r.headgear;
   if (hg === 'none') return;
+  if (hg === 'halo') {
+    for (let x = -9; x <= 8; x++) for (let z = -9; z <= 8; z++) { const d = Math.hypot(x + 0.5, z + 0.5); if (d >= 6.2 && d <= 7.8) g.set(x, Y(20), z, C.trim, { glow: true }); }
+    for (const [x, z] of [[-1, -7], [0, -7]]) g.box(x, Y(16), z, x, Y(19), z, C.trimD);
+  }
   if (hg === 'wizard-hat') {
     const hat = C.sec, hatD = C.secD, hatL = C.secL;
     g.disc(Y(16), -0.5, -0.5, 13.6, (x, y, z) => (hash(x, y, z) > 0.5 ? hatD : hat));
@@ -345,6 +415,19 @@ function weapon(g, r, D, C, meta) {
     g.box(x0 - 1, S + 6, 2, x1 + 1, S + 6, 5, C.trim);
     meta.orb = { x: (x0 + x1) / 2 + 0.5, y: S + 3.5 + 0.5, z: 3.5 + 0.5, color: C.magic };
   }
+  if (w === 'bo') { shaft(0, waist + 26, WOOD); for (const y of [waist + 26, waist + 25, 0, 1]) for (let x = x0; x <= x1; x++) for (let z = 3; z <= 4; z++) g.set(x, y, z, C.trim); }
+  if (w === 'branch') {
+    shaft(0, headY0 + 20);
+    const top = headY0 + 21;
+    for (const [dx, dy, dz, rad] of [[0, 0, 0, 2.6], [-2, 2, 0, 1.8], [2, 2, 1, 1.8], [0, 3, -1, 1.6], [-1, -1, 2, 1.5]]) g.ball((x0 + x1) / 2 + 0.5 + dx, top + dy, 3.5 + dz, rad, (x, y, z) => (hash(x, y, z) > 0.72 ? '#8fd16a' : hash(x, y, z) > 0.4 ? '#4fa04a' : '#3a8040'));
+    for (const [dx, dy, dz] of [[-2, 4, 1], [2, 3, 2], [0, 5, -1]]) g.set(Math.round((x0 + x1) / 2 + 0.5) + dx, top + dy, 3 + dz, '#e86a7a');
+  }
+  if (w === 'orb') {
+    const oy = waist + 7, ox = (x0 + x1) / 2 + 0.5;
+    g.ball(ox, oy, 3.5, 3.4, C.magic, { glow: true }); g.ball(ox, oy, 3.5, 1.8, '#f4ffff', { glow: true });
+    for (let i = 0; i < 4; i++) { const a = (i / 4) * Math.PI * 2; g.set(Math.round(ox + Math.cos(a) * 5), oy + Math.round(Math.sin(a * 2) * 1.5), Math.round(3.5 + Math.sin(a) * 5), C.magic, { glow: true }); }
+    meta.orb = { x: ox + 0.5, y: oy + 0.5, z: 4, color: C.magic };
+  }
   if (w === 'sword') {
     shaft(waist - 6, waist - 1, LEATHER); g.box(x0, waist - 7, 3, x1, waist - 7, 4, C.trim);
     g.box(sx, waist, 2, sx + 5, waist + 1, 5, C.trim);
@@ -369,5 +452,50 @@ function weapon(g, r, D, C, meta) {
       const t = i / H, y = y0 + i, bulge = Math.round(5 * Math.sin(Math.PI * t));
       if (y >= 0) { g.set(x1 + bulge, y, 4, WOOD); if (bulge > 0) g.set(x1 + bulge, y, 3, WOOD_D); g.set(x1, y, 3, i === 0 || i === H ? WOOD : '#e8e4d8'); }
     }
+  }
+}
+
+// ---------------------------------------------------------------- class identity
+// A 5x5 emblem in the trim colour on the left chest, whatever the outfit, so a glance tells you the class.
+function emblem(g, r, D, C) {
+  const glyph = P.EMBLEMS[(P.CLASSES[r.klass] || {}).emblem]; if (!glyph) return;
+  const x0 = -D.hw + 1, y0 = D.top - 2, z = D.td;
+  glyph.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') g.set(x0 + i, y0 - j, z, C.trim); }));
+}
+
+// The left hand: a shield, a spell tome, a lute or a second dagger. Placed in front of the left arm.
+function offhand(g, r, D, C, meta) {
+  const o = r.offhand; if (o === 'none') return;
+  const { sx } = D, waist = D.arm, cx = -(sx + 3.5);            // centre of the left hand
+  if (o === 'shield') {
+    const rows = [7, 7, 7, 7, 7, 6, 5, 4, 3, 2], glyph = P.EMBLEMS[(P.CLASSES[r.klass] || {}).emblem] || P.EMBLEMS.cross;
+    rows.forEach((w, j) => {
+      const y = waist + 6 - j, half = w / 2;
+      for (let x = Math.round(cx - half + 0.5); x < Math.round(cx + half + 0.5); x++) for (const z of [5, 6]) {
+        const edge = x === Math.round(cx - half + 0.5) || x === Math.round(cx + half + 0.5) - 1 || j === 0 || j === rows.length - 1;
+        g.set(x, y, z, edge || (j > 6 && z === 6) ? C.metal : z === 6 ? C.pri : C.priD);
+      }
+    });
+    const gx = Math.round(cx) - 2, gy = waist + 5;
+    glyph.forEach((row, j) => [...row].forEach((ch, i) => { if (ch === '#') g.set(gx + i, gy - j, 7, C.trim); }));
+  }
+  if (o === 'tome') {
+    g.box(Math.round(cx) - 3, waist - 1, 4, Math.round(cx) + 2, waist + 6, 5, (x, y, z) => (z === 5 ? (x === Math.round(cx) - 3 || y === waist - 1 || y === waist + 6 ? C.trim : C.secD) : '#efe4c8'));
+    for (const [dx, dy] of [[0, 3], [-1, 3], [0, 2], [-1, 4], [0, 4], [-1, 2]]) g.set(Math.round(cx) + dx, waist + dy, 6, C.magic, { glow: true });
+    meta.orb = meta.orb || { x: cx + 0.5, y: waist + 3.5, z: 6, color: C.magic };
+  }
+  if (o === 'lute') {
+    const wood = (x, y, z) => (hash(x, y, z) > 0.8 ? '#8a5a2c' : '#b0782f');
+    g.ell(cx, waist + 1.5, 4.5, 3.3, 3.9, 1.5, wood);
+    g.ball(cx, waist + 1.5, 6, 1.3, '#2a1a10');
+    g.tube([[cx, waist + 4, 4.5], [cx + 0.5, waist + 12, 4.5]], 0.9, 0.9, '#7a4f28');
+    g.box(Math.round(cx + 0.5) - 1, waist + 12, 4, Math.round(cx + 0.5) + 1, waist + 14, 5, '#5a3a1c');
+    for (const dy of [12, 14]) { g.set(Math.round(cx + 0.5) - 2, waist + dy, 4, '#d8d0b8'); g.set(Math.round(cx + 0.5) + 2, waist + dy, 4, '#d8d0b8'); }
+  }
+  if (o === 'dagger') {
+    const x0 = mx(sx + 3), x1 = mx(sx + 2);
+    for (let y = waist - 5; y <= waist - 1; y++) for (let x = x0; x <= x1; x++) g.set(x, y, 4, LEATHER);
+    g.box(x0 - 1, waist, 3, x1 + 1, waist, 5, C.trim);
+    for (let y = waist + 1; y <= waist + 9; y++) { g.set(x0, y, 4, y > waist + 7 ? C.metalL : C.metal); if (y <= waist + 7) g.set(x1, y, 4, C.metalL); }
   }
 }

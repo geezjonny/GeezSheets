@@ -36,6 +36,12 @@ export class Grid {
       if ((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2 <= r * r) { const col = typeof c === 'function' ? c(x, y, z) : c; if (col) this.set(x, y, z, col, o); }
     return this;
   }
+  /** Solid ellipsoid; c may be a colour or (x,y,z) => colour (null skips). */
+  ell(cx, cy, cz, rx, ry, rz, c, o) {
+    for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) for (let y = Math.floor(cy - ry); y <= Math.ceil(cy + ry); y++) for (let z = Math.floor(cz - rz); z <= Math.ceil(cz + rz); z++)
+      if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 + ((z - cz) / rz) ** 2 <= 1) { const col = typeof c === 'function' ? c(x, y, z) : c; if (col) this.set(x, y, z, col, o); }
+    return this;
+  }
   /** Tube along a polyline of [x,y,z] points; radius eases from r0 to r1. */
   tube(pts, r0, r1, c, o) {
     const total = pts.length - 1;
