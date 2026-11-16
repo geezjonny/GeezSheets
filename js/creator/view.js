@@ -75,10 +75,10 @@ export function createView(stage, { reduceMotion = false } = {}) {
   controls.enableDamping = true; controls.dampingFactor = 0.08; controls.enablePan = false; controls.minDistance = 1.6; controls.maxDistance = 26;
   controls.maxPolarAngle = Math.PI / 2 - 0.03; controls.autoRotateSpeed = 1.1;
   const spec = (name) => {
-    const h = Math.max(6.2, info.height), head = (info.headY0 + 8) * S, mid = Math.min(h * 0.47, 3.7), d = Math.max(13, h * 2.05);
+    const h = Math.max(4.2, info.height), head = (info.headY0 + 8) * S, mid = Math.min(h * 0.47, 3.7), d = Math.max(9.5, h * 2.05);
     return {
       front: [[0, mid + 0.8, d], [0, mid, 0]], three: [[-d * 0.56, mid + 2.4, d * 0.8], [0, mid, 0]], side: [[d, mid + 0.8, 0.4], [0, mid, 0]], back: [[0, mid + 1.2, -d], [0, mid, 0]],
-      face: [[-2.2, head + 0.35, 6.6], [0, head, 0.6]], bust: [[0, head + 0.1, 5.2], [0, head - 0.15, 0.5]],
+      face: [[-2.6, head + 0.35, 8.4], [0, head, 0.6]], bust: [[0, head + 0.1, 6.6], [0, head - 0.15, 0.5]],
     }[name];
   };
   let tween = null, current = 'three';

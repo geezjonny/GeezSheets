@@ -3,17 +3,18 @@
 // so a creator recipe can be turned into the NPC "look" that figures.js already understands (see recipe.js toLook).
 
 // Body proportions per race, in voxels. legH = floor to waist, torsoH = waist to top of shoulders, hw = torso half width.
+// Legs and torso are two-thirds of the first version's height; arms follow the torso (see D.arm in build.js).
 // The head is always 16 voxels. Dragonborn swaps the head for its own (snout, frills).
 export const RACES = {
-  human:      { label: 'Human',      legH: 21, torsoH: 13, hw: 6, td: 4, boot: 5, ears: 'round' },
-  elf:        { label: 'Elf',        legH: 23, torsoH: 13, hw: 5, td: 4, boot: 5, ears: 'elf' },
-  'half-elf': { label: 'Half-Elf',   legH: 21, torsoH: 13, hw: 6, td: 4, boot: 5, ears: 'half' },
-  dwarf:      { label: 'Dwarf',      legH: 15, torsoH: 12, hw: 7, td: 5, boot: 4, ears: 'round' },
-  halfling:   { label: 'Halfling',   legH: 14, torsoH: 11, hw: 5, td: 4, boot: 4, ears: 'round', bigFeet: true },
-  gnome:      { label: 'Gnome',      legH: 13, torsoH: 11, hw: 5, td: 4, boot: 4, ears: 'gnome', noseBonus: 1 },
-  'half-orc': { label: 'Half-Orc',   legH: 22, torsoH: 14, hw: 7, td: 5, boot: 5, ears: 'round', tusks: true, jaw: true },
-  tiefling:   { label: 'Tiefling',   legH: 21, torsoH: 13, hw: 6, td: 4, boot: 5, ears: 'half', horns: true, tail: 'spade' },
-  dragonborn: { label: 'Dragonborn', legH: 22, torsoH: 14, hw: 6, td: 5, boot: 5, ears: 'none', head: 'dragon', tail: 'scaled' },
+  human:      { label: 'Human',      legH: 14, torsoH: 9, hw: 6, td: 4, boot: 5, ears: 'round' },
+  elf:        { label: 'Elf',        legH: 15, torsoH: 9, hw: 5, td: 4, boot: 5, ears: 'elf' },
+  'half-elf': { label: 'Half-Elf',   legH: 14, torsoH: 9, hw: 6, td: 4, boot: 5, ears: 'half' },
+  dwarf:      { label: 'Dwarf',      legH: 10, torsoH: 8, hw: 7, td: 5, boot: 4, ears: 'round' },
+  halfling:   { label: 'Halfling',   legH: 9, torsoH: 7, hw: 5, td: 4, boot: 4, ears: 'round', bigFeet: true },
+  gnome:      { label: 'Gnome',      legH: 8, torsoH: 7, hw: 5, td: 4, boot: 4, ears: 'gnome', noseBonus: 1 },
+  'half-orc': { label: 'Half-Orc',   legH: 15, torsoH: 9, hw: 7, td: 5, boot: 5, ears: 'round', tusks: true, jaw: true },
+  tiefling:   { label: 'Tiefling',   legH: 14, torsoH: 9, hw: 6, td: 4, boot: 5, ears: 'half', horns: true, tail: 'spade' },
+  dragonborn: { label: 'Dragonborn', legH: 15, torsoH: 9, hw: 6, td: 5, boot: 5, ears: 'none', head: 'dragon', tail: 'scaled' },
 };
 export const RACE_IDS = Object.keys(RACES);
 

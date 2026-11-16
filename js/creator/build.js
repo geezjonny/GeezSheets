@@ -15,6 +15,7 @@ export function buildCharacter(input) {
     top: R.legH + R.torsoH - 1, headY0: R.legH + R.torsoH,
   };
   D.sx = D.hw + 1;                                   // outer x of the shoulder yoke, where the arms start
+  D.arm = D.waist + 2;                               // bottom of the sleeves: hands hang at the hips, so the arms are a third shorter
   const g = new Grid(), meta = { orb: null, headY0: D.headY0, top: D.top, height: 0 };
   const C = colours(r);
   boots(g, r, D, C);
@@ -79,8 +80,8 @@ function robe(g, D, C) {
   }
   const ex = -hw + 2;
   for (const [x, y] of [[ex, top - 4], [ex - 1, top - 5], [ex, top - 5], [ex + 1, top - 5], [ex, top - 6]]) g.set(x, y, td, C.trim);   // chest star
-  g.sym(sx, waist, -2, sx + 3, top - 1, 2, (x, y) => (y >= top - 3 ? C.secL : C.pri));
-  g.sym(sx, waist, -3, sx + 4, waist + 3, 3, (x, y) => (y === waist || y === waist + 3 ? C.trim : C.secL));
+  g.sym(sx, D.arm, -2, sx + 3, top - 1, 2, (x, y) => (y >= top - 3 ? C.secL : C.pri));
+  g.sym(sx, D.arm, -3, sx + 4, D.arm + 3, 3, (x, y) => (y === D.arm || y === D.arm + 3 ? C.trim : C.secL));
 }
 
 function tunic(g, D, C) {
@@ -97,9 +98,9 @@ function tunic(g, D, C) {
       g.set(x, y, z, c);
     }
   }
-  g.sym(sx, waist + 4, -2, sx + 3, top - 1, 2, (x, y) => (y >= top - 3 ? C.priL : C.pri));       // short sleeves
-  g.sym(sx, waist, -2, sx + 3, waist + 3, 2, C.skin);                                              // bare forearms
-  g.sym(sx, waist + 1, -2, sx + 3, waist + 3, 2, (x, y, z) => (y === waist + 3 ? C.sec : C.secD)); // bracers
+  g.sym(sx, D.arm + 4, -2, sx + 3, top - 1, 2, (x, y) => (y >= top - 3 ? C.priL : C.pri));       // short sleeves
+  g.sym(sx, D.arm, -2, sx + 3, D.arm + 3, 2, C.skin);                                              // bare forearms
+  g.sym(sx, D.arm + 1, -2, sx + 3, D.arm + 3, 2, (x, y, z) => (y === D.arm + 3 ? C.sec : C.secD)); // bracers
 }
 
 function armor(g, D, C) {
@@ -118,13 +119,13 @@ function armor(g, D, C) {
       g.set(x, y, z, c);
     }
   }
-  g.sym(sx, waist + 4, -2, sx + 3, top - 1, 2, C.pri);                                                // cloth sleeves
-  g.sym(sx, waist, -2, sx + 3, waist + 3, 2, (x, y) => (y === waist + 3 ? C.trim : C.metalD));         // vambraces
+  g.sym(sx, D.arm + 4, -2, sx + 3, top - 1, 2, C.pri);                                                // cloth sleeves
+  g.sym(sx, D.arm, -2, sx + 3, D.arm + 3, 2, (x, y) => (y === D.arm + 3 ? C.trim : C.metalD));         // vambraces
   g.sym(sx - 1, top - 3, -4, sx + 4, top + 1, 4, (x, y) => (y === top + 1 ? C.trim : (x + y) % 3 === 0 ? C.metalD : C.metal)); // pauldrons
 }
 
 function hands(g, r, D, C) {
-  const { waist, sx } = D, armored = r.outfit === 'armor', c = (y) => (armored ? (y === waist - 1 ? C.metalD : C.metal) : (y === waist - 1 ? C.skinShade : C.skin));
+  const { sx } = D, waist = D.arm, armored = r.outfit === 'armor', c = (y) => (armored ? (y === waist - 1 ? C.metalD : C.metal) : (y === waist - 1 ? C.skinShade : C.skin));
   g.box(sx + 1, waist - 4, 0, sx + 3, waist - 1, 4, (x, y) => c(y));                                  // right hand (grips the weapon)
   g.box(mx(sx + 3), waist - 4, -1, mx(sx + 1), waist - 1, 2, (x, y) => c(y));                         // left hand
 }
@@ -152,12 +153,12 @@ function hair(g, r, D, C) {
   for (let x = -8; x <= 7; x++) for (let hy = 0; hy <= 15; hy++) for (let z = -8; z <= 7; z++) if (test(x, hy, z)) g.set(x, Y(hy), z, C.hair);
   const s = r.hairStyle;
   if (s === 'long') {
-    for (let y = Y(-1); y >= Y(-11); y--) { const w = Math.round(7 - (Y(-1) - y) * 0.15), zb = -5 - (y > Y(-6) ? 1 : 0); for (let x = -w; x <= w - 1; x++) for (let z = -9; z <= zb; z++) g.set(x, y, z, C.hair); }
+    for (let y = Y(-1); y >= Y(-8); y--) { const w = Math.round(7 - (Y(-1) - y) * 0.15), zb = -5 - (y > Y(-4) ? 1 : 0); for (let x = -w; x <= w - 1; x++) for (let z = -9; z <= zb; z++) g.set(x, y, z, C.hair); }
   }
-  if (s === 'ponytail') g.tube([[-0.5, Y(11), -9], [-0.5, Y(9), -12], [-0.5, Y(4), -13], [-0.5, Y(-3), -12]], 2.1, 0.9, C.hair).sym(0, Y(11), -10, 1, Y(12), -9, C.trim);
+  if (s === 'ponytail') g.tube([[-0.5, Y(11), -9], [-0.5, Y(9), -12], [-0.5, Y(4), -13], [-0.5, Y(-1), -12]], 2.1, 0.9, C.hair).sym(0, Y(11), -10, 1, Y(12), -9, C.trim);
   if (s === 'topknot') { g.ball(-0.5, Y(17.5), -2, 3.2, C.hair); g.box(-1, Y(15), -3, 0, Y(16), -1, C.trim); }
   if (s === 'mohawk') for (let z = -6; z <= 4; z++) { g.box(-1, Y(16), z, 0, Y(16), z, C.hair); if (z % 2 === 0) g.box(-1, Y(17), z, 0, Y(18), z, C.hair); }
-  if (s === 'braids') for (let y = Y(8); y >= Y(-8); y--) g.sym(-8, y, 4, -7, y, 5, ((Y(8) - y) % 4 < 2) ? C.hair : dark);
+  if (s === 'braids') for (let y = Y(8); y >= Y(-5); y--) g.sym(-8, y, 4, -7, y, 5, ((Y(8) - y) % 4 < 2) ? C.hair : dark);
 }
 
 // ---------------------------------------------------------------- face
@@ -209,7 +210,7 @@ function beard(g, r, D, C) {
   if (b === 'mustache' || b === 'full' || b === 'long') for (let x = -5; x <= 4; x++) { g.set(x, Y(3), 8, C.beard); g.set(x, Y(3), 7, C.beard); }
   if (b === 'goatee') { g.box(-2, Y(-2), 6, 1, Y(0), 8, col); g.box(-1, Y(-3), 7, 0, Y(-3), 8, col); }
   if (b === 'short' || b === 'full' || b === 'long') for (const hy of [1, 2, 3, 4]) for (const x of [-8, -7, -6, -5, 4, 5, 6, 7]) for (const z of [6, 7, 8]) g.set(x, Y(hy), z, C.beard);
-  const len = { short: 3, full: 7, long: 12 }[b];
+  const len = { short: 3, full: 5, long: 8 }[b];
   if (len) for (let y = Y(0); y >= Y(-len); y--) {
     const d = Y(0) - y, hw = Math.max(1, Math.round(7 - d * (b === 'short' ? 0.4 : 0.5))), zt = 9 - Math.floor(d / 5);
     for (let x = -hw; x <= hw - 1; x++) for (let z = 5; z <= Math.max(7, zt); z++) g.set(x, y, z, col(x, y, z));
@@ -227,8 +228,8 @@ function raceFeatures(g, r, D, C) {
   if (R.horns) { const horn = '#e4dcc8'; for (const s of [1, -1]) { const X = (x) => (s === 1 ? x : -1 - x); g.tube([[X(5.5), Y(14), 1], [X(7.5), Y(18), 0], [X(8.5), Y(21), -4], [X(7.5), Y(23), -8]], 2.2, 0.7, horn); } }
   if (R.tail) {
     const w = D.waist, big = R.tail === 'scaled', c = big ? C.skin : C.skinShade;
-    g.tube([[-0.5, w - 2, -5], [-0.5, w - 4, -9], [-0.5, w - 9, -12], [-0.5, w - 13, -12], [-0.5, Math.max(1, w - 15), -9]], big ? 2.8 : 1.6, big ? 0.9 : 0.8, c, sk);
-    if (!big) g.ball(-0.5, Math.max(1, w - 15), -8, 1.8, '#7a2a3a');
+    g.tube([[-0.5, w - 1.5, -5], [-0.5, w - 3, -9], [-0.5, w - 6, -12], [-0.5, w - 9, -12], [-0.5, Math.max(1, w - 10), -9]], big ? 2.8 : 1.6, big ? 0.9 : 0.8, c, sk);
+    if (!big) g.ball(-0.5, Math.max(1, w - 10), -8, 1.8, '#7a2a3a');
   }
   if (R.head === 'dragon') {
     g.box(-4, Y(1), 8, 3, Y(6), 13, (x, y, z) => (y === Y(6) ? shade(C.skin, 0.8) : (x + y) % 2 ? shade(C.skin, 0.94) : C.skin), sk);   // snout
@@ -316,7 +317,7 @@ function headgear(g, r, D, C) {
 // ---------------------------------------------------------------- weapons (right hand, held in front of the fist)
 function weapon(g, r, D, C, meta) {
   const w = r.weapon; if (w === 'none') return;
-  const { waist, sx, headY0 } = D, x0 = sx + 2, x1 = sx + 3, inHand = (x, y, z) => x >= sx + 1 && x <= sx + 3 && y >= waist - 4 && y <= waist - 1 && z >= 0 && z <= 4;
+  const { sx, headY0 } = D, waist = D.arm, x0 = sx + 2, x1 = sx + 3, inHand = (x, y, z) => x >= sx + 1 && x <= sx + 3 && y >= waist - 4 && y <= waist - 1 && z >= 0 && z <= 4;
   const shaft = (yA, yB, c = WOOD) => { for (let y = yA; y <= yB; y++) for (let x = x0; x <= x1; x++) for (let z = 3; z <= 4; z++) if (!inHand(x, y, z)) g.set(x, y, z, y % 9 === 8 ? WOOD_D : c); };
   if (w === 'staff') {
     const S = headY0 + 26; shaft(0, S - 1);
@@ -346,7 +347,7 @@ function weapon(g, r, D, C, meta) {
     for (let y = waist + 1; y <= waist + 9; y++) g.set(x0 + (y > waist + 7 ? 0 : 0), y, 4, y > waist + 7 ? C.metalL : C.metal), (y <= waist + 7 && g.set(x1, y, 4, C.metalL));
   }
   if (w === 'bow') {
-    const y0 = waist - 18, H = 30;
+    const y0 = waist - 12, H = 24;
     for (let i = 0; i <= H; i++) {
       const t = i / H, y = y0 + i, bulge = Math.round(5 * Math.sin(Math.PI * t));
       if (y >= 0) { g.set(x1 + bulge, y, 4, WOOD); if (bulge > 0) g.set(x1 + bulge, y, 3, WOOD_D); g.set(x1, y, 3, i === 0 || i === H ? WOOD : '#e8e4d8'); }

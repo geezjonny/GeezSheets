@@ -12,6 +12,7 @@ three.js comes from `zoom-ink-test/vendor/three/` (shared, not copied).
 ## What it does
 - **9 races** from `data/races.json` (human, elf, half-elf, dwarf, halfling, gnome, half-orc, tiefling, dragonborn). Each has its own proportions; dragonborn get their own head (snout, crest, frills), tieflings get horns and a tail, half-orcs get tusks, elves get long ears.
 - **12 classes** from `data/classes.json`. Picking a class sets outfit, headgear, weapon and colours. It never changes the face, hair or race.
+- **Proportions**: chibi: a big head on a short, stout body. Torso and legs are two-thirds of the first version's height and the arms hang at the hips. Each race sets its own `legH` and `torsoH` in `parts.js`.
 - **Face**: skin tone, 4 eye shapes, 8 eye colours (optionally glowing), brows, nose, mouth, scars, war paint.
 - **Hair and beard**: 7 hair styles, 13 hair colours (the same names as `zoom-ink-test/figures.js`), 6 beards.
 - **Gear**: robe / tunic / armor, 9 headgear options, 7 weapons, cloth, trim, metal and magic colours.
