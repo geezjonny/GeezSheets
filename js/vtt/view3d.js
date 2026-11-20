@@ -46,6 +46,7 @@ function texture(key) {
   else if (name === "mud") { speck(18, "#4a3624", 5); speck(40, "#6a4f36", 1.5); }
   else if (name === "ice") { line(1.6, "#8cc4d8", () => { g.moveTo(10, 30); g.lineTo(60, 52); g.lineTo(54, 100); g.moveTo(60, 52); g.lineTo(118, 40); g.moveTo(90, 120); g.lineTo(70, 86); }); }
   else if (name === "paper") speck(120, "#d8cfb4", 1.2);
+  else if (name === "shingle") for (let r = 0; r < 4; r++) { const y = r * N / 4, off = r % 2 ? N / 8 : 0; line(3, "#4a2e18", () => { for (let x = -N / 4 + off; x < N; x += N / 4) { g.moveTo(x, y); g.quadraticCurveTo(x + N / 8, y + N / 3.2, x + N / 4, y); } }); }   // overlapping roof shingles
   if (false) { g.strokeStyle = "#c7bfaa"; g.lineWidth = 2; g.strokeRect(0, 0, N, N); }   // the map's grid line, floors only
   return texs[key] = Object.assign(new THREE.CanvasTexture(c), { wrapS: THREE.RepeatWrapping, wrapT: THREE.RepeatWrapping, colorSpace: THREE.SRGBColorSpace, anisotropy: renderer.capabilities.getMaxAnisotropy() });
 }
@@ -107,6 +108,26 @@ function seg(a, b, h, t, color, y0, parent, tex) {   // a wall slab between two 
   m.rotation.y = -Math.atan2(dz, dx); return m;
 }
 
+const ROOF_COL = { thatch: 0xd9b45a, slate: 0x6d7b8c, tile: 0xd0623a, wood: 0xa8602a, stone: 0xb0abc0 }, ROOF_DEF = 0xc0653a;
+function roofMesh(a) {   // a gabled roof over a map rectangle: ridge along the long side, a little overhang, sitting on top of the walls
+  const o = .25, w = a.w / U + 2 * o, d = a.h / U + 2 * o, hw = w / 2, hd = d / 2, alongX = w >= d, rh = Math.max(.6, Math.min(2.4, Math.min(w, d) * .4));
+  const y0 = WALL_H, y1 = WALL_H + rh, V = (x, y, z) => new THREE.Vector3(x, y, z);
+  const A = V(-hw, y0, -hd), B = V(hw, y0, -hd), C = V(hw, y0, hd), D = V(-hw, y0, hd);
+  const R1 = alongX ? V(-hw, y1, 0) : V(0, y1, -hd), R2 = alongX ? V(hw, y1, 0) : V(0, y1, hd);
+  const tris = alongX ? [[A, B, R2], [A, R2, R1], [D, C, R2], [D, R2, R1], [A, D, R1], [B, C, R2]] : [[A, D, R2], [A, R2, R1], [B, C, R2], [B, R2, R1], [A, B, R1], [D, C, R2]];
+  const center = V(0, y0 + rh / 3, 0), pos = [], uv = [];
+  for (let [p, q, r] of tris) {
+    const n = new THREE.Vector3().crossVectors(q.clone().sub(p), r.clone().sub(p)), mid = p.clone().add(q).add(r).multiplyScalar(1 / 3).sub(center);
+    if (n.dot(mid) < 0) [q, r] = [r, q];   // wind every face outward
+    for (const v of [p, q, r]) { pos.push(v.x, v.y, v.z); uv.push(2 * (alongX ? v.x : v.z), 2 * (v.y + (alongX ? Math.abs(v.z) : Math.abs(v.x)))); }   // two shingle tiles per cell
+  }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
+  const tex = a.mat === "stone" ? "stone" : a.mat === "wood" ? "wood" : "shingle";
+  const m = new THREE.Mesh(geo, mat(ROOF_COL[a.mat] ?? ROOF_DEF, tex));
+  m.position.set((a.x + a.w / 2) / U, 0, (a.y + a.h / 2) / U); m.userData.structural = true; m.raycast = () => {};   // clicks pass through to what's under it
+  return m;
+}
+
 function build() {
   root.clear(); buildGrid();
   const { floors = {}, walls = {}, props = {} } = S.map, gm = S.isGM;
@@ -140,6 +161,14 @@ function build() {
     const dm = d.state === "open" ? seg(a, b, .45, WALL_T, col, WALL_H - .45, root, "wood")   // lintel over an open doorway
       : seg(a, b, WALL_H, WALL_T * 1.25, col, 0, root, "wood");
     dm.userData.pick = { type: "object", id: d._id };
+  }
+  for (const a of Object.values(S.map.roofs || {})) {   // like 2D: a lifted roof shows the room, and so does a PC standing under it; otherwise players see it solid and the GM sees through it
+    if (a.open) continue;
+    if (Object.values(S.tokens).some((t) => isPcToken(t) && !t.hidden && t.x >= a.x && t.x <= a.x + a.w && t.y >= a.y && t.y <= a.y + a.h)) continue;   // a PC is inside: the roof lifts so the room shows
+    const m = roofMesh(a);
+    if (gm) { m.material = m.material.clone(); Object.assign(m.material, { transparent: true, opacity: .35, depthWrite: false }); }
+    else m.castShadow = true;
+    root.add(m);
   }
   const structural = [];
   root.traverse((n) => { if (n.isMesh && n.userData.structural) structural.push(n); });

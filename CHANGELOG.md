@@ -7,6 +7,7 @@
 - The old campaign page, its scripts and styles, and the `old-*` pages moved to `old/`. The character sheet, map converter and stamps pages stay where they were.
 
 ### VTT (Dungeon Table)
+- Roofs now show in 3D: a gabled roof with shingles (or wood/stone) sits on the walls. Players see it solid until a PC token is inside, then it lifts to show the room; "Lift roof" still works by hand. The GM sees closed roofs see-through.
 - Roll Call rebuilt: pick the stat (Initiative, Save, Skill, Ability or Custom), set a DC, then tick which tokens on the map must roll. Players get a floating window that takes their modifier from their GeezSheets sheet, with Advantage/Disadvantage, Bless, Guidance, Resistance, Bardic Inspiration and an Other box. The dice roll for everyone, results show pass/fail against the DC, and the GM can roll for NPCs or close the call.
 - Build > Token is now a floating window with a dropdown of PCs and NPCs (or just type a name), then click the map. It opens blank each time.
 - GeezSheets write-back: right-click a PC token (GM) to Damage or Heal, written straight to their sheet the same way the sheet does it (temp HP first, death saves reset). Ticking a condition on a PC token also adds it to their sheet.
