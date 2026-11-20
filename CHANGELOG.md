@@ -5,6 +5,7 @@
 ### VTT: Build Tools
 - **Build Tools window:** any Build item opens one Select / Erase / Shape / Paint brush / Paint bucket window plus that kind's swatches (Floors, Walls, Doors, Roofs, Lights, Props). They stay open until you close them, so you can pick a floor, draw it, pick a wall, draw it, pick a prop, place it, without going back to the menu.
 - **Several swatch windows at once:** the one you last touched is outlined and is what you draw with. Each remembers its own material, and brush and bucket grey out for things they don't apply to.
+- "Draw walls around it" now stays however you set it when you switch between swatches, instead of turning itself back on.
 - Removed the "Prototype" footer text from the page.
 
 ### VTT: import maps from the GeezSuite mapmaker

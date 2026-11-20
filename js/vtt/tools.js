@@ -17,6 +17,7 @@ export const WALL_MATS = ["stone", "ashlar", "marble", "brick", "fieldstone", "p
 export const FLOOR_MATS = ["stone", "slab", "cobble", "marble", "tile", "wood", "carpet", "dirt", "cave", "sand", "grass", "snow", "water", "mud", "shallow", "ice", "lava", "swamp", "bone", "void", "gravel", "moss", "iron"];
 export const LIGHT_COLORS = { "#ffb347": "warm (torch)", "#ffe9a8": "white", "#e05a3c": "red", "#4aa3e8": "blue", "#58c46a": "green", "#a46be0": "purple", "#40d0d0": "cyan", "#e87bc0": "pink" };
 const matSel = (list) => `<select data-o="mat"><option value="">default</option>${list.map((m) => `<option value="${m}">${m}</option>`).join("")}</select>`;
+let wallsAround = true;   // "draw walls around it" survives the toolbar being redrawn when you switch swatches
 let curMat = "", curMode = "", eraseOnly = "";   // floor flyout choices: material, shape/brush/bucket, floor-only erase
 const matOf = () => opt("mat")?.value || curMat;
 const FLOOR_ACTS = [["select", "Select"], ["erase", "Erase"], ["shape", "Shape"], ["brush", "Paint brush"], ["bucket", "Paint bucket"]];
@@ -182,7 +183,7 @@ export function renderToolbar() {
   bar.hidden = !t; if (!t) return;
   const name = S.placing ? KINDS[S.placing].label : MENU.find(([k]) => k === t)?.[1] || t;
   const o = {
-    floor: `${curMode ? `<i class="swatch-dot" style="background:${FLOOR_COL[curMat] || "#888"}"></i> ${curMat || "default"} · ${curMode}` : ""} ${curMode === "shape" ? `<label><input data-o="walls" type="checkbox" checked> draw walls around it</label>` : ""}`,
+    floor: `${curMode ? `<i class="swatch-dot" style="background:${FLOOR_COL[curMat] || "#888"}"></i> ${curMat || "default"} · ${curMode}` : ""} ${curMode === "shape" ? `<label><input data-o="walls" type="checkbox" ${wallsAround ? "checked" : ""}> draw walls around it</label>` : ""}`,
   }[t] || "";
   bar.innerHTML = `<b>${name}</b><span>${o}</span><em>${(HINT[t] || "Click the map to place it.") + (t === "token" ? "" : " Right-click it afterwards to change its settings.")}</em><button id="tdone">Done</button>`;
 }
@@ -210,6 +211,7 @@ export function initTools() {
   $("#addmenu").addEventListener("mouseover", (e) => { const c = e.target.closest("[data-choose]"); if (!c) return; if (c.dataset.choose === "object") showSub(c); else hideSub(); });
   document.addEventListener("click", (e) => { if (!e.target.closest("#addmenu, #addsub, #add")) { $("#addmenu").hidden = true; hideSub(); } });
   $("#toolbar").addEventListener("click", (e) => { if (e.target.id === "tdone") setTool(null); });
+  $("#toolbar").addEventListener("change", (e) => { if (e.target.dataset?.o === "walls") wallsAround = e.target.checked; });
   document.addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "r" && (S.placing || S.tool === "prop")) { palRot = (palRot + 90) % 360; const r=swWins.prop?.body.querySelector('[data-pal="rot"]'); if(r)r.value=palRot; return; } if (e.key === "Escape" && (S.tool || S.placing)) setTool(null); });
   document.addEventListener("toolchange", renderToolbar);
 }
