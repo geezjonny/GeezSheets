@@ -2,6 +2,11 @@
 
 ## 2026-11-20
 
+### VTT: Build Tools
+- **Build Tools window:** any Build item opens one Select / Erase / Shape / Paint brush / Paint bucket window plus that kind's swatches (Floors, Walls, Doors, Roofs, Lights, Props). They stay open until you close them, so you can pick a floor, draw it, pick a wall, draw it, pick a prop, place it, without going back to the menu.
+- **Several swatch windows at once:** the one you last touched is outlined and is what you draw with. Each remembers its own material, and brush and bucket grey out for things they don't apply to.
+- Removed the "Prototype" footer text from the page.
+
 ### VTT: import maps from the GeezSuite mapmaker
 - **Import GeezSheets map (.geezmap.json)** in Import / Export brings in a whole map from the mapmaker: every floor, walls, doors, lights, props, roofs, labels and stairs, with an option to also set time, weather and light (dark maps become fog that lights reveal).
 - **Puzzle rules and hand-placed fog come across too:** plates, switches, spawns and the like keep their when/then rules, and rules that open a door or light still work on the imported door or light.

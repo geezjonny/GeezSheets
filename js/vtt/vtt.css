@@ -270,3 +270,5 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 .eqwin .eq-hint { font-size: .75rem; opacity: .7; margin-top: .3rem; }
 .map-label{font-family:Georgia,serif;fill:#3d2632;paint-order:stroke;stroke:#ead8aa;stroke-width:2px;stroke-linejoin:round;pointer-events:all}.elev-edge{fill:#3d2632;opacity:.7}
 .prop-palette{display:grid;grid-template-columns:7rem 1fr;gap:.35rem;max-height:22rem}.prop-cats{display:flex;flex-direction:column;gap:2px}.prop-cats button{text-align:left}.prop-list{display:grid;grid-template-columns:repeat(4,minmax(3.5rem,1fr));gap:3px;overflow:auto}.prop-thumb{display:grid;justify-items:center;font-size:.65rem;padding:2px}.prop-thumb svg{width:32px;height:32px;fill:#b88a52;stroke:#2a1a33;stroke-width:2}.prop-thumb.on{outline:2px solid var(--brass)}.prop-options{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.35rem;font-size:.75rem}
+.fwin.pal-active { outline: 2px solid var(--brass-lt); }
+.paltools button.off { opacity: .4; cursor: not-allowed; }

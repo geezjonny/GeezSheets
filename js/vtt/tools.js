@@ -92,42 +92,76 @@ function showSub(row) {
   s.hidden = false; row.classList.add("open"); const r = row.getBoundingClientRect(), w = s.getBoundingClientRect();
   s.style.left = Math.min(r.right, innerWidth - w.width) + "px"; s.style.top = Math.max(0, Math.min(r.top, innerHeight - w.height)) + "px";
 }
-// Tool palette: every Build item opens two floating windows (tools + swatches) like Aseprite / Photoshop.
-// Opening another Build item reuses them; ending the tool (Done / Esc / a menu tool) closes them.
-const FULL = ["select", "erase", "shape", "brush", "bucket"];
-const PAL = { floor: { tools: FULL, mats: FLOOR_MATS }, fog: { tools: FULL }, wall: { tools: ["select", "erase", "line"], mats: WALL_MATS }, roof: { tools: ["select", "erase", "shape"], mats: ROOF_MATS }, prop: { tools: ["select", "erase", "place"], props: true }, "obj:door": { tools: ["select", "erase", "place", "window"], mats: WALL_MATS }, "obj:light": { tools: ["select", "erase", "place"], color: true } };
-const palCfg = (k) => PAL[k] || { tools: ["select", "erase", "place"] };
-const TOOL_LABEL = { select: "Select", erase: "Erase", shape: "Shape", line: "Line", brush: "Paint brush", bucket: "Paint bucket", place: "Place", window: "Window" };
-let palProp = "crate", palColor = "#ffb347", palKind = "", palMode = "", palMat = "", palRot = 0, palScale = 1, palRandomRot = false, palRandomScale = false, palFlip = false, palTools = null, palSwatch = null;
-const palName = (k) => k.startsWith("obj:") ? KINDS[k.slice(4)]?.label || k : MENU.find(([m]) => m === k)?.[1].replace(" ▸", "") || k;
+// Build Tools: one "Build Tools" window (Select / Erase / Shape / Paint brush / Paint bucket) plus one swatch window per
+// kind (Floors, Walls, Doors, Roofs, Lights, Props). Any Build item opens them; they stay until closed with the x.
+// The tool says HOW you act, the last swatch window you touched says WHAT: pick Stone in Floors, Shape, drag a room;
+// pick Brick in Walls and the same Shape tool draws a wall.
+const KP = {
+  floor: { key: "floor", label: "Floors", mats: FLOOR_MATS, paint: true }, wall: { key: "wall", label: "Walls", mats: WALL_MATS, fixed: "line" },
+  door: { key: "obj:door", label: "Doors", mats: WALL_MATS, fixed: "place", door: true }, roof: { key: "roof", label: "Roofs", mats: ROOF_MATS },
+  fog: { key: "fog", label: "Fog", paint: true, noSwatch: true }, light: { key: "obj:light", label: "Lights", color: true, fixed: "place" }, prop: { key: "prop", label: "Props", props: true, fixed: "place" },
+};
+const MODES = [["select", "Select"], ["erase", "Erase"], ["shape", "Shape"], ["brush", "Paint brush"], ["bucket", "Paint bucket"]];
+let palProp = "crate", palColor = "#ffb347", palRot = 0, palScale = 1, palRandomRot = false, palRandomScale = false, palFlip = false;
+const bt = { mode: "shape", kind: "floor", any: false, mats: {}, window: false };   // any = the menu's Erase (erases every kind)
+let btWin = null; const swWins = {};
 const propGlyph = (k) => { const s = PROP_CATALOG[k]?.shape || "mark"; return s === "rect" ? "<rect x='4' y='8' width='24' height='16' rx='3'/><path d='M7 11l18 10'/>" : s === "round" ? "<circle cx='16' cy='16' r='11'/><circle cx='16' cy='16' r='5' fill='none'/>" : s === "leaf" ? "<circle cx='10' cy='17' r='8'/><circle cx='22' cy='13' r='8'/><circle cx='16' cy='16' r='2'/>" : s === "rock" ? "<path d='M3 23l5-15 14-3 7 14-10 5z'/>" : "<circle cx='16' cy='16' r='9'/><path d='M4 16h24M16 4v24'/>"; };
 const propHTML = () => { const groups = {}; for (const [k, l] of Object.entries(PROPS)) (groups[PROP_CATALOG[k]?.category || "other"] ||= []).push([k, l]); const all = Object.entries(PROPS).length; const cats = Object.entries(groups).map(([cat, list]) => `<button type="button" data-cat="${cat}">${cat} <small>${list.length}</small></button>`).join(""); const thumbs = (list) => list.map(([k, l]) => `<button type="button" class="prop-thumb" data-prop="${k}" title="${l}"><svg viewBox="0 0 32 32" aria-label="${l}">${propGlyph(k)}</svg><span>${l}</span></button>`).join(""); return `<div class="prop-palette"><div class="prop-cats"><button type="button" data-cat="all">All <small>${all}</small></button>${cats}</div><div><input class="prop-filter" placeholder="Search props…" aria-label="Search props"><div class="prop-list">${thumbs(Object.entries(PROPS))}</div></div></div><div class="prop-options"><label>Rotation <input data-pal="rot" type="number" min="0" max="359" value="${palRot}" style="width:4rem"></label><label><input data-pal="rrot" type="checkbox"> random</label><label>Scale <input data-pal="scale" type="range" min="0.5" max="2" step="0.05" value="${palScale}"></label><output data-scale>${palScale}</output><label><input data-pal="rscale" type="checkbox"> random</label><label><input data-pal="flip" type="checkbox"> Mirror</label></div>`; };
 function applyPal() {
-  if (palMode === "select") setTool(null, null, true);
-  else if (palMode === "erase") setTool("erase", { eraseOnly: palKind }, true);
-  else setTool(palKind, { mode: palMode, mat: palMat }, true);
+  const c = KP[bt.kind];
+  if (bt.mode === "select") return setTool(null, null, true);
+  if (bt.mode === "erase") return setTool("erase", { eraseOnly: bt.any ? "" : c.key }, true);
+  const mode = c.fixed || (bt.mode === "brush" || bt.mode === "bucket" ? (c.paint ? bt.mode : "shape") : "shape");
+  setTool(c.key, { mode: c.door && bt.window ? "window" : mode, mat: bt.mats[bt.kind] || "" }, true);
 }
 function syncPalette() {
-  palTools?.body.querySelectorAll("[data-mode]").forEach((b) => b.classList.toggle("on", b.dataset.mode === palMode));
-  palSwatch?.body.querySelectorAll("[data-mat]").forEach((b) => b.classList.toggle("on", b.dataset.mat === palMat));
-  palSwatch?.body.querySelectorAll("[data-prop]").forEach((b) => b.classList.toggle("on", b.dataset.prop === palProp));
-}
-function closePal() { palKind = ""; palTools?.hide(); palSwatch?.hide(); }
-function openPalette(kind) {
-  const cfg = palCfg(kind); palKind = kind; palMode = cfg.tools[2]; palMat = "";
-  if (!palTools) {
-    palTools = floatWindow({ id: "floor-tools", title: "", x: 20, y: 120 }); palTools.body.className += " paltools";
-    palTools.body.addEventListener("click", (e) => { const b = e.target.closest("[data-mode]"); if (!b) return; palMode = b.dataset.mode; applyPal(); });
-    palSwatch = floatWindow({ id: "floor-swatch", title: "Swatches", x: 150, y: 120 }); palSwatch.body.className += " palswatch";
-    palSwatch.body.addEventListener("input", (e) => { if (e.target.matches(".wheel")) palColor = e.target.value; const p=e.target.dataset.pal; if(p==="rot")palRot=+e.target.value||0;if(p==="scale"){palScale=+e.target.value||1;palSwatch.body.querySelector("[data-scale]").value=palScale}if(p==="rrot")palRandomRot=e.target.checked;if(p==="rscale")palRandomScale=e.target.checked;if(p==="flip")palFlip=e.target.checked; });
-    palSwatch.body.addEventListener("click", (e) => { const cat=e.target.closest("[data-cat]"); if(cat){const c=cat.dataset.cat;palSwatch.body.querySelectorAll("[data-prop]").forEach(b=>b.hidden=c!=="all"&&(PROP_CATALOG[b.dataset.prop]?.category||"other")!==c);return} const pr = e.target.closest("[data-prop]"); if (pr) { palProp = pr.dataset.prop; if (palMode === "select" || palMode === "erase") palMode = "place"; syncPalette(); applyPal(); return; } const c = e.target.closest("[data-col]"); if (c) { palColor = c.dataset.col; palSwatch.body.querySelector(".wheel").value = palColor; return; } const b = e.target.closest("[data-mat]"); if (!b) return; palMat = b.dataset.mat; if (palMode === "select" || palMode === "erase") palMode = palCfg(palKind).tools[2]; applyPal(); });
+  const shown = S.tool === "token" ? "" : S.tool || S.placing ? bt.mode : "select", paint = KP[bt.kind].paint;
+  btWin?.body.querySelectorAll("[data-mode]").forEach((b) => { const off = (b.dataset.mode === "brush" || b.dataset.mode === "bucket") && !paint; b.classList.toggle("on", b.dataset.mode === shown); b.disabled = off; b.classList.toggle("off", off); });
+  for (const [k, w] of Object.entries(swWins)) {
+    w.el.classList.toggle("pal-active", k === bt.kind && !bt.any && shown !== "select" && shown !== "");
+    w.body.querySelectorAll("[data-mat]").forEach((b) => b.classList.toggle("on", b.dataset.mat === (bt.mats[k] || "")));
+    w.body.querySelectorAll("[data-prop]").forEach((b) => b.classList.toggle("on", b.dataset.prop === palProp));
+    w.body.querySelector("[data-win]")?.classList.toggle("on", bt.window);
   }
-  palTools.el.querySelector(".fwin-title").textContent = palName(kind);
-  palTools.body.innerHTML = cfg.tools.map((k) => `<button type="button" data-mode="${k}">${TOOL_LABEL[k]}</button>`).join("");
-  palSwatch.body.innerHTML = cfg.props ? propHTML() : cfg.color ? `<input type="color" class="wheel" value="${palColor}" title="Light colour"><div class="presets">${Object.entries(LIGHT_COLORS).map(([c, n]) => `<button type="button" class="swatch" data-col="${c}" title="${n}"><i style="background:${c}"></i></button>`).join("")}</div>` : cfg.mats ? ["", ...cfg.mats].map((m) => `<button type="button" class="swatch" data-mat="${m}" title="${m || "default"}"><i style="background:${FLOOR_COL[m] || "#d8d0c0"}"></i>${m || "default"}</button>`).join("") : "";
-  if (cfg.props) palSwatch.body.querySelector(".prop-filter").addEventListener("input", (e) => palSwatch.body.querySelectorAll("[data-prop]").forEach((b) => b.hidden = !b.textContent.toLowerCase().includes(e.target.value.toLowerCase())));
-  palTools.show(); cfg.mats || cfg.color || cfg.props ? palSwatch.show() : palSwatch.hide(); applyPal();
 }
+function activate(kind) { if (bt.kind === kind && !bt.any) return; bt.kind = kind; bt.any = false; applyPal(); }
+function toolsWin() {
+  if (btWin) return btWin;
+  btWin = floatWindow({ id: "build-tools", title: "Build Tools", x: 20, y: 120 }); btWin.body.className += " paltools";
+  btWin.body.innerHTML = MODES.map(([k, l]) => `<button type="button" data-mode="${k}">${l}</button>`).join("");
+  btWin.body.addEventListener("click", (e) => { const b = e.target.closest("[data-mode]"); if (!b || b.disabled) return; bt.mode = b.dataset.mode; if (bt.mode !== "erase") bt.any = false; applyPal(); });
+  btWin.el.addEventListener("fwin-close", () => { Object.values(swWins).forEach((w) => w.hide()); setTool(null, null, true); });
+  return btWin;
+}
+function swatchWin(kind) {
+  if (swWins[kind]) return swWins[kind];
+  const c = KP[kind], at = { floor: [170, 110], wall: [360, 110], door: [550, 110], roof: [740, 110], light: [930, 110], prop: [170, 420] }[kind] || [170, 110];   // side by side, so several stay usable
+  const w = swWins[kind] = floatWindow({ id: "pal-" + kind, title: c.label, x: at[0], y: at[1], hidden: true }); w.body.className += " palswatch";
+  w.body.innerHTML = c.props ? propHTML() : c.color ? `<input type="color" class="wheel" value="${palColor}" title="Light colour"><div class="presets">${Object.entries(LIGHT_COLORS).map(([col, nm]) => `<button type="button" class="swatch" data-col="${col}" title="${nm}"><i style="background:${col}"></i></button>`).join("")}</div>`
+    : (c.door ? `<button type="button" class="swatch" data-win title="Windows never open; sight passes">Window</button>` : "") + ["", ...c.mats].map((m) => `<button type="button" class="swatch" data-mat="${m}" title="${m || "default"}"><i style="background:${FLOOR_COL[m] || "#d8d0c0"}"></i>${m || "default"}</button>`).join("");
+  if (c.props) w.body.querySelector(".prop-filter").addEventListener("input", (e) => w.body.querySelectorAll("[data-prop]").forEach((b) => b.hidden = !b.textContent.toLowerCase().includes(e.target.value.toLowerCase())));
+  const pick = () => { bt.kind = kind; bt.any = false; if (bt.mode === "select") bt.mode = "shape"; applyPal(); };
+  w.body.addEventListener("input", (e) => { if (e.target.matches(".wheel")) { palColor = e.target.value; pick(); } const p = e.target.dataset.pal; if (p === "rot") palRot = +e.target.value || 0; if (p === "scale") { palScale = +e.target.value || 1; w.body.querySelector("[data-scale]").value = palScale; } if (p === "rrot") palRandomRot = e.target.checked; if (p === "rscale") palRandomScale = e.target.checked; if (p === "flip") palFlip = e.target.checked; });
+  w.body.addEventListener("click", (e) => {
+    const cat = e.target.closest("[data-cat]"); if (cat) { const k = cat.dataset.cat; w.body.querySelectorAll("[data-prop]").forEach((b) => b.hidden = k !== "all" && (PROP_CATALOG[b.dataset.prop]?.category || "other") !== k); return; }
+    const pr = e.target.closest("[data-prop]"); if (pr) { palProp = pr.dataset.prop; return pick(); }
+    const col = e.target.closest("[data-col]"); if (col) { palColor = col.dataset.col; w.body.querySelector(".wheel").value = palColor; return pick(); }
+    if (e.target.closest("[data-win]")) { bt.window = !bt.window; return pick(); }
+    const b = e.target.closest("[data-mat]"); if (!b) return; bt.mats[kind] = b.dataset.mat; pick();
+  });
+  w.el.addEventListener("pointerdown", () => activate(kind));   // touching a window makes it the one you draw with
+  w.el.addEventListener("fwin-close", () => {
+    if (bt.kind === kind) { const next = Object.keys(swWins).find((k) => k !== kind && swWins[k].visible()); if (next) bt.kind = next; }
+    applyPal();
+  });
+  return w;
+}
+function openKind(kind) {
+  toolsWin().show(); bt.kind = kind; bt.any = false; if (bt.mode === "select") bt.mode = "shape";
+  if (!KP[kind].noSwatch) swatchWin(kind).show();
+  applyPal();
+}
+function openErase() { toolsWin().show(); bt.mode = "erase"; bt.any = true; applyPal(); }
 const hideSub = () => { const s = $("#addsub"); if (s) s.hidden = true; $("#addmenu").querySelector(".open")?.classList.remove("open"); };
 // Drop the menu down from the Build item in the menu bar.
 function placeMenu() {
@@ -139,7 +173,7 @@ export function setTool(type, floor, keepPal) {
   if (type?.startsWith("obj:")) S.placing = type.slice(4); else S.tool = type;
   if (floor) { curMat = floor.mat || ""; curMode = floor.mode || ""; eraseOnly = floor.eraseOnly || ""; }
   $("#addmenu").hidden = true; hideSub(); if (type !== "token") tokWin?.hide(); renderToolbar(); renderPanel();
-  if (keepPal) syncPalette(); else closePal();
+  syncPalette();
 }
 export function renderToolbar() {
   const bar = $("#toolbar"), t = S.placing ? "obj:" + S.placing : S.tool;
@@ -162,19 +196,21 @@ export function initTools() {
     if (c.dataset.choose === "puzzle") { setTool(null); return $("#mode").click(); }
     const ch = c.dataset.choose;
     if (ch === "object") return showSub(c);
-    if (ch === "erase" || ch === "puzzle") return setTool(ch);
+    if (ch === "erase") return openErase();
     if (ch === "token") {   // opens blank each time: no dropdown pick, empty name and HP
       if (tokWin) { tokWin.body.querySelector('[data-o="npc"]').value = ""; tokWin.body.querySelector('[data-o="name"]').value = ""; tokWin.body.querySelector('[data-o="hp"]').value = ""; }
-      closePal(); return setTool("token");
+      return setTool("token");
     }
-    $("#addmenu").hidden = true; hideSub(); openPalette(ch);
+    $("#addmenu").hidden = true; hideSub();
+    const pk = ch.startsWith("obj:") ? ch.slice(4) : ch;
+    if (KP[pk]) openKind(pk); else setTool(ch);   // other puzzle objects: plain place tool
   };
   $("#addmenu").addEventListener("click", choose);
   document.addEventListener("click", (e) => { if (e.target.closest("#addsub")) choose(e); });
   $("#addmenu").addEventListener("mouseover", (e) => { const c = e.target.closest("[data-choose]"); if (!c) return; if (c.dataset.choose === "object") showSub(c); else hideSub(); });
   document.addEventListener("click", (e) => { if (!e.target.closest("#addmenu, #addsub, #add")) { $("#addmenu").hidden = true; hideSub(); } });
   $("#toolbar").addEventListener("click", (e) => { if (e.target.id === "tdone") setTool(null); });
-  document.addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "r" && (S.placing || S.tool === "prop")) { palRot = (palRot + 90) % 360; const r=palSwatch?.body.querySelector('[data-pal="rot"]'); if(r)r.value=palRot; return; } if (e.key === "Escape" && (S.tool || S.placing)) setTool(null); });
+  document.addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "r" && (S.placing || S.tool === "prop")) { palRot = (palRot + 90) % 360; const r=swWins.prop?.body.querySelector('[data-pal="rot"]'); if(r)r.value=palRot; return; } if (e.key === "Escape" && (S.tool || S.placing)) setTool(null); });
   document.addEventListener("toolchange", renderToolbar);
 }
 
