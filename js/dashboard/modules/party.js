@@ -1,0 +1,10 @@
+import { $, db, ref, onValue, decKey } from '../core.js';
+
+const num = (v, d = null) => Number.isFinite(Number(v)) ? Number(v) : d;
+const ability = (a, key) => { const v = a?.[key] ?? a?.[key.toUpperCase()]; const score = num(v?.score, num(v)); return num(v?.mod ?? v?.modifier, score == null ? null : Math.floor((score - 10) / 2)); };
+const gp = purse => Object.entries(purse || {}).reduce((n, [k, v]) => n + Number(v || 0) * ({ cp: .01, sp: .1, ep: .5, gp: 1, pp: 10 }[k.toLowerCase()] || 0), 0);
+export default { id: 'party', title: 'Party', pos: { x: 980, y: 54, w: 300 }, build({ body }) {
+  let entities = {};
+  const render = () => { body.replaceChildren(); const pcs = Object.values(entities).filter(e => e?.kind === 'pc'); if (!pcs.length) return body.append($('div', { className: 'empty', textContent: 'No PCs found.' })); pcs.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(e => { const d = { ...(Object.values(e.data?._legacy || {})[0] || {}), ...(e.data || {}) }, c = d.combat || {}, a = d.abilities || d.stats || {}, wis = ability(a, 'wis') ?? 0, prof = num(d.proficiency_bonus ?? c.proficiency_bonus, 0), perception = d.skills?.perception, trained = perception?.proficient ?? perception?.proficiency ?? d.proficiencies?.perception, pp = num(d.passive_perception ?? perception?.passive, null) ?? (10 + wis + (trained ? prof : 0)); const row = $('div', { className: 'row' }, $('span', { className: 'name', textContent: e.name || '?' }), $('span', { className: 'num', textContent: `AC ${c.ac ?? d.ac ?? '—'}` }), $('small', { textContent: `Speed ${c.speed ?? d.speed ?? '—'} · Init ${c.initiative_bonus ?? d.initiative_bonus ?? '—'} · PP ${pp}` })); const dc = d.spellcasting?.save_dc ?? d.spellcasting?.spell_save_dc ?? d.spell_save_dc; row.append($('small', { textContent: `DC ${dc ?? '—'} · ${gp(d.coin_purse).toFixed(2)} gp` })); body.append(row); }); };
+  onValue(ref(db, 'v2/worlds/gaia/entities'), snap => { entities = {}; for (const [id, e] of Object.entries(snap.val() || {})) if (e && !e.data?._sheetsDeleted) entities[decKey(id)] = e; render(); }); render();
+} };

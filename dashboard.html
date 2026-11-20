@@ -6,248 +6,49 @@
 <title>GeezSheets Dashboard</title>
 <script src="js/firebase-config.js"></script>
 <style>
-  :root { --bg:#0f172a; --panel:#1e293b; --line:#334155; --text:#e2e8f0; --dim:#94a3b8; --accent:#38bdf8; }
+  /* Same palette as the VTT (js/vtt/vtt.css): leather, brass, parchment, ink; Georgia everywhere. */
+  :root { --leather:#3a2819; --leather-dk:#24170d; --brass:#b98f45; --brass-lt:#e0bf7a; --ink:#2b2012; --paper:#eadfc3;
+          --text:var(--paper); --dim:#c9b88f; --line:#b98f4566; --accent:var(--brass-lt); --field:#f1e8cf; }
   * { box-sizing:border-box; }
-  body { margin:0; height:100vh; overflow:hidden; background:var(--bg); color:var(--text); font:14px/1.4 system-ui,sans-serif; }
-  #bar { position:fixed; top:0; left:0; right:0; height:34px; display:flex; gap:6px; align-items:center; padding:0 10px; background:#0b1220; border-bottom:1px solid var(--line); z-index:1000; }
-  #bar button.on { background:var(--accent); color:#04121c; }
-  .chips { display:flex; flex-wrap:wrap; gap:4px; } .chips button.on { background:var(--accent); color:#04121c; }
-  .chips button { padding:3px 8px; } .chips .sw { width:24px; height:24px; padding:0; border:2px solid transparent; border-radius:50%; } .chips .sw.on { border-color:#fff; }
-  .lbl { color:var(--dim); font-size:12px; margin-top:2px; }
-  #status { position:fixed; right:10px; bottom:8px; font-size:12px; color:var(--dim); }
+  body { margin:0; height:100vh; overflow:hidden; color:var(--paper); font:14px/1.4 Georgia,"Palatino Linotype",serif;
+         background:radial-gradient(ellipse at 50% 30%,#4a3321 0%,#2a1c12 70%); }
+  #bar { position:fixed; top:0; left:0; right:0; height:34px; display:flex; gap:6px; align-items:center; padding:0 10px; background:var(--leather-dk); border-bottom:1px solid var(--brass); z-index:1000; overflow-x:auto; white-space:nowrap; } #bar button { white-space:nowrap; flex:none; }
+  #status { position:fixed; right:10px; bottom:8px; font-size:12px; font-style:italic; color:var(--dim); }
   .win[hidden] { display:none; }
-  .win { position:absolute; min-width:240px; min-height:90px; width:300px; background:var(--panel); border:1px solid var(--line);
-         border-radius:8px; box-shadow:0 8px 24px #0008; display:flex; flex-direction:column; resize:both; overflow:hidden; }
-  .win > header { display:flex; align-items:center; gap:6px; padding:6px 8px; background:#0b1220; cursor:move; user-select:none; font-weight:600; }
+  .win { position:absolute; min-width:240px; min-height:90px; width:300px; background:linear-gradient(var(--leather),var(--leather-dk)); border:1px solid var(--brass); border-radius:8px;
+         box-shadow:0 6px 18px #0008; display:flex; flex-direction:column; resize:both; overflow:hidden; }
+  .win > header { display:flex; align-items:center; gap:6px; padding:4px 8px; border-bottom:1px solid #b98f4555; cursor:move; user-select:none; color:var(--brass-lt); font-weight:bold; font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
   .win > header span { flex:1; }
-  button { background:#334155; color:var(--text); border:0; border-radius:4px; cursor:pointer; font:inherit; padding:2px 9px; }
-  button:hover { background:#475569; }
   .body { padding:8px; overflow:auto; display:flex; flex-direction:column; gap:8px; flex:1; }
-  select { background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:4px; padding:4px; font:inherit; width:100%; }
-  .row { display:grid; grid-template-columns:1fr auto; gap:2px 8px; align-items:center; }
-  .row .name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .row .name small { color:var(--dim); font-weight:400; margin-left:4px; }
-  .row .num { font-variant-numeric:tabular-nums; text-align:right; cursor:text; }
-  .row .num input { width:3.2em; background:#0b1220; color:var(--text); border:1px solid var(--accent); border-radius:3px; font:inherit; text-align:right; }
-  .bar { grid-column:1 / -1; height:14px; background:#0b1220; border-radius:7px; overflow:hidden; position:relative; }
-  .bar i { position:absolute; inset:0 auto 0 0; transition:width .25s, background .25s; }
-  .bar b { position:absolute; inset:0 auto 0 0; background:#38bdf8; opacity:.9; }
-  .row .x { visibility:hidden; padding:0 6px; margin-left:4px; }
-  .row:hover .x { visibility:visible; }
-  .amt { grid-column:1 / -1; display:flex; gap:6px; align-items:center; }
-  .amt input { width:4em; background:#0b1220; color:var(--text); border:1px solid var(--line); border-radius:4px; padding:2px 4px; font:inherit; text-align:right; }
-  .amt .dmg { background:#991b1b; } .amt .dmg:hover { background:#b91c1c; }
-  .amt .heal { background:#166534; } .amt .heal:hover { background:#15803d; }
-  details { grid-column:1 / -1; } summary { cursor:pointer; color:var(--dim); font-size:12px; }
+  button { background:#ffffff10; color:var(--paper); border:1px solid #b98f4566; border-radius:6px; cursor:pointer; font:inherit; padding:2px 9px; }
+  button:hover { background:#b98f4533; }
+  #bar button.on, .chips button.on { background:var(--brass); color:var(--ink); border-color:var(--brass-lt); font-weight:bold; }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; } .chips button { padding:3px 8px; }
+  .chips .sw { width:24px; height:24px; padding:0; border:2px solid var(--leather-dk); border-radius:50%; } .chips .sw.on { border-color:var(--paper); }
+  .lbl { color:var(--brass-lt); font-size:11px; letter-spacing:.06em; text-transform:uppercase; margin-top:2px; }
+  select, input:not([type=range]):not([type=color]), textarea { background:var(--field); color:var(--ink); border:1px solid var(--brass); border-radius:4px; padding:3px 5px; font:inherit; }
+  select { width:100%; }
+  input[type=range] { accent-color:var(--brass); }
+  .row { display:grid; grid-template-columns:1fr auto; gap:2px 8px; align-items:center; padding:5px 6px; border:1px solid #b98f4533; border-radius:6px; background:#00000022; }
+  .row .name { font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .row .name small { color:var(--dim); font-weight:normal; font-style:italic; margin-left:4px; }
+  .row .num { font-variant-numeric:tabular-nums; text-align:right; cursor:text; } .row .num input { width:3.2em; text-align:right; padding:0 3px; }
+  .bar { grid-column:1 / -1; height:14px; background:var(--leather-dk); border:1px solid var(--brass); border-radius:7px; overflow:hidden; position:relative; }
+  .bar i { position:absolute; inset:0 auto 0 0; transition:width .25s, background .25s; } .bar b { position:absolute; inset:0 auto 0 0; background:#6a9ab0; opacity:.9; }
+  .row .x { visibility:hidden; padding:0 6px; margin-left:4px; } .row:hover .x { visibility:visible; }
+  .amt { grid-column:1 / -1; display:flex; gap:6px; align-items:center; } .amt input { width:4em; text-align:right; }
+  .amt .dmg { background:#8a2a1c; border-color:#c0623f; } .amt .dmg:hover { background:#a63a28; }
+  .amt .heal { background:#4a6b2a; border-color:#8aa65a; } .amt .heal:hover { background:#5c8236; }
+  details { grid-column:1 / -1; } summary { cursor:pointer; color:var(--dim); font-size:12px; font-style:italic; }
   .lvl { display:flex; align-items:center; gap:6px; margin-top:3px; } .lvl label { width:2em; color:var(--dim); font-size:12px; }
-  .pip { width:14px; height:14px; border-radius:50%; border:2px solid var(--accent); padding:0; background:var(--accent); }
-  .pip.used { background:transparent; }
-  .empty { color:var(--dim); text-align:center; padding:8px; }
+  .pip { width:14px; height:14px; border-radius:50%; border:2px solid var(--brass-lt); padding:0; background:var(--brass-lt); } .pip.used { background:transparent; }
+  .conditions { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:3px; }
+  .condition { padding:1px 6px; border-radius:8px; background:var(--paper); color:var(--ink); border:1px solid var(--brass); font-size:11px; } .condition button { padding:0 2px; background:transparent; color:inherit; border:0; font-size:11px; }
+  .note { grid-column:1 / -1; display:flex; gap:4px; align-items:center; } .note button { padding:0 4px; } .note button.has-note { color:var(--brass-lt); border-color:var(--brass-lt); } .note input { min-width:0; flex:1; }
+  .empty { color:var(--dim); font-style:italic; text-align:center; padding:8px; }
+  .drop-ok { outline:2px dashed var(--brass-lt); outline-offset:2px; }
 </style>
 </head>
-<body>
-<div id="bar"></div>
-<div id="status">connecting…</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-import { AUDIO_CATALOG } from './js/vtt/audio-catalog.js';
-import { getDatabase, ref, onValue, set, update } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
-
-const db = getDatabase(initializeApp(window.GEEZ_FIREBASE_CONFIG, 'dashboard'));
-const ENT = 'v2/worlds/gaia/entities';
-// Firebase key escaping used by Gaia (see js/gaia-core/firebase-layout.mjs)
-const encKey = k => String(k).replace(/[%\u0000-\u001f\u007f.#$\[\]\/]|^\d+$/g, c => [...c].map(x => '%' + x.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase()).join(''));
-const decKey = k => k.replace(/%([0-9A-F]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
-
-const $ = (t, props = {}, ...kids) => { const e = Object.assign(document.createElement(t), props); e.append(...kids); return e; };
-const store = (k, d) => { try { return JSON.parse(localStorage.getItem('geez.dash.' + k)) ?? d; } catch { return d; } };
-const save = (k, v) => { try { localStorage.setItem('geez.dash.' + k, JSON.stringify(v)); } catch {} };
-
-// ---- live data: { id: {id, name, kind, hp, max, temp} } for every PC/NPC --------------------------------------------
-let chars = {};
-const listeners = new Set();
-onValue(ref(db, ENT), snap => {
-  const out = {};
-  for (const [rawId, e] of Object.entries(snap.val() || {})) {
-    if (!e || !['pc', 'npc'].includes(e.kind) || e.data?._sheetsDeleted) continue;
-    const c = e.data?.combat || {}, id = decKey(rawId);
-    const sp = e.data?.spellcasting || {}, lv = o => Object.fromEntries(Object.entries(o || {}).filter(([k, v]) => /^[1-9]$/.test(k) && typeof v === 'number'));
-    const slots = lv(sp.slots), used = lv(sp.slots_used);
-    out[id] = { id, name: e.name || '?', kind: e.kind, hp: Number(c.hp_current) || 0, max: Number(c.hp_max) || 0, temp: Number(c.temp_hp) || 0,
-      hasDeath: !!c.death_saves, slots, used };
-  }
-  chars = out;
-  document.getElementById('status').textContent = `live · ${Object.keys(out).length} characters`;
-  listeners.forEach(f => f());
-}, err => { document.getElementById('status').textContent = 'Firebase error: ' + err.message; });
-
-const combatRef = c => `${ENT}/${encKey(c.id)}/data/combat`;
-const writeHp = (c, v) => {
-  const hp = Math.max(0, Math.min(c.max || v, Math.round(v)));
-  return update(ref(db), { [combatRef(c) + '/hp_current']: hp, ...(hp > 0 && c.hp <= 0 && c.hasDeath ? { [combatRef(c) + '/death_saves']: { success: 0, fail: 0 } } : {}) });
-};
-// Damage eats temp HP first, then HP; heal is capped at max (same rules as the sheet's actions)
-const damage = (c, n) => update(ref(db), { [combatRef(c) + '/temp_hp']: Math.max(0, c.temp - n), [combatRef(c) + '/hp_current']: Math.max(0, c.hp - Math.max(0, n - c.temp)) });
-const heal = (c, n) => writeHp(c, Math.min(c.max, c.hp + n));
-const setUsed = (c, lvl, n) => set(ref(db, `${ENT}/${encKey(c.id)}/data/spellcasting/slots_used/${lvl}`), Math.max(0, Math.min(c.slots[lvl], n)));
-const hpColor = c => { const r = c.hp / (c.max || 1); return c.hp <= 0 ? '#7f1d1d' : r <= .25 ? '#dc2626' : r <= .5 ? '#d97706' : '#16a34a'; };
-
-// ---- floating window ------------------------------------------------------------------------------------------------
-const bar = document.getElementById('bar');
-function floatWindow(title, key, def, build) {
-  const pos = store(key + '.pos', def);
-  const win = $('div', { className: 'win' });
-  Object.assign(win.style, { left: pos.x + 'px', top: pos.y + 'px', width: (pos.w || 300) + 'px', height: pos.h ? pos.h + 'px' : '' });
-  const body = $('div', { className: 'body' });
-  const head = $('header', {}, $('span', { textContent: title }));
-  let hidden = store(key + '.hidden', false);
-  const tab = $('button', { textContent: title, onclick: () => show(hidden) });
-  const show = v => { hidden = !v; win.hidden = hidden; tab.classList.toggle('on', !hidden); save(key + '.hidden', hidden); };
-  const close = $('button', { textContent: '×', title: 'Hide', onclick: () => show(false) });
-  head.append(close);
-  bar.append(tab); show(!hidden);
-  win.append(head, body); document.body.append(win);
-  const keep = () => save(key + '.pos', { x: win.offsetLeft, y: win.offsetTop, w: win.offsetWidth, h: win.offsetHeight });
-  head.addEventListener('pointerdown', e => {
-    if (e.target.closest('button')) return;
-    const dx = e.clientX - win.offsetLeft, dy = e.clientY - win.offsetTop;
-    head.setPointerCapture(e.pointerId);
-    const move = ev => { win.style.left = Math.max(0, ev.clientX - dx) + 'px'; win.style.top = Math.max(0, ev.clientY - dy) + 'px'; };
-    const up = () => { head.removeEventListener('pointermove', move); head.removeEventListener('pointerup', up); keep(); };
-    head.addEventListener('pointermove', move); head.addEventListener('pointerup', up);
-  });
-  new ResizeObserver(keep).observe(win);
-  build({ head, body });
-  return win;
-}
-
-// ---- HP module ------------------------------------------------------------------------------------------------------
-floatWindow('HP', 'hp', { x: 40, y: 54, w: 300 }, ({ head, body }) => {
-  let ids = store('hp.ids', []), picking = false; const open = new Set(store('hp.open', []));
-  const addBtn = $('button', { textContent: '+', title: 'Add a character' });
-  head.append(addBtn);
-  addBtn.onclick = () => { picking = true; render(); };
-
-  function picker() {
-    const sel = $('select', {});
-    sel.append($('option', { value: '', textContent: 'Choose PC / NPC…' }));
-    for (const [kind, label] of [['pc', 'PCs'], ['npc', 'NPCs']]) {
-      const g = $('optgroup', { label });
-      Object.values(chars).filter(c => c.kind === kind && !ids.includes(c.id)).sort((a, b) => a.name.localeCompare(b.name))
-        .forEach(c => g.append($('option', { value: c.id, textContent: c.name })));
-      if (g.children.length) sel.append(g);
-    }
-    sel.onchange = () => { if (!sel.value) return; ids = [...ids, sel.value]; save('hp.ids', ids); picking = false; render(); };
-    return sel;
-  }
-
-  function row(c) {
-    const num = $('span', { className: 'num', title: 'Click to set HP', textContent: `${c.hp}/${c.max}${c.temp ? ' +' + c.temp : ''}` });
-    num.onclick = () => {
-      const inp = $('input', { type: 'number', value: c.hp, min: 0, max: c.max });
-      num.replaceChildren(inp, `/${c.max}`); inp.focus(); inp.select();
-      let done = false;
-      const commit = ok => { if (done) return; done = true; if (ok && inp.value !== '') writeHp(c, +inp.value); render(); };
-      inp.onkeydown = e => { if (e.key === 'Enter') commit(true); if (e.key === 'Escape') commit(false); };
-      inp.onblur = () => commit(true);
-    };
-    const x = $('button', { className: 'x', textContent: '×', title: 'Remove from window' });
-    x.onclick = () => { ids = ids.filter(i => i !== c.id); save('hp.ids', ids); render(); };
-    const pct = Math.max(0, Math.min(100, c.hp / (c.max || 1) * 100)), tmp = Math.min(100 - pct, c.temp / (c.max || 1) * 100);
-    const fill = $('i'); fill.style.width = pct + '%'; fill.style.background = hpColor(c);
-    const t = $('b'); t.style.left = pct + '%'; t.style.width = tmp + '%';
-    const amt = $('input', { type: 'number', min: 0, placeholder: '#', title: 'Amount' });
-    const go = fn => () => { const n = Math.floor(+amt.value); if (n > 0) { fn(c, n); amt.value = ''; } };
-    const bDmg = $('button', { className: 'dmg', textContent: 'Dmg', onclick: go(damage) });
-    const bHeal = $('button', { className: 'heal', textContent: 'Heal', onclick: go(heal) });
-    amt.onkeydown = e => { if (e.key === 'Enter') (e.shiftKey ? bHeal : bDmg).click(); };
-    amt.title = 'Amount (Enter = damage, Shift+Enter = heal)';
-    const r = $('div', { className: 'row' },
-      $('span', { className: 'name' }, c.name, $('small', { textContent: c.kind.toUpperCase() })),
-      $('span', {}, num, x),
-      $('div', { className: 'bar' }, fill, t),
-      $('div', { className: 'amt' }, amt, bDmg, bHeal));
-    const lvls = Object.keys(c.slots).filter(l => c.slots[l] > 0).sort();
-    if (lvls.length) {
-      const d = $('details', { open: open.has(c.id) }, $('summary', { textContent: 'Spell slots' }));
-      d.ontoggle = () => { d.open ? open.add(c.id) : open.delete(c.id); save('hp.open', [...open]); };
-      for (const l of lvls) {
-        const used = Math.min(c.slots[l], c.used[l] || 0), line = $('div', { className: 'lvl' }, $('label', { textContent: 'L' + l }));
-        for (let i = 0; i < c.slots[l]; i++) {
-          const isUsed = i >= c.slots[l] - used;   // filled = available, hollow = spent
-          line.append($('button', { className: 'pip' + (isUsed ? ' used' : ''), title: isUsed ? 'Restore slot' : 'Spend slot',
-            onclick: () => setUsed(c, l, used + (isUsed ? -1 : 1)) }));
-        }
-        d.append(line);
-      }
-      r.append(d);
-    }
-    return r;
-  }
-
-  function render() {
-    if (body.querySelector('.num input')) return;   // don't clobber an edit in progress
-    body.replaceChildren();
-    const shown = ids.map(i => chars[i]).filter(Boolean);
-    shown.forEach(c => body.append(row(c)));
-    if (picking) body.append(picker());
-    if (!shown.length && !picking) body.append($('div', { className: 'empty', textContent: 'Press + to add a PC or NPC.' }));
-    if (!picking && shown.length) { /* "+" in the header adds another */ }
-  }
-  listeners.add(render); render();
-});
-
-// ---- Weather module (same data the VTT's weather window uses: test/atmosphere) ---------------------------------------
-const ATMO = 'test/atmosphere';
-floatWindow('Weather', 'weather', { x: 380, y: 54, w: 260 }, ({ body }) => {
-  const swatches = { rain: ['#367bb0', '#6f8fa6', '#707070', '#8b1e2b'], snow: ['#ffffff', '#bfe8ff', '#a6b0b8'] };
-  let st = { weather: 'clear', color: '#4d86b8' };
-  const write = patch => update(ref(db, ATMO), patch);
-  const render = () => {
-    body.replaceChildren(
-      $('div', { className: 'chips' }, ...[['clear', 'Clear'], ['rain', 'Rain'], ['snow', 'Snow']].map(([w, l]) =>
-        $('button', { textContent: l, className: st.weather === w ? 'on' : '', onclick: () => write({ weather: w }) }))));
-    if (st.weather !== 'clear') {
-      const pick = $('input', { type: 'color', value: st.color, title: 'Custom colour', oninput: () => write({ color: pick.value }) });
-      body.append($('div', { className: 'chips' }, ...swatches[st.weather].map(c => {
-        const b = $('button', { className: 'sw' + (c.toLowerCase() === st.color.toLowerCase() ? ' on' : ''), title: c, onclick: () => write({ color: c }) });
-        b.style.background = c; return b; }), pick));
-    }
-  };
-  onValue(ref(db, ATMO), snap => {
-    const v = snap.val() || {};
-    st = { weather: ['clear', 'rain', 'snow'].includes(v.weather) ? v.weather : 'clear', color: /^#[0-9a-f]{6}$/i.test(v.color) ? v.color : '#4d86b8' };
-    render();
-  });
-  render();
-});
-
-// ---- Music module (same data the VTT's audio menu uses: test/audio; the VTT clients do the playing) ------------------
-const AUD = 'test/audio';
-floatWindow('Music', 'music', { x: 660, y: 54, w: 300 }, ({ body }) => {
-  let st = {};
-  const music = AUDIO_CATALOG.music, amb = AUDIO_CATALOG.ambience, sfx = AUDIO_CATALOG.sfx;
-  const render = () => {
-    if (body.querySelector('select:focus')) return;
-    const sel = $('select', {}, $('option', { value: '', textContent: '— no music —' }),
-      ...music.map(m => $('option', { value: m.id, textContent: m.name, selected: st.music?.src === m.src })));
-    sel.onchange = () => { const m = music.find(x => x.id === sel.value); set(ref(db, AUD + '/music'), m ? { src: m.src, name: m.name, vol: 1, at: Date.now() } : null); };
-    const vol = $('input', { type: 'range', min: 0, max: 1, step: .05, value: st.music?.vol ?? 1, disabled: !st.music, title: 'Music volume (everyone)' });
-    vol.onchange = () => set(ref(db, AUD + '/music/vol'), +vol.value);
-    const sfxSel = $('select', {}, $('option', { value: '', textContent: 'Play a sound effect…' }), ...sfx.map(x => $('option', { value: x.id, textContent: x.name })));
-    sfxSel.onchange = () => { const x = sfx.find(y => y.id === sfxSel.value); if (x) set(ref(db, `${AUD}/sfx/${x.id}`), { src: x.src, at: Date.now() }); sfxSel.value = ''; };
-    body.replaceChildren(
-      $('div', { className: 'lbl', textContent: 'Music' }), sel, vol,
-      $('div', { className: 'lbl', textContent: 'Ambience' }),
-      $('div', { className: 'chips' }, ...amb.map(a => $('button', { textContent: a.name, className: st.ambience?.[a.id] ? 'on' : '',
-        onclick: () => set(ref(db, `${AUD}/ambience/${a.id}`), st.ambience?.[a.id] ? null : { src: a.src, vol: 1, at: Date.now() }) }))),
-      $('div', { className: 'lbl', textContent: 'Sound FX' }), sfxSel,
-      $('button', { textContent: 'Stop all', onclick: () => set(ref(db, AUD), { music: null, ambience: {}, sfx: {} }) }));
-  };
-  onValue(ref(db, AUD), snap => { st = snap.val() || {}; render(); });
-  render();
-});
-</script>
+<body><div id="bar"></div><div id="status">connecting…</div>
+<script type="module" src="js/dashboard/main.js"></script>
 </body>
 </html>

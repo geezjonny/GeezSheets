@@ -3,11 +3,15 @@
 ## 2026-11-20
 
 ### Dashboard (new GM page, dashboard.html)
-- New GM dashboard: movable, resizable floating windows that read and write the same Firebase data as the sheets and the VTT. A top bar shows or hides each window, and the layout is remembered.
-- HP window: add any PC or NPC from a dropdown, press + for more. Each shows an HP bar and number. Click the number to set HP, or type an amount and press Dmg or Heal (temp HP soaks damage, healing stops at max, death saves reset above 0).
-- Spell slots dropdown under each character with clickable pips to spend or restore slots, live on the sheet.
-- Weather window: Clear / Rain / Snow with colours, changing the weather on every player's screen.
-- Music window: pick the music track and volume, toggle ambience loops, fire sound effects, or stop everything.
+- New GM dashboard: movable, resizable floating windows that read and write the same Firebase data as the sheets and the VTT. A top bar shows or hides each window, and the layout is remembered. It now looks like the VTT: leather, brass, parchment and ink.
+- HP: add any PC or NPC from a dropdown (press + for more). HP bar and number, click to set HP, or type an amount and press Dmg or Heal (temp HP soaks damage, healing stops at max, death saves reset above 0). Spell slot pips in a dropdown. HP, slot and condition changes are written to both the sheet and the VTT, so everything stays in sync.
+- Conditions: a palette of conditions. Drag one onto a character in the HP window to apply it (chips show on the row, click x to clear).
+- Notes: a GM scratchpad with draggable snippets. Drop a snippet on a character to add it to their note (every character also has a 📝 note in the HP window).
+- Initiative: start, next turn and end, with an editable turn order. Time: slider and presets (dawn, noon, dusk, night).
+- Weather and Music (track, volume, ambience), plus a Soundfx window with a searchable button for every effect.
+- Roll call: call for rolls and watch the answers come in. Dice: a GM roller the table can see.
+- Party: AC, speed, initiative, passive Perception, spell save DC and gold for every PC. Handouts: add, list and remove.
+- Scenes: load and save scenes. Drag the current weather, time of day, music or an ambience loop onto a scene and it applies itself whenever that scene loads in the VTT.
 
 ### VTT (Dungeon Table)
 - New Sight trigger: a Sight object sees players or NPCs within a range (walls and closed doors block it), which can fire rules.

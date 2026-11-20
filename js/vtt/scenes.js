@@ -1,4 +1,4 @@
-import { read, put } from "../store.js";
+import { read, put, patch } from "../store.js";
 import { S } from "./state.js";
 import { floatWindow, addBarButton, dropMenu, menuWindow } from "./ui.js";
 
@@ -35,8 +35,11 @@ function makeSaveWindow() {
   const form = saveWin.body.querySelector("form"), input = form.elements.name;
   form.addEventListener("submit", async (e) => {
     e.preventDefault(); const name = input.value.trim(); if (!name) return input.focus();
-    const [map, objects, tokens, groups] = await Promise.all([read("map"), read("objects"), read("tokens"), read("groups")]);
-    await put(`scenes/${sceneId(name)}`, { name, ts: Date.now(), data: { map: map || {}, objects: objects || {}, tokens: tokens || {}, groups: groups || {} } });
+    const id = sceneId(name), [map, objects, tokens, groups, old] = await Promise.all([read("map"), read("objects"), read("tokens"), read("groups"), read(`scenes/${id}`)]);
+    const data = { map: map || {}, objects: objects || {}, tokens: tokens || {}, groups: groups || {} };
+    if (old?.data?.atmosphere) data.atmosphere = old.data.atmosphere;
+    if (old?.data?.audio) data.audio = old.data.audio;
+    await put(`scenes/${id}`, { name, ts: Date.now(), data });
     saveWin.hide(); input.value = ""; toast(`Saved scene: ${name}`);
   });
   form.querySelector("[data-cancel]").addEventListener("click", () => saveWin.hide());
@@ -53,6 +56,8 @@ async function loadScene(id, scene) {
     put("map", data.map || {}), put("objects", data.objects || {}),
     put("tokens", data.tokens || {}), put("groups", data.groups || {}), put("seeded", true),
   ]);
+  if (data.atmosphere) await patch({ atmosphere: data.atmosphere });
+  if (data.audio) await put("audio", { music: data.audio.music || null, ambience: data.audio.ambience || {}, sfx: {} });
   toast(`Loaded scene: ${scene.name || id}`);
 }
 

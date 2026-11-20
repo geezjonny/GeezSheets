@@ -1,0 +1,7 @@
+import { $, db, ref, onValue, set } from '../core.js';
+const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+export default { id: 'handouts', title: 'Handouts', pos: { x: 340, y: 390, w: 300 }, build({ body }) {
+  let data = {};
+  const render = () => { const url = $('input', { placeholder: 'Image URL', type: 'url' }), title = $('input', { placeholder: 'Title' }), add = $('button', { textContent: 'Add', onclick: () => { if (url.value.trim()) set(ref(db, `test/handouts/${uid()}`), { url: url.value.trim(), title: title.value.trim() || 'Handout', by: 'GM', ts: Date.now() }); url.value = ''; title.value = ''; } }), list = $('div'); for (const [id, h] of Object.entries(data).sort((a, b) => (b[1]?.ts || 0) - (a[1]?.ts || 0))) if (h?.url) { const row = $('div', { className: 'row' }, $('img', { src: h.url, alt: h.title || 'Handout', style: 'max-width:72px;max-height:48px;object-fit:contain' }), $('span', { className: 'name', textContent: h.title || 'Handout' }), $('button', { textContent: '×', title: 'Remove', onclick: () => set(ref(db, `test/handouts/${id}`), null) })); list.append(row); } body.replaceChildren($('div', { className: 'chips' }, url, title, add), list.children.length ? list : $('div', { className: 'empty', textContent: 'No handouts.' })); };
+  onValue(ref(db, 'test/handouts'), snap => { data = snap.val() || {}; render(); }); render();
+} };
