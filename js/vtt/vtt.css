@@ -138,9 +138,17 @@ line.ghost { fill: none; stroke-width: 6; }
 /* ---- token right-click menu ---- */
 #tokmenu { position: fixed; z-index: 6; background: var(--paper); color: var(--ink); border: 2px solid var(--brass); border-radius: .3rem;
   padding: .4rem .8rem; font: 1.02rem Georgia, serif; box-shadow: 0 6px 18px #000a; display: grid; gap: .2rem; }
-#tokmenu label { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
-#tokmenu input, #tokmenu select { font: inherit; max-width: 9rem; }
+#tokmenu label, .tokwin label { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
+#tokmenu input, #tokmenu select, .tokwin input, .tokwin select { font: inherit; max-width: 9rem; }
 #tokmenu a { color: var(--ink); font-weight: 700; }
+/* the same controls inside a floating window (PC tokens) */
+.tokwin { background: var(--paper); color: var(--ink); padding: .4rem .8rem !important; font: 1.02rem Georgia, serif; min-width: 210px; }
+.tokwin { max-height: calc(100vh - 90px); overflow-y: auto; }
+.tokwin .tokwin-box { display: grid; gap: .2rem; }
+.fwin .tokwin button:not(.fwin-x) { background: var(--leather-dk); color: var(--paper); border: 1px solid var(--brass); border-radius: 3px; padding: 3px 9px; font: 14px Georgia, serif; cursor: pointer; }
+.fwin .tokwin button:not(.fwin-x):hover { background: var(--leather); }
+.tokwin details { margin: .3rem 0; } .tokwin summary { cursor: pointer; }
+.tokwin .cond { display: flex; align-items: center; gap: .35rem; font-size: 13px; padding: .05rem 0; } .tokwin .cond i { width: .8rem; height: .8rem; border-radius: 50%; display: inline-block; border: 1px solid #0006; }
 
 /* ---- materials ---- */
 .floorrect.f-wood { fill: #b88a52; }

@@ -63,6 +63,8 @@ async function trackPcs() {
   } finally { pcTrackBusy = false; }
 }
 function liveMenu(pcId) {
+  const live = S.pcLive[pcId];
+  if (live?.hp_max) for (const [wid, w] of Object.entries(tokWins)) if (!w.el.hidden && S.tokPc[wid] === pcId && w.body.firstChild?.children[1]) w.body.firstChild.children[1].textContent = `HP: ${live.hp_current ?? live.hp_max} / ${live.hp_max}${live.temp_hp ? ` (+${live.temp_hp} temp)` : ""}`;   // open PC windows follow the sheet
   const c = S.pcLive[pcId], tid = tokMenu?.dataset.tid;
   if (c?.hp_max && tid && S.tokPc[tid] === pcId) tokMenu.children[1].textContent = `HP: ${c.hp_current ?? c.hp_max} / ${c.hp_max}${c.temp_hp ? ` (+${c.temp_hp} temp)` : ""}`;
 }
@@ -192,14 +194,42 @@ function openSheetWindow(pc) {
   }
   w.show();
 }
+// Right-click a PC token: a floating, draggable window (stays open, refreshes itself). Other tokens get the quick popup.
+const tokWins = {};
+function openTokenWindow(e, id) {
+  const name = S.tokens[id].label || id;
+  let w = tokWins[id];
+  if (!w) {
+    w = tokWins[id] = floatWindow({ id: "token-" + id, title: name, x: Math.max(0, Math.min(innerWidth - 280, e.clientX + 12)), y: Math.max(40, Math.min(innerHeight - 260, e.clientY + 12)) });
+    w.body.classList.add("tokwin");
+  }
+  w.el.querySelector(".fwin-title").textContent = name;
+  w.show(); fillTokenWindow(w, id);
+}
+function fillTokenWindow(w, id) {
+  if (!S.tokens[id]) { w.hide(); return; }
+  const box = document.createElement("div"); box.className = "tokwin-box"; w.body.replaceChildren(box);
+  w.el.querySelector(".fwin-title").textContent = S.tokens[id].label || id;
+  buildTokenMenu(box, id, () => setTimeout(() => fillTokenWindow(w, id), 250), () => w.body.firstChild === box && !w.el.hidden);
+}
+document.addEventListener("tokenschanged", () => {   // keep open windows current (unless you're typing in one)
+  for (const [id, w] of Object.entries(tokWins)) if (!w.el.hidden && !w.body.contains(document.activeElement)) fillTokenWindow(w, id);
+});
 async function showTokenMenu(e, id) {
   closeTokMenu();
   const t = S.tokens[id]; if (!t) return;
+  if (isPcToken(t)) return openTokenWindow(e, id);
   const x = e.clientX, y = e.clientY, esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const name = t.label || id;
   const menu = tokMenu = document.createElement("div"); menu.id = "tokmenu"; menu.dataset.tid = id;
-  menu.innerHTML = `<div><b>${esc(name)}</b></div><div>HP: ${t.hp != null ? `${t.hp} / ${t.max ?? t.hp}` : "—"}</div>`;
   menu.style.left = x + "px"; menu.style.top = y + "px"; document.body.appendChild(menu);
+  buildTokenMenu(menu, id, closeTokMenu, () => alive());
+}
+// Fills a container with a token's info and controls. done() is called after a button action; alive() says whether the container is still showing.
+async function buildTokenMenu(menu, id, done, alive) {
+  const t = S.tokens[id]; if (!t) return;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const name = t.label || id;
+  menu.innerHTML = `<div><b>${esc(name)}</b></div><div>HP: ${t.hp != null ? `${t.hp} / ${t.max ?? t.hp}` : "—"}</div>`;
   if (S.isGM && t.hp != null) {   // GM: adjust an enemy's HP
     menu.insertAdjacentHTML("beforeend", `<div><button data-d="-1">−</button> <button data-d="1">+</button></div>`);
     menu.addEventListener("click", (ev) => { const b = ev.target.closest("[data-d]"); if (!b) return; const k = S.tokens[id]; if (!k) return;
@@ -207,12 +237,12 @@ async function showTokenMenu(e, id) {
   }
   if (S.isGM) {
     const hb = document.createElement("button"); hb.textContent = t.hidden ? "Reveal to players" : "Hide from players";
-    hb.addEventListener("click", () => { closeTokMenu(); put(`tokens/${id}/hidden`, t.hidden ? null : true); }); menu.append(hb);
+    hb.addEventListener("click", () => { done(); put(`tokens/${id}/hidden`, t.hidden ? null : true); }); menu.append(hb);
   }
-  if (S.isGM) { const pb = document.createElement("button"); pb.textContent = "Picture…"; pb.addEventListener("click", () => { closeTokMenu(); openTokenPicker(id); }); menu.append(pb); }
+  if (S.isGM) { const pb = document.createElement("button"); pb.textContent = "Picture…"; pb.addEventListener("click", () => { done(); openTokenPicker(id); }); menu.append(pb); }
   if (S.isGM) {
     const ib = document.createElement("button"), inn = inInitiative(id); ib.textContent = inn ? "Remove from initiative" : "Add to initiative";
-    ib.addEventListener("click", () => { closeTokMenu(); inn ? removeFromInitiative(id) : addToInitiative(id); }); menu.append(ib);
+    ib.addEventListener("click", () => { done(); inn ? removeFromInitiative(id) : addToInitiative(id); }); menu.append(ib);
   }
   if (S.isGM) {   // condition > pick: toggles a coloured ring around the token
     const d = document.createElement("details"); d.innerHTML = `<summary>Condition</summary>` + Object.entries(CONDITIONS).map(([k, [n, c]]) => `<label class="cond"><input type="checkbox" data-c="${k}" ${t.conditions?.[k] ? "checked" : ""}><i style="background:${c}"></i>${n}</label>`).join("");
@@ -228,21 +258,21 @@ async function showTokenMenu(e, id) {
   const pc = t.pc ? { id: t.pc } : (await loadPcs()).find((c) => c.name.toLowerCase() === String(name).toLowerCase());
   if (pc) try {   // a PC's HP comes live from their sheet, not the token's copy
     const c = (await readAt(`characters/pcs/${pc.id}/combat`)) || {};
-    if (c.hp_max && tokMenu === menu) menu.children[1].textContent = `HP: ${c.hp_current ?? c.hp_max} / ${c.hp_max}${c.temp_hp ? ` (+${c.temp_hp} temp)` : ""}`;
+    if (c.hp_max && alive()) menu.children[1].textContent = `HP: ${c.hp_current ?? c.hp_max} / ${c.hp_max}${c.temp_hp ? ` (+${c.temp_hp} temp)` : ""}`;
   } catch (err) { console.warn("Could not read PC HP", err); }
-  if (pc && S.isGM && tokMenu === menu) {   // GM: damage / heal the real sheet, live
+  if (pc && S.isGM && alive()) {   // GM: damage / heal the real sheet, live
     const w = document.createElement("div"); w.innerHTML = `<input type="number" min="1" value="1" style="width:3.5rem"> <button data-h="dmg">Damage</button> <button data-h="heal">Heal</button>`;
     w.addEventListener("click", async (ev) => {
       const b = ev.target.closest("[data-h]"); if (!b) return; const amt = Math.floor(+w.querySelector("input").value);
       if (!(amt > 0)) return;
       try {
         const r = await txnAt(`characters/pcs/${pc.id}/combat`, (c) => sheetHpChange(c, amt, b.dataset.h === "heal"));
-        const c = r.snapshot.val(); if (c && tokMenu === menu) menu.children[1].textContent = `HP: ${c.hp_current ?? c.hp_max} / ${c.hp_max}${c.temp_hp ? ` (+${c.temp_hp} temp)` : ""}`;
-      } catch (err) { console.warn("HP not saved", err); if (tokMenu === menu) menu.children[1].textContent = "HP not saved: " + err.message; }
+        const c = r.snapshot.val(); if (c && alive()) menu.children[1].textContent = `HP: ${c.hp_current ?? c.hp_max} / ${c.hp_max}${c.temp_hp ? ` (+${c.temp_hp} temp)` : ""}`;
+      } catch (err) { console.warn("HP not saved", err); if (alive()) menu.children[1].textContent = "HP not saved: " + err.message; }
     });
     menu.append(w);
   }
-  if (pc && tokMenu === menu) { const a = document.createElement("button"); a.textContent = "View sheet"; a.addEventListener("click", () => { closeTokMenu(); openSheetWindow(pc); }); menu.append(a); }
+  if (pc && alive()) { const a = document.createElement("button"); a.textContent = "View sheet"; a.addEventListener("click", () => { openSheetWindow(pc); done(); }); menu.append(a); }
 }
 map.addEventListener("contextmenu", (e) => {
   const tokEl = e.target.closest(".token");
