@@ -110,7 +110,6 @@ footer { padding: .5rem 1rem .8rem; color: #d2c298; font: italic .96rem Georgia,
 .prop { cursor: grab; }
 .roof { fill: url(#shingle); stroke: #3a2415; stroke-width: 3; pointer-events: none; }
 .roof.gm { opacity: .38; } .roof.gm.open { opacity: .1; stroke-dasharray: 6 4; }
-.sightring { fill: rgba(200,135,28,.08); stroke: #c8871c; stroke-width: 1.5; stroke-dasharray: 5 4; }
 .fog { fill: #14100a; stroke: #14100a; stroke-width: 1; pointer-events: none; }
 .fog.gm { opacity: .5; } .fog.gm.open { opacity: .12; stroke-dasharray: 6 4; stroke: #c8871c; }
 .ghost { fill: #c8871c44; stroke: #c8871c; stroke-width: 3; stroke-dasharray: 5 4; pointer-events: none; }

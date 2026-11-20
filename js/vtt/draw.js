@@ -6,6 +6,7 @@ import { drawIcon } from "./icons.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const COLORS = ["#a94c3d", "#466c83", "#66774b", "#7a5a8a"];
+export const TORCH_CELLS = 3;   // light radius of a held torch, in cells
 
 export function el(name, attrs = {}, parent) {
   const e = document.createElementNS(NS, name);
@@ -40,11 +41,12 @@ export function drawObjects() {
   }   // players never see hidden objects
   updateFogMask(); S.refresh3d?.();
 }
-// Fog is carved out by PC sight radii and by lit lights (each light's own "fog" radius in cells).
+// Fog is carved out by lit lights (each light's own "fog" radius in cells).
 function updateFogMask() {
   $("#sightmask")?.remove();
-  const holes = Object.values(S.tokens).filter((t) => t.sight > 0 && isPcToken(t)).map((t) => [t.x, t.y, t.sight * 40]);
+  const holes = [];
   for (const o of Object.values(S.objects)) if (o.kind === "light" && o.state === "on" && o.fog > 0) holes.push([o.x, o.y, o.fog * 40]);
+  for (const t of Object.values(S.tokens)) if (t.torch && !t.hidden) holes.push([t.x, t.y, TORCH_CELLS * 40]);   // a held torch clears fog around its carrier
   if (holes.length) {
     const { cols, rows } = mapSize(), m = el("mask", { id: "sightmask", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: cols * 40, height: rows * 40 }, $("#map defs"));
     el("rect", { x: 0, y: 0, width: cols * 40, height: rows * 40, fill: "#fff" }, m);
@@ -57,12 +59,11 @@ export function drawTokens() {
   if (S.dragging) return;
   S.refresh3d?.();
   const layer = $("#tokens"); layer.textContent = "";
-  const sighted = Object.values(S.tokens).filter((t) => t.sight > 0 && isPcToken(t));
   updateFogMask();
   Object.entries(S.tokens).forEach(([id, t], i) => {
     if (t.hidden && !S.isGM) return;   // players never see hidden tokens
-    if (S.isGM && t.sight > 0 && isPcToken(t)) el("circle", { cx: t.x, cy: t.y, r: t.sight * 40, class: "sightring", "pointer-events": "none" }, layer);
     const g = el("g", { class: `token ${t.hidden ? "hidden-obj" : ""}`, transform: `translate(${t.x} ${t.y})`, "data-id": id }, layer);
+    if (t.torch) el("circle", { r: TORCH_CELLS * 40, fill: glowFor("#ffb347"), "pointer-events": "none" }, g);   // held torch glow
     conditionsOf(t).forEach((c, k) => el("circle", { r: 21 + k * 4, fill: "none", stroke: CONDITIONS[c][1], "stroke-width": 3, class: "cond-ring", "pointer-events": "none" }, g).appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = CONDITIONS[c][0]);
     el("circle", { r: 17, fill: t.color || (t.hp != null ? "#5a2a24" : COLORS[i % COLORS.length]), class: "stamp" }, g);
     if (t.img) el("image", { href: t.img, x: -17, y: -17, width: 34, height: 34, preserveAspectRatio: "xMidYMid slice", "clip-path": "url(#tokclip)", "pointer-events": "none" }, g);

@@ -183,7 +183,8 @@ function build() {
     const head = new THREE.Mesh(new THREE.SphereGeometry(.17, 16, 12), mat(0xffd9b0)); head.position.y = 1.05; head.castShadow = true; g.add(head);
     [base, body, head].forEach(ink);
     base.receiveShadow = true;
-    if (isPcToken(t)) { const l = new THREE.PointLight(0xffe6b0, .6, 3); l.position.y = 1.2; g.add(l); }   // faint glow around a PC so you can see your own feet
+    if (t.torch) { const r = 3 * 40 / U, l = new THREE.PointLight(new THREE.Color("#ffb347"), 14 * r * .6, r * 1.6, 1.4); l.position.y = 1.3; g.add(l); }   // held torch
+    else if (isPcToken(t)) { const l = new THREE.PointLight(0xffe6b0, .6, 3); l.position.y = 1.2; g.add(l); }   // faint glow around a PC so you can see your own feet
   }
   // Lights: every lit "light" object is a real point light; the first few cast shadows.
   let shadowed = 0;

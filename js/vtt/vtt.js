@@ -239,6 +239,10 @@ async function buildTokenMenu(menu, id, done, alive) {
     const hb = document.createElement("button"); hb.textContent = t.hidden ? "Reveal to players" : "Hide from players";
     hb.addEventListener("click", () => { done(); put(`tokens/${id}/hidden`, t.hidden ? null : true); }); menu.append(hb);
   }
+  if (S.isGM) {   // hold a torch: lights the area around the token and clears fog as it moves
+    const lb = document.createElement("button"); lb.textContent = t.torch ? "Light: put out torch" : "Light: hold torch";
+    lb.addEventListener("click", () => { done(); put(`tokens/${id}/torch`, t.torch ? null : true); }); menu.append(lb);
+  }
   if (S.isGM) { const pb = document.createElement("button"); pb.textContent = "Picture…"; pb.addEventListener("click", () => { done(); openTokenPicker(id); }); menu.append(pb); }
   if (S.isGM) {
     const ib = document.createElement("button"), inn = inInitiative(id); ib.textContent = inn ? "Remove from initiative" : "Add to initiative";
@@ -250,10 +254,6 @@ async function buildTokenMenu(menu, id, done, alive) {
     menu.append(d);
   }
   if (S.isGM) addFields(menu, settingsFor("token", id).fields);
-  if (S.isGM && isPcToken(t)) {   // per-token sight radius, in cells (0 = none)
-    menu.insertAdjacentHTML("beforeend", `<label>Sight (cells) <input type="number" min="0" max="20" value="${t.sight || 0}" style="width:4rem"></label>`);
-    menu.querySelector("input").addEventListener("change", (ev) => put(`tokens/${id}/sight`, Math.max(0, Math.min(20, +ev.target.value || 0)) || null));
-  }
   if (t.npc) return;
   const pc = t.pc ? { id: t.pc } : (await loadPcs()).find((c) => c.name.toLowerCase() === String(name).toLowerCase());
   if (pc) try {   // a PC's HP comes live from their sheet, not the token's copy

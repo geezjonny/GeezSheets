@@ -9,6 +9,7 @@
 - Everything not used by the new VTT (companion, tools, map converter, stamps, world maps, props, textures and more) moved to `Archive/GeezSheets`, outside this repo, as a working copy of the old app for testing.
 
 ### VTT (Dungeon Table)
+- Token right-click menu has a new "Light: hold torch" option (GM). The token glows, lights the 3D scene and clears fog around it as it moves; click again to put it out. Everyone sees it, since it's saved on the token.
 - Tokens can now be dragged in the 3D view: press on one and drag along the floor, and it snaps to the grid on release (players can only move their own). Dragging anywhere else still turns the camera.
 - Rain, snow and the day/night tint now show in the 3D view too (they were hidden behind it).
 - Roofs now show in 3D: a gabled roof with shingles (or wood/stone) sits on the walls. Players see it solid until a PC token is inside, then it lifts to show the room; "Lift roof" still works by hand. The GM sees closed roofs see-through.
