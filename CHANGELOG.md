@@ -3,6 +3,7 @@
 ## 2026-11-20
 
 ### VTT (Dungeon Table)
+- Natural 20s and natural 1s now get a full-screen highlight with their own sound once the dice settle: a golden burst and rising chime for a 20, a red shaking vignette and sad wah-wah for a 1. Everyone at the table sees it, and with advantage or disadvantage only the die that counts triggers it.
 - Right-click a PC token > Equipment opens a window with Helmet, Armor, Shield and Weapon. The GM picks from that PC's inventory; hover any slot to see what it does (AC, Stealth penalty, strength requirement, weapon damage). It saves to the PC's sheet, so it updates live both ways.
 - Roll Call now applies the rules for you. Chain Mail (or any noisy armor) means disadvantage on Stealth, armor the sheet isn't trained in means disadvantage on STR/DEX rolls, and Poisoned, Frightened and Restrained add their own penalties. Advantage and disadvantage cancel out.
 - The player's roll window shows the result and why ("Rolling with disadvantage: Chain Mail, noisy armor") and players can no longer switch it, so rolling stays one click. The GM can still call advantage or disadvantage for everyone.

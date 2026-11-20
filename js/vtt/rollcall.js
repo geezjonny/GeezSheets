@@ -163,7 +163,7 @@ async function answer(tid, o = {}) {
     used.forEach(([k, s], i) => { const v = dr[dice.length + i].result; total += v; dice.push({ s, v }); bits.push(`+ ${EXTRAS.find((e) => e[0] === k)[1]} ${v}`); });
     if (other) { total += other; bits.push(sgn(other)); }
     out = { total, detail: bits.join(" "), nat: d20, dice };
-    return { by: name, total, sub: `${callTitle(call)}: ${bits.join(" ")}` };
+    return { by: name, total, nat: d20, sub: `${callTitle(call)}: ${bits.join(" ")}` };
   });
   if (!roll || !out || current?.id !== call.id) return;
   const res = { name, total: out.total, detail: out.detail, nat: out.nat, dice: out.dice, t: Date.now() };
