@@ -2,6 +2,14 @@
 
 ## 2026-11-20
 
+### VTT: Table Chat (webcam + mic)
+- **Built-in video chat:** a new **Chat** button in the menu bar opens a floating video panel right in the VTT. Everyone joins the same call, and it's just the video: no bars or menus, only a mic, camera and leave icon floating on your own tile.
+- **Straight in, no sign-in screen:** the GM joins as "GM" automatically (`?gm`), players use `?name=` or the name they typed last time, and the room is pre-named in code. The browser asks for camera and mic as soon as the panel opens.
+- **Looks like the rest of the VTT:** leather and brass, Georgia lettering, square corners, a slim title bar. You can drag and resize it, and it remembers where you left it. Leave closes the panel; opening it again rejoins.
+- **Preview with fake players:** add `?fake=5` to the VTT address to fill the call with animated stand-in players (one with camera off, a moving speaker highlight) and see how a full table looks.
+- **Also its own page:** `videochat.html` works standalone with `?room=` and `?name=`.
+- **Not tested with a second real person yet.** Players behind strict firewalls may need a TURN relay, and the close button only hides the panel without muting.
+
 ### VTT: Build Tools
 - **Build Tools window + one small window per kind:** any Build item opens a Build Tools window (Select, Erase, Shape, Paint brush, Paint bucket) and that kind's window (Floors, Walls, Doors, Roofs, Lights, Props). Each shows your 5 most recently used swatches as icons with a dropdown underneath for the rest. They stay open until you close them, so you can pick a floor, draw it, pick a wall, draw it, pick a prop, place it, without going back to the menu.
 - **Build Tools is a row of icons** (cursor, eraser, rectangle, brush, bucket; hover for the name), and Floors, Walls, Roofs, Doors and Build Tools are all the same width so they line up.
