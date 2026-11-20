@@ -38,6 +38,8 @@ import { initTools, snapFor, toolDown, toolMove, toolUp, roofAt, fogAt, wallAt, 
 import { renderPanel } from "./panel.js";
 import { initAttack, attackOptions, beginAttack, sheetOf } from "./attack.js";
 import "./talk.js";
+import { initJoin } from "./join.js";
+import { initChatDock } from "./chatdock.js";
 
 const map = $("#map");
 let prevStates = null, objDrag = null;
@@ -450,3 +452,8 @@ $("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b =
   }, true);
   document.addEventListener("view3dchange", () => { if (!S.v3d) { S.select3d = false; document.getElementById("bar-select")?.classList.remove("on"); } });
 }
+
+// Page-load "Join the table" card (who you are + camera/mic, then opens the video dock).
+const setMe = (v) => { me = v; try { localStorage.setItem("vtt-me", JSON.stringify(v)); } catch { /* fine */ } const l = document.querySelector("#bar-me .lbl"); if (l) l.textContent = v ? v.name.slice(0, 8) : "Me"; };
+initChatDock();
+initJoin({ loadPcs, setMe, getMe: () => me });

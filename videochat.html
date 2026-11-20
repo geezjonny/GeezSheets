@@ -126,7 +126,7 @@
     async function removePeer(id){const p=state.peers.get(id);if(!p)return;lastLoud.delete(p.name);reportSpeaking('',false);clearTimeout(p.retryTimer);p.pc.close();state.peers.delete(id);state.audio.get(id)?.close();state.audio.delete(id);$('#tile-'+id)?.remove();updateCount(state.peers.size+1)}
     async function cleanup(){state.joined=false;lastLoud.clear();reportSpeaking('',false);state.selfAudio?.close();state.peers.forEach(p=>p.pc.close());state.peers.clear();state.audio.forEach(ctx=>ctx.close());state.localStream?.getTracks().forEach(t=>t.stop());state.previewStream?.getTracks().forEach(t=>t.stop());try{await state.presenceRef?.remove()}catch{} }
     addEventListener('pagehide',()=>{state.peers.forEach(p=>p.pc.close());state.localStream?.getTracks().forEach(t=>t.stop());try{state.presenceRef?.remove()}catch{}});
-    if((compact || params.get('autojoin')==='1') && initialRoom && initialName){joinScreen();$('#joinBtn').click()}else joinScreen();
+    if((compact || params.get('autojoin')==='1') && initialRoom && initialName){joinScreen();if(params.get('cam')==='0')$('#useCamera').checked=false;if(params.get('mic')==='0')$('#useMic').checked=false;$('#joinBtn').click()}else joinScreen();
   </script>
 </body>
 </html>

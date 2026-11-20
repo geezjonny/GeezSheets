@@ -59,52 +59,6 @@
     <div class="row"><button id="save">Save group</button> <button id="cancel-edit" hidden>Cancel edit</button> <button id="clear">Clear</button> <button id="reset" class="danger">Reset all</button></div>
     <ul class="glist" id="glist"></ul>
   </div>
-  <div id="chatdock" hidden>
-    <div id="chathead"><span>Table Chat</span><span class="grow"></span><button id="chatclose" type="button" aria-label="Hide chat">&times;</button></div>
-    <iframe id="chatframe" title="Table Chat" allow="camera; microphone; autoplay; display-capture; fullscreen; speaker-selection"></iframe>
-  </div>
-  <style>
-    #chatdock{position:fixed;right:16px;bottom:16px;width:340px;height:400px;min-width:240px;min-height:180px;max-width:96vw;max-height:90vh;z-index:50;display:flex;flex-direction:column;background:var(--leather-dk);border:1px solid var(--brass);box-shadow:2px 4px 10px #0009;overflow:hidden;resize:both}
-    #chatdock[hidden]{display:none}
-    #chathead{display:flex;align-items:center;gap:8px;height:1.6rem;padding:0 .4rem;background:var(--leather-dk);border-bottom:1px solid var(--brass);color:var(--brass-lt);font:700 .8rem Georgia,serif;letter-spacing:.1em;text-transform:uppercase;cursor:move;user-select:none;touch-action:none}
-    #chathead .grow{flex:1}
-    #chatclose{background:none;border:0;color:var(--brass-lt);font:1rem/1 Georgia,serif;cursor:pointer;padding:0 .3rem;height:100%}
-    #chatclose:hover{background:#b98f4540}
-    #chatframe{flex:1;width:100%;border:0;min-height:0;background:var(--leather-dk)}
-    #chatdock.dragging #chatframe{pointer-events:none}
-  </style>
-  <script>
-  (function(){
-    const dock=document.getElementById('chatdock'),frame=document.getElementById('chatframe'),head=document.getElementById('chathead');
-    const btn=document.getElementById('chat-btn');
-    const CHAT_ROOM='geez-table';   // fixed room name: everyone on the VTT lands in the same call (override with ?room=)
-    const qs=new URLSearchParams(location.search);
-    const room=qs.get('room')||CHAT_ROOM;
-    const get=k=>{try{return localStorage.getItem(k)}catch(e){return null}},set=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
-    // GM (?gm) joins as "GM"; players use ?name=, else the name they typed last time (saved by the chat page); else they see the join form once.
-    const myName=()=>{ if(qs.has('gm'))return 'GM'; let me=null; try{me=JSON.parse(localStorage.getItem('vtt-me'))}catch(e){} return qs.get('name')||me?.name||get('geez.videochat.name')||''; };   // your VTT "Me" character, so the call name matches your token
-    let loaded=false;
-    function show(on){
-      if(on&&!loaded){loaded=true;   // loaded once; stays mounted so the call survives hiding
-        const n=myName();
-        frame.src='videochat.html?room='+encodeURIComponent(room)+(n?'&name='+encodeURIComponent(n)+'&autojoin=1':'')+(qs.get('fake')?'&fake='+encodeURIComponent(qs.get('fake')):'');   // autojoin: no join form, camera+mic requested straight away
-      }
-      dock.hidden=!on;set('geez.chatdock.open',on?'1':'');
-    }
-    btn.addEventListener('click',()=>show(dock.hidden));
-    addEventListener('message',e=>{if(e.origin===location.origin&&e.data&&e.data.geezChat==='left'){show(false);loaded=false;frame.src='about:blank'}});   // Leave inside the chat closes the dock; next open rejoins
-    document.getElementById('chatclose').addEventListener('click',()=>show(false));
-    try{const r=JSON.parse(get('geez.chatdock.rect')||'null');if(r){dock.style.left=r.l+'px';dock.style.top=r.t+'px';dock.style.right='auto';dock.style.bottom='auto';if(r.w>=260)dock.style.width=r.w+'px';if(r.h>=240)dock.style.height=r.h+'px';}}catch(e){}   // sizes under 260x240 are ignored
-    function saveRect(){const b=dock.getBoundingClientRect();set('geez.chatdock.rect',JSON.stringify({l:Math.round(b.left),t:Math.round(b.top),w:Math.round(b.width),h:Math.round(b.height)}))}
-    let d=null;
-    head.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;const b=dock.getBoundingClientRect();d={x:e.clientX-b.left,y:e.clientY-b.top};head.setPointerCapture(e.pointerId);dock.classList.add('dragging')});
-    head.addEventListener('pointermove',e=>{if(!d)return;const x=Math.max(0,Math.min(innerWidth-80,e.clientX-d.x)),y=Math.max(0,Math.min(innerHeight-40,e.clientY-d.y));dock.style.left=x+'px';dock.style.top=y+'px';dock.style.right='auto';dock.style.bottom='auto'});
-    const end=()=>{if(!d)return;d=null;dock.classList.remove('dragging');saveRect()};
-    head.addEventListener('pointerup',end);head.addEventListener('pointercancel',end);
-    new ResizeObserver(()=>{if(!dock.hidden)saveRect()}).observe(dock);
-    if(get('geez.chatdock.open'))show(true);
-  })();
-  </script>
   <script type="module" src="js/vtt/vtt.js"></script>
 </body>
 </html>

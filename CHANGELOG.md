@@ -4,8 +4,9 @@
 
 ### VTT: Table Chat (webcam + mic)
 - **Built-in video chat:** a new **Chat** button in the menu bar opens a floating video panel right in the VTT. Everyone joins the same call, and it's just the video: no bars or menus, only a mic, camera and leave icon floating on your own tile.
-- **Straight in, no sign-in screen:** the GM joins as "GM" automatically (`?gm`), players use `?name=` or the name they typed last time, and the room is pre-named in code. The browser asks for camera and mic as soon as the panel opens.
-- **Looks like the rest of the VTT:** leather and brass, Georgia lettering, square corners, a slim title bar. You can drag and resize it, and it remembers where you left it. Leave closes the panel; opening it again rejoins.
+- **"Join the table" card at page load:** players pick which character they are (it also sets your Me button, so your token is yours), tick camera and mic, and one click joins the call. The GM just clicks join. Your browser then asks for camera and mic access. "Skip video" closes the card, and `?nojoin` hides it.
+- **Your call name is your character:** the call uses your character name, or "GM" for the GM, so it lines up with your token.
+- **Table Chat is a normal VTT window:** the same title bar, snapping to other windows and remembered position as the Build windows, with a slim leather and brass look inside. You can resize it. Closing it (the x, the Chat button or the leave icon) disconnects you from the call and turns off your camera and mic; opening it again reconnects.
 - **Preview with fake players:** add `?fake=5` to the VTT address to fill the call with animated stand-in players (one with camera off, a moving speaker highlight) and see how a full table looks.
 - **Tokens shake when their player talks:** the call reports who is speaking (your own mic too), and the token with that name shakes on the map. You join the call under your "Me" character, so your name lines up with your token.
 - **Also its own page:** `videochat.html` works standalone with `?room=` and `?name=`.
