@@ -1,0 +1,261 @@
+import { watch, read, put, patch } from "./store.js";
+import { KINDS, statesOf, startOf, actionsOf, conditionsOf, cellsOf, evaluate, onFired, resetAll, newObject, demo } from "./puzzle-core.js";
+
+const $ = (s) => document.querySelector(s);
+const NS = "http://www.w3.org/2000/svg";
+const isGM = new URLSearchParams(location.search).has("gm");
+const COLORS = ["#a94c3d", "#466c83", "#66774b", "#7a5a8a"];
+const GLYPH = { plate: "▭", tripwire: "", gauge: "♥", switch: "", dial: "", door: "", light: "☼", floor: "▦", spawn: "S", stone: "●", catapult: "✶" };
+const map = $("#map");
+let objects = {}, tokens = {}, groups = {}, prevStates = null;
+let puzzleMode = false, selected = new Set(), draft = emptyDraft();
+let dragging = null, objDrag = null, placing = null, pick = null, lastSel = null;
+const loadedAt = Date.now();
+
+function emptyDraft() { return { when: [], then: [], pool: [] }; }
+const cellOf = (p) => ({ x: Math.max(20, Math.min(780, Math.floor(p.x / 40) * 40 + 20)), y: Math.max(20, Math.min(540, Math.floor(p.y / 40) * 40 + 20)) });
+const cellName = (p) => `${(p.x - 20) / 40},${(p.y - 20) / 40}`;
+const label = (id) => objects[id]?.label || tokens[id]?.label || id;
+
+// ---- sync -----------------------------------------------------------------
+(async () => {
+  if (!isGM) return;
+  if ((await read("objects")) == null) { const d = demo(); await put("objects", d.objects); await put("tokens", d.tokens); }
+})();
+watch("objects", (v) => {
+  const before = prevStates; objects = v || {};
+  prevStates = Object.fromEntries(Object.entries(objects).map(([id, o]) => [id, o.state]));
+  if (isGM && before) for (const [id, o] of Object.entries(objects))   // an event output just fired
+    if (KINDS[o.kind]?.role === "event" && o.state === "fired" && before[id] === "armed") patch(onFired(id, o).changes);
+  drawObjects(); renderPanel(); afterChange();
+});
+watch("tokens", (v) => { tokens = v || {}; drawTokens(); drawTray(); afterChange(); });
+watch("groups", (v) => { groups = v || {}; renderPanel(); afterChange(); });
+watch("events/last", (e) => { if (e && e.t > loadedAt) { const t = $("#toast"); t.textContent = e.text; t.style.display = "block"; setTimeout(() => (t.style.display = "none"), 3500); } });
+// Only the GM client runs the rules, so two clients never race.
+function afterChange() {
+  if (!isGM) return;
+  const changes = evaluate({ objects, groups, tokens });
+  if (Object.keys(changes).length) patch(changes);
+}
+
+// ---- drawing --------------------------------------------------------------
+function el(name, attrs = {}, parent) {
+  const e = document.createElementNS(NS, name);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  parent?.appendChild(e); return e;
+}
+function drawObject(id, o, layer) {
+  const g = el("g", { class: `obj ${o.kind} state-${o.state} ${o.kind === "light" ? "light-" + o.state : ""} ${selected.has(id) ? "sel" : ""}`, "data-id": id }, layer);
+  const cells = cellsOf(o);
+  if (o.kind === "door") {
+    const v = o.dir === "v";
+    el("line", { x1: o.x - (v ? 0 : 20), x2: o.x + (v ? 0 : 20), y1: o.y - (v ? 20 : 0), y2: o.y + (v ? 20 : 0), class: "doorbar" }, g);
+  } else if (o.kind === "tripwire") {
+    const a = cells[0], b = cells.at(-1);
+    el("line", { x1: a[0] - 20, y1: a[1], x2: b[0] + 20, y2: b[1], class: "body", "stroke-dasharray": "4 4" }, g);
+    el("circle", { cx: a[0] - 20, cy: a[1], r: 4, class: "body" }, g); el("circle", { cx: b[0] + 20, cy: b[1], r: 4, class: "body" }, g);
+    el("rect", { x: a[0] - 20, y: a[1] - 12, width: (cells.length) * 40, height: 24, fill: "transparent" }, g);
+  } else if (o.kind === "switch") {
+    el("circle", { cx: o.x, cy: o.y, r: 15, class: "body" }, g);
+    el("line", { x1: o.x, y1: o.y + 8, x2: o.x + (o.state === "on" ? 9 : -9), y2: o.y - 10, stroke: "#2b2820", "stroke-width": 4, "stroke-linecap": "round" }, g);
+  } else if (o.kind === "dial") {
+    el("circle", { cx: o.x, cy: o.y, r: 16, class: "body" }, g);
+    el("text", { x: o.x, y: o.y, class: "glyph" }, g).textContent = o.state;
+  } else {
+    el(o.kind === "plate" || o.kind === "floor" ? "rect" : "circle",
+      o.kind === "plate" || o.kind === "floor" ? { x: o.x - 17, y: o.y - 17, width: 34, height: 34, rx: 4, class: "body" } : { cx: o.x, cy: o.y, r: 15, class: "body" }, g);
+    el("text", { x: o.x, y: o.y, class: "glyph" }, g).textContent = GLYPH[o.kind] || "";
+  }
+  el("title", {}, g).textContent = `${o.label}: ${o.state}`;
+}
+function drawObjects() {
+  const layer = $("#objects"); layer.textContent = "";
+  for (const [id, o] of Object.entries(objects)) drawObject(id, o, layer);
+}
+function drawTokens() {
+  if (dragging) return;
+  const layer = $("#tokens"); layer.textContent = "";
+  Object.entries(tokens).forEach(([id, t], i) => {
+    const g = el("g", { class: "token", transform: `translate(${t.x} ${t.y})`, "data-id": id }, layer);
+    el("circle", { r: 17, fill: t.hp != null ? "#5a2a24" : COLORS[i % COLORS.length] }, g);
+    el("text", { y: 1 }, g).textContent = (t.label || id).slice(0, 2);
+    if (t.hp != null) el("text", { y: 28, class: "hp" }, g).textContent = `${t.hp}/${t.max}`;
+  });
+}
+function drawTray() {
+  const t = $("#tray"); t.classList.toggle("on", isGM);
+  if (!isGM) return;
+  t.innerHTML = Object.entries(tokens).filter(([, k]) => k.hp != null).map(([id, k]) =>
+    `<span>${id} HP ${k.hp}/${k.max} <button data-hp="${id}" data-d="-1">−</button><button data-hp="${id}" data-d="1">+</button></span>`).join("");
+}
+$("#tray").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-hp]"); if (!b) return;
+  const k = tokens[b.dataset.hp]; put(`tokens/${b.dataset.hp}/hp`, Math.max(0, Math.min(k.max, k.hp + +b.dataset.d)));
+});
+
+// ---- map interaction -------------------------------------------------------
+function mapPoint(e) {
+  const p = map.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(map.getScreenCTM().inverse());
+}
+// Doors sit on cell edges; everything else on cell centres.
+function snapFor(kind, p) {
+  const c = cellOf(p);
+  if (kind !== "door") return { ...c };
+  const dx = p.x - c.x, dy = p.y - c.y;
+  return Math.abs(dx) > Math.abs(dy) ? { x: c.x + Math.sign(dx) * 20, y: c.y, dir: "v" } : { x: c.x, y: c.y + Math.sign(dy) * 20, dir: "h" };
+}
+map.addEventListener("pointerdown", (e) => {
+  const p = mapPoint(e), objEl = e.target.closest(".obj"), tokEl = e.target.closest(".token");
+  if (!puzzleMode) {   // normal play: switches flip, dials turn
+    const o = objEl && objects[objEl.dataset.id];
+    if (o?.kind === "switch") return put(`objects/${objEl.dataset.id}/state`, o.state === "on" ? "off" : "on");
+    if (o?.kind === "dial") { const s = statesOf(o); return put(`objects/${objEl.dataset.id}/state`, s[(s.indexOf(o.state) + 1) % s.length]); }
+  } else {
+    if (pick) { const spot = cellOf(p), { zone, id } = pick; pick = null; map.classList.remove("picking");
+      if (zone === "when") draft.when.find((c) => c.id === id).at = spot;
+      else if (zone === "then") draft.then.find((c) => c.id === id).to = spot;
+      else if (zone === "prop") put(`objects/${id}/to`, spot);
+      return renderPanel(); }
+    if (placing) {
+      const snap = snapFor(placing, p), n = Object.values(objects).filter((o) => o.kind === placing).length + 1;
+      const extra = placing === "dial" ? { values: ["N", "E", "S", "W"] } : placing === "gauge" ? { token: Object.keys(tokens).find((k) => tokens[k].hp != null) }
+        : placing === "tripwire" ? { len: 3, dir: "h" } : placing === "spawn" ? { hp: 5 } : placing === "door" ? { dir: snap.dir } : {};
+      put(`objects/${placing}${Date.now().toString(36)}`, newObject(placing, snap.x, snap.y, n, extra));
+      placing = null; return renderPanel();
+    }
+    if (objEl) { objDrag = { id: objEl.dataset.id, el: objEl, x0: p.x, y0: p.y, moved: false }; map.setPointerCapture(e.pointerId); return; }
+  }
+  if (tokEl) { dragging = tokEl; tokEl.setPointerCapture(e.pointerId); e.preventDefault(); }
+});
+map.addEventListener("pointermove", (e) => {
+  if (objDrag) {
+    const p = mapPoint(e);
+    if (Math.hypot(p.x - objDrag.x0, p.y - objDrag.y0) > 6) objDrag.moved = true;
+    if (objDrag.moved) { const s = snapFor(objects[objDrag.id].kind, p), o = objects[objDrag.id];
+      objDrag.snap = s; objDrag.el.setAttribute("transform", `translate(${s.x - o.x} ${s.y - o.y})`); }
+    return;
+  }
+  if (!dragging || !dragging.hasPointerCapture(e.pointerId)) return;
+  const c = cellOf(mapPoint(e));
+  dragging.dataset.x = c.x; dragging.dataset.y = Math.min(520, c.y);
+  dragging.setAttribute("transform", `translate(${dragging.dataset.x} ${dragging.dataset.y})`);
+});
+const release = () => {
+  if (objDrag) {
+    const { id, moved, snap } = objDrag; objDrag = null;
+    if (moved && snap) put(`objects/${id}`, { ...objects[id], x: snap.x, y: snap.y, sx: snap.x, sy: snap.y, ...(snap.dir ? { dir: snap.dir } : {}) });
+    else { selected.has(id) ? selected.delete(id) : selected.add(id); lastSel = id; drawObjects(); renderPanel(true); }
+    return;
+  }
+  if (!dragging) return;
+  const { id, x, y } = dragging.dataset; dragging = null;
+  if (x != null) patch({ [`tokens/${id}/x`]: +x, [`tokens/${id}/y`]: +y }); else drawTokens();
+};
+map.addEventListener("pointerup", release); map.addEventListener("pointercancel", release);
+
+// ---- puzzle panel (GM) -----------------------------------------------------
+if (isGM) { $("#mode").hidden = false; $("#role").textContent = "GM"; }
+else $("#role").textContent = "Drag tokens to move them";
+$("#mode").addEventListener("click", () => {
+  puzzleMode = !puzzleMode; $("#mode").classList.toggle("on", puzzleMode);
+  $("#panel").classList.toggle("on", puzzleMode);
+  if (!puzzleMode) { selected.clear(); draft = emptyDraft(); placing = pick = null; drawObjects(); }
+  renderPanel(true);
+});
+
+function syncDraft() {   // new picks land in "Selected"; you drag them where you want
+  const all = ["when", "then", "pool"].flatMap((k) => draft[k].map((c) => c.id));
+  for (const k of ["when", "then", "pool"]) draft[k] = draft[k].filter((c) => selected.has(c.id));
+  for (const id of selected) if (!all.includes(id) && objects[id]) draft.pool.push({ id });
+}
+function chipText(c, zone) {
+  if (zone === "when") return c.at ? `at ${cellName(c.at)}` : c.state;
+  if (zone === "then") return c.action === "move" ? `move to ${c.to ? cellName(c.to) : "…"}` : c.action || "";
+  return "";
+}
+function chip(c, zone) {
+  const t = chipText(c, zone);
+  return `<span class="chip" draggable="true" data-id="${c.id}" data-zone="${zone}">${label(c.id)} ${t ? `<em>${t}</em>` : ""}</span>`;
+}
+function inspector() {
+  const o = objects[lastSel]; if (!o || !selected.has(lastSel)) return "";
+  const f = (html) => `<span>${html}</span>`;
+  let h = f(`<input data-p="label" value="${o.label.replace(/"/g, "&quot;")}" aria-label="Name">`);
+  if (o.kind === "dial") h += f(`values <input data-p="values" value="${(o.values || []).join(",")}">`);
+  if (o.kind === "gauge") h += f(`token <select data-p="token">${Object.keys(tokens).filter((k) => tokens[k].hp != null).map((k) => `<option ${k === o.token ? "selected" : ""}>${k}</option>`).join("")}</select>`);
+  if (o.kind === "tripwire") h += f(`length <input data-p="len" type="number" min="1" max="10" value="${o.len || 3}" style="width:3.5rem"> `) + f(`<select data-p="dir"><option value="h" ${o.dir !== "v" ? "selected" : ""}>across</option><option value="v" ${o.dir === "v" ? "selected" : ""}>down</option></select>`);
+  if (o.kind === "door") h += f(`<select data-p="dir"><option value="h" ${o.dir !== "v" ? "selected" : ""}>horizontal</option><option value="v" ${o.dir === "v" ? "selected" : ""}>vertical</option></select>`);
+  if (o.kind === "plate" || o.kind === "tripwire") h += f(`<label><input data-p="latch" type="checkbox" ${o.latch ? "checked" : ""}> stays down</label>`);
+  if (o.kind === "stone") h += f(`<button data-pickprop="${lastSel}">rolls to ${o.to ? cellName(o.to) : "… (click map)"}</button>`);
+  if (o.kind === "spawn") h += f(`enemy HP <input data-p="hp" type="number" min="1" value="${o.hp || 5}" style="width:3.5rem">`);
+  return h + f(`<button data-delobj="${lastSel}" class="danger">Delete object</button>`);
+}
+function renderPanel(fromSelection) {
+  if (!puzzleMode) return;
+  if (fromSelection) syncDraft();
+  $("#palette").innerHTML = "Place: " + Object.entries(KINDS).map(([k, v]) => `<button data-place="${k}" class="${placing === k ? "on" : ""}">${v.label}</button>`).join("");
+  $("#hint").textContent = pick ? "Click a cell on the map…" : placing ? `Click the map to place a ${KINDS[placing].label.toLowerCase()}` : "Click objects to select, drag them to move. Then drag chips into When and Then.";
+  const active = document.activeElement; if (!active?.closest("#inspector")) $("#inspector").innerHTML = inspector();
+  const fill = (z, list) => $(`#z-${z}`).innerHTML = `<b>${{ pool: "Selected", when: "When (all true)", then: "Then" }[z]}</b>` + list.map((c) => chip(c, z)).join("");
+  fill("pool", draft.pool); fill("when", draft.when); fill("then", draft.then);
+  $("#glist").innerHTML = Object.entries(groups).map(([id, g]) =>
+    `<li><span class="dot ${g.met ? "met" : ""}"></span>${(g.when || []).map((c) => `${label(c.id)} ${c.at ? "at " + cellName(c.at) : "= " + c.state}`).join(" + ")} → ${(g.then || []).map((a) => `${label(a.id)} ${a.action === "move" ? "→ " + (a.to ? cellName(a.to) : "?") : a.action}`).join(", ")}
+     <button data-delg="${id}">remove</button></li>`).join("");
+}
+function cycle(c, zone) {
+  const o = objects[c.id] || (tokens[c.id] && { kind: "token" });
+  if (zone === "when") {
+    const opts = o.kind === "token" ? ["at"] : conditionsOf(o), cur = c.at ? "at" : c.state, i = opts.indexOf(cur), nxt = opts[(i + 1) % opts.length];
+    if (nxt === "at") { delete c.state; c.at = c.at || { x: o.x ?? tokens[c.id].x, y: o.y ?? tokens[c.id].y }; pick = { zone, id: c.id }; map.classList.add("picking"); }
+    else { delete c.at; c.state = nxt; }
+  } else {
+    const opts = o.kind === "token" ? ["move"] : actionsOf(o), i = opts.indexOf(c.action), nxt = opts[(i + 1) % opts.length];
+    c.action = nxt;
+    if (nxt === "move") { pick = { zone, id: c.id }; map.classList.add("picking"); } else delete c.to;
+  }
+  renderPanel();
+}
+function defaultChip(zone, id) {
+  const o = objects[id];
+  if (zone === "when") return o ? { id, state: statesOf(o)[0] } : { id, at: { x: tokens[id].x, y: tokens[id].y } };
+  if (zone === "then") return o ? { id, action: actionsOf(o)[0] } : { id, action: "move" };
+  return { id };
+}
+$("#panel").addEventListener("click", (e) => {
+  const c = e.target.closest(".chip");
+  if (c) { const { id, zone } = c.dataset, item = draft[zone].find((x) => x.id === id); if (item && zone !== "pool") cycle(item, zone); return; }
+  const pl = e.target.closest("[data-place]"); if (pl) { placing = placing === pl.dataset.place ? null : pl.dataset.place; return renderPanel(); }
+  const pp = e.target.closest("[data-pickprop]"); if (pp) { pick = { zone: "prop", id: pp.dataset.pickprop }; map.classList.add("picking"); return renderPanel(); }
+  const dobj = e.target.closest("[data-delobj]");
+  if (dobj) { const id = dobj.dataset.delobj; selected.delete(id); put(`objects/${id}`, null); draft = emptyDraft(); return; }
+  if (e.target.id === "clear") { selected.clear(); draft = emptyDraft(); drawObjects(); return renderPanel(true); }
+  if (e.target.id === "reset") return patch(resetAll(objects, groups));
+  if (e.target.id === "save") {
+    if (!draft.when.length || !draft.then.length) return;
+    if (draft.then.some((a) => a.action === "move" && !a.to) || draft.when.some((c) => !c.at && !c.state)) return;
+    put(`groups/g${Date.now().toString(36)}`, { when: draft.when, then: draft.then, met: false });
+    selected.clear(); draft = emptyDraft(); drawObjects(); return renderPanel(true);
+  }
+  const del = e.target.closest("[data-delg]"); if (del) put(`groups/${del.dataset.delg}`, null);
+});
+$("#panel").addEventListener("change", (e) => {
+  const p = e.target.dataset.p; if (!p || !objects[lastSel]) return;
+  let v = e.target.type === "checkbox" ? e.target.checked : e.target.type === "number" ? +e.target.value : e.target.value;
+  if (p === "values") { v = v.split(",").map((s) => s.trim()).filter(Boolean); put(`objects/${lastSel}/state`, v[0]); put(`objects/${lastSel}/start`, v[0]); }
+  put(`objects/${lastSel}/${p}`, v);
+});
+// Drag chips between zones.
+let dragChip = null;
+$("#panel").addEventListener("dragstart", (e) => { dragChip = e.target.closest(".chip")?.dataset; });
+$("#panel").addEventListener("dragover", (e) => { if (e.target.closest(".zone")) e.preventDefault(); });
+$("#panel").addEventListener("drop", (e) => {
+  const zone = e.target.closest(".zone")?.dataset.z; if (!zone || !dragChip) return;
+  e.preventDefault();
+  const { id, zone: from } = dragChip; dragChip = null;
+  if (from === zone) return;
+  draft[from] = draft[from].filter((x) => x.id !== id);
+  draft[zone].push(defaultChip(zone, id));
+  renderPanel();
+});
