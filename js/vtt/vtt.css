@@ -106,7 +106,7 @@ footer { padding: .5rem 1rem .8rem; color: #d2c298; font: italic .96rem Georgia,
 .wall { stroke: var(--ink); stroke-width: 6; stroke-linecap: round; }
 .doorgap { stroke: #eee8d6; stroke-width: 9; }
 .pr { fill: #d6c493; stroke: var(--ink); stroke-width: 2.2; stroke-linejoin: round; }
-.pr.solid { fill: #8a7a5a; } .pr.clasp { fill: #b98f45; } .pr.rug { fill: #b9806a88; } .pr.leaf { fill: #7f9a6aaa; }
+.pr.solid { fill: #8a7a5a; } .pr.clasp { fill: #b98f45; } .pr.rug { fill: #b9806a88; } .pr.leaf { fill: #7f9a6aaa; } .pr.decal { fill: #9b6b6288; stroke: #744c4caa; stroke-width: 1.5; }
 .prop { cursor: grab; }
 .roof { fill: url(#shingle); stroke: #3a2415; stroke-width: 3; pointer-events: none; }
 .roof.gm { opacity: .38; } .roof.gm.open { opacity: .1; stroke-dasharray: 6 4; }
@@ -160,10 +160,12 @@ line.ghost { fill: none; stroke-width: 6; }
 .floorrect.f-water { fill: #6aa3c2; }
 .floorrect.f-mud { fill: #7a5f43; }
 .floorrect.f-ice { fill: #cfe8f0; }
+.floorrect.f-slab { fill: #aaa69d; } .floorrect.f-marble { fill: #d7d8d2; } .floorrect.f-tile { fill: #b96d54; } .floorrect.f-carpet { fill: #9a5364; } .floorrect.f-dirt { fill: #856a4c; } .floorrect.f-cave { fill: #635d61; } .floorrect.f-snow { fill: #eef5f5; } .floorrect.f-shallow { fill: #83b8c4; } .floorrect.f-lava { fill: #d64b2f; } .floorrect.f-swamp { fill: #64734b; } .floorrect.f-bone { fill: #d8ceb0; } .floorrect.f-void { fill: #252433; } .floorrect.f-moss { fill: #718454; }
 .wall.m-wood { stroke: #7a5230; } .doorbar.m-wood { stroke: #7a5230; }
 .wall.m-stone { stroke: #6e6a64; } .doorbar.m-stone { stroke: #6e6a64; }
 .wall.m-cobble { stroke: #4f4a45; } .doorbar.m-cobble { stroke: #4f4a45; }
 .wall.m-iron { stroke: #3f4850; } .doorbar.m-iron { stroke: #3f4850; }
+.wall.m-ashlar,.doorbar.m-ashlar { stroke:#8a8780; } .wall.m-marble,.doorbar.m-marble { stroke:#d0d0c8; } .wall.m-brick,.doorbar.m-brick { stroke:#9c5547; } .wall.m-fieldstone,.doorbar.m-fieldstone { stroke:#817c75; } .wall.m-plaster,.doorbar.m-plaster { stroke:#c8bca4; } .wall.m-timber,.doorbar.m-timber { stroke:#80552e; } .wall.m-palisade,.doorbar.m-palisade { stroke:#69462c; } .wall.m-cave,.doorbar.m-cave { stroke:#635d61; } .wall.m-hedge,.doorbar.m-hedge { stroke:#50713f; } .wall.m-earth,.doorbar.m-earth { stroke:#795b3f; }
 .wall.m-cobble { stroke-dasharray: 9 2; stroke-linecap: butt; } .wall.m-iron { stroke-width: 7; }
 #view3d { position: fixed; inset: 26px 0 0 0; background: #07070a; z-index: 5; }
 #view3d canvas { display: block; width: 100%; height: 100%; }
@@ -225,7 +227,7 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 .palswatch:has(.wheel) { display: block; }
 .palswatch .wheel { width: 100%; height: 6rem; padding: 0; border: 1px solid var(--brass); background: none; cursor: pointer; }
 .palswatch .presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: .25rem; margin-top: .3rem; }
-.roof.r-thatch { fill: #c9a85c; } .roof.r-slate { fill: #59636e; } .roof.r-tile { fill: #b5532f; } .roof.r-wood { fill: #8a6238; } .roof.r-stone { fill: #9a968c; }
+.roof.r-thatch { fill: #c9a85c; } .roof.r-slate { fill: #59636e; } .roof.r-tile { fill: #b5532f; } .roof.r-flat { fill: #77736c; } .roof.r-wood { fill: #8a6238; } .roof.r-stone { fill: #9a968c; }
 .palswatch:has([data-prop]) { grid-template-columns: 1fr 1fr; }
 .fwin button.on { background: var(--brass); color: #2b1c08; }
 .puzzletools { display: grid; gap: .3rem; min-width: 11rem; max-width: 16rem; }
@@ -233,6 +235,7 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 .puzzlelogic { width: min(34rem, 80vw); max-height: 70vh; overflow: auto; }
 .windowbar { stroke: #5a3b1f; stroke-width: 9; stroke-linecap: butt; }
 .windowglass { stroke: #bfe3ee; stroke-width: 4; stroke-linecap: butt; }
+.curtaindoor { stroke:#b45c83; stroke-width:10; stroke-dasharray:4 3; } .secretdoor { stroke:#8d7d72; stroke-width:5; stroke-dasharray:2 5; opacity:.45; }
 .windowbar.m-stone { stroke: #6e6a64; }
 .menuwin { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 10rem; max-width: 20rem; }
 .menuwin .dim { width: 100%; font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--brass-lt); margin-top: .2rem; }
@@ -265,3 +268,5 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 .eqwin .eq-slot select { width: 100%; } .eqwin .eq-name { font-style: italic; }
 .eqwin .eq-tip { grid-column: 2 / 4; font-size: .78rem; opacity: .85; }
 .eqwin .eq-hint { font-size: .75rem; opacity: .7; margin-top: .3rem; }
+.map-label{font-family:Georgia,serif;fill:#3d2632;paint-order:stroke;stroke:#ead8aa;stroke-width:2px;stroke-linejoin:round;pointer-events:all}.elev-edge{fill:#3d2632;opacity:.7}
+.prop-palette{display:grid;grid-template-columns:7rem 1fr;gap:.35rem;max-height:22rem}.prop-cats{display:flex;flex-direction:column;gap:2px}.prop-cats button{text-align:left}.prop-list{display:grid;grid-template-columns:repeat(4,minmax(3.5rem,1fr));gap:3px;overflow:auto}.prop-thumb{display:grid;justify-items:center;font-size:.65rem;padding:2px}.prop-thumb svg{width:32px;height:32px;fill:#b88a52;stroke:#2a1a33;stroke-width:2}.prop-thumb.on{outline:2px solid var(--brass)}.prop-options{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.35rem;font-size:.75rem}

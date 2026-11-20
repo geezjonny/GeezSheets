@@ -9,8 +9,8 @@ import { isPcToken, wallPieces } from "./draw.js";
 const U = 40, WALL_H = 2, WALL_T = 0.16, MAX_SHADOW_LIGHTS = 6;
 // Wind Waker-style palette: saturated, sunny colours with dark purple-ink outlines.
 const INK = 0x2a1a33, PARCHMENT = 0xd49a45, SOLID = 0xd8d2ea, BRASS = 0xe0b13a;
-const WALL_COL = { wood: 0xa8602a, stone: 0xa7a0b8, cobble: 0x7d6f8f, iron: 0x5d7488 }, WALL_DEF = 0xc9b48a;
-const FLOOR_COL = { wood: 0xe0a24e, stone: 0xd3cfe0, cobble: 0xa99fbf, iron: 0x7e93a8, gravel: 0xc7b48a, sand: 0xf5d778, grass: 0x6fcf4f, water: 0x3fb6e8, mud: 0x9a6a3c, ice: 0xbdf0ff }, FLOOR_DEF = 0xf0e2b8;
+const WALL_COL = { stone: 0xa7a0b8, ashlar: 0xaaa69d, marble: 0xd8d8d0, brick: 0x9c5547, fieldstone: 0x817c75, plaster: 0xc8bca4, timber: 0x80552e, wood: 0xa8602a, palisade: 0x69462c, cave: 0x635d61, hedge: 0x50713f, earth: 0x795b3f, cobble: 0x7d6f8f, iron: 0x5d7488 }, WALL_DEF = 0xc9b48a;
+const FLOOR_COL = { wood: 0xe0a24e, stone: 0xd3cfe0, slab: 0xaaa69d, cobble: 0xa99fbf, marble: 0xd8d8d0, tile: 0xb96d54, carpet: 0x9a5364, dirt: 0x856a4c, cave: 0x635d61, iron: 0x7e93a8, gravel: 0xc7b48a, sand: 0xf5d778, grass: 0x6fcf4f, snow: 0xeef5f5, water: 0x3fb6e8, shallow: 0x83b8c4, mud: 0x9a6a3c, ice: 0xbdf0ff, lava: 0xd64b2f, swamp: 0x64734b, bone: 0xd8ceb0, void: 0x252433, moss: 0x718454 }, FLOOR_DEF = 0xf0e2b8;
 const TOKEN_COLS = [0xe0503a, 0x2f8fd8, 0x4fbf4a, 0xb455d6];
 
 let renderer, scene, camera, controls, root, host, raf = 0, dirty = true, fitted = false;
@@ -108,7 +108,7 @@ function seg(a, b, h, t, color, y0, parent, tex) {   // a wall slab between two 
   m.rotation.y = -Math.atan2(dz, dx); return m;
 }
 
-const ROOF_COL = { thatch: 0xd9b45a, slate: 0x6d7b8c, tile: 0xd0623a, wood: 0xa8602a, stone: 0xb0abc0 }, ROOF_DEF = 0xc0653a;
+const ROOF_COL = { thatch: 0xd9b45a, slate: 0x6d7b8c, tile: 0xd0623a, flat: 0x77736c, wood: 0xa8602a, stone: 0xb0abc0 }, ROOF_DEF = 0xc0653a;
 function roofMesh(a) {   // a gabled roof over a map rectangle: ridge along the long side, a little overhang, sitting on top of the walls
   const o = .25, w = a.w / U + 2 * o, d = a.h / U + 2 * o, hw = w / 2, hd = d / 2, alongX = w >= d, rh = Math.max(.6, Math.min(2.4, Math.min(w, d) * .4));
   const y0 = WALL_H, y1 = WALL_H + rh, V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -131,11 +131,12 @@ function roofMesh(a) {   // a gabled roof over a map rectangle: ridge along the 
 function build() {
   root.clear(); buildGrid();
   const { floors = {}, walls = {}, props = {} } = S.map, gm = S.isGM;
+  const level = S.level ?? S.map.level ?? 0, floorAt = (x, z) => Object.values(floors).find(a => (a.lv ?? 0) === level && x >= a.x && x <= a.x + a.w && z >= a.y && z <= a.y + a.h)?.elev || 0;
   let sx = 0, sz = 0, n = 0, minX = 1e9, minZ = 1e9, maxX = -1e9, maxZ = -1e9;
-  for (const [fi, a] of Object.values(floors).entries()) {   // later floors sit a hair higher, like the 2D draw order, so overlapping rects do not z-fight
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(a.w / U, a.h / U), mat(FLOOR_COL[a.mat] ?? FLOOR_DEF, "f:" + (a.mat && a.mat in FLOOR_COL ? a.mat : "paper")));
+  for (const [fi, a] of Object.values(floors).filter(a => (a.lv ?? 0) === level).entries()) {
+    const elev = Number(a.elev) || 0, m = new THREE.Mesh(new THREE.BoxGeometry(a.w / U, Math.max(.04, Math.abs(elev) / U), a.h / U), mat(FLOOR_COL[a.mat] ?? FLOOR_DEF, "f:" + (a.mat && a.mat in FLOOR_COL ? a.mat : "paper")));
     uvScale(m.geometry, a.w / U, a.h / U);
-    m.rotation.x = -Math.PI / 2; m.position.set((a.x + a.w / 2) / U, fi * .003, (a.y + a.h / 2) / U); m.receiveShadow = true; root.add(m);
+    m.position.set((a.x + a.w / 2) / U, elev ? elev / U / 2 : fi * .003, (a.y + a.h / 2) / U); m.receiveShadow = true; root.add(m);
     minX = Math.min(minX, a.x); minZ = Math.min(minZ, a.y); maxX = Math.max(maxX, a.x + a.w); maxZ = Math.max(maxZ, a.y + a.h);
   }
   {   // ground: the whole map area in paper, under any floors; also frames the camera when a map has no floors (e.g. an import of walls, doors and lights only)
@@ -144,25 +145,25 @@ function build() {
     g.rotation.x = -Math.PI / 2; g.position.set(gw / 2 / U, -.01, gh / 2 / U); g.receiveShadow = true; root.add(g);
     if (!(maxX > minX)) { minX = 0; minZ = 0; maxX = gw; maxZ = gh; }
   }
-  const doors = Object.entries(S.objects).filter(([, o]) => o.kind === "door" && (gm || !o.hidden)).map(([id, o]) => ({ ...o, _id: id }));
+  const doors = Object.entries(S.objects).filter(([, o]) => o.kind === "door" && (o.lv ?? 0) === level && (gm || !o.hidden)).map(([id, o]) => ({ ...o, _id: id }));
   // Walls, with the part under each door cut out (the door fills it, or leaves it open under a lintel).
-  for (const [wid, w] of Object.entries(walls)) {
+  for (const [wid, w] of Object.entries(walls)) { if ((w.lv ?? 0) !== level) continue;
     const col = WALL_COL[w.mat] ?? WALL_DEF;
     for (const [x1, y1, x2, y2] of wallPieces(w, doors)) seg({ x: x1, y: y1 }, { x: x2, y: y2 }, WALL_H, WALL_T, col, 0, root, w.mat in WALL_COL ? w.mat : "stone").userData.pick = { type: "wall", id: wid };
   }
   for (const d of doors) {
-    const v = d.dir === "v", a = { x: d.x - (v ? 0 : 20), y: d.y - (v ? 20 : 0) }, b = { x: d.x + (v ? 0 : 20), y: d.y + (v ? 20 : 0) }, col = WALL_COL[d.mat] ?? 0x6b4423;
+    const dk = d.doorKind || d.kindName || (d.win ? "window" : "wood"), v = d.dir === "v", n = dk === "double" ? 40 : 20, a = { x: d.x - (v ? 0 : n), y: d.y - (v ? n : 0) }, b = { x: d.x + (v ? 0 : n), y: d.y + (v ? n : 0) }, col = dk === "curtain" ? 0xb45c83 : dk === "secret" ? 0x8d7d72 : WALL_COL[d.mat] ?? 0x6b4423;
     if (d.win) {   // window: sill and lintel with a pane of glass between (blocks walking, not sight)
       const sill = seg(a, b, .9, WALL_T, col, 0, root, "wood"), top = seg(a, b, .45, WALL_T, col, WALL_H - .45, root, "wood"), pane = d.state === "open" ? null : seg(a, b, WALL_H - 1.35, .04, 0x9fd4e8, .9, root, "wood");   // an open window has no glass
       if (pane) pane.material = new THREE.MeshBasicMaterial({ color: 0x9fd4e8, transparent: true, opacity: .35, depthWrite: false });
       for (const m of [sill, top, pane].filter(Boolean)) m.userData.pick = { type: "object", id: d._id };
       continue;
     }
-    const dm = d.state === "open" ? seg(a, b, .45, WALL_T, col, WALL_H - .45, root, "wood")   // lintel over an open doorway
+    const dm = d.state === "open" || dk === "arch" ? seg(a, b, .45, WALL_T, col, WALL_H - .45, root, "wood")   // lintel over an open doorway
       : seg(a, b, WALL_H, WALL_T * 1.25, col, 0, root, "wood");
     dm.userData.pick = { type: "object", id: d._id };
   }
-  for (const a of Object.values(S.map.roofs || {})) {   // like 2D: a lifted roof shows the room, and so does a PC standing under it; otherwise players see it solid and the GM sees through it
+  for (const a of Object.values(S.map.roofs || {}).filter(a => (a.lv ?? 0) === level)) {   // like 2D: a lifted roof shows the room, and so does a PC standing under it; otherwise players see it solid and the GM sees through it
     if (a.open) continue;
     if (Object.values(S.tokens).some((t) => isPcToken(t) && !t.hidden && t.x >= a.x && t.x <= a.x + a.w && t.y >= a.y && t.y <= a.y + a.h)) continue;   // a PC is inside: the roof lifts so the room shows
     const m = roofMesh(a);
@@ -173,11 +174,11 @@ function build() {
   const structural = [];
   root.traverse((n) => { if (n.isMesh && n.userData.structural) structural.push(n); });
   structural.forEach(ink);
-  for (const [pid, p] of Object.entries(props)) { if (p.hidden && !gm) continue; prop(p, pid); }
+  for (const [pid, p] of Object.entries(props)) { if ((p.lv ?? 0) !== level || (p.hidden && !gm)) continue; prop({ ...p, elevation: floorAt(p.x, p.y) }, pid); }
   for (const [i, [tid, t]] of Object.entries(S.tokens).entries()) {
-    if (t.hidden && !gm) continue;
+    if ((t.lv ?? 0) !== level || (t.hidden && !gm)) continue;
     const col = t.color ? new THREE.Color(t.color) : t.hp != null ? new THREE.Color(0x5a2a24) : new THREE.Color(TOKEN_COLS[i % 4]);
-    const g = new THREE.Group(); g.position.set(t.x / U, 0, t.y / U); g.userData.pick = { type: "token", id: tid }; root.add(g);
+    const g = new THREE.Group(); g.position.set(t.x / U, floorAt(t.x, t.y), t.y / U); g.userData.pick = { type: "token", id: tid }; root.add(g);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(.4, .4, .08, 24), mat(col.getHex())); base.position.y = .04; g.add(base);
     const body = new THREE.Mesh(new THREE.CylinderGeometry(.18, .26, .8, 16), mat(col.getHex())); body.position.y = .48; body.castShadow = true; g.add(body);
     const head = new THREE.Mesh(new THREE.SphereGeometry(.17, 16, 12), mat(0xffd9b0)); head.position.y = 1.05; head.castShadow = true; g.add(head);
@@ -189,7 +190,7 @@ function build() {
   // Lights: every lit "light" object is a real point light; the first few cast shadows.
   let shadowed = 0;
   for (const [oid, o] of Object.entries(S.objects)) {
-    if (o.kind !== "light" || o.state !== "on" || (o.hidden && !gm)) continue;
+    if (o.kind !== "light" || o.state !== "on" || (o.lv ?? 0) !== level || (o.hidden && !gm)) continue;
     const r = (o.radius || 120) / U, l = new THREE.PointLight(new THREE.Color(o.color || "#ffb347"), 14 * r * .6, r * 1.6, 1.4);
     l.position.set(o.x / U, 1.3, o.y / U);
     if (shadowed < MAX_SHADOW_LIGHTS) { l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -.002; l.shadow.radius = 3; shadowed++; }
@@ -205,9 +206,8 @@ function build() {
 }
 
 function prop(p, pid) {   // chunky, outlined Wind Waker-style prop kit
-  const K = p.kind, known = ["crate", "barrel", "table", "chest", "pillar", "statue", "bed", "rug", "tree", "pine", "bush", "rock", "stump", "well", "lamp", "fence"];
-  if (!known.includes(K)) return;
-  const g = new THREE.Group(); g.position.set(p.x / U, p.elevation || 0, p.y / U); g.rotation.y = p.rotation || 0; g.scale.setScalar(p.scale || 1); g.userData.pick = { type: "prop", id: pid }; root.add(g);
+  const K = p.kind;
+  const g = new THREE.Group(); g.position.set(p.x / U, p.elevation || 0, p.y / U); g.rotation.y = (p.rot || 0) * Math.PI / 180; g.scale.set((p.flip ? -1 : 1) * (p.s || 1), p.s || 1, p.s || 1); g.userData.pick = { type: "prop", id: pid }; root.add(g);
   const R = seeded(p.id), pick = (a) => a[Math.floor(R() * a.length)];
   const part = (geo, c, x = 0, y = 0, z = 0, tex, noInk = false) => { const m = new THREE.Mesh(geo, c?.isMaterial ? c : mat(c, tex)); m.position.set(x, y, z); m.castShadow = m.receiveShadow = !noInk; m.userData.noInk = noInk; g.add(m); return m; };
   const b = (w, h, d, c, x, y, z, tex, noInk = false) => part(boxGeo(w, h, d), c, x, y, z, tex, noInk);
@@ -260,6 +260,7 @@ function prop(p, pid) {   // chunky, outlined Wind Waker-style prop kit
   } else if (K === "fence") {
     for (const x of [-.45, 0, .45]) b(.08, .62, .08, PARCHMENT, x, .31, 0, "wood"); for (const y of [.22, .45]) b(1, .07, .05, PARCHMENT, 0, y, 0, "wood");
   }
+  if (!g.children.length) b(.65, .35, .65, K.startsWith("decal_") ? 0x9b6b62 : 0xb79a63, 0, .175, 0, undefined, K.startsWith("decal_"));
   const meshes = []; g.traverse((n) => { if (n.isMesh && !n.userData.noInk) meshes.push(n); }); meshes.forEach(ink);
 }
 

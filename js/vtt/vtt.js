@@ -51,8 +51,14 @@ const loadedAt = Date.now();
     await rawPut("seeded", true);
   }
 })();
-for (const part of ["floors", "walls", "roofs", "props", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); });
+for (const part of ["floors", "walls", "roofs", "props", "labels", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); });
+watch("map/level", (v) => { S.level = S.map.level = Number(v) || 0; drawMap(); drawObjects(); drawTokens(); drawWalls(); });
+watch("map/levelNames", (v) => { S.map.levelNames = v || {}; });
 initTools(); initView(); initInitiative(); initScenes(); initImages(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd();
+if (S.isGM) {
+  const floorButton = (delta) => addBarButton({ id: `floor-${delta > 0 ? "up" : "down"}`, icon: delta > 0 ? "↑" : "↓", label: "Floor", gmOnly: true, onClick: () => { const lv = (S.level ?? 0) + delta; S.level = lv; rawPut("map/level", lv); } });
+  floorButton(-1); floorButton(1);
+}
 watch("map/size", (v) => { S.map.size = v || null; applyView(); drawMap(); });
 watch("objects", (v) => {
   const before = prevStates; S.objects = v || {};
@@ -89,7 +95,7 @@ watch("events/last", (e) => { if (e && e.t > loadedAt) { const t = $("#toast"); 
 // Only the GM client runs the rules, so two clients never race.
 function afterChange() {
   if (!S.isGM) return;
-  const doors = doorsList(), blockers = [...Object.values(S.map.walls || {}).flatMap((w) => wallPieces(w, doors)), ...doors.filter((d) => !d.win && d.state !== "open").map((d) => d.dir === "v" ? [d.x, d.y - 20, d.x, d.y + 20] : [d.x - 20, d.y, d.x + 20, d.y])];
+  const doors = doorsList().filter(d => (d.lv ?? 0) === (S.level ?? 0)), blockers = [...Object.values(S.map.walls || {}).filter(w => (w.lv ?? 0) === (S.level ?? 0)).flatMap((w) => wallPieces(w, doors)), ...doors.filter((d) => !d.win && !["window", "bars", "portcullis", "arch"].includes(d.doorKind || d.kindName) && d.state !== "open").map((d) => d.dir === "v" ? [d.x, d.y - 20, d.x, d.y + 20] : [d.x - 20, d.y, d.x + 20, d.y])];
   const changes = evaluate({ objects: S.objects, groups: S.groups, tokens: S.tokens, blockers });
   if (Object.keys(changes).length) rawPatch(changes);
 }
@@ -315,6 +321,8 @@ map.addEventListener("contextmenu", (e) => {
     const id = propEl.dataset.id, a = S.map.props[id]; if (!a) return; e.preventDefault();
     return showActionMenu(e, a.kind, [[a.hidden ? "Reveal to players" : "Hide from players", () => put(`map/props/${id}/hidden`, a.hidden ? null : true)], ["Delete", () => put(`map/props/${id}`, null)]], settingsFor("prop", id).fields);
   }
+  const labelEl = e.target.closest(".map-label");
+  if (labelEl) { const id = labelEl.dataset.id, a = S.map.labels?.[id]; if (!a) return; e.preventDefault(); return showActionMenu(e, a.text || "Label", [["Delete", () => put(`map/labels/${id}`, null)]], settingsFor("label", id).fields); }
   const wl = wallAt(p);
   if (wl) { e.preventDefault(); return showActionMenu(e, "Wall", [["Delete", () => put(`map/walls/${wl}`, null)]], settingsFor("wall", wl).fields); }
   const fg = fogAt(p);

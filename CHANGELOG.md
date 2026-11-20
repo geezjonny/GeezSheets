@@ -2,6 +2,14 @@
 
 ## 2026-11-20
 
+### VTT: import maps from the GeezSuite mapmaker
+- **Import GeezSheets map (.geezmap.json)** in Import / Export brings in a whole map from the mapmaker: every floor, walls, doors, lights, props, roofs, labels and stairs, with an option to also set time, weather and light (dark maps become fog that lights reveal).
+- **Puzzle rules and hand-placed fog come across too:** plates, switches, spawns and the like keep their when/then rules, and rules that open a door or light still work on the imported door or light.
+- **Many more things to build with:** about 130 props (with rotation, scale and mirror), decals as props, 22 floors, 12 walls, 6 roofs and 9 door kinds (portcullis, bars, secret, arch, curtain, double, window) that act the way they look.
+- **Prop palette like Dungeondraft:** categories down the side, a search box, thumbnails, and random rotation and scale options.
+- **Elevation and several floors:** raised and sunk ground is shaded and outlined, and rises in the 3D view. Floor up / Floor down buttons switch levels, and players follow the GM's level. Sight and fog only count things on the same level.
+- **Labels** written on the map show for players; the GM can edit or delete them.
+
 ### Dashboard (new GM page, dashboard.html)
 - New GM dashboard: movable, resizable floating windows that read and write the same Firebase data as the sheets and the VTT. A top bar shows or hides each window, and the layout is remembered. It now looks like the VTT: leather, brass, parchment and ink.
 - HP: add any PC or NPC from a dropdown (press + for more). HP bar and number, click to set HP, or type an amount and press Dmg or Heal (temp HP soaks damage, healing stops at max, death saves reset above 0). Spell slot pips in a dropdown. HP, slot and condition changes are written to both the sheet and the VTT, so everything stays in sync.

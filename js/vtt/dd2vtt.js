@@ -97,11 +97,12 @@ export function parseDD2VTT(json) {
   if (typeof json.image === "string" && json.image) {
     imageDataUrl = json.image.startsWith("data:") ? json.image : `data:${json.geezvtt?.imageMime || "image/png"};base64,${json.image}`;
   }
-  return { cols, rows, walls, doors, lights, imageDataUrl, ppg: finite(resolution.pixels_per_grid) ? resolution.pixels_per_grid : 70 };
+  const tag = (o) => Object.defineProperty(o, "lv", { value: 0, enumerable: false, writable: true });
+  return { cols, rows, walls: walls.map(w => tag({ ...w })), doors: doors.map(d => tag({ ...d })), lights: lights.map(l => tag({ ...l })), floors: [], roofs: [], props: [], labels: [], imageDataUrl, ppg: finite(resolution.pixels_per_grid) ? resolution.pixels_per_grid : 70 };
 }
 
 const id = (prefix, n) => `${prefix}${Date.now().toString(36)}${n.toString(36)}`;
-const toast = (message) => {
+export const toast = (message) => {
   const el = document.querySelector("#toast"); if (!el) return;
   el.textContent = message; el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 3000);
@@ -134,14 +135,14 @@ export async function listGeezMaps() { const { readAt } = await import("../store
 
 // mode: "merge" adds the walls, doors and lights to the current scene; "new" starts a fresh scene
 // (the current one is saved first as "Before import ...", so nothing is lost). Only walls, doors and lights are imported.
-async function applyDD2VTT(data, mode = "merge") {
+export async function applyDD2VTT(data, mode = "merge") {
   const [{ S, mapSize }, { newObject }, store] = await Promise.all([
     import("./state.js"), import("../puzzle/objects.js"), import("../store.js"),
   ]);
   const cur = mapSize(), changes = {};
   if (mode === "new") {
     const [map, objects, tokens, groups] = await Promise.all(["map", "objects", "tokens", "groups"].map((p) => store.read(p)));
-    if (Object.keys(map?.walls || {}).length || Object.keys(objects || {}).length) {
+    if (Object.keys(map?.walls || {}).length || Object.keys(map?.floors || {}).length || Object.keys(objects || {}).length) {
       const stamp = new Date().toLocaleString(), key = `before-import-${Date.now().toString(36)}`;
       await store.put(`scenes/${key}`, { name: `Before import ${stamp}`, ts: Date.now(), data: { map: map || {}, objects: objects || {}, tokens: tokens || {}, groups: groups || {} } });
     }
@@ -149,30 +150,50 @@ async function applyDD2VTT(data, mode = "merge") {
     changes["map/size"] = { cols: Math.max(10, Math.min(100, data.cols)), rows: Math.max(10, Math.min(100, data.rows)) };
   } else changes["map/size"] = { cols: Math.max(cur.cols, Math.min(100, data.cols)), rows: Math.max(cur.rows, Math.min(100, data.rows)) };
   let n = 0;
-  for (const w of data.walls) changes[`map/walls/${id("w", n++)}`] = w;
-  for (const d of data.doors) changes[`objects/${id("d", n++)}`] = newObject("door", d.x, d.y, n, { dir: d.dir, state: d.state });
-  for (const l of data.lights) changes[`objects/${id("l", n++)}`] = newObject("light", l.x, l.y, n, { radius: l.radius, color: l.color, fog: 0, state: "on" });
+  for (const f of data.floors || []) changes[`map/floors/${id("f", n++)}`] = { lv: 0, ...f };
+  for (const w of data.walls) changes[`map/walls/${id("w", n++)}`] = { lv: 0, ...w };
+  for (const r of data.roofs || []) changes[`map/roofs/${id("r", n++)}`] = { lv: 0, ...r };
+  for (const p of data.props || []) changes[`map/props/${id("p", n++)}`] = { lv: 0, ...p };
+  for (const l of data.labels || []) changes[`map/labels/${id("l", n++)}`] = { lv: 0, ...l };
+  for (const d of data.doors) if (!data.objects?.[d.id]) changes[`objects/${d.id || id("d", n++)}`] = { ...newObject("door", d.x, d.y, n, { dir: d.dir, state: d.state, mat: d.mat, doorKind: d.kind || (d.win ? "window" : "wood"), ...(d.win ? { win: true } : {}) }), lv: d.lv ?? 0 };
+  for (const l of data.lights) if (!data.objects?.[l.id]) changes[`objects/${l.id || id("l", n++)}`] = { ...newObject("light", l.x, l.y, n, { radius: l.radius, color: l.color, fog: 0, state: "on" }), lv: l.lv ?? 0 };
+  for (const [oid, o] of Object.entries(data.objects || {})) changes[`objects/${oid}`] = o;
+  for (const [gid, g] of Object.entries(data.groups || {})) changes[`groups/${gid}`] = g;
+  for (const [fid, f] of Object.entries(data.fog || {})) changes[`map/fog/${id("g", n++)}`] = { open: false, ...f };
+  if (data.floorNames) changes["map/levelNames"] = data.floorNames;
+  if (data.floorKeys?.length) changes["map/level"] = Number(data.floorKeys[0]) || 0;
+  if (data.light) { changes["map/light"] = data.light; if (data.light === "dark") for (let y = 0; y < data.rows; y++) changes[`map/fog/${id("g", n++)}`] = { x: 0, y: y * 40, w: data.cols * 40, h: 40, open: false, lv: 0 }; }
   changes.seeded = true;
   await store.patch(changes);
+  if (data.atmosphere?.time != null) await store.put("atmosphere", { time: data.atmosphere.time, weather: data.atmosphere.weather, color: "#4d86b8" });
   return data;
 }
 
 // Ask where an import should go. Resolves "merge", "new" or null (cancelled).
-async function askMode(label) {
+export async function askMode(label) {
   const { floatWindow } = await import("./ui.js");
   return new Promise((resolve) => {
     const w = floatWindow({ id: "import-mode", title: "Import map", x: 300, y: 170 });
     const done = (v) => { resolve(v); w.hide(); w.el.remove(); };
-    w.body.innerHTML = `<div class="import-mode"><b></b><span>Imports walls, doors and lights only.</span><button type="button" data-m="merge">Add to current scene</button><button type="button" data-m="new">New scene (current one is saved first)</button><button type="button" data-m="">Cancel</button></div>`;
+    w.body.innerHTML = `<div class="import-mode"><b></b><span>Imports the map and all supported floors.</span><label><input type="checkbox" data-atmo checked> Also set time, weather and light</label><button type="button" data-m="merge">Add to current scene</button><button type="button" data-m="new">New scene (current one is saved first)</button><button type="button" data-m="">Cancel</button></div>`;
     w.body.querySelector("b").textContent = label;
     const st = document.createElement("style"); st.textContent = ".import-mode{display:grid;gap:.4rem;max-width:18rem}.import-mode span{font-size:.8rem;opacity:.8}"; w.body.append(st);
-    w.body.addEventListener("click", (e) => { const b = e.target.closest("[data-m]"); if (b) done(b.dataset.m || null); });
+    w.body.addEventListener("click", (e) => { const b = e.target.closest("[data-m]"); if (b) { askMode.lastAtmo = !!w.body.querySelector("[data-atmo]")?.checked; done(b.dataset.m || null); } });
     w.el.querySelector(".fwin-x")?.addEventListener("click", () => resolve(null));
   });
 }
 async function importWithChoice(label, load) {
   const mode = await askMode(label); if (!mode) return;
   try { await applyDD2VTT(await load(), mode); toast(`Imported ${label} (${mode === "new" ? "new scene" : "added to scene"})`); } catch (e) { toast(e.message); }
+}
+async function importGeezChoice(file, button) {
+  const { parseGeezMap, applyGeezMap } = await import("./geezmap.js");
+  const mode = await askMode(file.name); if (!mode) return;
+  try {
+    const data = parseGeezMap(JSON.parse(await file.text())); if (!askMode.lastAtmo) data.atmosphere = null; await applyGeezMap(data, mode);
+    const skipped = Object.entries(data.skipped).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`).join(", ") || "none";
+    toast(`Imported ${data.name}: ${data.counts?.objects ?? data.doors.length + data.lights.length} objects, ${data.counts?.rules || 0} rules, ${data.counts?.fog || 0} fog cells; skipped ${skipped}`);
+  } catch (e) { toast(e.message); }
 }
 // GeezSheets places that have a battle map file (Gaia places with data.dd2vtt) -> [{ name, file }]
 export async function listGeezPlaces() {
@@ -199,6 +220,7 @@ export function initDD2VTT() {
   Promise.all([import("./ui.js"), import("./state.js")]).then(([{ addBarButton, menuWindow }, { S }]) => {
     addBarButton({ id: "dd2vtt", icon: "🗺", label: "Import", gmOnly: true, onClick: menuWindow("import", "Import / Export", () => [
       ["Import .dd2vtt file…", () => { const input = document.createElement("input"); input.type = "file"; input.accept = ".dd2vtt,.json,.uvtt"; input.addEventListener("change", () => { const f = input.files[0]; if (f) importWithChoice(f.name, async () => parseDD2VTT(JSON.parse(await f.text()))); }); input.click(); }],
+      ["Import GeezSheets map (.geezmap.json)…", (b) => { const input = document.createElement("input"); input.type = "file"; input.accept = ".json"; input.addEventListener("change", () => { const f = input.files[0]; if (f) importGeezChoice(f, b); }); input.click(); }],
       ["From GeezSheets places…", async (b) => { try { const places = await listGeezPlaces(); const { dropMenu } = await import("./ui.js"); dropMenu(b, [["GeezSheets battle maps (read-only)", null], ...places.map((p) => [p.name, () => importWithChoice(p.name, async () => { const r = await fetch(geezMapUrl(p.file)); if (!r.ok) throw new Error(`Could not load ${p.file}`); return parseDD2VTT(await r.json()); })])]); } catch (e) { toast(e.message); } }],
       ["From GeezSheets maps…", async (b) => { try { const names = await listGeezMaps(); const { dropMenu } = await import("./ui.js"); dropMenu(b, [["GeezSheets raw maps (read-only)", null], ...names.map((n) => [n, async () => { const { readAt } = await import("../store.js"); importWithChoice(n, async () => { const m = await readAt(`maps/${n}`); if (!m?.geometry) throw new Error(`No geometry at maps/${n}`); return parseDD2VTT(geezGeometryToDD2VTT(m.geometry)); }); }])]); } catch (e) { toast(e.message); } }],
       ["Export .dd2vtt", async () => { const blob = await exportDD2VTT(); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${(S?.sceneName || S?.map?.name || "map").replace(/[\\/:*?"<>|]+/g, "_")}.dd2vtt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }],

@@ -17,7 +17,7 @@ export function solidSegments() {
   const segs = Object.values(S.map.walls || {}).filter((w) => [w.x1, w.y1, w.x2, w.y2].every(Number.isFinite)).map((w) => [w.x1, w.y1, w.x2, w.y2]);
   for (const o of Object.values(S.objects || {})) {
     if (o.kind !== "door" || !Number.isFinite(o.x) || !Number.isFinite(o.y)) continue;
-    if (o.state === "open" && !o.win) continue;
+    if (o.state === "open" && !o.win || ["window", "arch", "bars", "portcullis"].includes(o.doorKind || o.kindName)) { if ((o.doorKind || o.kindName) !== "window") continue; }
     segs.push(o.dir === "v" ? [o.x, o.y - 20, o.x, o.y + 20] : [o.x - 20, o.y, o.x + 20, o.y]);
   }
   return segs;

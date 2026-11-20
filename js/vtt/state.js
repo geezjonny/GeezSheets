@@ -3,7 +3,7 @@ export const $ = (s) => document.querySelector(s);
 export const emptyDraft = () => ({ when: [], then: [], pool: [] });
 export const S = {
   isGM: new URLSearchParams(location.search).has("gm"),
-  objects: {}, tokens: {}, groups: {}, map: { floors: {}, walls: {}, roofs: {}, props: {}, fog: {} }, tool: null,
+  objects: {}, tokens: {}, groups: {}, map: { floors: {}, walls: {}, roofs: {}, props: {}, labels: {}, fog: {}, level: 0, levelNames: {} }, level: 0, tool: null,
   puzzleMode: false, selected: new Set(), draft: emptyDraft(),
   placing: null, pick: null, lastSel: null, dragging: null,
 };

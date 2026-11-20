@@ -3,7 +3,7 @@ import { readAt } from "../store.js";
 import { put, patch } from "./undo.js";
 import { KINDS, newObject } from "../puzzle/index.js";
 import { $, S, cellOf, mapSize } from "./state.js";
-import { el, PROPS, drawObjects } from "./draw.js";
+import { el, PROPS, PROP_CATALOG, drawObjects } from "./draw.js";
 import { renderPanel } from "./panel.js";
 import { floatWindow } from "./ui.js";
 
@@ -13,14 +13,15 @@ const HINT = {
   fog: "Drag to fog a room (snaps to cells). Right-click fog to reveal it to players.", roof: "Drag to cover an area with a roof. Right-click a roof to lift it.", prop: "Click a cell to place it. Drag props to move them.",
   erase: "Click anything to delete it.", "obj:door": "Click near a cell edge to place a door.", "obj:light": "Click a cell to place a light.",
 };
-export const WALL_MATS = ["wood", "stone", "cobble", "iron"], FLOOR_MATS = [...WALL_MATS, "gravel", "sand", "grass", "water", "mud", "ice"];
+export const WALL_MATS = ["stone", "ashlar", "marble", "brick", "fieldstone", "plaster", "timber", "wood", "palisade", "cave", "hedge", "earth", "cobble", "iron"];
+export const FLOOR_MATS = ["stone", "slab", "cobble", "marble", "tile", "wood", "carpet", "dirt", "cave", "sand", "grass", "snow", "water", "mud", "shallow", "ice", "lava", "swamp", "bone", "void", "gravel", "moss", "iron"];
 export const LIGHT_COLORS = { "#ffb347": "warm (torch)", "#ffe9a8": "white", "#e05a3c": "red", "#4aa3e8": "blue", "#58c46a": "green", "#a46be0": "purple", "#40d0d0": "cyan", "#e87bc0": "pink" };
 const matSel = (list) => `<select data-o="mat"><option value="">default</option>${list.map((m) => `<option value="${m}">${m}</option>`).join("")}</select>`;
 let curMat = "", curMode = "", eraseOnly = "";   // floor flyout choices: material, shape/brush/bucket, floor-only erase
 const matOf = () => opt("mat")?.value || curMat;
 const FLOOR_ACTS = [["select", "Select"], ["erase", "Erase"], ["shape", "Shape"], ["brush", "Paint brush"], ["bucket", "Paint bucket"]];
-export const ROOF_MATS = ["thatch", "slate", "tile", "wood", "stone"];
-const FLOOR_COL = { thatch: "#c9a85c", slate: "#59636e", tile: "#b5532f", ...{ wood: "#b88a52", stone: "#b5b2a8", cobble: "#8f8a80", iron: "#6f7882", gravel: "#a39a88", sand: "#e0cb8f", grass: "#8fae6a", water: "#6aa3c2", mud: "#7a5f43", ice: "#cfe8f0" } };
+export const ROOF_MATS = ["thatch", "slate", "tile", "flat", "wood", "stone"];
+const FLOOR_COL = { thatch: "#c9a85c", slate: "#59636e", tile: "#b5532f", flat: "#77736c", wood: "#b88a52", stone: "#b5b2a8", slab: "#aaa69d", cobble: "#8f8a80", marble: "#d7d8d2", carpet: "#9a5364", dirt: "#856a4c", cave: "#635d61", iron: "#6f7882", gravel: "#a39a88", sand: "#e0cb8f", grass: "#8fae6a", snow: "#eef5f5", water: "#6aa3c2", mud: "#7a5f43", shallow: "#83b8c4", ice: "#cfe8f0", lava: "#d64b2f", swamp: "#64734b", bone: "#d8ceb0", void: "#252433", moss: "#718454", ashlar: "#9b9890", brick: "#9c5547", fieldstone: "#817c75", plaster: "#c8bca4", timber: "#80552e", palisade: "#69462c", hedge: "#50713f", earth: "#795b3f" };
 const uid = (p) => p + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
 const vertex = (p) => { const { cols, rows } = mapSize(); return { x: Math.max(0, Math.min(cols * 40, Math.round(p.x / 40) * 40)), y: Math.max(0, Math.min(rows * 40, Math.round(p.y / 40) * 40)) }; };
 const opt = (k) => $(`#toolbar [data-o="${k}"]`) || tokWin?.body.querySelector(`[data-o="${k}"]`);
@@ -97,8 +98,10 @@ const FULL = ["select", "erase", "shape", "brush", "bucket"];
 const PAL = { floor: { tools: FULL, mats: FLOOR_MATS }, fog: { tools: FULL }, wall: { tools: ["select", "erase", "line"], mats: WALL_MATS }, roof: { tools: ["select", "erase", "shape"], mats: ROOF_MATS }, prop: { tools: ["select", "erase", "place"], props: true }, "obj:door": { tools: ["select", "erase", "place", "window"], mats: WALL_MATS }, "obj:light": { tools: ["select", "erase", "place"], color: true } };
 const palCfg = (k) => PAL[k] || { tools: ["select", "erase", "place"] };
 const TOOL_LABEL = { select: "Select", erase: "Erase", shape: "Shape", line: "Line", brush: "Paint brush", bucket: "Paint bucket", place: "Place", window: "Window" };
-let palProp = "crate", palColor = "#ffb347", palKind = "", palMode = "", palMat = "", palTools = null, palSwatch = null;
+let palProp = "crate", palColor = "#ffb347", palKind = "", palMode = "", palMat = "", palRot = 0, palScale = 1, palRandomRot = false, palRandomScale = false, palFlip = false, palTools = null, palSwatch = null;
 const palName = (k) => k.startsWith("obj:") ? KINDS[k.slice(4)]?.label || k : MENU.find(([m]) => m === k)?.[1].replace(" ▸", "") || k;
+const propGlyph = (k) => { const s = PROP_CATALOG[k]?.shape || "mark"; return s === "rect" ? "<rect x='4' y='8' width='24' height='16' rx='3'/><path d='M7 11l18 10'/>" : s === "round" ? "<circle cx='16' cy='16' r='11'/><circle cx='16' cy='16' r='5' fill='none'/>" : s === "leaf" ? "<circle cx='10' cy='17' r='8'/><circle cx='22' cy='13' r='8'/><circle cx='16' cy='16' r='2'/>" : s === "rock" ? "<path d='M3 23l5-15 14-3 7 14-10 5z'/>" : "<circle cx='16' cy='16' r='9'/><path d='M4 16h24M16 4v24'/>"; };
+const propHTML = () => { const groups = {}; for (const [k, l] of Object.entries(PROPS)) (groups[PROP_CATALOG[k]?.category || "other"] ||= []).push([k, l]); const all = Object.entries(PROPS).length; const cats = Object.entries(groups).map(([cat, list]) => `<button type="button" data-cat="${cat}">${cat} <small>${list.length}</small></button>`).join(""); const thumbs = (list) => list.map(([k, l]) => `<button type="button" class="prop-thumb" data-prop="${k}" title="${l}"><svg viewBox="0 0 32 32" aria-label="${l}">${propGlyph(k)}</svg><span>${l}</span></button>`).join(""); return `<div class="prop-palette"><div class="prop-cats"><button type="button" data-cat="all">All <small>${all}</small></button>${cats}</div><div><input class="prop-filter" placeholder="Search props…" aria-label="Search props"><div class="prop-list">${thumbs(Object.entries(PROPS))}</div></div></div><div class="prop-options"><label>Rotation <input data-pal="rot" type="number" min="0" max="359" value="${palRot}" style="width:4rem"></label><label><input data-pal="rrot" type="checkbox"> random</label><label>Scale <input data-pal="scale" type="range" min="0.5" max="2" step="0.05" value="${palScale}"></label><output data-scale>${palScale}</output><label><input data-pal="rscale" type="checkbox"> random</label><label><input data-pal="flip" type="checkbox"> Mirror</label></div>`; };
 function applyPal() {
   if (palMode === "select") setTool(null, null, true);
   else if (palMode === "erase") setTool("erase", { eraseOnly: palKind }, true);
@@ -116,12 +119,13 @@ function openPalette(kind) {
     palTools = floatWindow({ id: "floor-tools", title: "", x: 20, y: 120 }); palTools.body.className += " paltools";
     palTools.body.addEventListener("click", (e) => { const b = e.target.closest("[data-mode]"); if (!b) return; palMode = b.dataset.mode; applyPal(); });
     palSwatch = floatWindow({ id: "floor-swatch", title: "Swatches", x: 150, y: 120 }); palSwatch.body.className += " palswatch";
-    palSwatch.body.addEventListener("input", (e) => { if (e.target.matches(".wheel")) palColor = e.target.value; });
-    palSwatch.body.addEventListener("click", (e) => { const pr = e.target.closest("[data-prop]"); if (pr) { palProp = pr.dataset.prop; if (palMode === "select" || palMode === "erase") palMode = "place"; applyPal(); return; } const c = e.target.closest("[data-col]"); if (c) { palColor = c.dataset.col; palSwatch.body.querySelector(".wheel").value = palColor; return; } const b = e.target.closest("[data-mat]"); if (!b) return; palMat = b.dataset.mat; if (palMode === "select" || palMode === "erase") palMode = palCfg(palKind).tools[2]; applyPal(); });
+    palSwatch.body.addEventListener("input", (e) => { if (e.target.matches(".wheel")) palColor = e.target.value; const p=e.target.dataset.pal; if(p==="rot")palRot=+e.target.value||0;if(p==="scale"){palScale=+e.target.value||1;palSwatch.body.querySelector("[data-scale]").value=palScale}if(p==="rrot")palRandomRot=e.target.checked;if(p==="rscale")palRandomScale=e.target.checked;if(p==="flip")palFlip=e.target.checked; });
+    palSwatch.body.addEventListener("click", (e) => { const cat=e.target.closest("[data-cat]"); if(cat){const c=cat.dataset.cat;palSwatch.body.querySelectorAll("[data-prop]").forEach(b=>b.hidden=c!=="all"&&(PROP_CATALOG[b.dataset.prop]?.category||"other")!==c);return} const pr = e.target.closest("[data-prop]"); if (pr) { palProp = pr.dataset.prop; if (palMode === "select" || palMode === "erase") palMode = "place"; syncPalette(); applyPal(); return; } const c = e.target.closest("[data-col]"); if (c) { palColor = c.dataset.col; palSwatch.body.querySelector(".wheel").value = palColor; return; } const b = e.target.closest("[data-mat]"); if (!b) return; palMat = b.dataset.mat; if (palMode === "select" || palMode === "erase") palMode = palCfg(palKind).tools[2]; applyPal(); });
   }
   palTools.el.querySelector(".fwin-title").textContent = palName(kind);
   palTools.body.innerHTML = cfg.tools.map((k) => `<button type="button" data-mode="${k}">${TOOL_LABEL[k]}</button>`).join("");
-  palSwatch.body.innerHTML = cfg.props ? Object.entries(PROPS).map(([k, l]) => `<button type="button" data-prop="${k}">${l}</button>`).join("") : cfg.color ? `<input type="color" class="wheel" value="${palColor}" title="Light colour"><div class="presets">${Object.entries(LIGHT_COLORS).map(([c, n]) => `<button type="button" class="swatch" data-col="${c}" title="${n}"><i style="background:${c}"></i></button>`).join("")}</div>` : cfg.mats ? ["", ...cfg.mats].map((m) => `<button type="button" class="swatch" data-mat="${m}" title="${m || "default"}"><i style="background:${FLOOR_COL[m] || "#d8d0c0"}"></i>${m || "default"}</button>`).join("") : "";
+  palSwatch.body.innerHTML = cfg.props ? propHTML() : cfg.color ? `<input type="color" class="wheel" value="${palColor}" title="Light colour"><div class="presets">${Object.entries(LIGHT_COLORS).map(([c, n]) => `<button type="button" class="swatch" data-col="${c}" title="${n}"><i style="background:${c}"></i></button>`).join("")}</div>` : cfg.mats ? ["", ...cfg.mats].map((m) => `<button type="button" class="swatch" data-mat="${m}" title="${m || "default"}"><i style="background:${FLOOR_COL[m] || "#d8d0c0"}"></i>${m || "default"}</button>`).join("") : "";
+  if (cfg.props) palSwatch.body.querySelector(".prop-filter").addEventListener("input", (e) => palSwatch.body.querySelectorAll("[data-prop]").forEach((b) => b.hidden = !b.textContent.toLowerCase().includes(e.target.value.toLowerCase())));
   palTools.show(); cfg.mats || cfg.color || cfg.props ? palSwatch.show() : palSwatch.hide(); applyPal();
 }
 const hideSub = () => { const s = $("#addsub"); if (s) s.hidden = true; $("#addmenu").querySelector(".open")?.classList.remove("open"); };
@@ -170,7 +174,7 @@ export function initTools() {
   $("#addmenu").addEventListener("mouseover", (e) => { const c = e.target.closest("[data-choose]"); if (!c) return; if (c.dataset.choose === "object") showSub(c); else hideSub(); });
   document.addEventListener("click", (e) => { if (!e.target.closest("#addmenu, #addsub, #add")) { $("#addmenu").hidden = true; hideSub(); } });
   $("#toolbar").addEventListener("click", (e) => { if (e.target.id === "tdone") setTool(null); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && (S.tool || S.placing)) setTool(null); });
+  document.addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "r" && (S.placing || S.tool === "prop")) { palRot = (palRot + 90) % 360; const r=palSwatch?.body.querySelector('[data-pal="rot"]'); if(r)r.value=palRot; return; } if (e.key === "Escape" && (S.tool || S.placing)) setTool(null); });
   document.addEventListener("toolchange", renderToolbar);
 }
 
@@ -179,14 +183,14 @@ function placeToken(c) {
   const [kind, ref] = (opt("npc")?.value || "").split(":"), cur = (pcList || []).find((x) => x.id === ref)?.cur, npc = kind === "npc" ? ref : "", pc = kind === "pc" ? ref : "", name = opt("name")?.value.trim(), hp = parseInt(opt("hp")?.value, 10), color = opt("color")?.value;
   const used = new Set(Object.entries(S.tokens).map(([id, t]) => t.label || id));
   const label = name || [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].find((l) => !used.has(l)) || "?";
-  put(`tokens/${uid("t")}`, { x: c.x, y: c.y, label, ...(npc ? { npc } : {}), ...(pc ? { pc } : {}), ...(color ? { color } : {}), ...(hp > 0 ? { hp: pc && cur != null ? Math.min(cur, hp) : hp, max: hp } : {}) });
+  put(`tokens/${uid("t")}`, { x: c.x, y: c.y, lv: S.level ?? 0, label, ...(npc ? { npc } : {}), ...(pc ? { pc } : {}), ...(color ? { color } : {}), ...(hp > 0 ? { hp: pc && cur != null ? Math.min(cur, hp) : hp, max: hp } : {}) });
 }
 function placeObject(kind, p) {
   const snap = snapFor(kind, p), n = Object.values(S.objects).filter((o) => o.kind === kind).length + 1;
   const extra = kind === "dial" ? { values: ["N", "E", "S", "W"] } : kind === "gauge" ? { token: Object.keys(S.tokens).find((k) => S.tokens[k].hp != null) }
-    : kind === "tripwire" ? { len: 3, dir: "h" } : kind === "spawn" ? { hp: 5 } : kind === "door" ? { dir: snap.dir, ...(curMode === "window" ? { win: true } : {}), ...(matOf() ? { mat: matOf() } : {}) }
+    : kind === "tripwire" ? { len: 3, dir: "h" } : kind === "spawn" ? { hp: 5 } : kind === "door" ? { dir: snap.dir, doorKind: curMode === "window" ? "window" : "wood", ...(curMode === "window" ? { win: true } : {}), ...(matOf() ? { mat: matOf() } : {}) }
     : kind === "light" ? { radius: Math.max(1, +opt("radius")?.value || 3) * 40, color: opt("color")?.value || palColor, fog: Math.max(0, +(opt("fog")?.value ?? 2)) } : {};
-  put(`objects/${kind}${Date.now().toString(36)}`, newObject(kind, snap.x, snap.y, n, extra));
+  put(`objects/${kind}${Date.now().toString(36)}`, { ...newObject(kind, snap.x, snap.y, n, extra), lv: S.level ?? 0 });
 }
 const distToSeg = (p, a) => {
   const dx = a.x2 - a.x1, dy = a.y2 - a.y1, l = dx * dx + dy * dy || 1;
@@ -194,8 +198,9 @@ const distToSeg = (p, a) => {
   return Math.hypot(p.x - (a.x1 + t * dx), p.y - (a.y1 + t * dy));
 };
 const inRect = (p, a) => p.x >= a.x && p.x <= a.x + a.w && p.y >= a.y && p.y <= a.y + a.h;
-export function fogAt(p) { return Object.entries(S.map.fog || {}).find(([, a]) => inRect(p, a))?.[0]; }
-export function roofAt(p) { return Object.entries(S.map.roofs).find(([, a]) => inRect(p, a))?.[0]; }
+const onLevel = (a) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0);
+export function fogAt(p) { return Object.entries(S.map.fog || {}).find(([, a]) => onLevel(a) && inRect(p, a))?.[0]; }
+export function roofAt(p) { return Object.entries(S.map.roofs).find(([, a]) => onLevel(a) && inRect(p, a))?.[0]; }
 function erase(e, p) {
   const hit = (sel) => e.target.closest(sel)?.dataset.id;
   let id;
@@ -229,7 +234,7 @@ export function toolDown(e, p) {
   if ((t === "floor" || t === "fog") && curMode === "bucket") bucketFill(t, p);
   else if ((t === "floor" || t === "fog") && curMode === "brush") { const c = cellOf(p); drag = { type: "brush", kind: t, cells: new Map([[c.x + "," + c.y, c]]) }; $("#map").setPointerCapture(e.pointerId); preview(); }
   else if (t === "token") placeToken(cellOf(p));
-  else if (t === "prop") { const c = cellOf(p); put(`map/props/${uid("p")}`, { kind: opt("prop")?.value || palProp, x: c.x, y: c.y }); }
+  else if (t === "prop") { const c = cellOf(p), rot = palRandomRot ? Math.floor(Math.random() * 4) * 90 : palRot, s = palRandomScale ? .5 + Math.random() * 1.5 : palScale; put(`map/props/${uid("p")}`, { kind: opt("prop")?.value || palProp, x: c.x, y: c.y, lv: S.level ?? 0, rot, s, ...(palFlip ? { flip: true } : {}) }); }
   else if (t === "erase") erase(e, p);
   else if (t === "wall") { const v = vertex(p); drag = { type: "wall", a: v, b: v }; $("#map").setPointerCapture(e.pointerId); preview(); }
   else if (t === "floor" || t === "roof" || t === "fog") { const c = cellOf(p); drag = { type: t, a: c, b: c }; $("#map").setPointerCapture(e.pointerId); preview(); }
@@ -286,10 +291,10 @@ export function toolUp() {
   if (d.type === "wall") { if (d.a.x !== d.b.x || d.a.y !== d.b.y) put(`map/walls/${uid("w")}`, { x1: d.a.x, y1: d.a.y, x2: d.b.x, y2: d.b.y, ...(matOf() ? { mat: matOf() } : {}) }); return true; }
   if (d.type === "brush") { const fog = d.kind === "fog", base = fog ? "map/fog" : "map/floors", have = new Set(Object.values((fog ? S.map.fog : S.map.floors) || {}).filter((f) => f.w === 40 && f.h === 40 && (fog || (f.mat || "") === matOf())).map((f) => f.x + "," + f.y)); const ch = {}; let n = 0; for (const c of d.cells.values()) if (!have.has(c.x - 20 + "," + (c.y - 20))) ch[`${base}/${uid("f")}${n++}`] = { x: c.x - 20, y: c.y - 20, w: 40, h: 40, ...(fog ? { open: false } : matOf() ? { mat: matOf() } : {}) }; if (n) patch(ch); return true; }
   const r = rectOf(d);
-  if (d.type === "roof") put(`map/roofs/${uid("r")}`, { ...r, open: false, ...(matOf() ? { mat: matOf() } : {}) });
-  else if (d.type === "fog") put(`map/fog/${uid("g")}`, { ...r, open: false });
+  if (d.type === "roof") put(`map/roofs/${uid("r")}`, { ...r, open: false, lv: S.level ?? 0, ...(matOf() ? { mat: matOf() } : {}) });
+  else if (d.type === "fog") put(`map/fog/${uid("g")}`, { ...r, open: false, lv: S.level ?? 0 });
   else {
-    put(`map/floors/${uid("f")}`, { ...r, ...(matOf() ? { mat: matOf() } : {}) });
+    put(`map/floors/${uid("f")}`, { ...r, lv: S.level ?? 0, ...(matOf() ? { mat: matOf() } : {}) });
     if (opt("walls")?.checked) [[r.x, r.y, r.x + r.w, r.y], [r.x + r.w, r.y, r.x + r.w, r.y + r.h], [r.x + r.w, r.y + r.h, r.x, r.y + r.h], [r.x, r.y + r.h, r.x, r.y]]
       .forEach(([x1, y1, x2, y2]) => put(`map/walls/${uid("w")}`, { x1, y1, x2, y2 }));
   }
@@ -299,13 +304,14 @@ export function toolUp() {
 // ---- right-click settings -----------------------------------------------------
 // Returns { title, fields } for whatever sits at a right-click; each field writes straight to the database.
 const matOpts = (list) => [["", "default"], ...list.map((m) => [m, m])];
-export function wallAt(p) { return Object.entries(S.map.walls || {}).find(([, a]) => distToSeg(p, a) < 9)?.[0]; }
-export function floorAt(p) { return Object.entries(S.map.floors || {}).find(([, a]) => inRect(p, a))?.[0]; }
+export function wallAt(p) { return Object.entries(S.map.walls || {}).find(([, a]) => onLevel(a) && distToSeg(p, a) < 9)?.[0]; }
+export function floorAt(p) { return Object.entries(S.map.floors || {}).find(([, a]) => onLevel(a) && inRect(p, a))?.[0]; }
 export function settingsFor(type, id) {
   const F = (label, path, value, o = {}) => ({ label, path, value, ...o });
   if (type === "wall") return { title: "Wall", fields: [F("Material", `map/walls/${id}/mat`, S.map.walls[id].mat || "", { opts: matOpts(WALL_MATS) })] };
-  if (type === "floor") return { title: "Floor", fields: [F("Material", `map/floors/${id}/mat`, S.map.floors[id].mat || "", { opts: matOpts(FLOOR_MATS) })] };
-  if (type === "prop") return { title: "Prop", fields: [F("Kind", `map/props/${id}/kind`, S.map.props[id].kind, { opts: Object.entries(PROPS) })] };
+  if (type === "floor") return { title: "Floor", fields: [F("Material", `map/floors/${id}/mat`, S.map.floors[id].mat || "", { opts: matOpts(FLOOR_MATS) }), F("Height", `map/floors/${id}/elev`, S.map.floors[id].elev || 0, { type: "number" })] };
+  if (type === "label") { const a = S.map.labels[id]; return { title: "Label", fields: [F("Text", `map/labels/${id}/text`, a.text || "", { type: "text" }), F("Size", `map/labels/${id}/size`, a.size || 1, { type: "number", min: .25, max: 10 }), F("Rotation", `map/labels/${id}/rot`, a.rot || 0, { type: "number" })] }; }
+  if (type === "prop") { const p = S.map.props[id]; return { title: "Prop", fields: [F("Kind", `map/props/${id}/kind`, p.kind, { opts: Object.entries(PROPS) }), F("Rotation", `map/props/${id}/rot`, p.rot || 0, { type: "number" }), F("Scale", `map/props/${id}/s`, p.s || 1, { type: "number", min: .1, max: 10 })] }; }
   if (type === "token") { const t = S.tokens[id]; return { title: t.label || id, fields: [F("Name", `tokens/${id}/label`, t.label || "", { type: "text" }),
     F("Colour", `tokens/${id}/color`, t.color || "", { opts: [["", "auto"], ["#a94c3d", "red"], ["#466c83", "blue"], ["#66774b", "green"], ["#7a5a8a", "purple"], ["#c8871c", "gold"]] }),
     F("Picture URL", `tokens/${id}/img`, t.img || "", { type: "text" })] }; }
@@ -314,7 +320,7 @@ export function settingsFor(type, id) {
     F("Radius (cells)", base + "radius", Math.round((o.radius || 120) / 40), { type: "number", min: 1, max: 12, to: (v) => Math.max(1, v) * 40 }),
     F("Clears fog (cells)", base + "fog", o.fog ?? 2, { type: "number", min: 0, max: 12 })] };
   const f = [L];
-  if (o.kind === "door") f.push(F("Material", base + "mat", o.mat || "", { opts: matOpts(WALL_MATS) }), F("Direction", base + "dir", o.dir || "h", { opts: [["h", "horizontal"], ["v", "vertical"]] }));
+  if (o.kind === "door") f.push(F("Kind", base + "doorKind", o.doorKind || (o.win ? "window" : "wood"), { opts: [["wood", "wood"], ["iron", "iron"], ["double", "double"], ["portcullis", "portcullis"], ["bars", "bars"], ["secret", "secret"], ["arch", "arch"], ["curtain", "curtain"], ["window", "window"]] }), F("Material", base + "mat", o.mat || "", { opts: matOpts(WALL_MATS) }), F("Direction", base + "dir", o.dir || "h", { opts: [["h", "horizontal"], ["v", "vertical"]] }));
   if (o.kind === "tripwire") f.push(F("Length", base + "len", o.len || 3, { type: "number", min: 1, max: 10 }), F("Direction", base + "dir", o.dir || "h", { opts: [["h", "across"], ["v", "down"]] }));
   if (o.kind === "plate" || o.kind === "tripwire") f.push(F("Stays down", base + "latch", !!o.latch, { type: "check" }));
   if (o.kind === "sight") f.push(F("Sees", base + "sees", o.sees || "player", { opts: [["player", "players"], ["npc", "NPCs / enemies"]] }), F("Range (cells)", base + "range", o.range || 6, { type: "number", min: 1, max: 30 }), F("Stays triggered", base + "latch", !!o.latch, { type: "check" }));

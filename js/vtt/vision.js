@@ -78,14 +78,17 @@ export function visibilityPolygon(origin, radius, segments = []) {
   return polygon;
 }
 
-export function blockingSegments(walls = {}, doors = [], cut) {
+export function blockingSegments(walls = {}, doors = [], cut, level = null) {
   const result = [];
   for (const wall of Object.values(walls || {})) {
+    if (level != null && (wall.lv ?? 0) !== level) continue;
     const pieces = typeof cut === "function" ? cut(wall, doors) : [[wall.x1, wall.y1, wall.x2, wall.y2]];
     for (const piece of pieces || []) if (finiteSegment(piece)) result.push(piece.slice(0, 4));
   }
   for (const door of Array.isArray(doors) ? doors : []) {
-    if (!door || door.win || door.state === "open" || !Number.isFinite(door.x) || !Number.isFinite(door.y)) continue;
+    if (!door || (level != null && (door.lv ?? 0) !== level)) continue;
+    const kind = door.doorKind || door.kindName || door.kind;
+    if (door.win || kind === "window" || kind === "bars" || kind === "portcullis" || kind === "arch" || door.state === "open" || !Number.isFinite(door.x) || !Number.isFinite(door.y)) continue;
     result.push(door.dir === "v" ? [door.x, door.y - 20, door.x, door.y + 20] : [door.x - 20, door.y, door.x + 20, door.y]);
   }
   return result;

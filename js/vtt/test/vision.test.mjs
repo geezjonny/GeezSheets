@@ -30,6 +30,16 @@ test("an open door leaves a gap", () => {
   assert.equal(inside(poly, 8, 0), true);
 });
 
+test("door kinds have their sight rules", () => {
+  const wall = { wall: { x1: 4, y1: -10, x2: 4, y2: 10 } };
+  const open = (kind) => visibilityPolygon({ x: 0, y: 0 }, 10, blockingSegments(wall, [{ x: 4, y: 0, dir: "v", state: "closed", kind }], w => [[w.x1, w.y1, w.x2, -20], [w.x1, 20, w.x2, w.y2]]));
+  assert.equal(inside(open("bars"), 8, 0), true);
+  assert.equal(inside(open("portcullis"), 8, 0), true);
+  assert.equal(inside(open("arch"), 8, 0), true);
+  assert.equal(inside(open("window"), 8, 0), true);
+  assert.equal(inside(open("curtain"), 8, 0), false);
+});
+
 test("radius clamps all points", () => {
   const poly = visibilityPolygon({ x: 5, y: 7 }, 3, [[5, -100, 5, 100]]);
   assert.ok(poly.every(p => Math.hypot(p.x - 5, p.y - 7) <= 3 + 1e-8));

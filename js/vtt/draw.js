@@ -17,9 +17,14 @@ function drawObject(id, o, layer) {
   const g = el("g", { class: `obj ${o.kind} state-${o.state} ${o.kind === "light" ? "light-" + o.state : ""} ${S.selected.has(id) ? "sel" : ""} ${o.hidden ? "hidden-obj" : ""}`, "data-id": id }, layer);
   if (o.kind === "door") {
     const v = o.dir === "v";
-    el("line", { x1: o.x - (v ? 0 : 20), x2: o.x + (v ? 0 : 20), y1: o.y - (v ? 20 : 0), y2: o.y + (v ? 20 : 0), class: "doorgap" }, g);
-    el("line", { x1: o.x - (v ? 0 : 20), x2: o.x + (v ? 0 : 20), y1: o.y - (v ? 20 : 0), y2: o.y + (v ? 20 : 0), class: o.win ? "windowbar" : `doorbar ${o.mat ? "m-" + o.mat : ""}` }, g);
-    if (o.win) el("line", { x1: o.x - (v ? 0 : 20), x2: o.x + (v ? 0 : 20), y1: o.y - (v ? 20 : 0), y2: o.y + (v ? 20 : 0), class: "windowglass" }, g);
+    const dk = o.doorKind || o.kindName || (o.win ? "window" : "wood"), n = dk === "double" ? 40 : 20, x1 = o.x - (v ? 0 : n), x2 = o.x + (v ? 0 : n), y1 = o.y - (v ? n : 0), y2 = o.y + (v ? n : 0), cls = dk === "window" || o.win ? "windowbar" : `doorbar ${o.mat ? "m-" + o.mat : ""}`;
+    el("line", { x1, x2, y1, y2, class: "doorgap" }, g);
+    if (dk === "portcullis" || dk === "bars") { for (let i = -n + 7; i < n; i += 8) el("line", v ? { x1: o.x - 7, x2: o.x + 7, y1: o.y + i, y2: o.y + i, class: cls } : { x1: o.x + i, x2: o.x + i, y1: o.y - 7, y2: o.y + 7, class: cls }, g); }
+    else if (dk === "arch") { el("path", { d: v ? `M${o.x - 12} ${o.y - 20} Q${o.x} ${o.y - 32} ${o.x + 12} ${o.y - 20}` : `M${o.x - 20} ${o.y - 12} Q${o.x} ${o.y} ${o.x + 20} ${o.y - 12}`, class: "doorbar" }, g); }
+    else if (dk === "curtain") { el("line", { x1, x2, y1, y2, class: "curtaindoor" }, g); }
+    else if (dk === "secret") { el("line", { x1, x2, y1, y2, class: "secretdoor" }, g); }
+    else el("line", { x1, x2, y1, y2, class: cls }, g);
+    if (o.win || dk === "window") el("line", { x1, x2, y1, y2, class: "windowglass" }, g);
   } else drawIcon(o, g);
   el("title", {}, g).textContent = `${o.label}: ${o.state}`;
 }
@@ -35,6 +40,7 @@ function glowFor(color) {   // one radial gradient per light colour, created on 
 export function drawObjects() {
   const layer = $("#objects"); layer.textContent = ""; $("#lights").textContent = "";
   for (const [id, o] of Object.entries(S.objects)) {
+    if ((o.lv ?? 0) !== (S.level ?? S.map.level ?? 0)) continue;
     if (o.hidden && !S.isGM) continue;   // players never see hidden objects
     if (o.kind === "light" && o.state === "on") el("circle", { cx: o.x, cy: o.y, r: o.radius || 120, fill: glowFor(o.color), "pointer-events": "none" }, $("#lights"));
     drawObject(id, o, layer);
@@ -45,8 +51,8 @@ export function drawObjects() {
 function updateFogMask() {
   $("#sightmask")?.remove();
   const holes = [];
-  for (const o of Object.values(S.objects)) if (o.kind === "light" && o.state === "on" && o.fog > 0) holes.push([o.x, o.y, o.fog * 40]);
-  for (const t of Object.values(S.tokens)) if (t.torch && !t.hidden) holes.push([t.x, t.y, TORCH_CELLS * 40]);   // a held torch clears fog around its carrier
+  for (const o of Object.values(S.objects)) if ((o.lv ?? 0) === (S.level ?? S.map.level ?? 0) && o.kind === "light" && o.state === "on" && o.fog > 0) holes.push([o.x, o.y, o.fog * 40]);
+  for (const t of Object.values(S.tokens)) if ((t.lv ?? 0) === (S.level ?? S.map.level ?? 0) && t.torch && !t.hidden) holes.push([t.x, t.y, TORCH_CELLS * 40]);
   if (holes.length) {
     const { cols, rows } = mapSize(), m = el("mask", { id: "sightmask", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: cols * 40, height: rows * 40 }, $("#map defs"));
     el("rect", { x: 0, y: 0, width: cols * 40, height: rows * 40, fill: "#fff" }, m);
@@ -61,7 +67,7 @@ export function drawTokens() {
   const layer = $("#tokens"); layer.textContent = "";
   updateFogMask();
   Object.entries(S.tokens).forEach(([id, t], i) => {
-    if (t.hidden && !S.isGM) return;   // players never see hidden tokens
+    if ((t.lv ?? 0) !== (S.level ?? S.map.level ?? 0) || (t.hidden && !S.isGM)) return;
     const g = el("g", { class: `token ${t.hidden ? "hidden-obj" : ""}`, transform: `translate(${t.x} ${t.y})`, "data-id": id }, layer);
     if (S.turn === id) el("circle", { r: 24, class: "turn-ring" }, g);   // whose turn it is (initiative)
     if (t.torch) el("circle", { r: TORCH_CELLS * 40, fill: glowFor("#ffb347"), "pointer-events": "none" }, g);   // held torch glow
@@ -76,32 +82,29 @@ export function drawTokens() {
 export function drawTray() {}   // HP is adjusted from the token right-click menu now
 
 // ---- static map: floors, walls, props, roofs -------------------------------
-export const PROPS = { crate: "Crate", barrel: "Barrel", table: "Table", chest: "Chest", pillar: "Pillar", statue: "Statue", bed: "Bed", rug: "Rug", tree: "Tree", pine: "Pine", bush: "Bush", rock: "Rock", stump: "Stump", well: "Well", lamp: "Lamp post", fence: "Fence" };
+const PROP_NAMES = `table chair stool bench bed barrel crate chest bookshelf torch_sconce campfire candelabra light rug statue cauldron coffin altar bone_pile gravestone skull_pillar iron_cage spike_trap chains guild_crest stairs ladder bush tree pine_tree dead_tree stump fallen_log rocks boulder mushrooms hearth_oven kitchen_counter pot_rack pantry_shelf butcher_block bar_counter keg_rack round_table fireplace mug_clutter desk lectern globe scroll_rack armchair alchemy_table crystal_pedestal book_pile summoning_circle_stones forge anvil grindstone workbench market_stall display_shelf pew holy_font brazier banner wardrobe dresser nightstand bunk_bed torture_rack stocks manacles_wall crystal_cluster stalagmite ore_pile mine_cart rope_coil anchor dock_post cannon blackship reeds flowers tall_grass_clump cliff_rock lamp_post standing_torch tall_brazier fountain water_trough hitching_post notice_board hay_bale shop_counter potion_shelf hat_stand hat_display mirror display_case jeweler_bench strongbox bridge fence well cart signpost tent woodpile sacks weapon_rack column pillar crate barrel table chest pillar statue bed rug tree pine bush rock stump well lamp fence decal_moss decal_cracks decal_blood_splatter decal_blood_pool decal_scorch decal_puddle decal_rubble decal_leaves decal_stains decal_rune_circle decal_footprints decal_ash`.split(" ");
+const CATS = { Furniture: "table chair stool bench bed bookshelf", Storage: "barrel crate chest", Lighting: "torch_sconce campfire candelabra light lamp", "Crypt & Death": "coffin altar bone_pile gravestone skull_pillar", "Traps & Dungeon": "iron_cage spike_trap chains", Decor: "guild_crest rug statue cauldron", Stairs: "stairs ladder", Nature: "bush tree pine_tree dead_tree stump fallen_log rocks boulder mushrooms", Kitchen: "hearth_oven kitchen_counter pot_rack pantry_shelf butcher_block", Tavern: "bar_counter keg_rack round_table fireplace mug_clutter", "Library & Study": "desk lectern globe scroll_rack armchair", "Alchemy & Wizard": "alchemy_table crystal_pedestal book_pile summoning_circle_stones", "Smithy & Shop": "forge anvil grindstone workbench market_stall display_shelf", Temple: "pew holy_font brazier banner", Bedroom: "wardrobe dresser nightstand bunk_bed", "Dungeon & Prison": "torture_rack stocks manacles_wall", "Mine & Cave": "crystal_cluster stalagmite ore_pile mine_cart", Docks: "rope_coil anchor dock_post cannon blackship", "Wild plants & cliffs": "reeds flowers tall_grass_clump cliff_rock", "Town & Street": "lamp_post standing_torch tall_brazier fountain water_trough hitching_post notice_board hay_bale", Shops: "shop_counter potion_shelf hat_stand hat_display mirror display_case jeweler_bench strongbox", Outdoor: "bridge fence well cart signpost tent woodpile sacks weapon_rack" };
+const CAT_BY_PROP = Object.fromEntries(Object.entries(CATS).flatMap(([c, list]) => list.split(" ").map(k => [k, c])));
+const category = (k) => k.startsWith("decal_") ? "Decals" : CAT_BY_PROP[k] || "Decor";
+const sizeOf = (k) => k === "bed" || k === "bunk_bed" ? [1, 2] : k === "tent" ? [3, 3] : k === "blackship" ? [3, 6] : k === "bridge" ? [3, 1] : k === "table" || k === "round_table" ? [2, 1] : k === "bookshelf" || k === "wardrobe" ? [1, 2] : [1, 1];
+export const PROP_CATALOG = Object.fromEntries([...new Set(PROP_NAMES)].map((kind) => [kind, { label: kind.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase()), category: category(kind), size: sizeOf(kind), shape: kind.startsWith("decal_") ? "decal" : /tree|bush|flower|mushroom|reed|grass/.test(kind) ? "leaf" : /rock|boulder|ore|stalagmite|crystal/.test(kind) ? "rock" : /table|bed|bench|counter|shelf|desk|altar|bridge|fence|wall|bookshelf/.test(kind) ? "rect" : /barrel|well|pillar|column|stump|cauldron|keg|fountain/.test(kind) ? "round" : "mark" }]));
+// Old names remain valid; mapmaker names remain distinct for round-tripping.
+export const PROPS = Object.fromEntries(Object.entries(PROP_CATALOG).map(([k, v]) => [k, v.label]));
 function drawProp(kind, x, y, g) {
-  const p = (name, a) => el(name, { class: "pr", ...a }, g);
-  if (kind === "crate") { p("rect", { x: x - 14, y: y - 14, width: 28, height: 28 }); p("path", { d: `M${x - 14} ${y - 14} L${x + 14} ${y + 14} M${x + 14} ${y - 14} L${x - 14} ${y + 14}`, fill: "none" }); }
-  else if (kind === "barrel") { p("circle", { cx: x, cy: y, r: 13 }); p("circle", { cx: x, cy: y, r: 7, fill: "none" }); }
-  else if (kind === "table") p("rect", { x: x - 17, y: y - 11, width: 34, height: 22, rx: 3 });
-  else if (kind === "chest") { p("rect", { x: x - 15, y: y - 10, width: 30, height: 20, rx: 2 }); p("path", { d: `M${x - 15} ${y - 3} H${x + 15}`, fill: "none" }); p("rect", { x: x - 3, y: y - 6, width: 6, height: 7, class: "pr clasp" }); }
-  else if (kind === "pillar") { p("circle", { cx: x, cy: y, r: 11, class: "pr solid" }); p("circle", { cx: x, cy: y, r: 6, fill: "none" }); }
-  else if (kind === "statue") { p("circle", { cx: x, cy: y, r: 14 }); p("path", { d: `M${x} ${y - 9} L${x + 7} ${y} L${x} ${y + 9} L${x - 7} ${y} Z`, class: "pr solid" }); }
-  else if (kind === "bed") { p("rect", { x: x - 14, y: y - 18, width: 28, height: 36, rx: 3 }); p("rect", { x: x - 11, y: y - 15, width: 22, height: 9, rx: 3, class: "pr clasp" }); }
-  else if (kind === "rug") { p("rect", { x: x - 17, y: y - 17, width: 34, height: 34, class: "pr rug" }); p("rect", { x: x - 10, y: y - 10, width: 20, height: 20, fill: "none", "stroke-dasharray": "3 3" }); }
-  else if (kind === "tree") { p("circle", { cx: x, cy: y, r: 17, class: "pr leaf" }); p("circle", { cx: x, cy: y, r: 3, class: "pr solid" }); }
-  else if (kind === "pine") { p("path", { d: `M${x} ${y - 18} L${x - 13} ${y + 10} H${x + 13} Z`, class: "pr leaf" }); p("path", { d: `M${x} ${y - 10} L${x - 9} ${y + 16} H${x + 9} Z`, class: "pr leaf" }); }
-  else if (kind === "bush") { p("circle", { cx: x - 7, cy: y + 3, r: 10, class: "pr leaf" }); p("circle", { cx: x + 7, cy: y + 3, r: 10, class: "pr leaf" }); }
-  else if (kind === "rock") { p("path", { d: `M${x - 14} ${y + 7} L${x - 8} ${y - 10} L${x + 8} ${y - 13} L${x + 15} ${y + 5} L${x + 5} ${y + 12} Z`, class: "pr solid" }); }
-  else if (kind === "stump") { p("circle", { cx: x, cy: y, r: 12, class: "pr solid" }); p("circle", { cx: x, cy: y, r: 6, fill: "none" }); }
-  else if (kind === "well") { p("circle", { cx: x, cy: y + 3, r: 14, class: "pr solid" }); p("path", { d: `M${x - 11} ${y - 10} H${x + 11} M${x} ${y - 10} V${y + 15}`, fill: "none" }); }
-  else if (kind === "lamp") { p("path", { d: `M${x} ${y + 16} V${y - 8} M${x - 7} ${y - 8} H${x + 7} L${x} ${y - 17} Z`, class: "pr clasp" }); p("circle", { cx: x, cy: y - 5, r: 5, class: "pr leaf" }); }
-  else if (kind === "fence") { p("path", { d: `M${x - 15} ${y - 12} V${y + 14} M${x} ${y - 12} V${y + 14} M${x + 15} ${y - 12} V${y + 14}`, fill: "none" }); p("path", { d: `M${x - 17} ${y - 5} H${x + 17} M${x - 17} ${y + 7} H${x + 17}`, fill: "none" }); }
+  const spec = PROP_CATALOG[kind] || PROP_CATALOG.rock, p = (name, a) => el(name, { class: "pr", ...a }, g), c = spec.category === "nature" ? "leaf" : spec.category === "decal" ? "decal" : "solid";
+  if (spec.shape === "rect") { p("rect", { x: x - 16, y: y - 11, width: 32, height: 22, rx: 3, class: c }); p("line", { x1: x - 13, y1: y - 8, x2: x + 13, y2: y + 8 }); }
+  else if (spec.shape === "round") { p("circle", { cx: x, cy: y, r: 14, class: c }); p("circle", { cx: x, cy: y, r: 7, fill: "none" }); }
+  else if (spec.shape === "leaf") { p("circle", { cx: x - 7, cy: y + 2, r: 11, class: c }); p("circle", { cx: x + 7, cy: y - 2, r: 11, class: c }); p("circle", { cx: x, cy: y, r: 3, class: "solid" }); }
+  else if (spec.shape === "rock") p("polygon", { points: `${x - 15},${y + 8} ${x - 8},${y - 11} ${x + 8},${y - 13} ${x + 15},${y + 6} ${x + 4},${y + 13}`, class: c });
+  else if (spec.shape === "decal") { p("ellipse", { cx: x, cy: y, rx: 16, ry: 9, class: "decal" }); p("line", { x1: x - 10, y1: y + 5, x2: x + 11, y2: y - 5 }); }
+  else { p("circle", { cx: x, cy: y, r: 12, class: c }); p("line", { x1: x - 13, y1: y, x2: x + 13, y2: y }); p("line", { x1: x, y1: y - 13, x2: x, y2: y + 13 }); }
 }
 // A wall as the pieces left after doors are cut out of it (a door replaces the wall under it; deleting the door brings the wall back).
 export function wallPieces(w, doors) {
   const vert = w.x1 === w.x2, horiz = w.y1 === w.y2, whole = [[w.x1, w.y1, w.x2, w.y2]];
   if (!vert && !horiz) return whole;
   const ax = vert ? "y" : "x", fixed = vert ? w.x1 : w.y1, a0 = Math.min(w[ax + "1"], w[ax + "2"]), a1 = Math.max(w[ax + "1"], w[ax + "2"]);
-  const cuts = doors.filter((o) => (o.dir === "v") === vert && (vert ? o.x : o.y) === fixed).map((o) => [o[ax] - 20, o[ax] + 20]).filter(([s, e]) => e > a0 && s < a1).sort((p, q) => p[0] - q[0]);
+  const cuts = doors.filter((o) => (o.dir === "v") === vert && (vert ? o.x : o.y) === fixed).map((o) => { const n = (o.doorKind || o.kind) === "double" ? 40 : 20; return [o[ax] - n, o[ax] + n]; }).filter(([s, e]) => e > a0 && s < a1).sort((p, q) => p[0] - q[0]);
   if (!cuts.length) return whole;
   const out = [], mk = (s, e) => out.push(vert ? [fixed, s, fixed, e] : [s, fixed, e, fixed]); let at = a0;
   for (const [s, e] of cuts) { if (s > at) mk(at, s); at = Math.max(at, e); }
@@ -111,28 +114,36 @@ export function wallPieces(w, doors) {
 export const doorsList = () => Object.values(S.objects).filter((o) => o.kind === "door");
 export function drawWalls() {
   const w = $("#walls"); w.textContent = ""; const doors = doorsList();
-  for (const [id, a] of Object.entries(S.map.walls || {})) for (const [x1, y1, x2, y2] of wallPieces(a, doors)) el("line", { x1, y1, x2, y2, class: `wall ${a.mat ? "m-" + a.mat : ""}`, "data-id": id }, w);
+  for (const [id, a] of Object.entries(S.map.walls || {})) if ((a.lv ?? 0) === (S.level ?? S.map.level ?? 0)) for (const [x1, y1, x2, y2] of wallPieces(a, doors.filter(d => (d.lv ?? 0) === (S.level ?? S.map.level ?? 0)))) el("line", { x1, y1, x2, y2, class: `wall ${a.mat ? "m-" + a.mat : ""}`, "data-id": id }, w);
 }
 export function drawMap() {
   const { floors, roofs, props, fog = {} } = S.map;
   const clear = (id) => { const l = $("#" + id); l.textContent = ""; return l; };
   const f = clear("floors"), r = clear("roofs"), pr = clear("props"), fg = clear("fog");
-  for (const [id, a] of Object.entries(floors)) {
-    el("rect", { x: a.x, y: a.y, width: a.w, height: a.h, class: `floorrect ${a.mat ? "f-" + a.mat : ""}`, "data-id": id }, f);
+  for (const [id, a] of Object.entries(floors)) if ((a.lv ?? 0) === (S.level ?? S.map.level ?? 0)) {
+    const shade = Math.max(-.28, Math.min(.28, (a.elev || 0) * .08));
+    el("rect", { x: a.x, y: a.y, width: a.w, height: a.h, class: `floorrect ${a.mat ? "f-" + a.mat : ""}`, "data-id": id, filter: shade ? `brightness(${1 + shade})` : null }, f);
     if (a.mat) el("rect", { x: a.x, y: a.y, width: a.w, height: a.h, fill: "url(#gridlines)", "pointer-events": "none" }, f);
+    if (a.elev) for (let x = a.x; x <= a.x + a.w; x += 40) for (let y = a.y; y <= a.y + a.h; y += 40) el("rect", { x: x - 1, y: y - 1, width: 2, height: 2, class: "elev-edge", "pointer-events": "none" }, f);
   }
+  for (const [id, a] of Object.entries(S.map.labels || {})) if ((a.lv ?? 0) === (S.level ?? S.map.level ?? 0)) { const t = el("text", { x: a.x, y: a.y, class: "map-label", "font-size": (a.size || 1) * 40, transform: `rotate(${a.rot || 0} ${a.x} ${a.y})`, "data-id": id }, f); t.textContent = a.text || ""; }
   drawWalls();
-  for (const [id, a] of Object.entries(props)) {
+  for (const [id, a] of Object.entries(props).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0) && !a.kind?.startsWith("decal_"))) {
     if (a.hidden && !S.isGM) continue;   // players never see hidden props
-    const g = el("g", { class: `prop ${a.hidden ? "hidden-obj" : ""}`, "data-id": id }, pr);
+    const g = el("g", { class: `prop ${a.hidden ? "hidden-obj" : ""}`, "data-id": id, transform: `translate(${a.x} ${a.y}) rotate(${a.rot || 0}) scale(${(a.flip ? -1 : 1) * (a.s || 1)} ${a.s || 1}) translate(${-a.x} ${-a.y})` }, pr);
     el("rect", { x: a.x - 20, y: a.y - 20, width: 40, height: 40, fill: "transparent" }, g);
     drawProp(a.kind, a.x, a.y, g); el("title", {}, g).textContent = PROPS[a.kind] || a.kind;
   }
-  for (const [id, a] of Object.entries(fog)) {
+  for (const [id, a] of Object.entries(props).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0) && a.kind?.startsWith("decal_"))) {
+    if (a.hidden && !S.isGM) continue;
+    const g = el("g", { class: "prop decal-prop", "data-id": id, transform: `translate(${a.x} ${a.y}) rotate(${a.rot || 0}) scale(${(a.flip ? -1 : 1) * (a.s || 1)} ${a.s || 1}) translate(${-a.x} ${-a.y})` }, f);
+    drawProp(a.kind, a.x, a.y, g);
+  }
+  for (const [id, a] of Object.entries(fog).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0))) {
     if (a.open && !S.isGM) continue;   // a revealed room shows what is in it
     el("rect", { x: a.x, y: a.y, width: a.w, height: a.h, class: `fog ${S.isGM ? "gm" : ""} ${a.open ? "open" : ""}`, "data-id": id }, fg);
   }
-  for (const [id, a] of Object.entries(roofs)) {
+  for (const [id, a] of Object.entries(roofs).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0))) {
     if (a.open && !S.isGM) continue;   // a lifted roof shows the room underneath
     el("rect", { x: a.x, y: a.y, width: a.w, height: a.h, class: `roof ${a.mat ? "r-" + a.mat : ""} ${S.isGM ? "gm" : ""} ${a.open ? "open" : ""}`, "data-id": id }, r);
   }
