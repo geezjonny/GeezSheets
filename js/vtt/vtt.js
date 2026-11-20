@@ -23,6 +23,7 @@ import { addBarButton, dropMenu, orderQuickBar, floatWindow } from "./ui.js";
 import { drawObjects, drawTokens, drawTray, drawMap, drawWalls, isPcToken } from "./draw.js";
 import { initTools, snapFor, toolDown, toolMove, toolUp, roofAt, fogAt, wallAt, floorAt, settingsFor } from "./tools.js";
 import { renderPanel } from "./panel.js";
+import { initAttack, attackOptions, beginAttack, sheetOf } from "./attack.js";
 
 const map = $("#map");
 let prevStates = null, objDrag = null;
@@ -38,7 +39,7 @@ const loadedAt = Date.now();
   }
 })();
 for (const part of ["floors", "walls", "roofs", "props", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); });
-initTools(); initView(); initInitiative(); initScenes(); initImages(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere();
+initTools(); initView(); initInitiative(); initScenes(); initImages(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack();
 watch("map/size", (v) => { S.map.size = v || null; applyView(); drawMap(); });
 watch("objects", (v) => {
   const before = prevStates; S.objects = v || {};
@@ -214,13 +215,14 @@ function fillTokenWindow(w, id) {
   w.el.querySelector(".fwin-title").textContent = S.tokens[id].label || id;
   buildTokenMenu(box, id, () => setTimeout(() => fillTokenWindow(w, id), 250), () => w.body.firstChild === box && !w.el.hidden);
 }
+document.addEventListener("turnchanged", drawTokens);
 document.addEventListener("tokenschanged", () => {   // keep open windows current (unless you're typing in one)
   for (const [id, w] of Object.entries(tokWins)) if (!w.el.hidden && !w.body.contains(document.activeElement)) fillTokenWindow(w, id);
 });
 async function showTokenMenu(e, id) {
   closeTokMenu();
   const t = S.tokens[id]; if (!t) return;
-  if (isPcToken(t)) return openTokenWindow(e, id);
+  if (S.isGM || isPcToken(t)) return openTokenWindow(e, id);   // a floating, movable window (GM: every token)
   const x = e.clientX, y = e.clientY, esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const menu = tokMenu = document.createElement("div"); menu.id = "tokmenu"; menu.dataset.tid = id;
   menu.style.left = x + "px"; menu.style.top = y + "px"; document.body.appendChild(menu);
@@ -256,6 +258,11 @@ async function buildTokenMenu(menu, id, done, alive) {
     menu.append(d);
   }
   if (S.isGM) addFields(menu, settingsFor("token", id).fields);
+  if (S.isGM) {   // Attack > weapon / cantrip / spell, then aim on the map (attack.js)
+    const ab = document.createElement("button"); ab.textContent = "⚔ Attack…";
+    ab.addEventListener("click", async (ev) => { const opts = await attackOptions(t, await pcIdFor(t)); showAttackMenu(ev, id, opts); }); menu.append(ab);
+  }
+  if (t.npc) { const nb = document.createElement("button"); nb.textContent = "View stat block"; nb.addEventListener("click", () => openNpcWindow(id)); menu.append(nb); }
   const invBtn = (pcId) => { const b = document.createElement("button"); b.textContent = "Inventory"; b.addEventListener("click", (ev) => { openInventory({ tokenId: id, name, pcId, isGM: S.isGM, x: ev.clientX + 12, y: ev.clientY + 12 }); done(); }); menu.append(b); };
   if (t.npc) { if (S.isGM) invBtn(null); return; }
   const pc = t.pc ? { id: t.pc } : (await loadPcs()).find((c) => c.name.toLowerCase() === String(name).toLowerCase());
@@ -305,6 +312,33 @@ map.addEventListener("contextmenu", (e) => {
   const fl = floorAt(p);
   if (fl) { e.preventDefault(); showActionMenu(e, "Floor", [["Delete", () => put(`map/floors/${fl}`, null)]], settingsFor("floor", fl).fields); }
 });
+// Attack picker: one row per weapon / cantrip / spell; picking one starts aiming on the map.
+function showAttackMenu(e, id, opts) {
+  const hooks = { applyDamage: applyTokenDamage, sheetFor: async (tid) => sheetOf(S.tokens[tid], await pcIdFor(S.tokens[tid])) };
+  showActionMenu(e, `${S.tokens[id]?.label || id} attacks`, opts.map((o) => [`${o.group === "Weapons" ? "⚔" : "✦"} ${o.label}${o.group.startsWith("Level") ? ` (L${o.level})` : o.group === "Cantrips" ? " (cantrip)" : ""}${o.dmg ? ` · ${o.dmg}` : ""}`, () => beginAttack(id, o, hooks)]));
+}
+// Damage from an attack: an enemy token's own HP, or a PC's sheet (temp HP soaks it first).
+async function applyTokenDamage(tid, amt) {
+  const t = S.tokens[tid]; if (!t || !(amt > 0)) return;
+  if (t.hp != null) return put(`tokens/${tid}/hp`, Math.max(0, t.hp - amt));
+  const pcId = await pcIdFor(t); if (!pcId) return;
+  try { await txnAt(`characters/pcs/${pcId}/combat`, (c) => sheetHpChange(c, amt, false)); } catch (err) { console.warn("HP not saved", err); }
+}
+// NPCs have no GeezSheets page, so their record (characters/npcs/<id>) is shown as a movable stat-block window.
+const npcWins = {};
+async function openNpcWindow(tid) {
+  const t = S.tokens[tid]; if (!t) return;
+  const w = npcWins[tid] ||= floatWindow({ id: "npc-" + tid, title: t.label || "NPC", x: 140, y: 100 });
+  w.body.style.cssText = "width:min(380px,90vw);max-height:70vh;overflow:auto"; w.body.textContent = "Loading…"; w.show();
+  const c = await sheetOf(t, null), esc = (v) => String(v ?? "").replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
+  if (!c) { w.body.textContent = "No stat block found for this token."; return; }
+  const cb = c.combat || {}, st = c.stats || {}, sp = c.spellcasting;
+  w.body.innerHTML = `<div style="font:15px Georgia,serif;line-height:1.45"><b style="font-size:18px">${esc(c.name || t.label)}</b><div>${esc([c.size, c.species || c.race, c.class, c.level ? "Lv " + c.level : ""].filter(Boolean).join(" · "))}</div>
+    <div>AC <b>${esc(cb.ac ?? "—")}</b> · HP <b>${esc(t.hp ?? cb.hp_max ?? "—")}${t.max ? " / " + esc(t.max) : ""}</b> · Speed ${esc(cb.speed ?? "—")}</div>
+    <div>${Object.entries(st).map(([k, v]) => `${esc(k.toUpperCase())} <b>${esc(v)}</b>`).join(" · ")}</div>
+    ${(c.attacks || []).length ? `<hr><b>Attacks</b>` + c.attacks.map((a) => `<div>${esc(a.name)} ${esc(a.to_hit ?? a.attack_bonus ?? "")} · ${esc(a.damage || a.damage_dice || "")} ${esc(a.damage_type || "")}</div>`).join("") : ""}
+    ${sp?.spells?.length ? `<hr><b>Spells</b><div>${sp.spells.map((x) => esc(x.name)).join(", ")}</div>` : ""}</div>`;
+}
 // Generic right-click menu: items are [label, action]; stays open until you pick something or click away.
 function showActionMenu(e, title, items, fields = []) {
   const menu = tokMenu = document.createElement("div"); menu.id = "tokmenu";

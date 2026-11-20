@@ -122,7 +122,7 @@ export function initInitiative() {
   });
   gm.append(roll, next, end); const round = document.createElement("span"); round.className = "init-round"; footer.append(gm, round);
   win.body.append(strip, footer);
-  watch("initiative", (value) => { current = { turn: value?.turn ?? null, round: value?.round || 1, order: value?.order || {} }; render(); cleanMissing(); });
+  watch("initiative", (value) => { current = { turn: value?.turn ?? null, round: value?.round || 1, order: value?.order || {} }; if (S.turn !== current.turn) { S.turn = current.turn; document.dispatchEvent(new Event("turnchanged")); } render(); cleanMissing(); });
   watch("tokens", (value) => { if (value) S.tokens = value; render(); cleanMissing(); });
   document.addEventListener("tokenschanged", render);
 }

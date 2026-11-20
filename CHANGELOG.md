@@ -3,6 +3,9 @@
 ## 2026-11-20
 
 ### VTT (Dungeon Table)
+- Easy attacks for the GM: right-click any token > Attack… lists its weapons, cantrips and spells from its sheet. Pick one and a ghost follows the cursor on the map (range ring, and the right shape for spheres, cubes, cones and lines; targets light up red). Click a cell or token and the attack roll starts: d20 plus the bonus, with Hit/Miss shown when the target's AC is known. Then roll damage (doubled dice on a natural 20) and apply it to the target's HP, or half for a made save.
+- The token whose turn it is in Initiative now has a pulsing gold ring on the map too.
+- The GM's right-click on any token (enemies and NPCs included) now opens the movable floating window, not just PCs. NPC tokens also get a "View stat block" window.
 - Natural 20s and natural 1s now get a full-screen highlight with their own sound once the dice settle: a golden burst and rising chime for a 20, a red shaking vignette and sad wah-wah for a 1. Everyone at the table sees it, and with advantage or disadvantage only the die that counts triggers it.
 - Right-click a PC token > Equipment opens a window with Helmet, Armor, Shield and Weapon. The GM picks from that PC's inventory; hover any slot to see what it does (AC, Stealth penalty, strength requirement, weapon damage). It saves to the PC's sheet, so it updates live both ways.
 - Roll Call now applies the rules for you. Chain Mail (or any noisy armor) means disadvantage on Stealth, armor the sheet isn't trained in means disadvantage on STR/DEX rolls, and Poisoned, Frightened and Restrained add their own penalties. Advantage and disadvantage cancel out.

@@ -63,6 +63,7 @@ export function drawTokens() {
   Object.entries(S.tokens).forEach(([id, t], i) => {
     if (t.hidden && !S.isGM) return;   // players never see hidden tokens
     const g = el("g", { class: `token ${t.hidden ? "hidden-obj" : ""}`, transform: `translate(${t.x} ${t.y})`, "data-id": id }, layer);
+    if (S.turn === id) el("circle", { r: 24, class: "turn-ring" }, g);   // whose turn it is (initiative)
     if (t.torch) el("circle", { r: TORCH_CELLS * 40, fill: glowFor("#ffb347"), "pointer-events": "none" }, g);   // held torch glow
     conditionsOf(t).forEach((c, k) => el("circle", { r: 21 + k * 4, fill: "none", stroke: CONDITIONS[c][1], "stroke-width": 3, class: "cond-ring", "pointer-events": "none" }, g).appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = CONDITIONS[c][0]);
     el("circle", { r: 17, fill: t.color || (t.hp != null ? "#5a2a24" : COLORS[i % COLORS.length]), class: "stamp" }, g);
