@@ -3,6 +3,8 @@
 ## 2026-11-20
 
 ### VTT (Dungeon Table)
+- Players can no longer walk through walls, closed doors or windows. Open doors let them through.
+- Only the GM can drag tokens now. Players move their own character with WASD or the arrow keys, one cell per press.
 - Easy attacks for the GM: right-click any token > Attack… lists its weapons, cantrips and spells from its sheet. Pick one and a ghost follows the cursor on the map (range ring, and the right shape for spheres, cubes, cones and lines; targets light up red). Click a cell or token and the attack roll starts: d20 plus the bonus, with Hit/Miss shown when the target's AC is known. Then roll damage (doubled dice on a natural 20) and apply it to the target's HP, or half for a made save.
 - The token whose turn it is in Initiative now has a pulsing gold ring on the map too.
 - The GM's right-click on any token (enemies and NPCs included) now opens the movable floating window, not just PCs. NPC tokens also get a "View stat block" window.

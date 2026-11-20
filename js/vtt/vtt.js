@@ -4,6 +4,18 @@ import { put, patch } from "./undo.js";
 import { play } from "./fx/fx.js";
 import { KINDS, statesOf, evaluate, onFired, newObject, demo, demoMap } from "../puzzle/index.js";
 import { $, S, cellOf } from "./state.js";
+import { stepBlocked } from "./reach.js";
+// Players don't drag tokens: they walk their own with WASD / arrow keys, one cell at a time, never through walls or closed doors.
+document.addEventListener("keydown", (e) => {
+  if (S.isGM || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  const d = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0], arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0] }[e.key.toLowerCase()];
+  if (!d) return;
+  const id = Object.keys(S.tokens).find((k) => canMove(k)); if (!id) return;
+  e.preventDefault();
+  const t = S.tokens[id], from = cellOf(t), to = { x: from.x + d[0] * 40, y: from.y + d[1] * 40 };
+  if (stepBlocked(from, to) || cellOf(to).x !== to.x || cellOf(to).y !== to.y) return;
+  patch({ [`tokens/${id}/x`]: to.x, [`tokens/${id}/y`]: to.y });
+});
 import { initView, applyView } from "./view.js";
 import { CONDITIONS } from "./conditions.js";
 import { initInitiative, addToInitiative, removeFromInitiative, inInitiative } from "./initiative.js";
@@ -116,8 +128,8 @@ map.addEventListener("pointerdown", (e) => {
       return renderPanel(); }
     if (objEl) { objDrag = { id: objEl.dataset.id, el: objEl, x0: p.x, y0: p.y, moved: false }; map.setPointerCapture(e.pointerId); return; }
   }
-  if (tokEl && !canMove(tokEl.dataset.id)) return;   // players only move their own token
-  if (tokEl) { S.dragging = tokEl; tokEl.setPointerCapture(e.pointerId); e.preventDefault(); }
+  if (tokEl && !S.isGM) return;   // only the GM drags tokens; players use the keyboard
+  if (tokEl) { S.dragging = tokEl;tokEl.setPointerCapture(e.pointerId); e.preventDefault(); }
 });
 map.addEventListener("pointermove", (e) => {
   if (toolMove(e, mapPoint(e))) return;
@@ -390,7 +402,7 @@ $("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b =
     drag = null;
     if (!S.v3d || e.button !== 0 || !e.target.closest?.("#view3d") || S.v3d.controlsBlocked()) return;
     const id = S.v3d.pickToken(e.clientX, e.clientY);
-    if (!id || !canMove(id)) return;
+    if (!id || !S.isGM) return;
     drag = { id, x0: e.clientX, y0: e.clientY, moved: false, cell: null };
     S.v3d.setControls(false);   // keep the camera still while the token moves
   }, true);
