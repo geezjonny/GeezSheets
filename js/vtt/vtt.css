@@ -297,3 +297,8 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 #win-build-tools .paltools svg { width: 1.2rem; height: 1.2rem; }
 #win-pal-prop, #win-pal-object { width: 11rem; min-width: 11rem; max-width: 11rem; }
 .palkind .swatch.ico { font-size: 15px; line-height: 1; }
+
+/* A token shakes while its player is talking in the video dock (js/vtt/talk.js). */
+.token.talking .tokbody { animation: tokshake .32s linear infinite; transform-origin: 0 0; }
+@keyframes tokshake { 0%, 100% { transform: translate(0, 0) rotate(0); } 20% { transform: translate(-1.6px, .6px) rotate(-5deg); } 40% { transform: translate(1.4px, -.8px) rotate(4deg); } 60% { transform: translate(-1px, -.6px) rotate(-3deg); } 80% { transform: translate(1.2px, .8px) rotate(4deg); } }
+@media (prefers-reduced-motion: reduce) { .token.talking .tokbody { animation: none; } .token.talking circle.stamp { stroke: #e0bf7a; } }

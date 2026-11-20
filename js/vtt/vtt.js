@@ -37,6 +37,7 @@ import { drawObjects, drawTokens, drawTray, drawMap, drawWalls, isPcToken, doors
 import { initTools, snapFor, toolDown, toolMove, toolUp, roofAt, fogAt, wallAt, floorAt, settingsFor } from "./tools.js";
 import { renderPanel } from "./panel.js";
 import { initAttack, attackOptions, beginAttack, sheetOf } from "./attack.js";
+import "./talk.js";
 
 const map = $("#map");
 let prevStates = null, objDrag = null;

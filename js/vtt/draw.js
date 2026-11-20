@@ -68,15 +68,16 @@ export function drawTokens() {
   updateFogMask();
   Object.entries(S.tokens).forEach(([id, t], i) => {
     if ((t.lv ?? 0) !== (S.level ?? S.map.level ?? 0) || (t.hidden && !S.isGM)) return;
-    const g = el("g", { class: `token ${t.hidden ? "hidden-obj" : ""}`, transform: `translate(${t.x} ${t.y})`, "data-id": id }, layer);
-    if (S.turn === id) el("circle", { r: 24, class: "turn-ring" }, g);   // whose turn it is (initiative)
-    if (t.torch) el("circle", { r: TORCH_CELLS * 40, fill: glowFor("#ffb347"), "pointer-events": "none" }, g);   // held torch glow
-    conditionsOf(t).forEach((c, k) => el("circle", { r: 21 + k * 4, fill: "none", stroke: CONDITIONS[c][1], "stroke-width": 3, class: "cond-ring", "pointer-events": "none" }, g).appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = CONDITIONS[c][0]);
-    el("circle", { r: 17, fill: t.color || (t.hp != null ? "#5a2a24" : COLORS[i % COLORS.length]), class: "stamp" }, g);
-    if (t.img) el("image", { href: t.img, x: -17, y: -17, width: 34, height: 34, preserveAspectRatio: "xMidYMid slice", "clip-path": "url(#tokclip)", "pointer-events": "none" }, g);
-    else { el("circle", { r: 12.5, class: "stamp-ring" }, g); el("text", { y: 1 }, g).textContent = (t.label || id).slice(0, 2); }
-    if (t.hp != null) el("text", { y: 28, class: "hp" }, g).textContent = `${t.hp}/${t.max}`;
-    else { const c = S.pcLive?.[S.tokPc?.[id]]; if (c?.hp_max) el("text", { y: 28, class: "hp" }, g).textContent = `${c.hp_current ?? c.hp_max}/${c.hp_max}`; }
+    const g = el("g", { class: `token ${t.hidden ? "hidden-obj" : ""}${S.talking?.has(id) ? " talking" : ""}`, transform: `translate(${t.x} ${t.y})`, "data-id": id }, layer);
+    const b = el("g", { class: "tokbody" }, g);   // the art lives here so a talking token can shake without fighting the position transform
+    if (S.turn === id) el("circle", { r: 24, class: "turn-ring" }, b);   // whose turn it is (initiative)
+    if (t.torch) el("circle", { r: TORCH_CELLS * 40, fill: glowFor("#ffb347"), "pointer-events": "none" }, b);   // held torch glow
+    conditionsOf(t).forEach((c, k) => el("circle", { r: 21 + k * 4, fill: "none", stroke: CONDITIONS[c][1], "stroke-width": 3, class: "cond-ring", "pointer-events": "none" }, b).appendChild(document.createElementNS("http://www.w3.org/2000/svg", "title")).textContent = CONDITIONS[c][0]);
+    el("circle", { r: 17, fill: t.color || (t.hp != null ? "#5a2a24" : COLORS[i % COLORS.length]), class: "stamp" }, b);
+    if (t.img) el("image", { href: t.img, x: -17, y: -17, width: 34, height: 34, preserveAspectRatio: "xMidYMid slice", "clip-path": "url(#tokclip)", "pointer-events": "none" }, b);
+    else { el("circle", { r: 12.5, class: "stamp-ring" }, b); el("text", { y: 1 }, b).textContent = (t.label || id).slice(0, 2); }
+    if (t.hp != null) el("text", { y: 28, class: "hp" }, b).textContent = `${t.hp}/${t.max}`;
+    else { const c = S.pcLive?.[S.tokPc?.[id]]; if (c?.hp_max) el("text", { y: 28, class: "hp" }, b).textContent = `${c.hp_current ?? c.hp_max}/${c.hp_max}`; }
   });
 }
 export function drawTray() {}   // HP is adjusted from the token right-click menu now

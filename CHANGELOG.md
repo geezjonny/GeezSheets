@@ -7,6 +7,7 @@
 - **Straight in, no sign-in screen:** the GM joins as "GM" automatically (`?gm`), players use `?name=` or the name they typed last time, and the room is pre-named in code. The browser asks for camera and mic as soon as the panel opens.
 - **Looks like the rest of the VTT:** leather and brass, Georgia lettering, square corners, a slim title bar. You can drag and resize it, and it remembers where you left it. Leave closes the panel; opening it again rejoins.
 - **Preview with fake players:** add `?fake=5` to the VTT address to fill the call with animated stand-in players (one with camera off, a moving speaker highlight) and see how a full table looks.
+- **Tokens shake when their player talks:** the call reports who is speaking (your own mic too), and the token with that name shakes on the map. You join the call under your "Me" character, so your name lines up with your token.
 - **Also its own page:** `videochat.html` works standalone with `?room=` and `?name=`.
 - **Not tested with a second real person yet.** Players behind strict firewalls may need a TURN relay, and the close button only hides the panel without muting.
 
