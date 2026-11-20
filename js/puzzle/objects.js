@@ -8,6 +8,7 @@
 export const KINDS = {
   plate:    { label: "Plate",    role: "sensor", states: ["down", "up"],            start: "up" },
   tripwire: { label: "Tripwire", role: "sensor", states: ["tripped", "clear"],      start: "clear" },
+  sight:    { label: "Sight",    role: "sensor", states: ["sees", "clear"],         start: "clear" },
   gauge:    { label: "HP gauge", role: "sensor", states: ["alive", "bloodied", "dead"], start: "alive" },
   switch:   { label: "Switch",   role: "input",  states: ["on", "off"],             start: "off" },
   dial:     { label: "Dial",     role: "input",  states: (o) => o.values || ["N", "E", "S", "W"], start: "N" },
@@ -17,6 +18,7 @@ export const KINDS = {
   spawn:    { label: "Spawn",    role: "event",  states: ["armed", "fired"],        start: "armed" },
   stone:    { label: "Rolling stone", role: "event", states: ["armed", "fired"],   start: "armed" },
   catapult: { label: "Catapult", role: "event",  states: ["armed", "fired"],        start: "armed" },
+  initiative: { label: "Start initiative", role: "event", states: ["armed", "fired"], start: "armed" },
 };
 export const statesOf = (o) => { const s = KINDS[o?.kind]?.states; return typeof s === "function" ? s(o) : s || []; };
 export const startOf = (o) => (o.kind === "dial" ? statesOf(o)[0] : KINDS[o.kind].start);
@@ -38,7 +40,22 @@ export const cellsOf = (o) => {
 };
 const tokenOn = (cells, tokens) => Object.values(tokens || {}).some((t) => cells.some(([x, y]) => t.x === x && t.y === y));
 
-export function derive(o, tokens) {
+// Sight: can this object see a token? `blockers` are wall segments [x1,y1,x2,y2] (closed doors included, windows not).
+const isPlayerToken = (t) => !!t.pc || (!t.npc && t.hp == null);
+const cross = (ax, ay, bx, by, cx, cy) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+const segsCross = (a, b) => { const d1 = cross(...b, a[0], a[1]), d2 = cross(...b, a[2], a[3]), d3 = cross(...a, b[0], b[1]), d4 = cross(...a, b[2], b[3]); return d1 * d2 < 0 && d3 * d4 < 0; };
+export function sees(o, tokens, blockers = []) {
+  const want = o.sees || "player", range = (o.range || 6) * 40;
+  return Object.values(tokens || {}).some((t) => {
+    if (want === "player" ? !isPlayerToken(t) : want === "npc" ? isPlayerToken(t) : false) return false;
+    if (Math.hypot(t.x - o.x, t.y - o.y) > range) return false;
+    const ray = [o.x, o.y, t.x, t.y];
+    return !blockers.some((b) => segsCross(ray, b));
+  });
+}
+
+export function derive(o, tokens, blockers) {
+  if (o.kind === "sight") return sees(o, tokens, blockers) || (o.latch && o.state === "sees") ? "sees" : "clear";
   if (o.kind === "plate" || o.kind === "tripwire") {
     const [on, off] = statesOf(o);
     return tokenOn(cellsOf(o), tokens) || (o.latch && o.state === on) ? on : off;
@@ -52,7 +69,7 @@ export function derive(o, tokens) {
 
 // What an event output does when it fires. Returns { changes, text }.
 export function onFired(id, o) {
-  const text = { spawn: `${o.label} summons enemies!`, stone: `${o.label} rolls!`, catapult: `${o.label} fires!` }[o.kind] || `${o.label} fires`;
+  const text = { spawn: `${o.label} summons enemies!`, stone: `${o.label} rolls!`, catapult: `${o.label} fires!`, initiative: "Initiative begins!" }[o.kind] || `${o.label} fires`;
   const changes = {};
   if (o.kind === "spawn") changes[`tokens/${id}-${Date.now().toString(36)}`] = { x: o.x, y: o.y, hp: o.hp || 5, max: o.hp || 5 };
   if (o.kind === "stone" && o.to) { changes[`objects/${id}/x`] = o.to.x; changes[`objects/${id}/y`] = o.to.y; }
@@ -61,7 +78,7 @@ export function onFired(id, o) {
 }
 
 // Traps start hidden when placed. `hidden` is only about who can see it: rules ignore it.
-export const HIDDEN_AT_START = ["tripwire", "spawn", "stone", "catapult", "floor"];
+export const HIDDEN_AT_START = ["tripwire", "spawn", "stone", "catapult", "floor", "sight", "initiative"];
 const obj = (kind, label, x, y, extra = {}) => ({ kind, label, x, y, sx: x, sy: y, state: KINDS[kind].start, start: KINDS[kind].start, hidden: false, ...extra });
 export const newObject = (kind, x, y, n = 1, extra = {}) => obj(kind, `${KINDS[kind].label} ${n}`, x, y, { hidden: HIDDEN_AT_START.includes(kind), ...extra });
 

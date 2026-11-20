@@ -7,7 +7,7 @@ import { $, S, cellOf } from "./state.js";
 import { stepBlocked } from "./reach.js";
 // Players don't drag tokens: they walk their own with WASD / arrow keys, one cell at a time, never through walls or closed doors.
 document.addEventListener("keydown", (e) => {
-  if (S.isGM || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (S.isGM || S.combat || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
   const d = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0], arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0] }[e.key.toLowerCase()];
   if (!d) return;
   const id = Object.keys(S.tokens).find((k) => canMove(k)); if (!id) return;
@@ -18,7 +18,8 @@ document.addEventListener("keydown", (e) => {
 });
 import { initView, applyView } from "./view.js";
 import { CONDITIONS } from "./conditions.js";
-import { initInitiative, addToInitiative, removeFromInitiative, inInitiative } from "./initiative.js";
+import { initCmd } from "./cmd.js";
+import { initInitiative, addToInitiative, removeFromInitiative, inInitiative, startInitiative } from "./initiative.js";
 import { initScenes } from "./scenes.js";
 import { initImages, imageAt, imageFields, removeImage } from "./images.js";
 import { initMeasure } from "./measure.js";
@@ -32,7 +33,7 @@ import { openInventory } from "./inventory.js";
 import { openEquipment } from "./equipment.js";
 import { initDD2VTT } from "./dd2vtt.js";
 import { addBarButton, dropMenu, orderQuickBar, floatWindow } from "./ui.js";
-import { drawObjects, drawTokens, drawTray, drawMap, drawWalls, isPcToken } from "./draw.js";
+import { drawObjects, drawTokens, drawTray, drawMap, drawWalls, isPcToken, doorsList, wallPieces } from "./draw.js";
 import { initTools, snapFor, toolDown, toolMove, toolUp, roofAt, fogAt, wallAt, floorAt, settingsFor } from "./tools.js";
 import { renderPanel } from "./panel.js";
 import { initAttack, attackOptions, beginAttack, sheetOf } from "./attack.js";
@@ -51,14 +52,14 @@ const loadedAt = Date.now();
   }
 })();
 for (const part of ["floors", "walls", "roofs", "props", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); });
-initTools(); initView(); initInitiative(); initScenes(); initImages(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack();
+initTools(); initView(); initInitiative(); initScenes(); initImages(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd();
 watch("map/size", (v) => { S.map.size = v || null; applyView(); drawMap(); });
 watch("objects", (v) => {
   const before = prevStates; S.objects = v || {};
   if (before) for (const [id, o] of Object.entries(S.objects)) if (o.kind === "door" && before[id] && before[id] !== o.state) play(o.state === "open" ? "door-open" : "door-close");
   prevStates = Object.fromEntries(Object.entries(S.objects).map(([id, o]) => [id, o.state]));
   if (S.isGM && before) for (const [id, o] of Object.entries(S.objects))   // an event output just fired
-    if (KINDS[o.kind]?.role === "event" && o.state === "fired" && before[id] === "armed") rawPatch(onFired(id, o).changes);
+    if (KINDS[o.kind]?.role === "event" && o.state === "fired" && before[id] === "armed") { rawPatch(onFired(id, o).changes); if (o.kind === "initiative") startInitiative(); }
   drawWalls(); drawObjects(); renderPanel(); afterChange();
 });
 watch("tokens", (v) => { S.tokens = v || {}; drawTokens(); drawTray(); afterChange(); document.dispatchEvent(new Event("tokenschanged")); trackPcs(); });
@@ -88,7 +89,8 @@ watch("events/last", (e) => { if (e && e.t > loadedAt) { const t = $("#toast"); 
 // Only the GM client runs the rules, so two clients never race.
 function afterChange() {
   if (!S.isGM) return;
-  const changes = evaluate({ objects: S.objects, groups: S.groups, tokens: S.tokens });
+  const doors = doorsList(), blockers = [...Object.values(S.map.walls || {}).flatMap((w) => wallPieces(w, doors)), ...doors.filter((d) => !d.win && d.state !== "open").map((d) => d.dir === "v" ? [d.x, d.y - 20, d.x, d.y + 20] : [d.x - 20, d.y, d.x + 20, d.y])];
+  const changes = evaluate({ objects: S.objects, groups: S.groups, tokens: S.tokens, blockers });
   if (Object.keys(changes).length) rawPatch(changes);
 }
 

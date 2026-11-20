@@ -8,7 +8,7 @@ import { floatWindow } from "./ui.js";
 const map = $("#map");
 
 if (S.isGM) { $("#mode").hidden = false; $("#role").textContent = "GM"; }
-else $("#role").textContent = "Drag tokens to move them";
+else $("#role").textContent = "WASD / arrows to move";
 // The puzzle editor lives in two floating windows (like the Build palettes): Puzzle (select / place) and Logic (inspector, When/Then, groups).
 const pTools = floatWindow({ id: "puzzle-tools", title: "Puzzle", x: 20, y: 120, closable: false, hidden: true });
 const pLogic = floatWindow({ id: "puzzle-logic", title: "Logic", x: 180, y: 120, closable: false, hidden: true });
@@ -47,6 +47,7 @@ function inspector() {
   if (o.kind === "tripwire") h += f(`length <input data-p="len" type="number" min="1" max="10" value="${o.len || 3}" style="width:3.5rem"> `) + f(`<select data-p="dir"><option value="h" ${o.dir !== "v" ? "selected" : ""}>across</option><option value="v" ${o.dir === "v" ? "selected" : ""}>down</option></select>`);
   if (o.kind === "door") h += f(`<select data-p="dir"><option value="h" ${o.dir !== "v" ? "selected" : ""}>horizontal</option><option value="v" ${o.dir === "v" ? "selected" : ""}>vertical</option></select>`);
   if (o.kind === "plate" || o.kind === "tripwire") h += f(`<label><input data-p="latch" type="checkbox" ${o.latch ? "checked" : ""}> stays down</label>`);
+  if (o.kind === "sight") h += f(`sees <select data-p="sees"><option value="player" ${o.sees !== "npc" ? "selected" : ""}>players</option><option value="npc" ${o.sees === "npc" ? "selected" : ""}>NPCs / enemies</option></select>`) + f(`range <input data-p="range" type="number" min="1" max="30" value="${o.range || 6}" style="width:3.5rem"> cells`) + f(`<label><input data-p="latch" type="checkbox" ${o.latch ? "checked" : ""}> stays triggered</label>`);
   if (o.kind === "stone") h += f(`<button data-pickprop="${lastSel}">rolls to ${o.to ? cellName(o.to) : "… (click map)"}</button>`);
   if (o.kind === "spawn") h += f(`enemy HP <input data-p="hp" type="number" min="1" value="${o.hp || 5}" style="width:3.5rem">`);
   return h + f(`<button data-delobj="${lastSel}" class="danger">Delete object</button>`);

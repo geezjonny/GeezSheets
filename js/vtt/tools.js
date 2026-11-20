@@ -317,6 +317,7 @@ export function settingsFor(type, id) {
   if (o.kind === "door") f.push(F("Material", base + "mat", o.mat || "", { opts: matOpts(WALL_MATS) }), F("Direction", base + "dir", o.dir || "h", { opts: [["h", "horizontal"], ["v", "vertical"]] }));
   if (o.kind === "tripwire") f.push(F("Length", base + "len", o.len || 3, { type: "number", min: 1, max: 10 }), F("Direction", base + "dir", o.dir || "h", { opts: [["h", "across"], ["v", "down"]] }));
   if (o.kind === "plate" || o.kind === "tripwire") f.push(F("Stays down", base + "latch", !!o.latch, { type: "check" }));
+  if (o.kind === "sight") f.push(F("Sees", base + "sees", o.sees || "player", { opts: [["player", "players"], ["npc", "NPCs / enemies"]] }), F("Range (cells)", base + "range", o.range || 6, { type: "number", min: 1, max: 30 }), F("Stays triggered", base + "latch", !!o.latch, { type: "check" }));
   if (o.kind === "spawn") f.push(F("Enemy HP", base + "hp", o.hp || 5, { type: "number", min: 1 }));
   return { title: o.label || o.kind, fields: f };
 }

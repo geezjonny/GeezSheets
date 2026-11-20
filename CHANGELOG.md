@@ -3,6 +3,10 @@
 ## 2026-11-20
 
 ### VTT (Dungeon Table)
+- New Sight trigger: a Sight object sees players or NPCs within a range (walls and closed doors block it), which can fire rules.
+- New "Start initiative" effect: when it fires, everyone joins initiative with a d20 roll and the highest goes first.
+- Players can't move their tokens once initiative has started.
+- New GM command console (Command button, or press /): type `roll all dex dc15`, `roll pcs wis save dc13 adv`, `init start|next|end`, `move goblin 5,3`, `close vault door`, `hp goblin -5`. Also available as `vtt.run("...")` in the browser console.
 - Players can no longer walk through walls, closed doors or windows. Open doors let them through.
 - Only the GM can drag tokens now. Players move their own character with WASD or the arrow keys, one cell per press.
 - Easy attacks for the GM: right-click any token > Attack… lists its weapons, cantrips and spells from its sheet. Pick one and a ghost follows the cursor on the map (range ring, and the right shape for spheres, cubes, cones and lines; targets light up red). Click a cell or token and the attack roll starts: d20 plus the bonus, with Hit/Miss shown when the target's AC is known. Then roll damage (doubled dice on a natural 20) and apply it to the target's HP, or half for a made save.

@@ -2,7 +2,7 @@
 // Firebase changes to make. Pure: no Firebase, no DOM.
 //
 // groups: { id: { when: [cond], then: [act], met: bool } }
-//   cond: { id, state }  object is in that state      |  { id, at: {x,y} }  object/token is at that spot
+//   cond: { id, state }  object is in that state (a Sight object is "sees" while it has a player/NPC in view)      |  { id, at: {x,y} }  object/token is at that spot
 //   act:  { id, action: "<state name>" }   level-based: while met -> that state, else back to start
 //         { id, action: "toggle" }         edge-based: flips each time `when` becomes met
 //         { id, action: "move", to:{x,y} } level-based for objects (back to start when unmet), once for tokens
@@ -11,10 +11,10 @@
 import { statesOf, startOf, derive } from "./objects.js";
 
 // Returns { "objects/door1/state": "open", ... } paths relative to /test. Empty when nothing changes.
-export function evaluate({ objects = {}, groups = {}, tokens = {} }) {
+export function evaluate({ objects = {}, groups = {}, tokens = {}, blockers = [] }) {
   const changes = {}, states = {};
   for (const [id, o] of Object.entries(objects)) {
-    states[id] = derive(o, tokens);
+    states[id] = derive(o, tokens, blockers);
     if (states[id] !== o.state) changes[`objects/${id}/state`] = states[id];
   }
   const spot = (id) => objects[id] || tokens[id];

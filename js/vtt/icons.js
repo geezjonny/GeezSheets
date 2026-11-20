@@ -46,4 +46,11 @@ function spawn(o, g) { el("circle", { cx: o.x, cy: o.y, r: 15, class: "body" }, 
 function stone(o, g) { path(g, `M${o.x - 14} ${o.y + 7} L${o.x - 10} ${o.y - 8} L${o.x + 2} ${o.y - 14} L${o.x + 14} ${o.y - 5} L${o.x + 12} ${o.y + 9} L${o.x} ${o.y + 14} Z`, "body boulder"); path(g, `M${o.x - 5} ${o.y - 8} L${o.x - 1} ${o.y - 2} L${o.x - 6} ${o.y + 5} M${o.x - 1} ${o.y - 2} L${o.x + 7} ${o.y - 6} M${o.x - 1} ${o.y - 2} L${o.x + 4} ${o.y + 7}`, "stone-crack"); hit(g, o.x, o.y); }
 function catapult(o, g) { path(g, `M${o.x - 13} ${o.y + 12} L${o.x - 5} ${o.y - 8} L${o.x + 5} ${o.y - 8} L${o.x + 13} ${o.y + 12} Z`, "body catapult-frame"); const fired = o.state === "fired"; line(g, { x1: o.x, y1: o.y + 3, x2: o.x + (fired ? 11 : -7), y2: o.y + (fired ? -10 : -12) }, "catapult-arm"); el("circle", { cx: o.x + (fired ? 11 : -7), cy: o.y + (fired ? -10 : -12), r: 3, class: "catapult-cup" }, g); hit(g, o.x, o.y); }
 
-export function drawIcon(o, g) { ({ plate, tripwire, gauge, switch: switcho, dial, light, floor, spawn, stone, catapult }[o.kind] || (() => hit(g, o.x, o.y)))(o, g); }
+function sight(o, g) {
+  const on = o.state === "sees";
+  path(g, `M${o.x - 15} ${o.y} Q${o.x} ${o.y - 13} ${o.x + 15} ${o.y} Q${o.x} ${o.y + 13} ${o.x - 15} ${o.y} Z`, "body");
+  el("circle", { cx: o.x, cy: o.y, r: 5, class: on ? "rune-ring" : "dial-hub" }, g); hit(g, o.x, o.y);
+}
+function initiative(o, g) { el("circle", { cx: o.x, cy: o.y, r: 15, class: "body" }, g); path(g, `M${o.x - 8} ${o.y - 8} L${o.x + 8} ${o.y + 8} M${o.x + 8} ${o.y - 8} L${o.x - 8} ${o.y + 8} M${o.x - 9} ${o.y - 3} L${o.x - 3} ${o.y - 9} M${o.x + 9} ${o.y - 3} L${o.x + 3} ${o.y - 9}`, "rune-mark"); hit(g, o.x, o.y); }
+
+export function drawIcon(o, g) { ({ sight, initiative, plate, tripwire, gauge, switch: switcho, dial, light, floor, spawn, stone, catapult }[o.kind] || (() => hit(g, o.x, o.y)))(o, g); }

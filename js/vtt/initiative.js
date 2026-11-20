@@ -99,12 +99,28 @@ export async function removeFromInitiative(tokenId) {
   if (current.turn === tokenId) await patch({ "initiative/turn": null });
 }
 
-async function nextTurn() {
+export async function nextTurn() {
   if (!isGM()) return;
   const list = entries().map(([id]) => id); if (!list.length) return;
   const index = current.turn == null ? -1 : list.indexOf(current.turn), next = (index + 1) % list.length;
   await patch({ "initiative/turn": list[next], "initiative/round": (current.round || 1) + (index >= 0 && next === 0 ? 1 : 0) });
 }
+
+// Start combat: everyone on the map joins, each rolls a d20 (unless already numbered), and the highest goes first.
+export async function startInitiative() {
+  if (!isGM()) return;
+  const fresh = (await read("initiative")) || {}, order = { ...(fresh.order || {}) }, r = new Uint32Array(1);
+  let n = Object.values(order).reduce((m, o) => Math.max(m, Number(o?.n) || 0), 0);
+  for (const id of Object.keys(S.tokens)) {
+    crypto.getRandomValues(r);
+    if (!order[id]) order[id] = { init: (r[0] % 20) + 1, n: ++n };
+    else if (order[id].init == null) order[id] = { ...order[id], init: (r[0] % 20) + 1 };
+  }
+  const first = Object.entries(order).filter(([id]) => S.tokens[id]).sort((a, b) => (b[1].init ?? 0) - (a[1].init ?? 0) || (a[1].n ?? 0) - (b[1].n ?? 0))[0]?.[0] ?? null;
+  await patch({ "initiative/order": order, "initiative/round": 1, "initiative/turn": first });
+}
+
+export const endInitiative = () => isGM() && put("initiative", null);
 
 export function initInitiative() {
   if (started) return; started = true; installCss();
@@ -122,7 +138,7 @@ export function initInitiative() {
   });
   gm.append(roll, next, end); const round = document.createElement("span"); round.className = "init-round"; footer.append(gm, round);
   win.body.append(strip, footer);
-  watch("initiative", (value) => { current = { turn: value?.turn ?? null, round: value?.round || 1, order: value?.order || {} }; if (S.turn !== current.turn) { S.turn = current.turn; document.dispatchEvent(new Event("turnchanged")); } render(); cleanMissing(); });
+  watch("initiative", (value) => { S.combat = value?.turn != null; current = { turn: value?.turn ?? null, round: value?.round || 1, order: value?.order || {} }; if (S.turn !== current.turn) { S.turn = current.turn; document.dispatchEvent(new Event("turnchanged")); } render(); cleanMissing(); });
   watch("tokens", (value) => { if (value) S.tokens = value; render(); cleanMissing(); });
   document.addEventListener("tokenschanged", render);
 }

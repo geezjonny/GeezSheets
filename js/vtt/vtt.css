@@ -28,7 +28,7 @@ svg { display: block; width: 100%; height: auto; touch-action: none; user-select
 .doorbar { stroke: #5a3b1f; stroke-width: 10; stroke-linecap: round; }
 .door.state-open .doorbar { stroke: #5a3b1f; stroke-width: 4; stroke-dasharray: 1 8; }
 .obj .body { fill: #d6c493; stroke: var(--ink); stroke-width: 2.2; }
-.obj.state-on .body, .obj.state-down .body, .obj.state-tripped .body, .obj.state-fired .body { fill: #d89a2b; }
+.obj.state-on .body, .obj.state-down .body, .obj.state-tripped .body, .obj.state-sees .body, .obj.state-fired .body { fill: #d89a2b; }
 .obj.state-open .body { fill: #eadfc3; stroke-dasharray: 3 3; }
 .obj.state-dead .body { fill: #7a3a2e; }
 .obj.state-bloodied .body { fill: #d08a58; }

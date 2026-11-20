@@ -221,15 +221,16 @@ function wireSetup() {
     else if (b.hasAttribute("data-send")) send();
   });
 }
+// Open a roll call from code (the command console uses this). Same record the setup window writes.
+export const callRoll = ({ kind, key = "", title = "", dc = null, showDc = false, mode = "normal", tokenIds }) => put("rollcall/current", {
+  id: uid(), kind, key, title: title.trim(), dc: kind !== "init" && dc > 0 ? dc : null, showDc: !!showDc, mode,
+  to: Object.fromEntries(tokenIds.map((tid) => [tid, tokenName(tid)])), open: true, t: Date.now(), results: {},
+});
 async function send() {
   const picked = [...setupWin.body.querySelectorAll(".rc-tk:checked")].map((c) => c.value);
   if (!picked.length) { const t = document.getElementById("toast"); if (t) { t.textContent = "Tick at least one token"; t.style.display = "block"; setTimeout(() => (t.style.display = "none"), 2500); } return; }
   const g = (s) => setupWin.body.querySelector(s), dc = Number(g(".rc-dc")?.value);
-  await put("rollcall/current", {
-    id: uid(), kind, key: g(".rc-key")?.value || "", title: (g(".rc-title")?.value || "").trim(),
-    dc: kind !== "init" && dc > 0 ? dc : null, showDc: !!g(".rc-show")?.checked, mode: g(".rc-mode")?.value || "normal",
-    to: Object.fromEntries(picked.map((tid) => [tid, tokenName(tid)])), open: true, t: Date.now(), results: {},
-  });
+  await callRoll({ kind, key: g(".rc-key")?.value || "", title: g(".rc-title")?.value || "", dc, showDc: g(".rc-show")?.checked, mode: g(".rc-mode")?.value || "normal", tokenIds: picked });
   setupWin.hide();
 }
 
