@@ -9,6 +9,7 @@
 - Everything not used by the new VTT (companion, tools, map converter, stamps, world maps, props, textures and more) moved to `Archive/GeezSheets`, outside this repo, as a working copy of the old app for testing.
 
 ### VTT (Dungeon Table)
+- Rain, snow and the day/night tint now show in the 3D view too (they were hidden behind it).
 - Roofs now show in 3D: a gabled roof with shingles (or wood/stone) sits on the walls. Players see it solid until a PC token is inside, then it lifts to show the room; "Lift roof" still works by hand. The GM sees closed roofs see-through.
 - Right-clicking a PC token opens a draggable floating window (HP, damage/heal, hide, picture, initiative, conditions, settings) that stays open and follows the sheet's HP. Enemy and NPC tokens keep the quick popup.
 - Roll Call rebuilt: pick the stat (Initiative, Save, Skill, Ability or Custom), set a DC, then tick which tokens on the map must roll. Players get a floating window that takes their modifier from their GeezSheets sheet, with Advantage/Disadvantage, Bless, Guidance, Resistance, Bardic Inspiration and an Other box. The dice roll for everyone, results show pass/fail against the DC, and the GM can roll for NPCs or close the call.

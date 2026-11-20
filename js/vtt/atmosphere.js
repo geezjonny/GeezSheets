@@ -11,8 +11,8 @@ const css = () => {
   if (document.getElementById(STYLE_ID)) return;
   const style = document.createElement("style"); style.id = STYLE_ID;
   style.textContent = `
-    #${TINT_ID}{position:fixed;inset:0;z-index:4;pointer-events:none;mix-blend-mode:multiply}
-    #${CANVAS_ID}{position:fixed;inset:0;width:100%;height:100%;z-index:5;pointer-events:none}
+    #${TINT_ID}{position:fixed;inset:0;z-index:6;pointer-events:none;mix-blend-mode:multiply}
+    #${CANVAS_ID}{position:fixed;inset:0;width:100%;height:100%;z-index:6;pointer-events:none}
     .atmo-presets,.atmo-weather,.atmo-swatches{display:flex;flex-wrap:wrap;gap:4px}
     .atmo-clock{font-size:1.2rem;text-align:center;color:var(--brass-lt);margin:.25rem 0 .5rem}
     .atmo-time{width:15rem;accent-color:var(--brass)}
