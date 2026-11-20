@@ -3,6 +3,7 @@
 ## 2026-11-19
 
 ### GeezSheets
+- The VTT now reads its Firebase settings from `js/firebase-config.js` (one place to change them) and uses one Firebase version everywhere, so the page downloads less.
 - The new VTT (Dungeon Table) replaces the old campaign page: it is now the site's `index.html`, with its code in `js/vtt/`.
 - The old campaign page, its scripts and styles, and the `old-*` pages moved to `old/`. The character sheet (and the scripts it loads) stays in place.
 - Everything not used by the new VTT (companion, tools, map converter, stamps, world maps, props, textures and more) moved to `Archive/GeezSheets`, outside this repo, as a working copy of the old app for testing.

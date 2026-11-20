@@ -1,13 +1,9 @@
 // Firebase wrapper. Everything lives under /test so campaigns stay safe.
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, set, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, update, get, runTransaction } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
 
-const app = initializeApp({
-  apiKey: "AIzaSyCJrkcYjFjyyx5UNA9FUaCIlCvxxOYabis",
-  authDomain: "geezsheets.firebaseapp.com",
-  databaseURL: "https://geezsheets-default-rtdb.firebaseio.com",
-  projectId: "geezsheets",
-}, "puzzle-proto");
+// Config comes from js/firebase-config.js (loaded by index.html before this module) so there is one place to change it.
+const app = initializeApp(window.GEEZ_FIREBASE_CONFIG, "puzzle-proto");
 const db = getDatabase(app);
 const ROOT = "test/";
 
