@@ -214,7 +214,6 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 #win-bar .barbtn.on::before { content: "✓"; position: absolute; left: .5rem; }
 #win-bar .barbtn:hover, .dropmenu button:hover, #addmenu button:hover, #addsub button:hover, #addmenu button.open { background: var(--brass); color: var(--ink); }
 #win-bar .barbtn.on { background: none; color: var(--paper); } #win-bar .barbtn.on:hover { background: var(--brass); color: var(--ink); }
-#addmenu button[data-choose="object"]::after { content: "▸"; margin-left: 1.5rem; }
 #addsub { position: fixed; z-index: 7; display: grid; }
 #addsub[hidden] { display: none; }
 .dropmenu .dim { padding: .15rem 1rem .15rem 1.5rem; }
@@ -296,3 +295,5 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 #win-build-tools .paltools { display: flex; gap: .2rem; }
 #win-build-tools .paltools button[data-mode] { flex: 1 1 0; width: auto; min-width: 0; height: 2rem; }
 #win-build-tools .paltools svg { width: 1.2rem; height: 1.2rem; }
+#win-pal-prop, #win-pal-object { width: 11rem; min-width: 11rem; max-width: 11rem; }
+.palkind .swatch.ico { font-size: 15px; line-height: 1; }

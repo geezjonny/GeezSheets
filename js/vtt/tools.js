@@ -7,7 +7,7 @@ import { el, PROPS, PROP_CATALOG, drawObjects } from "./draw.js";
 import { renderPanel } from "./panel.js";
 import { floatWindow } from "./ui.js";
 
-const MENU = [["token", "Token"], ["wall", "Wall"], ["door", "Door"], ["floor", "Floor"], ["roof", "Roof"], ["fog", "Fog"], ["light", "Light"], ["object", "Object ▸"], ["prop", "Prop"], ["erase", "Erase"], ["puzzle", "Puzzle"]];
+const MENU = [["token", "Token"], ["wall", "Wall"], ["door", "Door"], ["floor", "Floor"], ["roof", "Roof"], ["fog", "Fog"], ["light", "Light"], ["object", "Object"], ["prop", "Prop"], ["puzzle", "Puzzle"]];
 const HINT = {
   token: "Click a cell to drop a token.", wall: "Drag to draw a wall (snaps to the grid).", floor: "Drag to paint a floor area.",
   fog: "Drag to fog a room (snaps to cells). Right-click fog to reveal it to players.", roof: "Drag to cover an area with a roof. Right-click a roof to lift it.", prop: "Click a cell to place it. Drag props to move them.",
@@ -86,13 +86,6 @@ function showMenu() {
   m.innerHTML = MENU.map(([k, l]) => `<button data-choose="${["door", "light"].includes(k) ? "obj:" + k : k}">${l.replace(" ▸", "")}</button>`).join("");
   m.hidden = false; placeMenu();
 }
-// "Object" expands a flyout beside its row, Adobe-style.
-function showSub(row) {
-  let s = $("#addsub"); if (!s) { s = document.createElement("div"); s.id = "addsub"; document.body.append(s); }
-  s.innerHTML = Object.entries(KINDS).filter(([k]) => k !== "door" && k !== "light").map(([k, v]) => `<button data-choose="obj:${k}">${v.label}</button>`).join("");
-  s.hidden = false; row.classList.add("open"); const r = row.getBoundingClientRect(), w = s.getBoundingClientRect();
-  s.style.left = Math.min(r.right, innerWidth - w.width) + "px"; s.style.top = Math.max(0, Math.min(r.top, innerHeight - w.height)) + "px";
-}
 // Build Tools: a "Build Tools" window (Select / Erase / Shape / Paint brush / Paint bucket) plus one small window per kind (Floors,
 // Walls, Doors, Roofs, Lights, Props): its 5 most recently used swatches as icons, and under them a dropdown with the rest.
 // The tool says HOW you act, the window you last touched says WHAT: pick Stone in Floors, Shape, drag a room; touch Walls and the
@@ -100,7 +93,7 @@ function showSub(row) {
 const KP = {
   floor: { key: "floor", label: "Floors", mats: FLOOR_MATS, paint: true }, wall: { key: "wall", label: "Walls", mats: WALL_MATS, fixed: "line" },
   door: { key: "obj:door", label: "Doors", mats: WALL_MATS, fixed: "place", door: true }, roof: { key: "roof", label: "Roofs", mats: ROOF_MATS },
-  light: { key: "obj:light", label: "Lights", color: true, fixed: "place" }, prop: { key: "prop", label: "Props", props: true, fixed: "place" },
+  light: { key: "obj:light", label: "Lights", color: true, fixed: "place" }, object: { key: "obj:", label: "Objects", fixed: "place", object: true }, prop: { key: "prop", label: "Props", props: true, fixed: "place" },
   fog: { key: "fog", label: "Fog", paint: true, noSwatch: true },
 };
 const MODE_ICONS = {   // line icons, drawn in the button's text colour
@@ -111,21 +104,26 @@ const MODE_ICONS = {   // line icons, drawn in the button's text colour
   bucket: "<path d='M4.5 11.5l7-7 7 7-6 6a2.1 2.1 0 01-3 0z'/><path d='M4.5 11.5h14'/><path d='M20.5 14c1.2 1.8 1.8 2.8 1.8 3.8a1.8 1.8 0 01-3.6 0c0-1 .6-2 1.8-3.8z'/>",
 };
 const MODES = [["select", "Select"], ["erase", "Erase"], ["shape", "Shape"], ["brush", "Paint brush"], ["bucket", "Paint bucket"]];
-let palProp = "crate", palColor = "#ffb347", palRot = 0, palScale = 1, palRandomRot = false, palRandomScale = false, palFlip = false;
+let palObj = "plate", palProp = "crate", palColor = "#ffb347", palRot = 0, palScale = 1, palRandomRot = false, palRandomScale = false, palFlip = false;
 const bt = { mode: "shape", kind: "floor", any: false, mats: {}, window: false };   // any = the menu's Erase (erases every kind)
-const SEED = { floor: ["default", "stone", "wood", "grass", "water"], wall: ["default", "stone", "brick", "wood", "plaster"], door: ["default", "wood", "iron", "stone", "brick"], roof: ["default", "thatch", "slate", "tile", "wood"], light: Object.keys(LIGHT_COLORS).slice(0, 5), prop: ["crate", "table", "chair", "barrel", "chest"] };
+const SEED = { floor: ["default", "stone", "wood", "grass", "water"], wall: ["default", "stone", "brick", "wood", "plaster"], door: ["default", "wood", "iron", "stone", "brick"], roof: ["default", "thatch", "slate", "tile", "wood"], light: Object.keys(LIGHT_COLORS).slice(0, 5), prop: ["crate", "table", "chair", "barrel", "chest"], object: ["plate", "switch", "spawn", "tripwire", "dial"] };
+const OBJ_KINDS = Object.entries(KINDS).filter(([k]) => k !== "door" && k !== "light");
+const OBJ_GLYPH = { plate: "▣", tripwire: "┅", sight: "◉", gauge: "♥", switch: "⏻", dial: "◔", floor: "▦", spawn: "☠", stone: "●", catapult: "➶", initiative: "⚔" };
+const keyOf = (k) => (KP[k].object ? "obj:" + palObj : KP[k].key);
 let recent = SEED;
 try { const r = JSON.parse(localStorage.getItem("vtt-recent-swatches") || "null"); if (r) recent = { ...SEED, ...r }; } catch { /* first run */ }
 let btWin = null; const kw = {};
 const remember = (kind, v) => { recent[kind] = [v, ...(recent[kind] || []).filter((x) => x !== v)].slice(0, 5); try { localStorage.setItem("vtt-recent-swatches", JSON.stringify(recent)); } catch { /* private mode */ } };
-const current = (k) => KP[k].props ? palProp : KP[k].color ? palColor : bt.mats[k] || "default";
+const current = (k) => KP[k].object ? palObj : KP[k].props ? palProp : KP[k].color ? palColor : bt.mats[k] || "default";
 const propGlyph = (k) => { const s = PROP_CATALOG[k]?.shape || "mark"; return s === "rect" ? "<rect x='4' y='8' width='24' height='16' rx='3'/><path d='M7 11l18 10'/>" : s === "round" ? "<circle cx='16' cy='16' r='11'/><circle cx='16' cy='16' r='5' fill='none'/>" : s === "leaf" ? "<circle cx='10' cy='17' r='8'/><circle cx='22' cy='13' r='8'/><circle cx='16' cy='16' r='2'/>" : s === "rock" ? "<path d='M3 23l5-15 14-3 7 14-10 5z'/>" : "<circle cx='16' cy='16' r='9'/><path d='M4 16h24M16 4v24'/>"; };
-const chipHTML = (k, v) => KP[k].props ? `<button type="button" class="swatch ico" data-v="${v}" title="${PROPS[v] || v}"><svg viewBox="0 0 32 32" aria-label="${PROPS[v] || v}">${propGlyph(v)}</svg></button>`
+const chipHTML = (k, v) => KP[k].object ? `<button type="button" class="swatch ico" data-v="${v}" title="${KINDS[v]?.label || v}">${OBJ_GLYPH[v] || "?"}</button>`
+  : KP[k].props ? `<button type="button" class="swatch ico" data-v="${v}" title="${PROPS[v] || v}"><svg viewBox="0 0 32 32" aria-label="${PROPS[v] || v}">${propGlyph(v)}</svg></button>`
   : KP[k].color ? `<button type="button" class="swatch ico" data-v="${v}" title="${LIGHT_COLORS[v] || v}"><i style="background:${v}"></i></button>`
   : `<button type="button" class="swatch ico" data-v="${v}" title="${v}"><i style="background:${FLOOR_COL[v] || "#d8d0c0"}"></i></button>`;
 function optionsHTML(k) {
   const c = KP[k]; let h = `<option value="" selected disabled>more…</option>`;
-  if (c.props) { const g = {}; for (const [id, l] of Object.entries(PROPS)) (g[PROP_CATALOG[id]?.category || "other"] ||= []).push([id, l]); for (const [cat, list] of Object.entries(g)) h += `<optgroup label="${cat}">${list.map(([id, l]) => `<option value="${id}">${l}</option>`).join("")}</optgroup>`; }
+  if (c.object) h += OBJ_KINDS.map(([id, o]) => `<option value="${id}">${o.label}</option>`).join("");
+  else if (c.props) { const g = {}; for (const [id, l] of Object.entries(PROPS)) (g[PROP_CATALOG[id]?.category || "other"] ||= []).push([id, l]); for (const [cat, list] of Object.entries(g)) h += `<optgroup label="${cat}">${list.map(([id, l]) => `<option value="${id}">${l}</option>`).join("")}</optgroup>`; }
   else if (c.color) h += Object.entries(LIGHT_COLORS).map(([col, n]) => `<option value="${col}">${n}</option>`).join("");
   else h += ["default", ...c.mats].map((m) => `<option value="${m}">${m}</option>`).join("");
   return h;
@@ -139,9 +137,9 @@ function renderRecent(k) { const box = kw[k]?.body.querySelector(".bt-recent"); 
 function applyPal() {
   const c = KP[bt.kind];
   if (bt.mode === "select") return setTool(null, null, true);
-  if (bt.mode === "erase") return setTool("erase", { eraseOnly: bt.any ? "" : c.key }, true);
+  if (bt.mode === "erase") return setTool("erase", { eraseOnly: bt.any ? "" : keyOf(bt.kind) }, true);
   const mode = c.fixed || (bt.mode === "brush" || bt.mode === "bucket" ? (c.paint ? bt.mode : "shape") : "shape");
-  setTool(c.key, { mode: c.door && bt.window ? "window" : mode, mat: bt.mats[bt.kind] || "" }, true);
+  setTool(keyOf(bt.kind), { mode: c.door && bt.window ? "window" : mode, mat: bt.mats[bt.kind] || "" }, true);
 }
 function syncPalette() {
   if (!btWin) return;
@@ -155,7 +153,7 @@ function syncPalette() {
 }
 function pick(kind, v) {
   const c = KP[kind];
-  if (c.props) palProp = v; else if (c.color) palColor = v; else bt.mats[kind] = v === "default" ? "" : v;
+  if (c.object) palObj = v; else if (c.props) palProp = v; else if (c.color) palColor = v; else bt.mats[kind] = v === "default" ? "" : v;
   remember(kind, v); renderRecent(kind);
   bt.kind = kind; bt.any = false; if (bt.mode === "select") bt.mode = "shape"; applyPal();
 }
@@ -170,7 +168,7 @@ function toolsWin() {
 }
 function kindWin(kind) {
   if (kw[kind]) return kw[kind];
-  const c = KP[kind], at = { floor: [190, 90], wall: [370, 90], door: [550, 90], roof: [730, 90], light: [910, 90], prop: [190, 260] }[kind] || [190, 90];   // side by side
+  const c = KP[kind], at = { floor: [190, 90], wall: [370, 90], door: [550, 90], roof: [730, 90], light: [910, 90], prop: [190, 260], object: [370, 260] }[kind] || [190, 90];   // side by side
   const w = kw[kind] = floatWindow({ id: "pal-" + kind, title: c.label, x: at[0], y: at[1], hidden: true }); w.body.className += " palkind";
   w.body.innerHTML = winHTML(kind); renderRecent(kind);
   w.body.addEventListener("click", (e) => {
@@ -187,7 +185,6 @@ function kindWin(kind) {
   return w;
 }
 function openKind(kind) { toolsWin().show(); bt.kind = kind; bt.any = false; if (bt.mode === "select") bt.mode = "shape"; if (!KP[kind].noSwatch) kindWin(kind).show(); applyPal(); }
-function openErase() { toolsWin().show(); bt.mode = "erase"; bt.any = true; applyPal(); }
 const hideSub = () => { const s = $("#addsub"); if (s) s.hidden = true; $("#addmenu").querySelector(".open")?.classList.remove("open"); };
 // Drop the menu down from the Build item in the menu bar.
 function placeMenu() {
@@ -216,8 +213,7 @@ export function initTools() {
     const c = e.target.closest("[data-choose]"); if (!c) return;
     if (c.dataset.choose === "puzzle") { setTool(null); return $("#mode").click(); }
     const ch = c.dataset.choose;
-    if (ch === "object") return showSub(c);
-    if (ch === "erase") return openErase();
+    if (ch === "object") { $("#addmenu").hidden = true; hideSub(); return openKind("object"); }
     if (ch === "token") {   // opens blank each time: no dropdown pick, empty name and HP
       if (tokWin) { tokWin.body.querySelector('[data-o="npc"]').value = ""; tokWin.body.querySelector('[data-o="name"]').value = ""; tokWin.body.querySelector('[data-o="hp"]').value = ""; }
       return setTool("token");
@@ -228,7 +224,6 @@ export function initTools() {
   };
   $("#addmenu").addEventListener("click", choose);
   document.addEventListener("click", (e) => { if (e.target.closest("#addsub")) choose(e); });
-  $("#addmenu").addEventListener("mouseover", (e) => { const c = e.target.closest("[data-choose]"); if (!c) return; if (c.dataset.choose === "object") showSub(c); else hideSub(); });
   document.addEventListener("click", (e) => { if (!e.target.closest("#addmenu, #addsub, #add")) { $("#addmenu").hidden = true; hideSub(); } });
   document.addEventListener("keydown", (e) => { if (e.key.toLowerCase() === "r" && (S.placing || S.tool === "prop")) { palRot = (palRot + 90) % 360; const r=btWin?.body.querySelector('[data-pal="rot"]'); if(r)r.value=palRot; return; } if (e.key === "Escape" && (S.tool || S.placing)) setTool(null); });
   document.addEventListener("toolchange", renderToolbar);

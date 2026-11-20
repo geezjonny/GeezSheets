@@ -5,6 +5,7 @@
 ### VTT: Build Tools
 - **Build Tools window + one small window per kind:** any Build item opens a Build Tools window (Select, Erase, Shape, Paint brush, Paint bucket) and that kind's window (Floors, Walls, Doors, Roofs, Lights, Props). Each shows your 5 most recently used swatches as icons with a dropdown underneath for the rest. They stay open until you close them, so you can pick a floor, draw it, pick a wall, draw it, pick a prop, place it, without going back to the menu.
 - **Build Tools is a row of icons** (cursor, eraser, rectangle, brush, bucket; hover for the name), and Floors, Walls, Roofs, Doors and Build Tools are all the same width so they line up.
+- **Object opens its own window** (plate, tripwire, switch, spawn and the rest) like the other kinds, with recents and a dropdown. Erase is no longer in the Build menu; it lives in Build Tools. The Props window matches the others' width.
 - **The window you touched last is what you draw with:** it gets an outline, each remembers its own material, and brush and bucket grey out where they don't apply.
 - **Windows snap and connect:** drag a window near another (or the screen edge) and it snaps flush; windows left touching move together. Shift while dragging pulls one out, Alt turns snapping off.
 - **Tools strip can dock:** the x on Tools moves Select, Ruler, Ping, Dice, Grid, Fit and 3D into the top right of the menu bar; the small button there floats it again.
