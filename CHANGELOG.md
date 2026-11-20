@@ -10,6 +10,7 @@
 - **Preview with fake players:** add `?fake=5` to the VTT address to fill the call with animated stand-in players (one with camera off, a moving speaker highlight) and see how a full table looks.
 - **Tokens shake when their player talks:** the call reports who is speaking (your own mic too), and the token with that name shakes on the map. You join the call under your "Me" character, so your name lines up with your token.
 - **Also its own page:** `videochat.html` works standalone with `?room=` and `?name=`.
+- **Next idea written up:** proximity chat (voices fade with distance between tokens) is planned in the to-do list.
 - **Not tested with a second real person yet.** Players behind strict firewalls may need a TURN relay, and the close button only hides the panel without muting.
 
 ### VTT: Build Tools
