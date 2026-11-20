@@ -343,6 +343,32 @@ async function setView(on) {
 }
 $("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b = e.currentTarget; b.classList.add("on"); dropMenu(b, [[(S.v3d ? "   " : "✓ ") + "2D", () => setView(false)], [(S.v3d ? "✓ " : "   ") + "3D", () => setView(true)]]); setTimeout(() => document.addEventListener("pointerdown", () => b.classList.remove("on"), { once: true }), 0); });
 
+// Drag a token in 3D: press on it, drag along the floor, release to snap to the cell (same rules as 2D).
+{
+  let drag = null;
+  document.addEventListener("pointerdown", (e) => {
+    drag = null;
+    if (!S.v3d || e.button !== 0 || !e.target.closest?.("#view3d") || S.v3d.controlsBlocked()) return;
+    const id = S.v3d.pickToken(e.clientX, e.clientY);
+    if (!id || !canMove(id)) return;
+    drag = { id, x0: e.clientX, y0: e.clientY, moved: false, cell: null };
+    S.v3d.setControls(false);   // keep the camera still while the token moves
+  }, true);
+  document.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    if (!drag.moved && Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 6) return;
+    const g = S.v3d?.groundAt(e.clientX, e.clientY); if (!g) return;
+    drag.moved = true; drag.cell = cellOf(g); S.v3d.dragToken(drag.id, drag.cell);
+  });
+  const end = () => {
+    if (!drag) return; const d = drag; drag = null;
+    S.v3d?.setControls(true);
+    if (d.moved && d.cell) patch({ [`tokens/${d.id}/x`]: d.cell.x, [`tokens/${d.id}/y`]: d.cell.y });
+    S.select3d && d.moved && (S.v3d.clearSelection?.());
+  };
+  document.addEventListener("pointerup", end, true);
+  document.addEventListener("pointercancel", end, true);
+}
 // Select tool in 3D: click an element to ring it and open the same menu as right-clicking it in 2D.
 {
   let down = null;

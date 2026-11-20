@@ -269,6 +269,17 @@ export function zoom(f) { const o = camera.position.clone().sub(controls.target)
 export function fit() { fitted = false; build(); }
 let toolBlock = false;   // an active ruler/ping tool pauses the camera
 const applyControls = () => { if (controls) controls.enabled = !toolBlock; };
+export const controlsBlocked = () => toolBlock;
+export function pickToken(clientX, clientY) {   // token id under the cursor (no selection ring), or null
+  const r = renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1), camera);
+  for (const h of ray.intersectObject(root, true)) { let o = h.object; while (o && !o.userData.pick) o = o.parent; if (o) return o.userData.pick.type === "token" ? o.userData.pick.id : null; }
+  return null;
+}
+export function dragToken(id, p) {   // move a token's model to map px p while dragging
+  const g = root.children.find((o) => o.userData.pick?.type === "token" && o.userData.pick.id === id);
+  if (g) { g.position.x = p.x / U; g.position.z = p.y / U; dirty = true; }
+}
 export function setControls(on) { toolBlock = !on; applyControls(); }
 let gridOn = false, gridLines;
 export function setGrid(on) { gridOn = on; if (gridLines) gridLines.visible = on; dirty = true; }
