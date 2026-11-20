@@ -215,6 +215,17 @@ export async function exportDD2VTT() {
   return new Blob([JSON.stringify({ format: 0.3, resolution: { map_origin: { x: 0, y: 0 }, map_size: { x: cols, y: rows }, pixels_per_grid: 70 }, line_of_sight: walls, objects_line_of_sight: [], portals: doors, lights, image: "" })], { type: "application/json" });
 }
 
+// Export the whole scene (every floor, materials, props, roofs, atmosphere) as .geezmap.json, which is also a valid .dd2vtt.
+export async function exportGeezMapFile() {
+  const [{ S }, { exportGeezMap }, store] = await Promise.all([import("./state.js"), import("./geezmap-export.js"), import("../store.js")]);
+  const [light, atmosphere] = await Promise.all([store.read("map/light"), store.read("atmosphere")]);
+  const name = S?.sceneName || S?.map?.name || "map";
+  const json = exportGeezMap({ name, map: { ...S.map, light }, objects: S.objects, atmosphere });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(json)], { type: "application/json" }));
+  a.download = `${name.replace(/[\\/:*?"<>|]+/g, "_")}.geezmap.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(`Exported ${a.download}`);
+}
+
 export function initDD2VTT() {
   if (!new URLSearchParams(location.search).has("gm")) return;
   Promise.all([import("./ui.js"), import("./state.js")]).then(([{ addBarButton, menuWindow }, { S }]) => {
@@ -223,6 +234,7 @@ export function initDD2VTT() {
       ["Import GeezSheets map (.geezmap.json)…", (b) => { const input = document.createElement("input"); input.type = "file"; input.accept = ".json"; input.addEventListener("change", () => { const f = input.files[0]; if (f) importGeezChoice(f, b); }); input.click(); }],
       ["From GeezSheets places…", async (b) => { try { const places = await listGeezPlaces(); const { dropMenu } = await import("./ui.js"); dropMenu(b, [["GeezSheets battle maps (read-only)", null], ...places.map((p) => [p.name, () => importWithChoice(p.name, async () => { const r = await fetch(geezMapUrl(p.file)); if (!r.ok) throw new Error(`Could not load ${p.file}`); return parseDD2VTT(await r.json()); })])]); } catch (e) { toast(e.message); } }],
       ["From GeezSheets maps…", async (b) => { try { const names = await listGeezMaps(); const { dropMenu } = await import("./ui.js"); dropMenu(b, [["GeezSheets raw maps (read-only)", null], ...names.map((n) => [n, async () => { const { readAt } = await import("../store.js"); importWithChoice(n, async () => { const m = await readAt(`maps/${n}`); if (!m?.geometry) throw new Error(`No geometry at maps/${n}`); return parseDD2VTT(geezGeometryToDD2VTT(m.geometry)); }); }])]); } catch (e) { toast(e.message); } }],
+      ["Export .geezmap.json (also a dd2vtt)", () => exportGeezMapFile().catch((e) => toast(e.message))],
       ["Export .dd2vtt", async () => { const blob = await exportDD2VTT(); const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${(S?.sceneName || S?.map?.name || "map").replace(/[\\/:*?"<>|]+/g, "_")}.dd2vtt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }],
     ]) });
   });

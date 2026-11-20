@@ -9,6 +9,7 @@
 - **Prop palette like Dungeondraft:** categories down the side, a search box, thumbnails, and random rotation and scale options.
 - **Elevation and several floors:** raised and sunk ground is shaded and outlined, and rises in the 3D view. Floor up / Floor down buttons switch levels, and players follow the GM's level. Sight and fog only count things on the same level.
 - **Labels** written on the map show for players; the GM can edit or delete them.
+- **Export GeezSheets map (.geezmap.json)** in Import / Export saves the whole scene (every floor, materials, door kinds, props, roofs, labels, stairs, fog, time and weather). The file is also a valid .dd2vtt, so other VTTs can open it too. Puzzle rules are not exported yet.
 
 ### Dashboard (new GM page, dashboard.html)
 - New GM dashboard: movable, resizable floating windows that read and write the same Firebase data as the sheets and the VTT. A top bar shows or hides each window, and the layout is remembered. It now looks like the VTT: leather, brass, parchment and ink.
