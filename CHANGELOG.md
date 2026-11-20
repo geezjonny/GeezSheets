@@ -2,6 +2,13 @@
 
 ## 2026-11-20
 
+### Dashboard (new GM page, dashboard.html)
+- New GM dashboard: movable, resizable floating windows that read and write the same Firebase data as the sheets and the VTT. A top bar shows or hides each window, and the layout is remembered.
+- HP window: add any PC or NPC from a dropdown, press + for more. Each shows an HP bar and number. Click the number to set HP, or type an amount and press Dmg or Heal (temp HP soaks damage, healing stops at max, death saves reset above 0).
+- Spell slots dropdown under each character with clickable pips to spend or restore slots, live on the sheet.
+- Weather window: Clear / Rain / Snow with colours, changing the weather on every player's screen.
+- Music window: pick the music track and volume, toggle ambience loops, fire sound effects, or stop everything.
+
 ### VTT (Dungeon Table)
 - New Sight trigger: a Sight object sees players or NPCs within a range (walls and closed doors block it), which can fire rules.
 - New "Start initiative" effect: when it fires, everyone joins initiative with a d20 roll and the highest goes first.
