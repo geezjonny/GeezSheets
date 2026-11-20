@@ -3,10 +3,11 @@
 ## 2026-11-20
 
 ### VTT: Build Tools
-- **Build Tools window:** any Build item opens one Select / Erase / Shape / Paint brush / Paint bucket window plus that kind's swatches (Floors, Walls, Doors, Roofs, Lights, Props). They stay open until you close them, so you can pick a floor, draw it, pick a wall, draw it, pick a prop, place it, without going back to the menu.
-- **Several swatch windows at once:** the one you last touched is outlined and is what you draw with. Each remembers its own material, and brush and bucket grey out for things they don't apply to.
-- "Draw walls around it" now stays however you set it when you switch between swatches, instead of turning itself back on.
-- Removed the "Prototype" footer text from the page.
+- **Build Tools window + one small window per kind:** any Build item opens a Build Tools window (Select, Erase, Shape, Paint brush, Paint bucket) and that kind's window (Floors, Walls, Doors, Roofs, Lights, Props). Each shows your 5 most recently used swatches as icons with a dropdown underneath for the rest. They stay open until you close them, so you can pick a floor, draw it, pick a wall, draw it, pick a prop, place it, without going back to the menu.
+- **The window you touched last is what you draw with:** it gets an outline, each remembers its own material, and brush and bucket grey out where they don't apply.
+- **Windows snap and connect:** drag a window near another (or the screen edge) and it snaps flush; windows left touching move together. Shift while dragging pulls one out, Alt turns snapping off.
+- **Tools strip can dock:** the x on Tools moves Select, Ruler, Ping, Dice, Grid, Fit and 3D into the top right of the menu bar; the small button there floats it again.
+- **"Draw walls around it" is now a checkbox in the Floors window** and keeps your choice. The extra bar that popped up at the top when picking a tool is gone, and so is the "Prototype" footer text.
 
 ### VTT: import maps from the GeezSuite mapmaker
 - **Import GeezSheets map (.geezmap.json)** in Import / Export brings in a whole map from the mapmaker: every floor, walls, doors, lights, props, roofs, labels and stairs, with an option to also set time, weather and light (dark maps become fog that lights reveal).

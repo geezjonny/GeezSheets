@@ -272,3 +272,19 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 .prop-palette{display:grid;grid-template-columns:7rem 1fr;gap:.35rem;max-height:22rem}.prop-cats{display:flex;flex-direction:column;gap:2px}.prop-cats button{text-align:left}.prop-list{display:grid;grid-template-columns:repeat(4,minmax(3.5rem,1fr));gap:3px;overflow:auto}.prop-thumb{display:grid;justify-items:center;font-size:.65rem;padding:2px}.prop-thumb svg{width:32px;height:32px;fill:#b88a52;stroke:#2a1a33;stroke-width:2}.prop-thumb.on{outline:2px solid var(--brass)}.prop-options{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.35rem;font-size:.75rem}
 .fwin.pal-active { outline: 2px solid var(--brass-lt); }
 .paltools button.off { opacity: .4; cursor: not-allowed; }
+.palkind { display: grid; gap: .35rem; min-width: 9.5rem; max-width: 16rem; }
+.palkind .bt-recent { display: flex; gap: .25rem; flex-wrap: nowrap; }
+.palkind .swatch.ico { width: 1.7rem; height: 1.7rem; padding: 0; display: grid; place-items: center; }
+.palkind .swatch.ico i { display: block; width: 1.15rem; height: 1.15rem; border: 1px solid #0006; }
+.palkind .swatch.ico svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; }
+.palkind select { background: var(--paper); color: var(--ink); border: 1px solid var(--brass); border-radius: 3px; font: 12px Georgia, serif; width: 100%; }
+.palkind .wheel { width: 100%; height: 1.6rem; padding: 0; border: 1px solid var(--brass); background: none; cursor: pointer; }
+.palkind .prop-options { display: grid; gap: .25rem; font-size: 12px; }
+.palkind .bt-win { justify-self: start; }
+#toolsdock { display: flex; align-items: center; gap: .15rem; margin-right: .4rem; }
+#toolsdock .barbtn { display: flex; min-width: 0; padding: 0 .35rem; height: 1.25rem; }
+#toolsdock .barbtn .lbl { display: none; } #toolsdock .barbtn .ico { font-size: 14px; }
+#toolsdock .barbtn[hidden] { display: none; }
+#toolsdock .undock { background: none; border: 1px solid #b98f4566; border-radius: 6px; color: var(--brass-lt); height: 1.25rem; padding: 0 .35rem; cursor: pointer; }
+#toolsdock[hidden] { display: none; }
+.palkind .bt-walls { display: flex; align-items: center; gap: .3rem; font-size: 12px; }
