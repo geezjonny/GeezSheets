@@ -9,6 +9,7 @@
 - Everything not used by the new VTT (companion, tools, map converter, stamps, world maps, props, textures and more) moved to `Archive/GeezSheets`, outside this repo, as a working copy of the old app for testing.
 
 ### VTT (Dungeon Table)
+- Right-click a token > Inventory opens a floating window with what it carries and its coins (pp, gp, ep, sp, cp). A PC's items and coins are the ones on their GeezSheets sheet, live both ways; other tokens keep their own. The GM adds items from the SRD (autocomplete) or any custom name with an optional description that shows as a tooltip, changes quantities, removes items, and adds or spends coins (Shift = 10). Players can look but not edit.
 - Token right-click menu has a new "Light: hold torch" option (GM). The token glows, lights the 3D scene and clears fog around it as it moves; click again to put it out. Everyone sees it, since it's saved on the token.
 - Tokens can now be dragged in the 3D view: press on one and drag along the floor, and it snaps to the grid on release (players can only move their own). Dragging anywhere else still turns the camera.
 - Rain, snow and the day/night tint now show in the 3D view too (they were hidden behind it).

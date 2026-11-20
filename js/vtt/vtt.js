@@ -16,6 +16,7 @@ import { initHandouts } from "./handouts.js";
 import { initRollCall } from "./rollcall.js";
 import { initAtmosphere } from "./atmosphere.js";
 import { openTokenPicker } from "./tokenpics.js";
+import { openInventory } from "./inventory.js";
 import { initDD2VTT } from "./dd2vtt.js";
 import { addBarButton, dropMenu, orderQuickBar, floatWindow } from "./ui.js";
 import { drawObjects, drawTokens, drawTray, drawMap, drawWalls, isPcToken } from "./draw.js";
@@ -254,7 +255,8 @@ async function buildTokenMenu(menu, id, done, alive) {
     menu.append(d);
   }
   if (S.isGM) addFields(menu, settingsFor("token", id).fields);
-  if (t.npc) return;
+  const invBtn = (pcId) => { const b = document.createElement("button"); b.textContent = "Inventory"; b.addEventListener("click", (ev) => { openInventory({ tokenId: id, name, pcId, isGM: S.isGM, x: ev.clientX + 12, y: ev.clientY + 12 }); done(); }); menu.append(b); };
+  if (t.npc) { if (S.isGM) invBtn(null); return; }
   const pc = t.pc ? { id: t.pc } : (await loadPcs()).find((c) => c.name.toLowerCase() === String(name).toLowerCase());
   if (pc) try {   // a PC's HP comes live from their sheet, not the token's copy
     const c = (await readAt(`characters/pcs/${pc.id}/combat`)) || {};
@@ -272,6 +274,8 @@ async function buildTokenMenu(menu, id, done, alive) {
     });
     menu.append(w);
   }
+  if (pc && alive()) invBtn(pc.id);
+  else if (!pc && S.isGM && alive()) invBtn(null);   // a token that is not a known PC keeps its own list
   if (pc && alive()) { const a = document.createElement("button"); a.textContent = "View sheet"; a.addEventListener("click", () => { openSheetWindow(pc); done(); }); menu.append(a); }
 }
 map.addEventListener("contextmenu", (e) => {
