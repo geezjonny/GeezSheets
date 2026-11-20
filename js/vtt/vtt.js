@@ -17,6 +17,7 @@ import { initRollCall } from "./rollcall.js";
 import { initAtmosphere } from "./atmosphere.js";
 import { openTokenPicker } from "./tokenpics.js";
 import { openInventory } from "./inventory.js";
+import { openEquipment } from "./equipment.js";
 import { initDD2VTT } from "./dd2vtt.js";
 import { addBarButton, dropMenu, orderQuickBar, floatWindow } from "./ui.js";
 import { drawObjects, drawTokens, drawTray, drawMap, drawWalls, isPcToken } from "./draw.js";
@@ -275,6 +276,7 @@ async function buildTokenMenu(menu, id, done, alive) {
     menu.append(w);
   }
   if (pc && alive()) invBtn(pc.id);
+  if (pc && alive()) { const eb = document.createElement("button"); eb.textContent = "Equipment"; eb.addEventListener("click", (ev) => { openEquipment({ tokenId: id, name, pcId: pc.id, isGM: S.isGM, x: ev.clientX + 12, y: ev.clientY + 12 }); done(); }); menu.append(eb); }
   else if (!pc && S.isGM && alive()) invBtn(null);   // a token that is not a known PC keeps its own list
   if (pc && alive()) { const a = document.createElement("button"); a.textContent = "View sheet"; a.addEventListener("click", () => { openSheetWindow(pc); done(); }); menu.append(a); }
 }

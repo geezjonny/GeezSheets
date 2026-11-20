@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-20
+
+### VTT (Dungeon Table)
+- Right-click a PC token > Equipment opens a window with Helmet, Armor, Shield and Weapon. The GM picks from that PC's inventory; hover any slot to see what it does (AC, Stealth penalty, strength requirement, weapon damage). It saves to the PC's sheet, so it updates live both ways.
+- Roll Call now applies the rules for you. Chain Mail (or any noisy armor) means disadvantage on Stealth, armor the sheet isn't trained in means disadvantage on STR/DEX rolls, and Poisoned, Frightened and Restrained add their own penalties. Advantage and disadvantage cancel out.
+- The player's roll window shows the result and why ("Rolling with disadvantage: Chain Mail, noisy armor") and players can no longer switch it, so rolling stays one click. The GM can still call advantage or disadvantage for everyone.
+
 ## 2026-11-19
 
 ### GeezSheets

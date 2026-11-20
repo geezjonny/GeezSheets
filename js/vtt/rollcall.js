@@ -11,6 +11,7 @@ import { S } from "./state.js";
 import { floatWindow, addBarButton } from "./ui.js";
 import { rollDice } from "./dice.js";
 import { isPcToken } from "./draw.js";
+import { rollContext, loadRulesData } from "./rollrules.js";
 
 export const ABIL = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
 export const SKILLS = [
@@ -48,6 +49,13 @@ function callMod(c, call) {
     }
   } else if (call.kind === "ability") parts.push([call.key.toUpperCase(), abMod(statOf(c, call.key))]);
   return { mod: parts.reduce((a, p) => a + p[1], 0), parts };
+}
+// What the sheet gives this roll for free (armor, conditions), merged with the GM's own advantage/disadvantage on the call.
+function autoRules(tid, sheet, call) {
+  const ctx = rollContext(sheet, call, { skillAbility: SKILLS.find((x) => x[0] === call.key)?.[2], tokenConditions: Object.keys(S.tokens[tid]?.conditions || {}) });
+  if (call.mode === "adv") ctx.adv.unshift("GM called advantage"); else if (call.mode === "dis") ctx.dis.unshift("GM called disadvantage");
+  ctx.mode = ctx.adv.length && ctx.dis.length ? "normal" : ctx.dis.length ? "dis" : ctx.adv.length ? "adv" : "normal";
+  return ctx;
 }
 function callTitle(call) {
   if (call.title) return call.title;
@@ -89,7 +97,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const STYLE = `#win-rollcall-call .fwin-body,#win-rollcall-setup .fwin-body{color:var(--paper);font:15px Georgia,serif;min-width:270px;max-width:340px}
 .rc-h{font:bold 19px Georgia,serif;color:var(--brass-lt)}.rc-sub{font-size:12px;opacity:.8;margin-bottom:6px}
 .rc-row{display:flex;align-items:center;gap:8px;border-bottom:1px solid #b98f4566;padding:4px 0}.rc-row.wait{opacity:.55}.rc-row .nm{flex:1}.rc-row b{font-size:17px}.rc-ok{color:#7ddc8c}.rc-bad{color:#ff8a8a}.rc-nat{font-size:11px}
-.rc-box{margin-top:8px;padding-top:7px;border-top:1px solid var(--brass)}.rc-chips{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0}
+.rc-why{line-height:1.45;font-size:12.5px;opacity:1}.rc-box{margin-top:8px;padding-top:7px;border-top:1px solid var(--brass)}.rc-chips{display:flex;flex-wrap:wrap;gap:4px;margin:5px 0}
 .rc-chips button,.rc-act button,.rc-roll{padding:3px 9px;border:1px solid var(--brass);border-radius:11px;background:var(--leather-dk);color:var(--paper);font:13px Georgia,serif;cursor:pointer}
 .rc-chips button.on{background:var(--brass);color:var(--ink)}.rc-roll{display:block;width:100%;margin-top:7px;padding:7px;border-radius:5px;font:bold 20px Georgia,serif}.rc-act{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
 #win-rollcall-setup input,#win-rollcall-setup select{background:var(--paper);color:var(--ink);border:1px solid var(--brass);border-radius:3px;font:14px Georgia,serif;padding:2px 4px}
@@ -118,11 +126,14 @@ async function render() {
   if (current !== call) return;   // a newer call arrived while we were looking up sheets
   const tid = mine[0];
   if (tid && (S.isGM ? false : true)) {
-    const sheet = await sheetOf(tid), { mod, parts } = callMod(sheet, call), mode = opt.mode || call.mode || "normal";
+    await loadRulesData();
+    const sheet = await sheetOf(tid), { mod, parts } = callMod(sheet, call), auto = autoRules(tid, sheet, call), mode = auto.mode;
     if (current !== call) return;
+    const why = [...auto.adv.map((r) => `<span class="rc-ok">▲ ${esc(r)}</span>`), ...auto.dis.map((r) => `<span class="rc-bad">▼ ${esc(r)}</span>`), ...auto.notes.map((r) => `<span>ⓘ ${esc(r)}</span>`)];
     const chip = (on, attr) => `<button type="button" ${attr} class="${on ? "on" : ""}">`;
     html += `<div class="rc-box"><div class="rc-sub">${esc(tokenName(tid))}: <b>${mode === "normal" ? "1d20" : "2d20"} ${sgn(mod)}</b> · ${esc(parts.map(([l, v]) => `${l} ${sgn(v)}`).join(" · ") || "no sheet, flat d20")}</div>
-      <div class="rc-chips">${[["normal", "Normal"], ["adv", "Advantage"], ["dis", "Disadvantage"]].map(([m, l]) => `${chip(mode === m, `data-mode="${m}"`)}${l}</button>`).join("")}</div>
+      ${why.length ? `<div class="rc-sub rc-why">${why.join("<br>")}${auto.adv.length && auto.dis.length ? "<br>Advantage and disadvantage cancel out." : ""}</div>` : ""}
+      <div class="rc-sub rc-mode-line">${mode === "dis" ? '<b class="rc-bad">Rolling with disadvantage</b>' : mode === "adv" ? '<b class="rc-ok">Rolling with advantage</b>' : "Normal roll"}</div>
       <div class="rc-chips">${EXTRAS.map(([k, l, d]) => `${chip(opt.extras[k], `data-extra="${k}"`)}${l} +1d${k === "bardic" ? opt.bardicDie : d}</button>`).join("")}</div>
       <div class="rc-fld">${opt.extras.bardic ? `<select data-bardic>${[6, 8, 10, 12].map((d) => `<option value="${d}" ${opt.bardicDie === d ? "selected" : ""}>Bardic d${d}</option>`).join("")}</select>` : ""}Other <input data-other type="number" value="${esc(opt.other || 0)}" style="width:3.5em"></div>
       <button type="button" class="rc-roll" data-roll="${esc(tid)}">ROLL</button></div>`;
@@ -139,7 +150,8 @@ async function render() {
 // Roll for a token: dice animate on everyone's screen, the answer goes in once.
 async function answer(tid, o = {}) {
   const call = current; if (!call?.open || call.results?.[tid]) return;
-  const sheet = await sheetOf(tid), { mod } = callMod(sheet, call), mode = o.mode || call.mode || "normal", extras = o.extras || {}, other = Number(o.other) || 0;
+  await loadRulesData();
+  const sheet = await sheetOf(tid), { mod } = callMod(sheet, call), mode = autoRules(tid, sheet, call).mode, extras = o.extras || {}, other = Number(o.other) || 0;
   const sides = [20]; if (mode !== "normal") sides.push(20);
   const used = EXTRAS.filter(([k]) => extras[k]).map(([k, , d]) => [k, k === "bardic" ? Number(o.bardicDie || d) : d]);
   for (const [, s] of used) sides.push(s);
@@ -166,10 +178,9 @@ async function answer(tid, o = {}) {
 function wireCallWindow() {
   callWin.body.addEventListener("click", (e) => {
     const b = e.target.closest("button"); if (!b || !current) return;
-    if (b.dataset.mode) { opt.mode = b.dataset.mode; render(); }
-    else if (b.dataset.extra) { opt.extras[b.dataset.extra] = !opt.extras[b.dataset.extra]; render(); }
+    if (b.dataset.extra) { opt.extras[b.dataset.extra] = !opt.extras[b.dataset.extra]; render(); }
     else if (b.dataset.roll) { b.disabled = true; opt.other = parseInt(callWin.body.querySelector("[data-other]")?.value, 10) || 0; answer(b.dataset.roll, opt); }
-    else if (b.dataset.for) { b.disabled = true; answer(b.dataset.for, { mode: current.mode }); }
+    else if (b.dataset.for) { b.disabled = true; answer(b.dataset.for, {}); }
     else if (b.hasAttribute("data-close") && S.isGM) put("rollcall/current/open", false);
   });
   callWin.body.addEventListener("change", (e) => {

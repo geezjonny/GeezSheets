@@ -258,3 +258,10 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 .invwin .coin { display: flex; align-items: center; gap: .15rem; font: bold 13px Georgia, serif; padding: 0 .3rem; border: 1px solid #b98f4588; border-radius: 99px; }
 .invwin .coin button { padding: 0 .3rem !important; line-height: 1.2; }
 .invwin .coin.gp { background: #facc1530; } .invwin .coin.sp { background: #94a3b830; } .invwin .coin.cp { background: #b4530930; } .invwin .coin.pp { background: #c4b5fd30; } .invwin .coin.ep { background: #67e8f930; }
+
+.eqwin { min-width: 300px; max-width: 380px; }
+.eqwin .eq-slot { display: grid; grid-template-columns: 1.6rem 4.2rem 1fr; align-items: center; gap: .1rem .4rem; padding: .3rem .4rem; margin-bottom: .25rem; border: 1px solid #b98f4566; border-left: 4px solid #b98f45; border-radius: 3px; cursor: help; }
+.eqwin .eq-ico { font-size: 1.1rem; } .eqwin .eq-lbl { font-weight: bold; }
+.eqwin .eq-slot select { width: 100%; } .eqwin .eq-name { font-style: italic; }
+.eqwin .eq-tip { grid-column: 2 / 4; font-size: .78rem; opacity: .85; }
+.eqwin .eq-hint { font-size: .75rem; opacity: .7; margin-top: .3rem; }
