@@ -103,6 +103,13 @@ const KP = {
   light: { key: "obj:light", label: "Lights", color: true, fixed: "place" }, prop: { key: "prop", label: "Props", props: true, fixed: "place" },
   fog: { key: "fog", label: "Fog", paint: true, noSwatch: true },
 };
+const MODE_ICONS = {   // line icons, drawn in the button's text colour
+  select: "<path d='M6 3l12 9-5.5 1.2L15 19l-2.6 1-2.4-5.6L6 18z'/>",
+  erase: "<path d='M15.5 4.5l5 5-9.5 10H6.5l-3-3z'/><path d='M8 11l6 6M10 20h11'/>",
+  shape: "<rect x='4' y='6' width='16' height='12' rx='1.5'/>",
+  brush: "<path d='M20 3.5c-5.5 3-9 6.5-10.5 10.5l2.5 2.5c4-1.5 7.5-5 10.5-10.5z'/><path d='M9.5 14C6.5 14 5.5 16 5.5 18c0 1.2-.8 2.2-2 2.5 4 .8 8-.3 8-4.5z'/>",
+  bucket: "<path d='M4.5 11.5l7-7 7 7-6 6a2.1 2.1 0 01-3 0z'/><path d='M4.5 11.5h14'/><path d='M20.5 14c1.2 1.8 1.8 2.8 1.8 3.8a1.8 1.8 0 01-3.6 0c0-1 .6-2 1.8-3.8z'/>",
+};
 const MODES = [["select", "Select"], ["erase", "Erase"], ["shape", "Shape"], ["brush", "Paint brush"], ["bucket", "Paint bucket"]];
 let palProp = "crate", palColor = "#ffb347", palRot = 0, palScale = 1, palRandomRot = false, palRandomScale = false, palFlip = false;
 const bt = { mode: "shape", kind: "floor", any: false, mats: {}, window: false };   // any = the menu's Erase (erases every kind)
@@ -156,7 +163,7 @@ function activate(kind) { if (bt.kind === kind && !bt.any) return; bt.kind = kin
 function toolsWin() {
   if (btWin) return btWin;
   btWin = floatWindow({ id: "build-tools", title: "Build Tools", x: 20, y: 90 }); btWin.body.className += " paltools";
-  btWin.body.innerHTML = MODES.map(([k, l]) => `<button type="button" data-mode="${k}">${l}</button>`).join("");
+  btWin.body.innerHTML = MODES.map(([k, l]) => `<button type="button" data-mode="${k}" title="${l}" aria-label="${l}"><svg viewBox="0 0 24 24" aria-hidden="true">${MODE_ICONS[k]}</svg></button>`).join("");
   btWin.body.addEventListener("click", (e) => { const b = e.target.closest("[data-mode]"); if (!b || b.disabled) return; bt.mode = b.dataset.mode; if (bt.mode !== "erase") bt.any = false; applyPal(); });
   btWin.el.addEventListener("fwin-close", () => { Object.values(kw).forEach((w) => w.hide()); setTool(null, null, true); });
   return btWin;

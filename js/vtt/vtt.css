@@ -288,3 +288,11 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 #toolsdock .undock { background: none; border: 1px solid #b98f4566; border-radius: 6px; color: var(--brass-lt); height: 1.25rem; padding: 0 .35rem; cursor: pointer; }
 #toolsdock[hidden] { display: none; }
 .palkind .bt-walls { display: flex; align-items: center; gap: .3rem; font-size: 12px; }
+#win-pal-floor, #win-pal-wall, #win-pal-roof, #win-pal-door { width: 11rem; min-width: 11rem; max-width: 11rem; height: 7.8rem; }
+#win-build-tools .paltools { display: flex; gap: .25rem; min-width: 0; }
+.paltools button[data-mode] { width: 2.1rem; height: 2.1rem; padding: 0; display: grid; place-items: center; }
+.paltools button[data-mode] svg { width: 1.3rem; height: 1.3rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#win-build-tools { width: 11rem; min-width: 11rem; max-width: 11rem; }
+#win-build-tools .paltools { display: flex; gap: .2rem; }
+#win-build-tools .paltools button[data-mode] { flex: 1 1 0; width: auto; min-width: 0; height: 2rem; }
+#win-build-tools .paltools svg { width: 1.2rem; height: 1.2rem; }
