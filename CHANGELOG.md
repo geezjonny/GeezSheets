@@ -2,6 +2,19 @@
 
 ## 2026-11-20
 
+### VTT: new tools and tidy-up (built with Codex, tests pass, not clicked through yet)
+- **Initiative:** every token on the map joins; start with "Roll for all", "Roll for NPCs only" or "No rolls". Loading a scene now brings its initiative back.
+- **Pause:** the GM can freeze the table; players see a "Paused" banner and can't move. A small strip shows the scene, round and whose turn it is.
+- **Scenes and drawing:** duplicate a scene; place and edit map text labels; draw arrows, shapes, freehand and notes on the map (Marks) that fade or can be pinned.
+- **Effects:** conditions can have durations that tick down each round, plus resistances, vulnerabilities and AC / attack / save bonuses.
+- **Journal:** the GM writes pages and shares them with players.
+- **Explored fog:** places you've seen stay dimly revealed, with a reset for the GM.
+- **Generate dungeon:** a seeded room-and-corridor generator in the Build menu.
+- **Doors like walls:** place doors by clicking a start point and an end point (or dragging), with a preview.
+- **Build windows:** Lights now matches the other windows and has an intensity slider; the Token window is restyled to match; all Build windows are the same width.
+- **Hidden things:** an audit pass to make sure players can't see hidden traps or fogged content on screen.
+- **Still to do:** Label, Fog and Puzzle windows in the same style (Logic from right-click on an object), and a click-through of everything above. See the to-do list.
+
 ### VTT: Table Chat (webcam + mic)
 - **Built-in video chat:** a new **Chat** button in the menu bar opens a floating video panel right in the VTT. Everyone joins the same call, and it's just the video: no bars or menus, only a mic, camera and leave icon floating on your own tile.
 - **"Join the table" card at page load:** players pick which character they are (it also sets your Me button, so your token is yours), tick camera and mic, and one click joins the call. The GM just clicks join. Your browser then asks for camera and mic access. "Skip video" closes the card, and `?nojoin` hides it.

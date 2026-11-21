@@ -7,7 +7,7 @@ import { $, S, cellOf } from "./state.js";
 import { stepBlocked } from "./reach.js";
 // Players don't drag tokens: they walk their own with WASD / arrow keys, one cell at a time, never through walls or closed doors.
 document.addEventListener("keydown", (e) => {
-  if (S.isGM || S.combat || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  if (S.isGM || S.paused || S.combat || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
   const d = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0], arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0] }[e.key.toLowerCase()];
   if (!d) return;
   const id = Object.keys(S.tokens).find((k) => canMove(k)); if (!id) return;
@@ -35,11 +35,19 @@ import { initDD2VTT } from "./dd2vtt.js";
 import { addBarButton, dropMenu, orderQuickBar, floatWindow } from "./ui.js";
 import { drawObjects, drawTokens, drawTray, drawMap, drawWalls, isPcToken, doorsList, wallPieces } from "./draw.js";
 import { initTools, snapFor, toolDown, toolMove, toolUp, roofAt, fogAt, wallAt, floorAt, settingsFor } from "./tools.js";
-import { renderPanel } from "./panel.js";
+import { renderPanel, openLogic } from "./panel.js";
 import { initAttack, attackOptions, beginAttack, sheetOf } from "./attack.js";
 import "./talk.js";
 import { initJoin } from "./join.js";
 import { initChatDock } from "./chatdock.js";
+import { initTable } from "./table.js";
+import { initAnnotations } from "./annotations.js";
+import { EFFECT_PRESETS, effectsOf, effectRemaining, makeEffect, damageAdjustment } from "./effects.js";
+import { initJournal } from "./journal.js";
+import { initExplored } from "./explored-vtt.js";
+import { visibleToPlayer } from "./visibility.js";
+
+S.refreshLighting = () => drawObjects();
 
 const map = $("#map");
 let prevStates = null, objDrag = null;
@@ -54,10 +62,11 @@ const loadedAt = Date.now();
     await rawPut("seeded", true);
   }
 })();
-for (const part of ["floors", "walls", "roofs", "props", "labels", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); });
+for (const part of ["floors", "walls", "roofs", "props", "labels", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); drawObjects(); drawTokens(); document.dispatchEvent(new Event("vttvisibilitychange")); });
 watch("map/level", (v) => { S.level = S.map.level = Number(v) || 0; drawMap(); drawObjects(); drawTokens(); drawWalls(); });
 watch("map/levelNames", (v) => { S.map.levelNames = v || {}; });
-initTools(); initView(); initInitiative(); initScenes(); initImages(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd();
+initTools(); initView(); initInitiative(); initScenes(); initImages(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd(); initTable(); initAnnotations(); initExplored();
+S.exploredRedraw = () => { drawMap(); drawTokens(); };
 if (S.isGM) {
   const floorButton = (delta) => addBarButton({ id: `floor-${delta > 0 ? "up" : "down"}`, icon: delta > 0 ? "↑" : "↓", label: "Floor", gmOnly: true, onClick: () => { const lv = (S.level ?? 0) + delta; S.level = lv; rawPut("map/level", lv); } });
   floorButton(-1); floorButton(1);
@@ -65,7 +74,7 @@ if (S.isGM) {
 watch("map/size", (v) => { S.map.size = v || null; applyView(); drawMap(); });
 watch("objects", (v) => {
   const before = prevStates; S.objects = v || {};
-  if (before) for (const [id, o] of Object.entries(S.objects)) if (o.kind === "door" && before[id] && before[id] !== o.state) play(o.state === "open" ? "door-open" : "door-close");
+  if (before) for (const [id, o] of Object.entries(S.objects)) if (o.kind === "door" && before[id] && before[id] !== o.state && (S.isGM || visibleToPlayer(o, Object.values(S.map.fog || {}), false, S.currentVisible, S.map.exploredEnabled !== false))) play(o.state === "open" ? "door-open" : "door-close");
   prevStates = Object.fromEntries(Object.entries(S.objects).map(([id, o]) => [id, o.state]));
   if (S.isGM && before) for (const [id, o] of Object.entries(S.objects))   // an event output just fired
     if (KINDS[o.kind]?.role === "event" && o.state === "fired" && before[id] === "armed") { rawPatch(onFired(id, o).changes); if (o.kind === "initiative") startInitiative(); }
@@ -94,7 +103,7 @@ function liveMenu(pcId) {
   if (c?.hp_max && tid && S.tokPc[tid] === pcId) tokMenu.children[1].textContent = `HP: ${c.hp_current ?? c.hp_max} / ${c.hp_max}${c.temp_hp ? ` (+${c.temp_hp} temp)` : ""}`;
 }
 watch("groups", (v) => { S.groups = v || {}; renderPanel(); afterChange(); });
-watch("events/last", (e) => { if (e && e.t > loadedAt) { const t = $("#toast"); t.textContent = e.text; t.style.display = "block"; setTimeout(() => (t.style.display = "none"), 3500); } });
+watch("events/last", (e) => { if (S.isGM && e && e.t > loadedAt) { const t = $("#toast"); t.textContent = e.text; t.style.display = "block"; setTimeout(() => (t.style.display = "none"), 3500); } });
 // Only the GM client runs the rules, so two clients never race.
 function afterChange() {
   if (!S.isGM) return;
@@ -113,7 +122,7 @@ function canMove(id) {
   return t.pc ? t.pc === me.id : String(t.label || "").toLowerCase() === me.name.toLowerCase();
 }
 if (!S.isGM) addBarButton({ quick: true, id: "me", icon: "🧝", label: "Me", title: "Choose which character you move", onClick: async (e, b) => {
-  const list = await loadPcs(), pick = (v) => { me = v; try { localStorage.setItem("vtt-me", JSON.stringify(v)); } catch { /* fine */ } b.querySelector(".lbl").textContent = v ? v.name.slice(0, 8) : "Me"; };
+  const list = await loadPcs(), pick = (v) => { me = v; try { localStorage.setItem("vtt-me", JSON.stringify(v)); } catch { /* fine */ } b.querySelector(".lbl").textContent = v ? v.name.slice(0, 8) : "Me"; dispatchEvent(new Event("vtt-me-changed")); };
   dropMenu(b, [["I am…", null], ...list.filter((c) => c.name).map((c) => [c.name, () => pick({ id: c.id, name: c.name })]), ["Anyone (no limit)", () => pick(null)]]);
 } });
 
@@ -124,6 +133,7 @@ function mapPoint(e) {
 }
 document.addEventListener("click", (e) => { if (e.target.closest("button, select, summary")) play("click"); });
 map.addEventListener("pointerdown", (e) => {
+  if (!S.isGM && S.paused) return;
   const { objects, tokens } = S;
   const p = mapPoint(e), objEl = e.target.closest(".obj"), tokEl = e.target.closest(".token");
   if (!S.pick && toolDown(e, p)) return;   // GM map-building tools
@@ -233,7 +243,7 @@ function openTokenWindow(e, id) {
   w.show(); fillTokenWindow(w, id);
 }
 function fillTokenWindow(w, id) {
-  if (!S.tokens[id]) { w.hide(); return; }
+  if (!S.tokens[id] || !visibleToPlayer(S.tokens[id], Object.values(S.map.fog || {}), S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) { w.hide(); return; }
   const box = document.createElement("div"); box.className = "tokwin-box"; w.body.replaceChildren(box);
   w.el.querySelector(".fwin-title").textContent = S.tokens[id].label || id;
   buildTokenMenu(box, id, () => setTimeout(() => fillTokenWindow(w, id), 250), () => w.body.firstChild === box && !w.el.hidden);
@@ -244,7 +254,7 @@ document.addEventListener("tokenschanged", () => {   // keep open windows curren
 });
 async function showTokenMenu(e, id) {
   closeTokMenu();
-  const t = S.tokens[id]; if (!t) return;
+  const t = S.tokens[id]; if (!t || !visibleToPlayer(t, Object.values(S.map.fog || {}), S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) return;
   if (S.isGM || isPcToken(t)) return openTokenWindow(e, id);   // a floating, movable window (GM: every token)
   const x = e.clientX, y = e.clientY, esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const menu = tokMenu = document.createElement("div"); menu.id = "tokmenu"; menu.dataset.tid = id;
@@ -278,6 +288,17 @@ async function buildTokenMenu(menu, id, done, alive) {
   if (S.isGM) {   // condition > pick: toggles a coloured ring around the token
     const d = document.createElement("details"); d.innerHTML = `<summary>Condition</summary>` + Object.entries(CONDITIONS).map(([k, [n, c]]) => `<label class="cond"><input type="checkbox" data-c="${k}" ${t.conditions?.[k] ? "checked" : ""}><i style="background:${c}"></i>${n}</label>`).join("");
     d.addEventListener("change", (ev) => { const k = ev.target.dataset.c; if (!k) return; put(`tokens/${id}/conditions/${k}`, ev.target.checked ? true : null); mirrorConditions(id, k, ev.target.checked); });
+    menu.append(d);
+  }
+  if (S.isGM) {
+    const d = document.createElement("details"); d.className = "effects-box";
+    const choices = Object.entries(EFFECT_PRESETS).map(([k, e]) => `<option value="${k}">${e.name}</option>`).join("");
+    d.innerHTML = `<summary>Effects${effectsOf(t).length ? ` (${effectsOf(t).length})` : ""}</summary><div class="effect-add"><select data-effect-preset>${choices}</select><input data-effect-rounds type="number" min="1" placeholder="rounds" title="Blank means until removed"><button data-effect-add type="button">Add</button></div><div class="effect-custom" hidden><input data-effect-name placeholder="Name"><input data-effect-ac type="number" placeholder="AC" title="AC bonus"><input data-effect-attack type="number" placeholder="Attack" title="Attack bonus"><input data-effect-save type="number" placeholder="Save" title="Save bonus"><input data-effect-resist placeholder="Resist types"><input data-effect-vuln placeholder="Vulnerable types"><input data-effect-immune placeholder="Immune types"><input data-effect-note placeholder="Note"></div><div class="effect-list"></div>`;
+    const preset = d.querySelector("[data-effect-preset]"), custom = d.querySelector(".effect-custom");
+    preset.addEventListener("change", () => { custom.hidden = preset.value !== "custom"; });
+    const list = d.querySelector(".effect-list");
+    for (const effect of effectsOf(t)) { const row = document.createElement("div"); row.className = "effect-row"; row.textContent = `${effect.name}${effect.rounds == null ? " · ∞" : ` · ${effectRemaining(effect, S.round || 1)} rounds`}`; const remove = document.createElement("button"); remove.type = "button"; remove.textContent = "×"; remove.title = "Remove effect"; remove.addEventListener("click", () => { put(`tokens/${id}/effects`, effectsOf(t).filter((x) => x.id !== effect.id)); done(); }); row.append(remove); list.append(row); }
+    d.querySelector("[data-effect-add]").addEventListener("click", () => { const select = d.querySelector("[data-effect-preset]"), rounds = d.querySelector("[data-effect-rounds]").value, csv = (key) => d.querySelector(`[data-effect-${key}]`).value.split(",").map((x) => x.trim().toLowerCase()).filter(Boolean), customValue = select.value === "custom" ? { name: d.querySelector("[data-effect-name]").value || "Custom", ac: +d.querySelector("[data-effect-ac]").value || 0, attack: +d.querySelector("[data-effect-attack]").value || 0, save: +d.querySelector("[data-effect-save]").value || 0, damageResist: csv("resist"), damageVuln: csv("vuln"), damageImmune: csv("immune"), note: d.querySelector("[data-effect-note]").value } : {}; const effects = [...effectsOf(t), makeEffect(select.value, rounds === "" ? null : +rounds, S.round || 1, customValue)]; put(`tokens/${id}/effects`, effects); done(); });
     menu.append(d);
   }
   if (S.isGM) addFields(menu, settingsFor("token", id).fields);
@@ -318,7 +339,7 @@ map.addEventListener("contextmenu", (e) => {
   const objEl = e.target.closest(".obj"), propEl = e.target.closest(".prop"), p = mapPoint(e);
   if (objEl) {
     const id = objEl.dataset.id, o = S.objects[id]; if (!o) return; e.preventDefault();
-    return showActionMenu(e, o.label || o.kind, [...(o.kind === "door" ? [[o.state === "open" ? "Close" : "Open", () => put(`objects/${id}/state`, o.state === "open" ? "closed" : "open")]] : []), [o.hidden ? "Reveal to players" : "Hide from players", () => put(`objects/${id}/hidden`, !o.hidden)], ["Delete", () => put(`objects/${id}`, null)]], settingsFor("object", id).fields);
+    return showActionMenu(e, o.label || o.kind, [...(o.kind === "door" ? [[o.state === "open" ? "Close" : "Open", () => put(`objects/${id}/state`, o.state === "open" ? "closed" : "open")]] : []), ...(o.kind !== "door" && o.kind !== "light" ? [["Logic", () => openLogic(id)]] : []), [o.hidden ? "Reveal to players" : "Hide from players", () => put(`objects/${id}/hidden`, !o.hidden)], ["Delete", () => put(`objects/${id}`, null)]], settingsFor("object", id).fields);
   }
   if (propEl) {
     const id = propEl.dataset.id, a = S.map.props[id]; if (!a) return; e.preventDefault();
@@ -343,8 +364,12 @@ function showAttackMenu(e, id, opts) {
   showActionMenu(e, `${S.tokens[id]?.label || id} attacks`, opts.map((o) => [`${o.group === "Weapons" ? "⚔" : "✦"} ${o.label}${o.group.startsWith("Level") ? ` (L${o.level})` : o.group === "Cantrips" ? " (cantrip)" : ""}${o.dmg ? ` · ${o.dmg}` : ""}`, () => beginAttack(id, o, hooks)]));
 }
 // Damage from an attack: an enemy token's own HP, or a PC's sheet (temp HP soaks it first).
-async function applyTokenDamage(tid, amt) {
+async function applyTokenDamage(tid, amt, type = "") {
   const t = S.tokens[tid]; if (!t || !(amt > 0)) return;
+  const adjusted = damageAdjustment(t, type, amt);
+  amt = adjusted.amount;
+  if (adjusted.reason !== "normal") { const toast = document.getElementById("toast"); if (toast) { toast.textContent = `${t.label || tid}: ${adjusted.reason} to ${type || "damage"}`; toast.style.display = "block"; setTimeout(() => (toast.style.display = "none"), 2500); } }
+  if (!(amt > 0)) return;
   if (t.hp != null) return put(`tokens/${tid}/hp`, Math.max(0, t.hp - amt));
   const pcId = await pcIdFor(t); if (!pcId) return;
   try { await txnAt(`characters/pcs/${pcId}/combat`, (c) => sheetHpChange(c, amt, false)); } catch (err) { console.warn("HP not saved", err); }
@@ -380,11 +405,12 @@ function addFields(menu, fields) {
     row.append(f.label + " ");
     row.insertAdjacentHTML("beforeend", f.opts ? `<select>${f.opts.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(f.value) ? "selected" : ""}>${l}</option>`).join("")}</select>`
       : f.type === "check" ? `<input type="checkbox" ${f.value ? "checked" : ""}>`
-      : `<input type="${f.type || "text"}" value="${esc(f.value)}" ${f.min != null ? `min="${f.min}"` : ""} ${f.max != null ? `max="${f.max}"` : ""} ${f.type === "number" ? 'style="width:4rem"' : ""}>`);
+      : `<input type="${f.type || "text"}" value="${esc(f.value)}" ${f.min != null ? `min="${f.min}"` : ""} ${f.max != null ? `max="${f.max}"` : ""} ${f.step != null ? `step="${f.step}"` : ""} ${f.type === "number" ? 'style="width:4rem"' : ""}>${f.type === "range" ? `<output data-range-output>${esc(f.value)}</output>` : ""}`);
     row.lastElementChild.addEventListener("change", (ev) => {
       const t = ev.target, v = t.type === "checkbox" ? t.checked : t.type === "number" ? +t.value : t.value;
       put(f.path, f.to ? f.to(v) : v === "" || v === false ? null : v);
     });
+    if (f.type === "range") row.lastElementChild.previousElementSibling.addEventListener("input", (ev) => { row.querySelector("[data-range-output]").value = ev.target.value; });
     menu.append(row);
   }
 }
@@ -454,6 +480,6 @@ $("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b =
 }
 
 // Page-load "Join the table" card (who you are + camera/mic, then opens the video dock).
-const setMe = (v) => { me = v; try { localStorage.setItem("vtt-me", JSON.stringify(v)); } catch { /* fine */ } const l = document.querySelector("#bar-me .lbl"); if (l) l.textContent = v ? v.name.slice(0, 8) : "Me"; };
-initChatDock();
+const setMe = (v) => { me = v; try { localStorage.setItem("vtt-me", JSON.stringify(v)); } catch { /* fine */ } const l = document.querySelector("#bar-me .lbl"); if (l) l.textContent = v ? v.name.slice(0, 8) : "Me"; dispatchEvent(new Event("vtt-me-changed")); };
+initChatDock(); initJournal();
 initJoin({ loadPcs, setMe, getMe: () => me });

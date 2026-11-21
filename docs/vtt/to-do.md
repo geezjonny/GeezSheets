@@ -2,6 +2,19 @@
 
 Written 2026-11-19. Last commit is `6bdd54e`; everything from the "full VTT" push below is **not committed yet** (say "save").
 
+## Codex batch 2026-11-20: built, tests pass (65/65), NOT clicked through in a browser
+Written by Codex jobs, node-tested only. The page loads with no console errors; nothing below has been exercised by hand yet.
+- [ ] **Unfinished job (stopped partway):** floating **Label** and **Fog** windows (same family as Floors/Walls/Doors: 176px, x, recents, last-touched outline). Fog has a half-entry in `KP` (`tools.js`), Label has none. Some edits to `tools.js`, `panel.js`, `vtt.js` from this job are in the tree and unverified: check them or redo the job.
+- [ ] **Puzzle rework (same stopped job):** one Puzzle window with 5 recent puzzle objects as swatches plus a dropdown, an x, same width. Logic (when/then rules) opens from **right-click a puzzle object > Logic** as its own matching window with an x, and still works with several objects selected. Rules data and engine must not change.
+- [ ] **Door tool, point to point** (like walls: click start, click end, or drag; ghost preview; a row of doors for longer segments; replace an existing door on that edge). Never tried in the browser. Earlier "door placement is not happening correctly" is what this was for.
+- [ ] **Lights window fix** (inputs overflowed the window, cramped rows, swatches look alike) plus the new **Intensity slider** (0.2 to 1.5, stored as `intensity` on the light). **Token window restyled** to match the Build windows (`token-palette.js`). Both done by Codex after a screenshot of the bug; not seen since. All Build windows should be 176px wide: check they line up.
+- [ ] **Annotations window opens by default** on top of the Tools window. It should stay hidden until the Marks tool is picked.
+- [ ] **Player-view audit** (`docs/vtt/player-view-audit.md`): hidden traps / hidden props / fogged content must never be visible on screen for players (2D, 3D, menus, tooltips, toasts, initiative list). Open the page as a player (no `?gm`) and check. Data-level security was deliberately NOT done; only the visual hiding matters.
+- [ ] Click through the rest: **Pause** (and the "Paused" banner for players), the status strip (scene / round / turn), **duplicate scene**, **map labels**, **Marks** annotations (draw, pin, fade, clear), **effects** (durations, resist/vuln, bonuses), **Journal** (share / unshare), **explored fog** (+ Reset explored), **Generate dungeon**, **initiative** start menu (roll all / NPCs only / none) and scene load restoring initiative.
+- [ ] Implement `docs/vtt/scene-writes.md`: make scene load and import atomic so a disconnect cannot leave a half-replaced scene.
+- [ ] Table Chat: real two-person call test (only ever tested alone plus fake tiles), a TURN relay for strict firewalls, and a per-campaign room name or passcode.
+- Skipped on purpose: macros / hotbar, an in-VTT text chat, data-level hiding of traps and fog (vault / secret paths).
+
 ## Just finished (needs a browser check)
 - [ ] **3D props** (Codex job, DONE in code, NOT yet seen on screen): sprite-VTT method with faceted parts, constant-width ink outlines, new props (pine, bush, rock, stump, well, lamp post, fence; 2D glyphs added in `draw.js`). I fixed one bug (ink shader uniform `uRes` needed `{ value }`) and the page then loaded with no JS errors, but the automation browser tab was throttled (about 1.5 fps, screenshots timed out), so the look was never checked. Open 3D, look at every prop kind (place them from the build menu), check the outlines at several zooms. If 3D feels slow on your machine, the outline shells (one extra mesh per part) are the first suspect.
 - [ ] **dd2vtt import/export** (`vtt/dd2vtt.js`, "Import" bar button, GM): try a real map from `GeezSheets/battlemap/` (e.g. `cavesystem.dd2vtt`, `prison_00.dd2vtt`), then export and re-import.

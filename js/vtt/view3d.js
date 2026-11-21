@@ -5,6 +5,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { S, $, mapSize } from "./state.js";
 import { isPcToken, wallPieces } from "./draw.js";
+import { visibleToPlayer } from "./visibility.js";
 
 const U = 40, WALL_H = 2, WALL_T = 0.16, MAX_SHADOW_LIGHTS = 6;
 // Wind Waker-style palette: saturated, sunny colours with dark purple-ink outlines.
@@ -131,6 +132,8 @@ function roofMesh(a) {   // a gabled roof over a map rectangle: ridge along the 
 function build() {
   root.clear(); buildGrid();
   const { floors = {}, walls = {}, props = {} } = S.map, gm = S.isGM;
+  const fog = Object.values(S.map.fog || {}).filter((a) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0));
+  const playerCanSee = (record) => visibleToPlayer(record, fog, gm, S.currentVisible, S.map.exploredEnabled !== false);
   const level = S.level ?? S.map.level ?? 0, floorAt = (x, z) => Object.values(floors).find(a => (a.lv ?? 0) === level && x >= a.x && x <= a.x + a.w && z >= a.y && z <= a.y + a.h)?.elev || 0;
   let sx = 0, sz = 0, n = 0, minX = 1e9, minZ = 1e9, maxX = -1e9, maxZ = -1e9;
   for (const [fi, a] of Object.values(floors).filter(a => (a.lv ?? 0) === level).entries()) {
@@ -145,7 +148,7 @@ function build() {
     g.rotation.x = -Math.PI / 2; g.position.set(gw / 2 / U, -.01, gh / 2 / U); g.receiveShadow = true; root.add(g);
     if (!(maxX > minX)) { minX = 0; minZ = 0; maxX = gw; maxZ = gh; }
   }
-  const doors = Object.entries(S.objects).filter(([, o]) => o.kind === "door" && (o.lv ?? 0) === level && (gm || !o.hidden)).map(([id, o]) => ({ ...o, _id: id }));
+  const doors = Object.entries(S.objects).filter(([, o]) => o.kind === "door" && (o.lv ?? 0) === level && playerCanSee(o)).map(([id, o]) => ({ ...o, _id: id }));
   // Walls, with the part under each door cut out (the door fills it, or leaves it open under a lintel).
   for (const [wid, w] of Object.entries(walls)) { if ((w.lv ?? 0) !== level) continue;
     const col = WALL_COL[w.mat] ?? WALL_DEF;
@@ -171,12 +174,19 @@ function build() {
     else m.castShadow = true;
     root.add(m);
   }
+  if (!gm) {   // The 3D view has no SVG fog layer, so cover each unrevealed fog cell explicitly.
+    const fogMat = new THREE.MeshBasicMaterial({ color: 0x17131b, transparent: true, opacity: .96, depthWrite: false, side: THREE.DoubleSide });
+    for (const a of fog) for (let x = a.x; x < a.x + a.w; x += U) for (let z = a.y; z < a.y + a.h; z += U) {
+      if (S.currentVisible?.has(`${Math.floor(x / U)},${Math.floor(z / U)}`)) continue;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), fogMat); m.rotation.x = -Math.PI / 2; m.position.set((x + U / 2) / U, WALL_H + .1, (z + U / 2) / U); m.renderOrder = 8; root.add(m);
+    }
+  }
   const structural = [];
   root.traverse((n) => { if (n.isMesh && n.userData.structural) structural.push(n); });
   structural.forEach(ink);
-  for (const [pid, p] of Object.entries(props)) { if ((p.lv ?? 0) !== level || (p.hidden && !gm)) continue; prop({ ...p, elevation: floorAt(p.x, p.y) }, pid); }
+  for (const [pid, p] of Object.entries(props)) { if ((p.lv ?? 0) !== level || !playerCanSee(p)) continue; prop({ ...p, elevation: floorAt(p.x, p.y) }, pid); }
   for (const [i, [tid, t]] of Object.entries(S.tokens).entries()) {
-    if ((t.lv ?? 0) !== level || (t.hidden && !gm)) continue;
+    if ((t.lv ?? 0) !== level || !playerCanSee(t)) continue;
     const col = t.color ? new THREE.Color(t.color) : t.hp != null ? new THREE.Color(0x5a2a24) : new THREE.Color(TOKEN_COLS[i % 4]);
     const g = new THREE.Group(); g.position.set(t.x / U, floorAt(t.x, t.y), t.y / U); g.userData.pick = { type: "token", id: tid }; root.add(g);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(.4, .4, .08, 24), mat(col.getHex())); base.position.y = .04; g.add(base);
@@ -190,8 +200,8 @@ function build() {
   // Lights: every lit "light" object is a real point light; the first few cast shadows.
   let shadowed = 0;
   for (const [oid, o] of Object.entries(S.objects)) {
-    if (o.kind !== "light" || o.state !== "on" || (o.lv ?? 0) !== level || (o.hidden && !gm)) continue;
-    const r = (o.radius || 120) / U, l = new THREE.PointLight(new THREE.Color(o.color || "#ffb347"), 14 * r * .6, r * 1.6, 1.4);
+    if (o.kind !== "light" || o.state !== "on" || (o.lv ?? 0) !== level || !playerCanSee(o)) continue;
+    const r = (o.radius || 120) / U, intensity = Math.max(.2, Math.min(1.5, Number(o.intensity) || 1)), l = new THREE.PointLight(new THREE.Color(o.color || "#ffb347"), 14 * r * .6 * intensity, r * 1.6, 1.4);
     l.position.set(o.x / U, 1.3, o.y / U);
     if (shadowed < MAX_SHADOW_LIGHTS) { l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -.002; l.shadow.radius = 3; shadowed++; }
     root.add(l);

@@ -43,7 +43,7 @@ export function floorRecord(state, lv, opts = {}) {
       const kind = DOOR_KINDS.has(o.doorKind) ? o.doorKind : o.win ? "window" : "wood", half = kind === "double" ? 1 : 0.5, h = o.dir !== "v";
       const cx = num(o.x) / CELL, cy = num(o.y) / CELL, r = Math.round;
       doors["d" + i] = h ? { x1: r(cx - half), y1: r(cy), x2: r(cx + half), y2: r(cy), mat: WALLS.has(o.mat) ? o.mat : "wood", kind } : { x1: r(cx), y1: r(cy - half), x2: r(cx), y2: r(cy + half), mat: WALLS.has(o.mat) ? o.mat : "wood", kind };
-    } else if (o.kind === "light") lights["l" + i] = { x: g(o.x), y: g(o.y), range: Math.max(1, g(o.radius)), color: "#" + hex6(o.color) };
+    } else if (o.kind === "light") lights["l" + i] = { x: g(o.x), y: g(o.y), range: Math.max(1, g(o.radius)), color: "#" + hex6(o.color), ...(o.intensity != null ? { intensity: o.intensity } : {}) };
   });
   if (Object.keys(doors).length) rec.doors = doors;
   if (Object.keys(lights).length) rec.lights = lights;
@@ -90,7 +90,7 @@ export function exportGeezMap(state, opts = {}) {
     position: pt((d.x1 + d.x2) / 2, (d.y1 + d.y2) / 2), bounds: [pt(d.x1, d.y1), pt(d.x2, d.y2)],
     rotation: d.y1 === d.y2 ? 0 : Math.PI / 2, closed: d.kind !== "arch", freestanding: false,
   }));
-  const lights = entries(base.lights).map(([, l]) => ({ position: pt(l.x, l.y), range: l.range, intensity: 1, color: hex6(l.color) + "ff", shadows: true }));
+  const lights = entries(base.lights).map(([, l]) => ({ position: pt(l.x, l.y), range: l.range, ...(l.intensity != null ? { intensity: l.intensity } : { intensity: 1 }), color: hex6(l.color) + "ff", shadows: true }));
   return {
     format: "geezmap", version: 1, name, generator: "GeezMapper",
     meta: { name, size: { x: cols, y: rows }, origin: { x: 0, y: 0 }, floors: floorIds, floorNames, light, time: timeName(atmo.time), weather: { kind: weatherKind(atmo.weather), wind: 0 } },

@@ -35,11 +35,12 @@ function makeSaveWindow() {
   const form = saveWin.body.querySelector("form"), input = form.elements.name;
   form.addEventListener("submit", async (e) => {
     e.preventDefault(); const name = input.value.trim(); if (!name) return input.focus();
-    const id = sceneId(name), [map, objects, tokens, groups, old] = await Promise.all([read("map"), read("objects"), read("tokens"), read("groups"), read(`scenes/${id}`)]);
-    const data = { map: map || {}, objects: objects || {}, tokens: tokens || {}, groups: groups || {} };
+    const id = sceneId(name), [map, objects, tokens, groups, initiative, old] = await Promise.all([read("map"), read("objects"), read("tokens"), read("groups"), read("initiative"), read(`scenes/${id}`)]);
+    const data = { map: map || {}, objects: objects || {}, tokens: tokens || {}, groups: groups || {}, initiative: initiative || null };
     if (old?.data?.atmosphere) data.atmosphere = old.data.atmosphere;
     if (old?.data?.audio) data.audio = old.data.audio;
     await put(`scenes/${id}`, { name, ts: Date.now(), data });
+    await put("scene", { id, name });
     saveWin.hide(); input.value = ""; toast(`Saved scene: ${name}`);
   });
   form.querySelector("[data-cancel]").addEventListener("click", () => saveWin.hide());
@@ -54,11 +55,18 @@ async function loadScene(id, scene) {
   const data = scene?.data || {};
   await Promise.all([
     put("map", data.map || {}), put("objects", data.objects || {}),
-    put("tokens", data.tokens || {}), put("groups", data.groups || {}), put("seeded", true),
+    put("tokens", data.tokens || {}), put("groups", data.groups || {}), put("initiative", data.initiative || null), put("seeded", true),
   ]);
   if (data.atmosphere) await patch({ atmosphere: data.atmosphere });
   if (data.audio) await put("audio", { music: data.audio.music || null, ambience: data.audio.ambience || {}, sfx: {} });
+  await put("scene", { id, name: scene.name || id });
   toast(`Loaded scene: ${scene.name || id}`);
+}
+
+async function duplicateScene(id, scene) {
+  const name = `${scene.name || id} (copy)`, copyId = sceneId(name);
+  await put(`scenes/${copyId}`, { ...scene, name, ts: Date.now() });
+  toast(`Duplicated scene: ${name}`);
 }
 
 function deleteMenu(anchor, id, scene) {
@@ -70,6 +78,7 @@ async function openLoad(anchor) {
   const scenes = await read("scenes") || {};
   const entries = Object.entries(scenes).filter(([, scene]) => scene && scene.data).sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0));
   const items = [["Load replaces the current map", null], ...entries.map(([id, scene]) => [`Load: ${scene.name || id}`, () => loadScene(id, scene)]), ["Delete…", null], ...entries.map(([id, scene]) => [`Delete: ${scene.name || id}`, () => deleteMenu(anchor, id, scene)])];
+  if (entries.length) items.splice(2 + entries.length, 0, ["Duplicate...", null], ...entries.map(([id, scene]) => [`Copy: ${scene.name || id}`, () => duplicateScene(id, scene)]));
   if (!entries.length) items.push(["No saved scenes", null]);
   dropMenu(anchor, items);
 }

@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -11,7 +11,7 @@
 <body>
   <header>
     <h1>Dungeon Table</h1>
-    <nav id="menubar"><button id="file-btn" type="button" hidden>File</button><button id="add" hidden>Build</button><button id="table-btn" type="button" hidden>Table</button><button id="atmo-btn" type="button" hidden>Atmosphere</button><button id="audio-btn" type="button">Audio</button><button id="chat-btn" type="button">Chat</button><button id="view-btn" type="button">View</button><button id="mode" hidden>Puzzle</button></nav>
+    <nav id="menubar"><button id="file-btn" type="button" hidden>File</button><button id="add" hidden>Build</button><button id="table-btn" type="button" hidden>Table</button><button id="atmo-btn" type="button" hidden>Atmosphere</button><button id="audio-btn" type="button">Audio</button><button id="chat-btn" type="button">Chat</button><button id="journal-btn" type="button">Journal</button><button id="view-btn" type="button">View</button><button id="mode" hidden>Puzzle</button></nav>
     <span class="grow"></span><span id="role"></span>
   </header>
   <div id="addmenu" hidden></div>
@@ -42,7 +42,9 @@
         <rect class="fullrect" x="0" y="0" width="800" height="560" fill="url(#vignette)" pointer-events="none"/>
         <g id="objects"></g>
         <g id="tokens"></g>
+        <g id="annotations"></g>
         <g id="roofs"></g>
+        <g id="explored-memory"></g>
         <g id="fog"></g>
         <g id="preview"></g>
       </svg>

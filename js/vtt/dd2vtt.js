@@ -91,7 +91,7 @@ export function parseDD2VTT(json) {
   for (const light of Array.isArray(json.lights) ? json.lights : []) {
     const p = point(light?.position, origin), range = Number(light?.range);
     if (!p || !Number.isFinite(range) || range < 1) continue;
-    lights.push({ x: p.x, y: p.y, radius: range * CELL, color: colorOf(light.color) });
+    lights.push({ x: p.x, y: p.y, radius: range * CELL, color: colorOf(light.color), ...(Number.isFinite(Number(light.intensity)) ? { intensity: Number(light.intensity) } : {}) });
   }
   let imageDataUrl = null;
   if (typeof json.image === "string" && json.image) {
@@ -156,7 +156,7 @@ export async function applyDD2VTT(data, mode = "merge") {
   for (const p of data.props || []) changes[`map/props/${id("p", n++)}`] = { lv: 0, ...p };
   for (const l of data.labels || []) changes[`map/labels/${id("l", n++)}`] = { lv: 0, ...l };
   for (const d of data.doors) if (!data.objects?.[d.id]) changes[`objects/${d.id || id("d", n++)}`] = { ...newObject("door", d.x, d.y, n, { dir: d.dir, state: d.state, mat: d.mat, doorKind: d.kind || (d.win ? "window" : "wood"), ...(d.win ? { win: true } : {}) }), lv: d.lv ?? 0 };
-  for (const l of data.lights) if (!data.objects?.[l.id]) changes[`objects/${l.id || id("l", n++)}`] = { ...newObject("light", l.x, l.y, n, { radius: l.radius, color: l.color, fog: 0, state: "on" }), lv: l.lv ?? 0 };
+  for (const l of data.lights) if (!data.objects?.[l.id]) changes[`objects/${l.id || id("l", n++)}`] = { ...newObject("light", l.x, l.y, n, { radius: l.radius, color: l.color, fog: 0, state: "on", ...(l.intensity != null ? { intensity: l.intensity } : {}) }), lv: l.lv ?? 0 };
   for (const [oid, o] of Object.entries(data.objects || {})) changes[`objects/${oid}`] = o;
   for (const [gid, g] of Object.entries(data.groups || {})) changes[`groups/${gid}`] = g;
   for (const [fid, f] of Object.entries(data.fog || {})) changes[`map/fog/${id("g", n++)}`] = { open: false, ...f };
@@ -211,7 +211,7 @@ export async function exportDD2VTT() {
     const h = d.dir !== "v", x = d.x / CELL, y = d.y / CELL;
     return { position: { x, y }, bounds: h ? [{ x: x - .5, y }, { x: x + .5, y }] : [{ x, y: y - .5 }, { x, y: y + .5 }], rotation: 0, closed: d.state !== "open" };
   });
-  const lights = Object.values(S.objects || {}).filter((o) => o?.kind === "light").map((l) => ({ position: { x: l.x / CELL, y: l.y / CELL }, range: (l.radius || 0) / CELL, color: `${String(l.color || "#ffffff").replace(/^#/, "")}ff` }));
+  const lights = Object.values(S.objects || {}).filter((o) => o?.kind === "light").map((l) => ({ position: { x: l.x / CELL, y: l.y / CELL }, range: (l.radius || 0) / CELL, color: `${String(l.color || "#ffffff").replace(/^#/, "")}ff`, ...(l.intensity != null ? { intensity: l.intensity } : {}) }));
   return new Blob([JSON.stringify({ format: 0.3, resolution: { map_origin: { x: 0, y: 0 }, map_size: { x: cols, y: rows }, pixels_per_grid: 70 }, line_of_sight: walls, objects_line_of_sight: [], portals: doors, lights, image: "" })], { type: "application/json" });
 }
 

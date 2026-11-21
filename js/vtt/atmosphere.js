@@ -39,8 +39,9 @@ export function tintFor(hour) {
 }
 
 const clock = (h) => { const hh = Math.floor(h) % 24, mm = Math.round((h - Math.floor(h)) * 60) % 60; return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`; };
+export const darknessFor = (hour) => tintFor(hour).a;
 const validColor = (c) => /^#[0-9a-f]{6}$/i.test(c) ? c : "#4d86b8";
-const renderTint = () => { const c = tintFor(state.time); tint.style.backgroundColor = `rgba(${c.r},${c.g},${c.b},${c.a})`; };
+const renderTint = () => { const c = tintFor(state.time); tint.style.backgroundColor = `rgba(${c.r},${c.g},${c.b},${c.a})`; S.atmosphere = { ...state }; S.refreshLighting?.(); };
 
 function renderTime() { if (!timeWin) return; const input = timeWin.body.querySelector(".atmo-time"); input.value = state.time; timeWin.body.querySelector(".atmo-clock").textContent = clock(state.time); }
 function renderWeather() {

@@ -10,8 +10,10 @@ import { watch, put, patch, read, readAt, txn } from "../store.js";
 import { S } from "./state.js";
 import { floatWindow, addBarButton } from "./ui.js";
 import { rollDice } from "./dice.js";
+import { visibleToPlayer } from "./visibility.js";
 import { isPcToken } from "./draw.js";
 import { rollContext, loadRulesData } from "./rollrules.js";
+import { effectBonuses } from "./effects.js";
 
 export const ABIL = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
 export const SKILLS = [
@@ -31,7 +33,7 @@ const statOf = (c, ab) => c?.stats?.[ab] ?? c?.abilities?.[ab]?.score ?? 10;
 const uid = () => { const a = new Uint32Array(2); crypto.getRandomValues(a); return `${Date.now().toString(36)}-${a[0].toString(36)}${a[1].toString(36)}`; };
 
 // Modifier from the character sheet, with a breakdown: { mod, parts: [[label, n]] }
-function callMod(c, call) {
+function callMod(c, call, effects) {
   const prof = Number(c?.combat?.proficiency_bonus) || 2, parts = [];
   if (call.kind === "init") {
     const ib = c?.combat?.initiative_bonus;
@@ -48,11 +50,13 @@ function callMod(c, call) {
       if (data.expertise) parts.push(["Expertise", prof]);
     }
   } else if (call.kind === "ability") parts.push([call.key.toUpperCase(), abMod(statOf(c, call.key))]);
+  const bonus = effectBonuses(effects).save;
+  if (bonus) parts.push(["Effects", bonus]);
   return { mod: parts.reduce((a, p) => a + p[1], 0), parts };
 }
 // What the sheet gives this roll for free (armor, conditions), merged with the GM's own advantage/disadvantage on the call.
 function autoRules(tid, sheet, call) {
-  const ctx = rollContext(sheet, call, { skillAbility: SKILLS.find((x) => x[0] === call.key)?.[2], tokenConditions: Object.keys(S.tokens[tid]?.conditions || {}) });
+  const ctx = rollContext(sheet, call, { skillAbility: SKILLS.find((x) => x[0] === call.key)?.[2], tokenConditions: Object.keys(S.tokens[tid]?.conditions || {}), tokenEffects: S.tokens[tid]?.effects });
   if (call.mode === "adv") ctx.adv.unshift("GM called advantage"); else if (call.mode === "dis") ctx.dis.unshift("GM called disadvantage");
   ctx.mode = ctx.adv.length && ctx.dis.length ? "normal" : ctx.dis.length ? "dis" : ctx.adv.length ? "adv" : "normal";
   return ctx;
@@ -104,7 +108,7 @@ const STYLE = `#win-rollcall-call .fwin-body,#win-rollcall-setup .fwin-body{colo
 .rc-fld{display:flex;align-items:center;gap:8px;margin:6px 0}.rc-targets{max-height:200px;overflow:auto;margin:4px 0}.rc-targets label{display:flex;align-items:center;gap:6px;padding:2px 0}`;
 
 // ---- the call window (everyone) -----------------------------------------------------------
-function targetsOf(call) { return Object.entries(call.to || {}).map(([tid, name]) => ({ tid, name: S.tokens[tid]?.label || name, r: call.results?.[tid] })); }
+function targetsOf(call) { return Object.entries(call.to || {}).filter(([tid]) => S.isGM || visibleToPlayer(S.tokens[tid], Object.values(S.map.fog || {}), false, S.currentVisible, S.map.exploredEnabled !== false)).map(([tid, name]) => ({ tid, name: S.tokens[tid]?.label || name, r: call.results?.[tid] })); }
 
 async function render() {
   if (!callWin) return;
@@ -127,7 +131,7 @@ async function render() {
   const tid = mine[0];
   if (tid && (S.isGM ? false : true)) {
     await loadRulesData();
-    const sheet = await sheetOf(tid), { mod, parts } = callMod(sheet, call), auto = autoRules(tid, sheet, call), mode = auto.mode;
+    const sheet = await sheetOf(tid), { mod, parts } = callMod(sheet, call, S.tokens[tid]?.effects), auto = autoRules(tid, sheet, call), mode = auto.mode;
     if (current !== call) return;
     const why = [...auto.adv.map((r) => `<span class="rc-ok">▲ ${esc(r)}</span>`), ...auto.dis.map((r) => `<span class="rc-bad">▼ ${esc(r)}</span>`), ...auto.notes.map((r) => `<span>ⓘ ${esc(r)}</span>`)];
     const chip = (on, attr) => `<button type="button" ${attr} class="${on ? "on" : ""}">`;
@@ -243,6 +247,7 @@ export function initRollCall() {
     onClick: () => { if (S.isGM) { if (setupWin.visible()) setupWin.hide(); else { setupWin.body.textContent = ""; renderSetup(); setupWin.show(); } } else if (current?.open) { render(); callWin.show(); } },
   });
   document.addEventListener("tokenschanged", () => { if (current?.open) render(); });
+  document.addEventListener("vttvisibilitychange", () => { if (current?.open) render(); });
   watch("rollcall/current", (value) => {
     const first = !ready; ready = true; current = value || null;
     if (!value?.open) { callWin.hide(); return; }

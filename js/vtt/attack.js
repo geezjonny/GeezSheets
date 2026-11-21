@@ -4,6 +4,7 @@ import { readAt } from "../store.js";
 import { S, cellOf } from "./state.js";
 import { rollDice } from "./dice.js";
 import { el } from "./draw.js";
+import { effectBonuses } from "./effects.js";
 
 const SPELLS_URL = "https://geezjonny.github.io/GeezSheets/data/spells.json";
 const map = () => document.querySelector("#map");
@@ -148,18 +149,19 @@ async function resolve(tokenId, opt, targets, cell, hooks) {
     line(`Damage: ${r.total} ${opt.dmgType}${crit ? " (critical)" : ""}  [${r.dice.map((d) => d.result).join(", ")}${mod ? sign(mod) : ""}]`, "atk-big");
     for (const id of targets) {
       const row = document.createElement("div"); row.className = "atk-row"; row.append(`${nameOf(id)}: `);
-      const apply = (amt, label) => { const b = document.createElement("button"); b.textContent = `${label} ${amt}`; b.addEventListener("click", () => { hooks.applyDamage(id, amt); row.querySelectorAll("button").forEach((x) => (x.disabled = true)); }); row.append(b); };
+      const apply = (amt, label) => { const b = document.createElement("button"); b.textContent = `${label} ${amt}`; b.addEventListener("click", () => { hooks.applyDamage(id, amt, opt.dmgType); row.querySelectorAll("button").forEach((x) => (x.disabled = true)); }); row.append(b); };
       apply(r.total, opt.save ? "Failed save −" : "Hit −"); if (opt.save) apply(Math.floor(r.total / 2), "Saved −");
       body.append(row);
     }
   };
 
   if (opt.roll) {   // attack roll
-    const r = await rollDice([20], opt.bonus, () => ({ by: att })), nat = r.dice[0].result; await wait(2600);
+    const attackBonus = opt.bonus + effectBonuses(S.tokens[tokenId]?.effects).attack;
+    const r = await rollDice([20], attackBonus, () => ({ by: att })), nat = r.dice[0].result; await wait(2600);
     crit = nat === 20;
-    line(`Attack: ${r.total} (d20 ${nat}${sign(opt.bonus)})${nat === 20 ? " — natural 20!" : nat === 1 ? " — natural 1" : ""}`, "atk-big");
+    line(`Attack: ${r.total} (d20 ${nat}${sign(attackBonus)})${nat === 20 ? " — natural 20!" : nat === 1 ? " — natural 1" : ""}`, "atk-big");
     for (const id of targets) {
-      const sh = await hooks.sheetFor(id), ac = sh?.combat?.ac;
+      const sh = await hooks.sheetFor(id), baseAc = sh?.combat?.ac, ac = baseAc == null ? null : Number(baseAc) + effectBonuses(S.tokens[id]?.effects).ac;
       if (ac != null) line(`${nameOf(id)} AC ${ac}: ${nat === 20 || (nat !== 1 && r.total >= ac) ? "HIT" : "MISS"}`, nat === 20 || (nat !== 1 && r.total >= ac) ? "atk-hit" : "atk-miss");
     }
     if (opt.dmg) add(`Roll damage ${diceText(opt.dmg)}${crit ? " (crit)" : ""}`, damage);

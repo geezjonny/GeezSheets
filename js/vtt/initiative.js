@@ -1,6 +1,9 @@
 import { watch, read, put, patch } from "../store.js";
 import { S } from "./state.js";
 import { floatWindow } from "./ui.js";
+import { buildInitiative } from "./initiative-rules.js";
+import { tickEffects } from "./effects.js";
+import { visibleToPlayer } from "./visibility.js";
 
 let current = { turn: null, round: 1, order: {} };
 let win = null, strip = null, footer = null, started = false;
@@ -27,7 +30,7 @@ function installCss() {
 
 function entries() {
   return Object.entries(current.order || {})
-    .filter(([id]) => S.tokens[id])
+    .filter(([id]) => S.tokens[id] && visibleToPlayer(S.tokens[id], Object.values(S.map.fog || {}), S.isGM, S.currentVisible, S.map.exploredEnabled !== false))
     .sort((a, b) => {
       const ai = a[1].init, bi = b[1].init;
       if (ai == null && bi != null) return 1;
@@ -103,20 +106,20 @@ export async function nextTurn() {
   if (!isGM()) return;
   const list = entries().map(([id]) => id); if (!list.length) return;
   const index = current.turn == null ? -1 : list.indexOf(current.turn), next = (index + 1) % list.length;
-  await patch({ "initiative/turn": list[next], "initiative/round": (current.round || 1) + (index >= 0 && next === 0 ? 1 : 0) });
+  const round = (current.round || 1) + (index >= 0 && next === 0 ? 1 : 0), changes = { "initiative/turn": list[next], "initiative/round": round };
+  if (round !== (current.round || 1)) {
+    const tick = tickEffects(S.tokens, round);
+    for (const [id, effects] of Object.entries(tick.changes)) changes[`tokens/${id}/effects`] = effects.length ? effects : null;
+    if (tick.expired.length) changes["events/last"] = { t: Date.now(), text: `Expired: ${tick.expired.map((x) => `${x.name} (${S.tokens[x.tokenId]?.label || x.tokenId})`).join(", ")}` };
+  }
+  await patch(changes);
 }
 
 // Start combat: everyone on the map joins, each rolls a d20 (unless already numbered), and the highest goes first.
-export async function startInitiative() {
+export async function startInitiative(mode = "all") {
   if (!isGM()) return;
-  const fresh = (await read("initiative")) || {}, order = { ...(fresh.order || {}) }, r = new Uint32Array(1);
-  let n = Object.values(order).reduce((m, o) => Math.max(m, Number(o?.n) || 0), 0);
-  for (const id of Object.keys(S.tokens)) {
-    crypto.getRandomValues(r);
-    if (!order[id]) order[id] = { init: (r[0] % 20) + 1, n: ++n };
-    else if (order[id].init == null) order[id] = { ...order[id], init: (r[0] % 20) + 1 };
-  }
-  const first = Object.entries(order).filter(([id]) => S.tokens[id]).sort((a, b) => (b[1].init ?? 0) - (a[1].init ?? 0) || (a[1].n ?? 0) - (b[1].n ?? 0))[0]?.[0] ?? null;
+  const fresh = (await read("initiative")) || {}, r = new Uint32Array(1);
+  const { order, first } = buildInitiative(S.tokens, fresh.order, mode, () => { crypto.getRandomValues(r); return (r[0] % 20) + 1; });
   await patch({ "initiative/order": order, "initiative/round": 1, "initiative/turn": first });
 }
 
@@ -130,15 +133,12 @@ export function initInitiative() {
   const gm = document.createElement("span"); gm.className = "init-gm";
   const next = document.createElement("button"); next.type = "button"; next.textContent = "Next ▶"; next.addEventListener("click", nextTurn);
   const end = document.createElement("button"); end.type = "button"; end.textContent = "End"; end.addEventListener("click", () => isGM() && put("initiative", null));
-  const roll = document.createElement("button"); roll.type = "button"; roll.textContent = "Roll all"; roll.title = "Roll a d20 for everyone still without an initiative number";
-  roll.addEventListener("click", async () => {
-    if (!isGM()) return; const r = new Uint32Array(1), ch = {};
-    for (const [id, o] of entries()) if (o.init == null) { crypto.getRandomValues(r); ch[`initiative/order/${id}/init`] = (r[0] % 20) + 1; }
-    if (Object.keys(ch).length) await patch(ch);
-  });
-  gm.append(roll, next, end); const round = document.createElement("span"); round.className = "init-round"; footer.append(gm, round);
+  const start = (label, mode, title) => { const b = document.createElement("button"); b.type = "button"; b.textContent = label; b.title = title; b.addEventListener("click", () => startInitiative(mode)); return b; };
+  gm.append(start("Roll for all", "all", "Add every map token and roll a d20 for tokens without a number"), start("Roll for NPCs only", "npcs", "Add every map token; leave PCs without a number for player rolls"), start("No rolls", "none", "Add every map token without rolling"), next, end);
+  const round = document.createElement("span"); round.className = "init-round"; footer.append(gm, round);
   win.body.append(strip, footer);
-  watch("initiative", (value) => { S.combat = value?.turn != null; current = { turn: value?.turn ?? null, round: value?.round || 1, order: value?.order || {} }; if (S.turn !== current.turn) { S.turn = current.turn; document.dispatchEvent(new Event("turnchanged")); } render(); cleanMissing(); });
+  watch("initiative", (value) => { S.combat = value?.turn != null; current = { turn: value?.turn ?? null, round: value?.round || 1, order: value?.order || {} }; S.round = current.round; if (S.turn !== current.turn) { S.turn = current.turn; document.dispatchEvent(new Event("turnchanged")); } render(); cleanMissing(); });
   watch("tokens", (value) => { if (value) S.tokens = value; render(); cleanMissing(); });
   document.addEventListener("tokenschanged", render);
+  document.addEventListener("vttvisibilitychange", render);
 }

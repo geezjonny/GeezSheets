@@ -3,6 +3,11 @@ import { $, S, mapSize } from "./state.js";
 import { CONDITIONS, conditionsOf } from "./conditions.js";
 import { put } from "./undo.js";
 import { drawIcon } from "./icons.js";
+import { activeEffects, effectRemaining } from "./effects.js";
+import { recordVisible, isCurrentlyVisible } from "./explored-vtt.js";
+import { visibleToPlayer } from "./visibility.js";
+import { lightIntensity } from "./light-types.js";
+import { darknessFor } from "./atmosphere.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const COLORS = ["#a94c3d", "#466c83", "#66774b", "#7a5a8a"];
@@ -28,24 +33,37 @@ function drawObject(id, o, layer) {
   } else drawIcon(o, g);
   el("title", {}, g).textContent = `${o.label}: ${o.state}`;
 }
-function glowFor(color) {   // one radial gradient per light colour, created on demand
-  if (!color || color === "#ffb347") return "url(#glow)";
-  const id = "glow" + color.slice(1);
+function glowFor(color, intensity = 1) {   // one radial gradient per light colour and intensity, created on demand
+  const power = lightIntensity({ intensity }), key = (!color || color === "#ffb347") ? "warm" : color.slice(1), id = `glow${key}${String(power).replace(".", "_")}`;
+  if (key === "warm" && power === 1) return "url(#glow)";
   if (!document.getElementById(id)) {
     const g = el("radialGradient", { id }, $("#map defs"));
-    [[0, ".6"], [55, ".25"], [100, "0"]].forEach(([o, a]) => el("stop", { offset: o + "%", "stop-color": color, "stop-opacity": a }, g));
+    [[0, .6], [55, .25], [100, 0]].forEach(([o, a]) => el("stop", { offset: o + "%", "stop-color": color || "#ffb347", "stop-opacity": Math.min(1, a * power) }, g));
   }
   return `url(#${id})`;
 }
 export function drawObjects() {
   const layer = $("#objects"); layer.textContent = ""; $("#lights").textContent = "";
+  const fog = Object.values(S.map.fog || {});
   for (const [id, o] of Object.entries(S.objects)) {
     if ((o.lv ?? 0) !== (S.level ?? S.map.level ?? 0)) continue;
-    if (o.hidden && !S.isGM) continue;   // players never see hidden objects
-    if (o.kind === "light" && o.state === "on") el("circle", { cx: o.x, cy: o.y, r: o.radius || 120, fill: glowFor(o.color), "pointer-events": "none" }, $("#lights"));
+    if (!visibleToPlayer(o, fog, S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) continue;
+    if (o.kind === "light" && o.state === "on") el("circle", { cx: o.x, cy: o.y, r: o.radius || 120, fill: glowFor(o.color, o.intensity), "pointer-events": "none" }, $("#lights"));
     drawObject(id, o, layer);
   }   // players never see hidden objects
-  updateFogMask(); S.refresh3d?.();
+  updateFogMask(); updateLightingMask(); S.refresh3d?.();
+}
+function updateLightingMask() {
+  const defs = $("#map defs"), old = document.getElementById("night-mask"); old?.remove(); document.getElementById("night-shade")?.remove(); defs.querySelectorAll('[id^="night-hole-"]').forEach((e) => e.remove());
+  const darkness = darknessFor(S.atmosphere?.time ?? 12); if (!(darkness > 0)) return;
+  const { cols, rows } = mapSize(), mask = el("mask", { id: "night-mask", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: cols * 40, height: rows * 40 }, defs);
+  el("rect", { x: 0, y: 0, width: cols * 40, height: rows * 40, fill: "white" }, mask);
+  for (const o of Object.values(S.objects)) if ((o.lv ?? 0) === (S.level ?? S.map.level ?? 0) && o.kind === "light" && o.state === "on" && !o.hidden) {
+    const gid = `night-hole-${o.x}-${o.y}`, g = el("radialGradient", { id: gid }, defs), p = lightIntensity(o) * darkness;
+    [[0, 1 - p], [65, 1 - p * .7], [100, 1]].forEach(([offset, opacity]) => el("stop", { offset: `${offset}%`, "stop-color": `rgb(${Math.round(opacity * 255)},${Math.round(opacity * 255)},${Math.round(opacity * 255)})` }, g));
+    el("circle", { cx: o.x, cy: o.y, r: o.radius || 120, fill: `url(#${gid})` }, mask);
+  }
+  el("rect", { id: "night-shade", x: 0, y: 0, width: cols * 40, height: rows * 40, fill: "#10152a", opacity: darkness, mask: "url(#night-mask)", "pointer-events": "none" }, $("#map"));
 }
 // Fog is carved out by lit lights (each light's own "fog" radius in cells).
 function updateFogMask() {
@@ -53,6 +71,7 @@ function updateFogMask() {
   const holes = [];
   for (const o of Object.values(S.objects)) if ((o.lv ?? 0) === (S.level ?? S.map.level ?? 0) && o.kind === "light" && o.state === "on" && o.fog > 0) holes.push([o.x, o.y, o.fog * 40]);
   for (const t of Object.values(S.tokens)) if ((t.lv ?? 0) === (S.level ?? S.map.level ?? 0) && t.torch && !t.hidden) holes.push([t.x, t.y, TORCH_CELLS * 40]);
+  recordVisible(holes);
   if (holes.length) {
     const { cols, rows } = mapSize(), m = el("mask", { id: "sightmask", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: cols * 40, height: rows * 40 }, $("#map defs"));
     el("rect", { x: 0, y: 0, width: cols * 40, height: rows * 40, fill: "#fff" }, m);
@@ -67,7 +86,8 @@ export function drawTokens() {
   const layer = $("#tokens"); layer.textContent = "";
   updateFogMask();
   Object.entries(S.tokens).forEach(([id, t], i) => {
-    if ((t.lv ?? 0) !== (S.level ?? S.map.level ?? 0) || (t.hidden && !S.isGM)) return;
+    if ((t.lv ?? 0) !== (S.level ?? S.map.level ?? 0) || !visibleToPlayer(t, Object.values(S.map.fog || {}), S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) return;
+    if (!S.isGM && S.map.exploredEnabled !== false && !isCurrentlyVisible(t.x, t.y)) return;
     const g = el("g", { class: `token ${t.hidden ? "hidden-obj" : ""}${S.talking?.has(id) ? " talking" : ""}`, transform: `translate(${t.x} ${t.y})`, "data-id": id }, layer);
     const b = el("g", { class: "tokbody" }, g);   // the art lives here so a talking token can shake without fighting the position transform
     if (S.turn === id) el("circle", { r: 24, class: "turn-ring" }, b);   // whose turn it is (initiative)
@@ -78,6 +98,8 @@ export function drawTokens() {
     else { el("circle", { r: 12.5, class: "stamp-ring" }, b); el("text", { y: 1 }, b).textContent = (t.label || id).slice(0, 2); }
     if (t.hp != null) el("text", { y: 28, class: "hp" }, b).textContent = `${t.hp}/${t.max}`;
     else { const c = S.pcLive?.[S.tokPc?.[id]]; if (c?.hp_max) el("text", { y: 28, class: "hp" }, b).textContent = `${c.hp_current ?? c.hp_max}/${c.hp_max}`; }
+    const effects = activeEffects(t, S.round || 1), timed = effects.filter((x) => x.rounds != null);
+    if (effects.length) { const badge = el("text", { y: -25, class: "effect-badge" }, b); badge.textContent = timed.length ? timed.map((x) => effectRemaining(x, S.round || 1)).join("/") : "✦"; const title = document.createElementNS(NS, "title"); title.textContent = effects.map((x) => `${x.name}${x.rounds == null ? "" : ` (${effectRemaining(x, S.round || 1)})`}`).join(", "); badge.append(title); }
   });
 }
 export function drawTray() {}   // HP is adjusted from the token right-click menu now
@@ -120,23 +142,23 @@ export function drawWalls() {
 export function drawMap() {
   const { floors, roofs, props, fog = {} } = S.map;
   const clear = (id) => { const l = $("#" + id); l.textContent = ""; return l; };
-  const f = clear("floors"), r = clear("roofs"), pr = clear("props"), fg = clear("fog");
+  const f = clear("floors"), r = clear("roofs"), pr = clear("props"), fg = clear("fog"), em = clear("explored-memory");
   for (const [id, a] of Object.entries(floors)) if ((a.lv ?? 0) === (S.level ?? S.map.level ?? 0)) {
     const shade = Math.max(-.28, Math.min(.28, (a.elev || 0) * .08));
     el("rect", { x: a.x, y: a.y, width: a.w, height: a.h, class: `floorrect ${a.mat ? "f-" + a.mat : ""}`, "data-id": id, filter: shade ? `brightness(${1 + shade})` : null }, f);
     if (a.mat) el("rect", { x: a.x, y: a.y, width: a.w, height: a.h, fill: "url(#gridlines)", "pointer-events": "none" }, f);
     if (a.elev) for (let x = a.x; x <= a.x + a.w; x += 40) for (let y = a.y; y <= a.y + a.h; y += 40) el("rect", { x: x - 1, y: y - 1, width: 2, height: 2, class: "elev-edge", "pointer-events": "none" }, f);
   }
-  for (const [id, a] of Object.entries(S.map.labels || {})) if ((a.lv ?? 0) === (S.level ?? S.map.level ?? 0)) { const t = el("text", { x: a.x, y: a.y, class: "map-label", "font-size": (a.size || 1) * 40, transform: `rotate(${a.rot || 0} ${a.x} ${a.y})`, "data-id": id }, f); t.textContent = a.text || ""; }
+  for (const [id, a] of Object.entries(S.map.labels || {})) if ((a.lv ?? 0) === (S.level ?? S.map.level ?? 0)) { const t = el("text", { x: a.x, y: a.y, class: "map-label", fill: a.color || "#3d2632", "font-size": (a.size || 1) * 40, transform: `rotate(${a.rot || 0} ${a.x} ${a.y})`, "data-id": id }, f); t.textContent = a.text || ""; }
   drawWalls();
   for (const [id, a] of Object.entries(props).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0) && !a.kind?.startsWith("decal_"))) {
-    if (a.hidden && !S.isGM) continue;   // players never see hidden props
+    if (!visibleToPlayer(a, Object.values(fog), S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) continue;
     const g = el("g", { class: `prop ${a.hidden ? "hidden-obj" : ""}`, "data-id": id, transform: `translate(${a.x} ${a.y}) rotate(${a.rot || 0}) scale(${(a.flip ? -1 : 1) * (a.s || 1)} ${a.s || 1}) translate(${-a.x} ${-a.y})` }, pr);
     el("rect", { x: a.x - 20, y: a.y - 20, width: 40, height: 40, fill: "transparent" }, g);
     drawProp(a.kind, a.x, a.y, g); el("title", {}, g).textContent = PROPS[a.kind] || a.kind;
   }
   for (const [id, a] of Object.entries(props).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0) && a.kind?.startsWith("decal_"))) {
-    if (a.hidden && !S.isGM) continue;
+    if (!visibleToPlayer(a, Object.values(fog), S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) continue;
     const g = el("g", { class: "prop decal-prop", "data-id": id, transform: `translate(${a.x} ${a.y}) rotate(${a.rot || 0}) scale(${(a.flip ? -1 : 1) * (a.s || 1)} ${a.s || 1}) translate(${-a.x} ${-a.y})` }, f);
     drawProp(a.kind, a.x, a.y, g);
   }
@@ -147,6 +169,13 @@ export function drawMap() {
   for (const [id, a] of Object.entries(roofs).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0))) {
     if (a.open && !S.isGM) continue;   // a lifted roof shows the room underneath
     el("rect", { x: a.x, y: a.y, width: a.w, height: a.h, class: `roof ${a.mat ? "r-" + a.mat : ""} ${S.isGM ? "gm" : ""} ${a.open ? "open" : ""}`, "data-id": id }, r);
+  }
+  if (!S.isGM && S.map.exploredEnabled !== false) {
+    const { cols, rows } = mapSize();
+    for (const cell of S.exploredCells || []) {
+      const [x, y] = cell.split(",").map(Number);
+      if (x >= 0 && y >= 0 && x < cols && y < rows && !S.currentVisible?.has(cell)) el("rect", { x: x * 40, y: y * 40, width: 40, height: 40, class: "explored-memory" }, em);
+    }
   }
   S.refresh3d?.();
 }

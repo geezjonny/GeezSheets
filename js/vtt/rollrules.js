@@ -4,6 +4,7 @@
 // Sheet data used:  equipped { armor, helmet, shield, main_hand }  (item names; shield is true/false)
 //                   combat.conditions [labels]   stats / abilities (STR for armor)   text_blocks.proficiencies_languages
 // SRD data used:    data/equipment.json (armor: armor_category, armor_class, str_minimum, stealth_disadvantage)
+import { effectBonuses } from "./effects.js";
 
 const asList = (x) => (Array.isArray(x) ? x : x && typeof x === "object" ? Object.values(x) : []);
 const lc = (s) => String(s ?? "").trim().toLowerCase();
@@ -55,7 +56,8 @@ export function abilityOfCall(call, skillAbility) {
  */
 export function rollContext(sheet, call, opts = {}) {
   const lookup = opts.lookup || srdItem, adv = [], dis = [], notes = [];
-  if (!sheet) return { adv, dis, notes, mode: "normal" };
+  const bonuses = effectBonuses(opts.tokenEffects);
+  if (!sheet) return { adv, dis, notes, bonuses, mode: "normal" };
   const ab = abilityOfCall(call, opts.skillAbility), isCheck = call.kind === "skill" || call.kind === "ability" || call.kind === "init" || call.kind === "custom";
   const eq = equippedOf(sheet);
 
@@ -81,7 +83,9 @@ export function rollContext(sheet, call, opts = {}) {
   if (conds.has("invisible") && call.kind === "init") adv.push("Invisible");
 
   const mode = adv.length && dis.length ? "normal" : dis.length ? "dis" : adv.length ? "adv" : "normal";   // 5e: both cancel out
-  return { adv, dis, notes, mode };
+  if (bonuses.attack) notes.push(`Effects: attack ${bonuses.attack >= 0 ? "+" : ""}${bonuses.attack}`);
+  if (bonuses.save) notes.push(`Effects: saves ${bonuses.save >= 0 ? "+" : ""}${bonuses.save}`);
+  return { adv, dis, notes, bonuses, mode };
 }
 
 /** One-line-per-fact tooltip for an item in an equipment slot. `sheet` lets it compare against the wearer's STR. */

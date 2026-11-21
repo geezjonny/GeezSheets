@@ -7,20 +7,35 @@ import { floatWindow } from "./ui.js";
 
 const map = $("#map");
 
+if (!S.isGM) { $("#panel")?.remove(); $("#mode")?.remove(); }
 if (S.isGM) { $("#mode").hidden = false; $("#role").textContent = "GM"; }
 else $("#role").textContent = "WASD / arrows to move";
-// The puzzle editor lives in two floating windows (like the Build palettes): Puzzle (select / place) and Logic (inspector, When/Then, groups).
-const pTools = floatWindow({ id: "puzzle-tools", title: "Puzzle", x: 20, y: 120, closable: false, hidden: true });
-const pLogic = floatWindow({ id: "puzzle-logic", title: "Logic", x: 180, y: 120, closable: false, hidden: true });
-pTools.body.classList.add("puzzletools"); pLogic.body.classList.add("puzzlelogic");
-{ const kids = [...$("#panel").children]; pTools.body.append(...kids.slice(0, 2)); pLogic.body.append(...kids.slice(2)); }
-const on = (type, fn) => [pTools.body, pLogic.body].forEach((b) => b.addEventListener(type, fn));
-$("#mode").addEventListener("click", () => {
+// Puzzle placement is one small palette; Logic is an on-demand inspector opened from an object's GM context menu.
+const pTools = S.isGM ? floatWindow({ id: "puzzle-tools", title: "Puzzle", x: 20, y: 120, hidden: true }) : null;
+const pLogic = S.isGM ? floatWindow({ id: "puzzle-logic", title: "Logic", x: 220, y: 120, hidden: true }) : null;
+if (S.isGM) { pTools.body.classList.add("puzzletools"); pLogic.body.classList.add("puzzlelogic"); const kids = [...$("#panel").children]; pTools.body.append(...kids.slice(0, 2)); pLogic.body.append(...kids.slice(2)); }
+const on = (type, fn) => S.isGM && [pTools.body, pLogic.body].forEach((b) => b.addEventListener(type, fn));
+$("#mode")?.addEventListener("click", () => {
   S.puzzleMode = !S.puzzleMode; $("#mode").classList.toggle("on", S.puzzleMode);
-  if (S.puzzleMode) { pTools.show(); pLogic.show(); } else { pTools.hide(); pLogic.hide(); }
+  if (S.puzzleMode) { pTools.show(); pLogic.hide(); } else { pTools.hide(); pLogic.hide(); }
   if (!S.puzzleMode) { S.selected.clear(); S.draft = emptyDraft(); S.placing = S.pick = null; drawObjects(); }
   renderPanel(true);
 });
+
+const puzzleKinds = Object.entries(KINDS).filter(([k]) => !["door", "light"].includes(k));
+const puzzleGlyph = { plate: "▣", tripwire: "⚯", sight: "◉", gauge: "♥", switch: "⏻", dial: "◉", floor: "◇", spawn: "☠", stone: "●", catapult: "➶", initiative: "⚔", lantern: "☼", rune: "✦", event: "!" };
+let puzzleRecent = ["plate", "tripwire", "switch", "spawn", "dial"];
+try { puzzleRecent = JSON.parse(localStorage.getItem("vtt-recent-puzzle") || "null") || puzzleRecent; } catch { /* first run */ }
+function rememberPuzzle(kind) { puzzleRecent = [kind, ...puzzleRecent.filter((x) => x !== kind)].slice(0, 5); try { localStorage.setItem("vtt-recent-puzzle", JSON.stringify(puzzleRecent)); } catch { /* private mode */ } }
+function puzzlePalette() {
+  const available = puzzleRecent.map((k) => [k, KINDS[k]]).filter(([, v]) => v);
+  const rest = puzzleKinds.filter(([k]) => !puzzleRecent.includes(k));
+  return `<div class="puzzle-recent">${available.map(([k, v]) => `<button type="button" class="swatch ico ${S.placing === k ? "on" : ""}" data-place="${k}" title="${v.label}">${puzzleGlyph[k] || "?"}</button>`).join("")}</div><select data-puzzle-more aria-label="More puzzle objects"><option value="" selected disabled>more…</option>${rest.map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("")}</select>`;
+}
+export function openLogic(id) {
+  if (!S.isGM || !S.objects[id]) return;
+  S.puzzleMode = true; $("#mode")?.classList.add("on"); pTools.show(); pLogic.show(); S.selected.add(id); S.lastSel = id; renderPanel(true);
+}
 
 function syncDraft() {   // new picks land in "Selected"; you drag them where you want
   const { draft, selected, objects } = S;
@@ -53,10 +68,10 @@ function inspector() {
   return h + f(`<button data-delobj="${lastSel}" class="danger">Delete object</button>`);
 }
 export function renderPanel(fromSelection) {
-  if (!S.puzzleMode) return;
+  if (!S.isGM || !S.puzzleMode) return;
   const { groups, draft, placing, pick } = S;
   if (fromSelection) syncDraft();
-  $("#palette").innerHTML = `<button data-place="" class="${placing ? "" : "on"}">Select</button>` + Object.entries(KINDS).map(([k, v]) => `<button data-place="${k}" class="${placing === k ? "on" : ""}">${v.label}</button>`).join("");
+  $("#palette").innerHTML = `<button data-place="" class="${placing ? "" : "on"}">Select</button>` + puzzlePalette();
   $("#hint").textContent = pick ? "Click a cell on the map…" : placing ? `Click the map to place a ${KINDS[placing].label.toLowerCase()}` : "Click objects to select, drag them to move. Then drag chips into When and Then.";
   const active = document.activeElement; if (!active?.closest("#inspector")) $("#inspector").innerHTML = inspector();
   const fill = (z, list) => $(`#z-${z}`).innerHTML = `<b>${{ pool: "Selected", when: "When (all true)", then: "Then" }[z]}</b>` + list.map((c) => chip(c, z)).join("");
@@ -111,6 +126,10 @@ on("click", (e) => {
     drawObjects(); return renderPanel();
   }
   const del = e.target.closest("[data-delg]"); if (del) { if (S.editing === del.dataset.delg) S.editing = null; put(`groups/${del.dataset.delg}`, null); }
+});
+on("change", (e) => {
+  if (!e.target.matches("[data-puzzle-more]") || !e.target.value) return;
+  const kind = e.target.value; rememberPuzzle(kind); S.tool = null; S.placing = kind; e.target.value = ""; document.dispatchEvent(new Event("toolchange")); renderPanel();
 });
 on("change", (e) => {
   const p = e.target.dataset.p, { lastSel } = S; if (!p || !S.objects[lastSel]) return;
