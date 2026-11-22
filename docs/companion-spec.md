@@ -10,24 +10,18 @@
 - **Mobile first** (360 px), also fine on desktop. Same data and write path as `sheet.html` (Gaia adapter, `js/rodeo-firebase.js`, Firebase `/v2`).
 - **Rules edition:** 2014 SRD data (`data/class_levels.json`, `classes.json`, `spells.json`, `features.json`) plus Tasha options already on the sheets.
 
-## Home (front page)
-Portrait, name, class / level / subclass. HP bar with damage, heal and temp HP; death saves at 0. Spell slot pips and ability charge pips (Channel Divinity, Superiority Dice...).
-AC, initiative, speed, proficiency, passive perception, six ability scores, inspiration, exhaustion, conditions, concentration.
-Martial characters get an "Attack action" banner: 2 attacks at level 5, +1 on round 1 for Gloom Stalker, Action Surge note.
+## Layout (simplified 2026-11-22, modelled on how D&D Beyond's mobile sheet is organised)
+Five tabs plus a floating dice button. Code: `companion.html` (shell and styles) and `js/companion.js`.
+- **Character:** portrait and name, HP (damage, heal, temp), AC, initiative, speed, proficiency, passive perception, inspiration, exhaustion, conditions and concentration, ability scores, saving throws, skills (collapsible), death saves at 0 HP, Short rest and Long rest. Tapping any ability, save, skill or initiative opens its roll recipe.
+- **Actions:** what you do on your turn. Attack count banner ("2 attacks, 3 on round 1"), weapons with Attack and Damage recipes, cantrips, and features with pips (Channel Divinity, Action Surge, Superiority Dice).
+- **Spells:** slot pips, save DC and spell attack, cantrips, then spells by level. Each spell opens its recipe with a slot picker, optional extras and Cast (spends the slot, sets concentration). Cleric, druid, wizard and paladin get **Prepare spells** (also offered after a long rest), with always-prepared spells locked.
+- **Inventory:** equipment, coin, consumables with a Use button, other items, search.
+- **Features:** class, subclass, species and feats in full, with pips, plus About and **My notes** (saved to `text_blocks.player_notes`).
+- **Dice button:** d4 to d100, advantage and disadvantage, free expression.
+- **Roll call box** appears at the top when the GM calls a roll.
 
-## Menu (bottom bar, 7 tabs)
-- **Home**
-- **Skills:** saves, skills, senses, proficiencies and languages.
-- **Feats:** class and subclass features, species traits, origin feat and feats, spelled out in full, with charge pips for limited-use ones.
-- **Spells:** **Cantrips** section first, then leveled spells grouped by level. Roll recipes (attack, damage, healing, save DC), Cast spends the slot and sets concentration, upcast choices.
-- **Gear:** weapons (attack + damage recipes), armor, shield, coin.
-- **Items:** inventory grouped by category, descriptions, search.
-- **Notes:** the player's own notes (party notes record, which players may write) plus the GM's notes for that character.
-
-## GM
-Party overview (everyone's HP, conditions, slots), open any character, give items, call a roll.
-**Call roll:** the GM calls an initiative, save or skill roll from the companion's GM view. It uses the existing roll-call record `geezvtt/live/<campaign>/rollcall`.
-Each companion shows the call with that character's numbers worked out.
+## GM (`?gm=jonny`)
+Opens on the **party screen**: pick the campaign, see each character's HP, AC, slots, conditions and concentration, tap one to open their full sheet (the GM can edit anything). **Call roll** (initiative, save, skill or ability, optional DC, who), live results with pass/fail, **Give item**, recent rolls, and **Level up** on a character's Features tab (shows what changes and what is left to choose before applying).
 
 ## Leveling
 One button applies the new level: proficiency, slots, hit dice, HP (average), class and subclass features, always-prepared spells, Extra Attack.

@@ -447,7 +447,7 @@
       if(player)for(const p of plans) {
         if(p.path.startsWith('entities/')) {
           if(selectedId()!==p.path.slice(9))throw Object.assign(Error('Players may change only their own PC'),{status:403});
-          for(const key of Object.keys(p.body))if(!/^data\.(combat\.(hp_current|temp_hp|conditions|death_saves|death_save_[^.]+)|spellcasting\.slots_used|abilities\.[^.]+\.current|inventory|coin_purse)(\.|$)/.test(key))throw Object.assign(Error('Players cannot patch '+key),{status:403});
+          for(const key of Object.keys(p.body))if(!/^data\.(combat\.(hp_current|temp_hp|conditions|death_saves|death_save_[^.]+|inspiration|exhaustion)|spellcasting\.(slots_used|spells)|abilities\.[^.]+\.current|inventory|coin_purse|equipped|text_blocks\.player_notes)(\.|$)/.test(key))throw Object.assign(Error('Players cannot patch '+key),{status:403});
         } else if(!p.path.startsWith('actions/')&&!/^campaigns\/[^/]+\/(tokens|player)\//.test(p.path))throw Object.assign(Error('This write requires a GM'),{status:403});
       }
       for(const p of plans)if(p.path.startsWith('actions/'))await request(p.path,'POST',{...p.body,preview:true});

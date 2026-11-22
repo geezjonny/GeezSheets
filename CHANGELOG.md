@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-22
+
+### Companion: simplified to 5 tabs, GM party screen, rests, spell preparation, level up
+- **Simpler layout:** Character, Actions, Spells, Inventory and Features, plus a floating dice button. Skills, saves and abilities moved onto the Character tab; equipment, coin and consumables are in Inventory (with a Use button that takes one off the count); notes live at the bottom of Features.
+- **Actions tab:** what you do on your turn: attack count, weapons with attack and damage recipes, cantrips, and limited-use features with pips.
+- **Long and short rest:** one button restores HP, spell slots and rested abilities. Clerics, druids, wizards and paladins are then asked to **prepare their spells for the day** (pick up to WIS/INT + level, with domain and circle spells locked in). The picker is also on the Spells tab.
+- **GM mode (`?gm=jonny`):** a party screen with every character's HP, AC, slots and conditions, tap to open any sheet. **Call roll** (initiative, save, skill, ability, optional DC), live answers with pass/fail, **Give item**, a recent-rolls list, and a **Level up** button that previews what changes and what you still choose.
+- **Players can now save** inspiration, exhaustion, prepared spells, equipment and their own notes (small permission change in `js/gaia-db.js`; players can still only change their own character).
+- **Checked in the browser:** every tab for Ashara, the dice panel, the prepare picker, the party screen, the Call roll form and the Level up preview all open without errors. **Not yet tried live:** rests, saving prepared spells, sending a roll call, applying a level up, giving an item and saving notes, because those write to the live game.
+
 ## 2026-11-21
 
 ### Companion: new mobile character page (companion.html), spec agreed

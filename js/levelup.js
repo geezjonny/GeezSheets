@@ -22,6 +22,13 @@ export function attacksPerAction(pc) {
   return { normal: n, round1, notes };
 }
 
+// A spell entry in the sheet's format, built from an SRD spell (used when adding or preparing spells).
+export function spellCard(s, type, atk, dc) {
+  const lvl = s.level, dmg = lvl ? s.damage?.damage_at_slot_level?.[lvl] : s.damage?.damage_at_character_level?.['1'];
+  const bits = [s.casting_time, s.range, s.attack_type ? `${s.attack_type} spell attack +${atk}` : '', s.dc ? `DC ${dc} ${s.dc.dc_type?.name} save${s.dc.dc_success === 'half' ? ', half on success' : ''}` : '', s.duration].filter(Boolean);
+  return { beginner_tip: '', cast_time: s.casting_time || '', concentration: !!s.concentration, damage: dmg || '', damage_type: s.damage?.damage_type?.name?.toLowerCase() || '', duration: s.duration || '', level: lvl, name: s.name, notes: bits.join('. ') + '.', prepared_type: type, save_stat: s.dc?.dc_type?.index || '', to_hit: s.attack_type ? `+${atk}` : '', upcast: (s.higher_level || [])[0] || '' };
+}
+
 export function planCharacter(raw, target, srd, custom) {
   const d = structuredClone(raw), log = [], review = [], choices = [];
   const cls = norm(d.class), subRaw = String(d.subclass || '').toLowerCase().trim();
@@ -110,11 +117,7 @@ export function planCharacter(raw, target, srd, custom) {
     const classKey = castKey === subKey ? 'wizard' : cls;
     const byName = new Map(srd.spells.map((s) => [norm(s.name), s]));
     const onList = (s) => s.classes?.some((x) => x.index === classKey) || (custom.extraOnList?.[classKey] || []).some((n) => norm(n) === norm(s.name));
-    const mk = (s, type) => {
-      const lvl = s.level, dmg = lvl ? s.damage?.damage_at_slot_level?.[lvl] : s.damage?.damage_at_character_level?.['1'];
-      const bits = [s.casting_time, s.range, s.attack_type ? `${s.attack_type} spell attack +${newAtk}` : '', s.dc ? `DC ${newDC} ${s.dc.dc_type?.name} save${s.dc.dc_success === 'half' ? ', half on success' : ''}` : '', s.duration].filter(Boolean);
-      return { beginner_tip: '', cast_time: s.casting_time || '', concentration: !!s.concentration, damage: dmg || '', damage_type: s.damage?.damage_type?.name?.toLowerCase() || '', duration: s.duration || '', level: lvl, name: s.name, notes: bits.join('. ') + '.', prepared_type: type, save_stat: s.dc?.dc_type?.index || '', to_hit: s.attack_type ? `+${newAtk}` : '', upcast: (s.higher_level || [])[0] || '' };
-    };
+    const mk = (s, type) => spellCard(s, type, newAtk, newDC);
     // fix wrong levels, drop upcast duplicates like "Cure Wounds (2nd level)"
     let list = spells.filter((s) => {
       const m = /^(.*) \(\d\w\w level\)$/.exec(s.name || '');
