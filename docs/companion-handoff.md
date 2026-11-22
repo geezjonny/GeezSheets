@@ -23,15 +23,15 @@ Repo: `C:\Users\jonge\Documents\GitHub\GeezSheets` (git, remote geezjonny/GeezSh
 Build exactly what `docs/handoff/03-levelup-engine-brief.md` says (`js/levelup.js`, `js/test/levelup.test.mjs`, `data/subclass_features.json`, `tools/audit-pcs.mjs`). If any of those files already exist, review and finish them rather than starting over. Tests must pass: `node --test js/test`.
 
 ## Task 2: review the dry run, then the user applies
-Run `node tools/audit-pcs.mjs --to-level 5` (dry run). Check the report against these known problems; every one must be fixed by the patch or listed as "needs decision":
+Run `node tools/audit-pcs.mjs --to-level daddies=5,disney=4` (dry run). Check the report against these known problems; every one must be fixed by the patch or listed as "needs decision":
 - All level-5 PCs (Ashara, Lark, Liora, Rurik, Seris) have `proficiency_bonus` 2; should be +3. Spell DC, spell attack, saves, skills, passive scores, weapon `to_hit` (and the "d20+N" text in `notes`), maneuver DCs ("DC 14" in Seris's maneuvers -> 15) all follow.
-- Kairon is level 4 (needs level 5: 2 third-level slots, HP, hit dice 5d8). Disney campaign PCs (Esmeralda, Jasmine, Kristoff, Merlin, Mushu, Wendy Darling) are level 3: the user said "all PCs right for level 5", so plan them to 5 too (average HP), flagged in the report.
+- Kairon is level 4 (needs level 5: 2 third-level slots, HP, hit dice 5d8). Disney campaign PCs (Esmeralda, Jasmine, Kristoff, Merlin, Mushu, Wendy Darling) are level 3 and the user wants them at **level 4** (average HP; level 4 is an ASI level, so report "ability score increase pending", do not change stats). Target levels are per campaign: **daddies = 5, disney = 4**. Make `--to-level` accept `daddies=5,disney=4` (default these) instead of one number.
 - Ashara: 3 cantrips (needs 4), no 3rd-level spells although she has 2 third-level slots (add Life domain Beacon of Hope and Revivify as always prepared, plus picks like Spirit Guardians), duplicate "Cure Wounds (2nd level)" entry, Destroy Undead is level 5 but she should also get it as a feature card.
 - Lark and Rurik (bards): know 5 spells, need 8; no 3rd-level spells; Hypnotic Pattern is a level-3 spell filed as level 1 (Lark); Font of Inspiration (level 5) is missing.
 - Liora: knows 3 spells, needs 4; no Extra Attack card; Disguise Self (Gloom Stalker, always prepared) missing; Dread Ambusher should add WIS to initiative. Seris: no Extra Attack card (it is only in `text_blocks.features_traits`), 4 maneuvers where level 5 allows 3 (list as "needs decision").
-- Level-3 oddities (review, do not auto-delete): Kristoff (Eldritch Knight) has Eldritch Blast and Shield of Faith, not on his list; he knows 2 spells, needs 3. Merlin (Wizard) has no spellbook spells (needs 6 + 2 per level). Mushu (Assassin rogue) has cleric/druid spells and no slots. Esmeralda has Fire Bolt (not a bard spell).
+- Level-3 (soon level-4) oddities (review, do not auto-delete): Kristoff (Eldritch Knight) has Eldritch Blast and Shield of Faith, not on his list; he knows 2 spells, needs 3. Merlin (Wizard) has no spellbook spells (needs 6 + 2 per level). Mushu (Assassin rogue) has cleric/druid spells and no slots. Esmeralda has Fire Bolt (not a bard spell).
 - ASI at level 4 is not auditable: report "check ability scores" without changing stats.
-Write the human-readable report to `docs/pc-audit-2026-11-21.md`. Then tell the user to run `node tools/audit-pcs.mjs --to-level 5 --apply` themselves. Do not run it.
+Write the human-readable report to `docs/pc-audit-2026-11-21.md`. Then tell the user to run `node tools/audit-pcs.mjs --to-level daddies=5,disney=4 --apply` themselves. Do not run it.
 
 ## Task 3: roll recipes (pure module) `js/recipes.js` + tests
 `recipeFor(pc, thing, options)` returns `{label, parts:[{text, dice?, flat?, source}], summary, notes}` where parts are the dice and labelled modifiers to roll and add. Spells use `data/spells.json`:

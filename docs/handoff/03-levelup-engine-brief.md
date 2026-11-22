@@ -38,7 +38,7 @@ Export:
 - Everything deterministic given `rng`.
 
 ## `tools/audit-pcs.mjs` (Node, ESM)
-Usage: `node tools/audit-pcs.mjs [--snapshot docs/backup-pcs-2026-11-21.json] [--to-level 5] [--only <name>] [--apply]`.
+Usage: `node tools/audit-pcs.mjs [--snapshot docs/backup-pcs-2026-11-21.json] [--to-level daddies=5,disney=4]  (per-campaign targets, this is the default; a single number applies to all) [--only <name>] [--apply]`.
 - Reads the snapshot (default) or fetches `https://geezsheets-default-rtdb.firebaseio.com/v2/worlds/gaia/entities.json` with `--live`.
 - For each PC (kind==='pc', not `data._sheetsDeleted`): if `--to-level N` and level < N, plan level-ups one level at a time (average HP); then audit; print a readable per-character report (fix list + review list + choices pending) and write the combined patch to `docs/pc-patch-<date>.json` (`{entityId:{dottedPath:value}}`).
 - `--apply`: for each entity, `PATCH https://geezsheets-default-rtdb.firebaseio.com/v2/worlds/gaia/entities/<id>.json` is NOT allowed to use dotted keys with arrays carelessly; implement by reading the live entity, applying the dotted-path patch to the in-memory object (arrays stay arrays; Firebase will store them), and writing back only the changed top-level `data/<section>` subtrees with `PUT .../entities/<id>/data/<section>.json` (sections: level, combat, saves, skills, senses, spellcasting, abilities, attacks, text_blocks). Before writing, compare the live subtree with the snapshot subtree; if they differ, skip that entity and report "changed since snapshot". After writing, re-read and verify. Write also `meta.updated_at`/`meta.updated_by:'levelup-tool'`. Without `--apply` it is a dry run and writes nothing to Firebase.
