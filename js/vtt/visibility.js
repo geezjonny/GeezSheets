@@ -9,9 +9,9 @@ const inFog = (p, fog) => p.x >= fog.x && p.x <= fog.x + fog.w && p.y >= fog.y &
 export function visibleToPlayer(record, fogShapes = [], isGM = false, lightCells = new Set(), exploredEnabled = true) {
   if (isGM || !record) return true;
   if (record.hidden) return false;
-  const p = pointOf(record);
-  const cell = `${Math.floor(p.x / 40)},${Math.floor(p.y / 40)}`;
-  return !fogShapes.some((fog) => !fog?.open && inFog(p, fog)) || lightCells.has(cell);
+  const seen = (p) => !fogShapes.some((fog) => !fog?.open && inFog(p, fog)) || lightCells.has(`${Math.floor(p.x / 40)},${Math.floor(p.y / 40)}`);
+  if (record.kind === "door") return (record.doorKind || record.kindName) !== "secret";   // doors are part of the walls, which players always see; fog only hides what is inside rooms
+  return seen(pointOf(record));
 }
 
 export const centerOf = pointOf;

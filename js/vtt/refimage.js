@@ -1,4 +1,4 @@
-import { $, mapSize } from "./state.js";
+import { $, S, mapSize } from "./state.js";
 import { floatWindow, addBarButton } from "./ui.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -6,6 +6,7 @@ let dataUrl = null, shown = false, cols = 0, rows = 0, ppg = null, opacity = .45
 
 const layer = () => $("#refimage");
 function render() {
+  S.refresh3d?.();
   const g = layer(); if (!g) return;
   g.replaceChildren(); g.hidden = !shown || !dataUrl;
   if (!dataUrl || !shown) return;
@@ -48,3 +49,5 @@ export function initRefImage() {
   document.addEventListener("click", (e) => { if (e.target.closest("[data-reference-info]")) openInfo(ppg()); });
   return { viewItems: () => [[isRefShown() ? "✓ Reference" : "   Reference", () => { toggleRefImage(); refresh(); }], ["Reference opacity…", () => { const v = prompt("Reference opacity (0–1)", String(opacity)); if (v != null) setRefOpacity(v); }], ["Reference info", () => openInfo(ppg())]] };
 }
+
+export const getRefImage = () => (shown && dataUrl ? { dataUrl, cols: cols || mapSize().cols, rows: rows || mapSize().rows, opacity } : null);

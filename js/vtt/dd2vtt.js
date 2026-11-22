@@ -69,6 +69,9 @@ function portalDoor(portal, origin, cols, rows) {
   return { x, y, dir, state: portal.closed === false ? "open" : "closed" };
 }
 
+// dd2vtt files carry bare base64 with no mime; Dungeondraft/DungeonAlchemist often use WebP or JPEG.
+const sniffMime = (b) => b.startsWith("UklGR") ? "image/webp" : b.startsWith("/9j/") ? "image/jpeg" : b.startsWith("R0lG") ? "image/gif" : "image/png";
+
 export function parseDD2VTT(json) {
   if (!json || typeof json !== "object") throw new Error("Invalid DD2VTT JSON.");
   const resolution = json.resolution;
@@ -95,7 +98,7 @@ export function parseDD2VTT(json) {
   }
   let imageDataUrl = null;
   if (typeof json.image === "string" && json.image) {
-    imageDataUrl = json.image.startsWith("data:") ? json.image : `data:${json.geezvtt?.imageMime || "image/png"};base64,${json.image}`;
+    imageDataUrl = json.image.startsWith("data:") ? json.image : `data:${json.geezvtt?.imageMime || sniffMime(json.image)};base64,${json.image}`;
   }
   const tag = (o) => Object.defineProperty(o, "lv", { value: 0, enumerable: false, writable: true });
   return { cols, rows, walls: walls.map(w => tag({ ...w })), doors: doors.map(d => tag({ ...d })), lights: lights.map(l => tag({ ...l })), floors: [], roofs: [], props: [], labels: [], imageDataUrl, ppg: finite(resolution.pixels_per_grid) ? resolution.pixels_per_grid : 70 };
@@ -182,8 +185,14 @@ export async function askMode(label, hasImage = false) {
     w.el.querySelector(".fwin-x")?.addEventListener("click", () => resolve(null));
   });
 }
-async function importWithChoice(label, load) {
-  try { const data = await load(), mode = await askMode(label, !!data.imageDataUrl); if (!mode) return; const { setRefImage, clearRefImage } = await import("./refimage.js"); await applyDD2VTT(data, mode); if (mode === "new") clearRefImage(); if (data.imageDataUrl && askMode.showReference) setRefImage(data.imageDataUrl, data); toast(`Imported ${label} (${mode === "new" ? "new scene" : "added to scene"})`); } catch (e) { toast(e.message); }
+async function importWithChoice(label, load, src = null) {
+  try {
+    const data = await load(), mode = await askMode(label, false); if (!mode) return;
+    const { saveMapImage } = await import("./mapimg.js"), store = await import("../store.js");
+    await applyDD2VTT(data, mode);
+    if (data.imageDataUrl) await saveMapImage(data, src); else if (mode === "new") await store.put("mapimg", null);
+    toast(`Imported ${label} (${mode === "new" ? "new scene" : "added to scene"})`);
+  } catch (e) { toast(e.message); }
 }
 async function importGeezChoice(file, button) {
   const { parseGeezMap, applyGeezMap } = await import("./geezmap.js");
@@ -228,6 +237,8 @@ export function initDD2VTT() {
   if (!new URLSearchParams(location.search).has("gm")) return;
   Promise.all([import("./ui.js"), import("./state.js")]).then(([{ addBarButton, menuWindow }, { S }]) => {
     addBarButton({ id: "dd2vtt", icon: "🗺", label: "Import", gmOnly: true, onClick: menuWindow("import", "Import / Export", () => [
+      ["Battle maps (battlemap/)…", async (b) => { const { libraryMaps } = await import("./mapimg.js"), { dropMenu } = await import("./ui.js"); const list = await libraryMaps(); dropMenu(b, list.length ? list.map((m) => [`${m.name} (${(m.bytes / 1048576).toFixed(1)} MB)`, () => importWithChoice(m.name, async () => parseDD2VTT(await (await fetch("battlemap/" + m.file)).json()), "battlemap/" + m.file)]) : [["No battlemap/index.json", null]]); }],
+      ["Clean up wall overlaps", async () => { const { cleanOverlaps } = await import("./tools.js"), r = cleanOverlaps(); toast(`Walls: ${r.before} → ${r.after}`); }],
       ["Import .dd2vtt file…", () => { const input = document.createElement("input"); input.type = "file"; input.accept = ".dd2vtt,.json,.uvtt"; input.addEventListener("change", () => { const f = input.files[0]; if (f) importWithChoice(f.name, async () => parseDD2VTT(JSON.parse(await f.text()))); }); input.click(); }],
       ["Import GeezSheets map (.geezmap.json)…", (b) => { const input = document.createElement("input"); input.type = "file"; input.accept = ".json"; input.addEventListener("change", () => { const f = input.files[0]; if (f) importGeezChoice(f, b); }); input.click(); }],
       ["From GeezSheets places…", async (b) => { try { const places = await listGeezPlaces(); const { dropMenu } = await import("./ui.js"); dropMenu(b, [["GeezSheets battle maps (read-only)", null], ...places.map((p) => [p.name, () => importWithChoice(p.name, async () => { const r = await fetch(geezMapUrl(p.file)); if (!r.ok) throw new Error(`Could not load ${p.file}`); return parseDD2VTT(await r.json()); })])]); } catch (e) { toast(e.message); } }],

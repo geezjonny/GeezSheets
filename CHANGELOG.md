@@ -2,6 +2,15 @@
 
 ## 2026-11-22
 
+### Table VTT (`index.html`)
+- **Map pictures from dd2vtt:** the picture inside a .dd2vtt now loads and is saved for everyone, from the battlemap/ library or an uploaded file (WebP and JPEG pictures are recognised too). It shows on the 3D floor, which no longer draws the parchment under it.
+- **Per-token vision (player view):** each PC token sees about 6 cells, stopped by walls and closed doors. Fixed a bug that cut the view north of a token when walls sat close behind it.
+- **Doors:** players can click a door, or press Space near one, to open and close it. The GM can lock and unlock doors from the right-click menu. Doors are always visible to players, like walls.
+- **Walls:** walls no longer overlap. A new wall replaces what is under it, doors cut the wall beneath them, and Import / Export has a "Clean up wall overlaps" tidy for older maps.
+- **3D:** new Orbit tool, a 3D (1st person) view with W/S forward, A/D strafe and arrows to turn, softer lighting, light no longer leaks through walls, and the fog now matches 2D.
+- **Smaller changes:** light icons show to the GM only, the GM can delete a token from its right-click menu, the Annotations window starts closed, and video and voice chat are switched off.
+- **Rodeo (`rodeo.html`):** the shared-map version of the table is in the repo, along with the old VTT folder cleanup.
+
 ### GM Companion (`gm-companion.html`)
 - **Spawn tokens:** search a token, set a count and send it to Owlbear from the GM page.
 - **New GM page:** control every PC's HP (-5 to +5, damage, heal) and spell-slot pips from one screen, next to the players' sheets.

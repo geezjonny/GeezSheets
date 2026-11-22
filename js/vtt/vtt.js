@@ -8,13 +8,36 @@ import { stepBlocked } from "./reach.js";
 // Players don't drag tokens: they walk their own with WASD / arrow keys, one cell at a time, never through walls or closed doors.
 document.addEventListener("keydown", (e) => {
   if (S.isGM || S.paused || S.combat || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) || e.target.isContentEditable) return;
-  const d = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0], arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0] }[e.key.toLowerCase()];
+  const key = e.key.toLowerCase();
+  let d = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0], arrowup: [0, -1], arrowleft: [-1, 0], arrowdown: [0, 1], arrowright: [1, 0] }[key];
   if (!d) return;
+  if (S.firstPerson && S.v3d?.facing()) {   // 1st person: W/S forward and back, A/D strafe, left/right arrows turn 90°
+    if (key === "arrowleft" || key === "arrowright") { e.preventDefault(); S.v3d.turn(key === "arrowleft" ? Math.PI / 2 : -Math.PI / 2); return; }
+    const f = S.v3d.facing(), c = Math.abs(f.x) > Math.abs(f.y) ? [Math.sign(f.x), 0] : [0, Math.sign(f.y)];   // facing snapped to a cell direction
+    d = key === "w" || key === "arrowup" ? c : key === "s" || key === "arrowdown" ? [-c[0], -c[1]] : key === "a" ? [c[1], -c[0]] : [-c[1], c[0]];
+  }
   const id = Object.keys(S.tokens).find((k) => canMove(k)); if (!id) return;
   e.preventDefault();
   const t = S.tokens[id], from = cellOf(t), to = { x: from.x + d[0] * 40, y: from.y + d[1] * 40 };
   if (stepBlocked(from, to) || cellOf(to).x !== to.x || cellOf(to).y !== to.y) return;
   patch({ [`tokens/${id}/x`]: to.x, [`tokens/${id}/y`]: to.y });
+});
+// Space opens or closes the nearest door within reach (1.5 cells) of your token; in 1st person it prefers the one you are facing.
+document.addEventListener("keydown", (e) => {
+  if (e.code !== "Space" || e.repeat || S.isGM || S.paused || e.ctrlKey || e.metaKey || e.altKey || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(e.target.tagName) || e.target.isContentEditable) return;
+  const tid = Object.keys(S.tokens).find((k) => canMove(k) && isPcToken(S.tokens[k])); if (!tid) return;
+  const t = S.tokens[tid], f = S.firstPerson ? S.v3d?.facing() : null, lv = t.lv ?? 0;
+  let best = null, bestScore = Infinity;
+  for (const [id, o] of Object.entries(S.objects)) {
+    if (o.kind !== "door" || (o.lv ?? 0) !== lv || o.win || o.doorKind === "window" || o.doorKind === "secret" || o.hidden) continue;
+    const dx = o.x - t.x, dy = o.y - t.y, dist = Math.hypot(dx, dy); if (dist > 60) continue;
+    const ahead = f && dist > 0 ? (dx * f.x + dy * f.y) / dist : 1; if (ahead < 0.2) continue;
+    const score = dist - ahead * 10; if (score < bestScore) { bestScore = score; best = [id, o]; }
+  }
+  if (!best) return;
+  e.preventDefault(); const [id, o] = best;
+  if (o.locked) { const el = document.querySelector("#toast"); if (el) { el.textContent = "The door is locked."; el.style.display = "block"; setTimeout(() => (el.style.display = "none"), 2000); } return; }
+  play("click"); put(`objects/${id}/state`, o.state === "open" ? "closed" : "open");
 });
 import { initView, applyView } from "./view.js";
 import { CONDITIONS } from "./conditions.js";
@@ -32,6 +55,7 @@ import { openTokenPicker } from "./tokenpics.js";
 import { openInventory } from "./inventory.js";
 import { openEquipment } from "./equipment.js";
 import { initDD2VTT } from "./dd2vtt.js";
+import { initMapImage } from "./mapimg.js";
 import { initRefImage } from "./refimage.js";
 import { initReplace, openReplace } from "./replace.js";
 import { addBarButton, dropMenu, orderQuickBar, floatWindow } from "./ui.js";
@@ -67,11 +91,17 @@ const loadedAt = Date.now();
 for (const part of ["floors", "walls", "roofs", "props", "labels", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); drawObjects(); drawTokens(); document.dispatchEvent(new Event("vttvisibilitychange")); });
 watch("map/level", (v) => { S.level = S.map.level = Number(v) || 0; drawMap(); drawObjects(); drawTokens(); drawWalls(); });
 watch("map/levelNames", (v) => { S.map.levelNames = v || {}; });
-initTools(); initView(); initInitiative(); initScenes(); initImages(); initRefImage(); initReplace(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd(); initTable(); initAnnotations(); initExplored();
+initTools(); initView(); initInitiative(); initScenes(); initImages(); initRefImage(); initMapImage(); initReplace(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd(); initTable(); initAnnotations(); initExplored();
 S.exploredRedraw = () => { drawMap(); drawTokens(); };
-if (S.isGM) {
-  const floorButton = (delta) => addBarButton({ id: `floor-${delta > 0 ? "up" : "down"}`, icon: delta > 0 ? "↑" : "↓", label: "Floor", gmOnly: true, onClick: () => { const lv = (S.level ?? 0) + delta; S.level = lv; rawPut("map/level", lv); } });
-  floorButton(-1); floorButton(1);
+{   // on-screen floor switcher (2D and 3D): players see the floor name, the GM gets up/down
+  const box = document.createElement("div"); box.id = "floorsw";
+  box.innerHTML = (S.isGM ? '<button type="button" data-d="1" title="Floor up">▲</button>' : "") + '<span class="fl"></span>' + (S.isGM ? '<button type="button" data-d="-1" title="Floor down">▼</button>' : "");
+  document.body.append(box);
+  const label = () => { const lv = S.level ?? S.map.level ?? 0; box.querySelector(".fl").textContent = S.map.levelNames?.[lv] || (lv === 0 ? "Ground" : `Floor ${lv}`); };
+  box.addEventListener("click", (e) => { const d = Number(e.target.closest("button")?.dataset.d); if (!d) return; const lv = (S.level ?? 0) + d; S.level = lv; rawPut("map/level", lv); label(); });
+  box.addEventListener("pointerdown", (e) => e.stopPropagation());
+  watch("map/level", label); watch("map/levelNames", label); label();
+  document.addEventListener("keydown", (e) => { if (!S.isGM || e.target.closest?.("input,textarea,select,[contenteditable]")) return; if (e.key === "PageUp" || e.key === "PageDown") { box.querySelector(`button[data-d="${e.key === "PageUp" ? 1 : -1}"]`)?.click(); e.preventDefault(); } });
 }
 watch("map/size", (v) => { S.map.size = v || null; applyView(); drawMap(); });
 watch("objects", (v) => {
@@ -141,6 +171,10 @@ map.addEventListener("pointerdown", (e) => {
   if (!S.pick && toolDown(e, p)) return;   // GM map-building tools
   if (!S.puzzleMode) {   // normal play: switches flip, dials turn
     const o = objEl && objects[objEl.dataset.id];
+    if (o?.kind === "door" && !S.isGM && !o.win && o.doorKind !== "window" && o.doorKind !== "secret") {   // players open and close doors that are not locked
+      if (o.locked) { const t = document.querySelector("#toast"); if (t) { t.textContent = "The door is locked."; t.style.display = "block"; setTimeout(() => (t.style.display = "none"), 2000); } return; }
+      play("click"); return put(`objects/${objEl.dataset.id}/state`, o.state === "open" ? "closed" : "open");
+    }
     if (o?.kind === "switch") { play("click"); return put(`objects/${objEl.dataset.id}/state`, o.state === "on" ? "off" : "on"); }
     if (o?.kind === "dial") { play("click"); const s = statesOf(o); return put(`objects/${objEl.dataset.id}/state`, s[(s.indexOf(o.state) + 1) % s.length]); }
   } else {
@@ -287,6 +321,7 @@ async function buildTokenMenu(menu, id, done, alive) {
     const ib = document.createElement("button"), inn = inInitiative(id); ib.textContent = inn ? "Remove from initiative" : "Add to initiative";
     ib.addEventListener("click", () => { done(); inn ? removeFromInitiative(id) : addToInitiative(id); }); menu.append(ib);
   }
+  if (S.isGM) { const db = document.createElement("button"); db.textContent = "Delete token"; db.addEventListener("click", () => { done(); if (inInitiative(id)) removeFromInitiative(id); put(`tokens/${id}`, null); }); menu.append(db); }
   if (S.isGM) {   // condition > pick: toggles a coloured ring around the token
     const d = document.createElement("details"); d.innerHTML = `<summary>Condition</summary>` + Object.entries(CONDITIONS).map(([k, [n, c]]) => `<label class="cond"><input type="checkbox" data-c="${k}" ${t.conditions?.[k] ? "checked" : ""}><i style="background:${c}"></i>${n}</label>`).join("");
     d.addEventListener("change", (ev) => { const k = ev.target.dataset.c; if (!k) return; put(`tokens/${id}/conditions/${k}`, ev.target.checked ? true : null); mirrorConditions(id, k, ev.target.checked); });
@@ -341,7 +376,7 @@ map.addEventListener("contextmenu", (e) => {
   const objEl = e.target.closest(".obj"), propEl = e.target.closest(".prop"), p = mapPoint(e);
   if (objEl) {
     const id = objEl.dataset.id, o = S.objects[id]; if (!o) return; e.preventDefault();
-    return showActionMenu(e, o.label || o.kind, [...(o.kind === "door" ? [[o.state === "open" ? "Close" : "Open", () => put(`objects/${id}/state`, o.state === "open" ? "closed" : "open")]] : []), ...(o.kind !== "door" && o.kind !== "light" ? [["Logic", () => openLogic(id)]] : []), ...(o.kind === "door" ? [["Replace all like this...", () => openReplace({ category: "door", from: o.doorKind || (o.win ? "window" : "wood") })]] : o.kind === "light" ? [["Replace all like this...", () => openReplace({ category: "light", from: o.color })]] : []), [o.hidden ? "Reveal to players" : "Hide from players", () => put(`objects/${id}/hidden`, !o.hidden)], ["Delete", () => put(`objects/${id}`, null)]], settingsFor("object", id).fields);
+    return showActionMenu(e, o.label || o.kind, [...(o.kind === "door" ? [[o.state === "open" ? "Close" : "Open", () => put(`objects/${id}/state`, o.state === "open" ? "closed" : "open")], [o.locked ? "Unlock" : "Lock", () => put(`objects/${id}/locked`, o.locked ? null : true)]] : []), ...(o.kind !== "door" && o.kind !== "light" ? [["Logic", () => openLogic(id)]] : []), ...(o.kind === "door" ? [["Replace all like this...", () => openReplace({ category: "door", from: o.doorKind || (o.win ? "window" : "wood") })]] : o.kind === "light" ? [["Replace all like this...", () => openReplace({ category: "light", from: o.color })]] : []), [o.hidden ? "Reveal to players" : "Hide from players", () => put(`objects/${id}/hidden`, !o.hidden)], ["Delete", () => put(`objects/${id}`, null)]], settingsFor("object", id).fields);
   }
   if (propEl) {
     const id = propEl.dataset.id, a = S.map.props[id]; if (!a) return; e.preventDefault();
@@ -420,28 +455,29 @@ map.addEventListener("pointerup", release); map.addEventListener("pointercancel"
 
 // 3D view toggle (three.js loads on first use)
 let v3d = null;
-async function setView(on) {
-  if (on === !!S.v3d) return;
+const myTokenId = () => Object.keys(S.tokens).find((id) => isPcToken(S.tokens[id]) && canMove(id)) || null;   // players: their own token; GM: the first PC token
+async function setView(on, first = false) {
+  if (on === !!S.v3d) { if (on) { S.v3d.setFirstPerson(first ? myTokenId() : null); S.firstPerson = first && S.v3d.isFirstPerson(); document.dispatchEvent(new Event("view3dchange")); } return; }
   try { v3d ||= await import("./view3d.js"); } catch (err) { console.error(err); return; }
   document.body.classList.toggle("is3d", on);
   if (on) document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));   // 3D is for running the game: drop any active build tool
   S.v3d = on ? v3d : null;   // the bar tools (fit, ruler, ping) check this to act on the 3D scene instead
   on ? v3d.open() : v3d.close();
-  v3d.setControls(true); document.dispatchEvent(new Event("view3dchange"));
+  v3d.setControls(true); v3d.setOrbit(!!S.orbit); v3d.setFirstPerson(on && first ? myTokenId() : null); S.firstPerson = on && first && v3d.isFirstPerson(); document.dispatchEvent(new Event("view3dchange"));
 }
 {   // 2D / 3D toggle on the Tools strip (the View menu does the same)
   const v3 = addBarButton({ quick: true, id: "v3d", icon: "🧊", label: "3D", title: "Switch between 2D and 3D", toggle: true, onClick: (e, b) => setView(b.classList.contains("on")) });
   document.addEventListener("view3dchange", () => v3.classList.toggle("on", !!S.v3d));
   orderQuickBar(["select", "ruler", "ping", "dice", "grid", "fit", "v3d", "me"]);
 }
-$("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b = e.currentTarget; b.classList.add("on"); dropMenu(b, [[(S.v3d ? "   " : "✓ ") + "2D", () => setView(false)], [(S.v3d ? "✓ " : "   ") + "3D", () => setView(true)], ...(S.isGM ? [["Reference", () => import("./refimage.js").then((m) => m.toggleRefImage())], ["Reference opacity…", () => import("./refimage.js").then((m) => m.openRefControls())], ["Replace…", () => openReplace()]] : [])]); setTimeout(() => document.addEventListener("pointerdown", () => b.classList.remove("on"), { once: true }), 0); });
+$("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b = e.currentTarget; b.classList.add("on"); dropMenu(b, [[(S.v3d ? "   " : "✓ ") + "2D", () => setView(false)], [(S.v3d && !S.firstPerson ? "✓ " : "   ") + "3D", () => setView(true)], [(S.firstPerson ? "✓ " : "   ") + "3D (1st person)", () => setView(true, true)], ...(S.isGM ? [["Reference", () => import("./refimage.js").then((m) => m.toggleRefImage())], ["Reference opacity…", () => import("./refimage.js").then((m) => m.openRefControls())], ["Replace…", () => openReplace()]] : [])]); setTimeout(() => document.addEventListener("pointerdown", () => b.classList.remove("on"), { once: true }), 0); });
 
 // Drag a token in 3D: press on it, drag along the floor, release to snap to the cell (same rules as 2D).
 {
   let drag = null;
   document.addEventListener("pointerdown", (e) => {
     drag = null;
-    if (!S.v3d || e.button !== 0 || !e.target.closest?.("#view3d") || S.v3d.controlsBlocked()) return;
+    if (!S.v3d || S.orbit || S.firstPerson || e.button !== 0 || !e.target.closest?.("#view3d") || S.v3d.controlsBlocked()) return;
     const id = S.v3d.pickToken(e.clientX, e.clientY);
     if (!id || !S.isGM) return;
     drag = { id, x0: e.clientX, y0: e.clientY, moved: false, cell: null };
@@ -474,7 +510,7 @@ $("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b =
     const { type, id } = hit;
     if (type === "token") return showTokenMenu(e, id);
     if (!S.isGM) return;
-    if (type === "object") { const o = S.objects[id]; if (o) showActionMenu(e, o.label || o.kind, [...(o.kind === "door" ? [[o.state === "open" ? "Close" : "Open", () => put(`objects/${id}/state`, o.state === "open" ? "closed" : "open")]] : []), [o.hidden ? "Reveal to players" : "Hide from players", () => put(`objects/${id}/hidden`, !o.hidden)], ["Delete", () => put(`objects/${id}`, null)]], settingsFor("object", id).fields); }
+    if (type === "object") { const o = S.objects[id]; if (o) showActionMenu(e, o.label || o.kind, [...(o.kind === "door" ? [[o.state === "open" ? "Close" : "Open", () => put(`objects/${id}/state`, o.state === "open" ? "closed" : "open")], [o.locked ? "Unlock" : "Lock", () => put(`objects/${id}/locked`, o.locked ? null : true)]] : []), [o.hidden ? "Reveal to players" : "Hide from players", () => put(`objects/${id}/hidden`, !o.hidden)], ["Delete", () => put(`objects/${id}`, null)]], settingsFor("object", id).fields); }
     else if (type === "prop") { const a = S.map.props[id]; if (a) showActionMenu(e, a.kind, [[a.hidden ? "Reveal to players" : "Hide from players", () => put(`map/props/${id}/hidden`, a.hidden ? null : true)], ["Delete", () => put(`map/props/${id}`, null)]], settingsFor("prop", id).fields); }
     else if (type === "wall") showActionMenu(e, "Wall", [["Delete", () => put(`map/walls/${id}`, null)]], settingsFor("wall", id).fields);
   }, true);
@@ -483,5 +519,5 @@ $("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b =
 
 // Page-load "Join the table" card (who you are + camera/mic, then opens the video dock).
 const setMe = (v) => { me = v; try { localStorage.setItem("vtt-me", JSON.stringify(v)); } catch { /* fine */ } const l = document.querySelector("#bar-me .lbl"); if (l) l.textContent = v ? v.name.slice(0, 8) : "Me"; dispatchEvent(new Event("vtt-me-changed")); };
-initChatDock(); initJournal();
-initJoin({ loadPcs, setMe, getMe: () => me });
+/* video/voice disabled: initChatDock(); */ initJournal();
+/* video/voice disabled: initJoin({ loadPcs, setMe, getMe: () => me }); */

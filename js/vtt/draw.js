@@ -7,10 +7,12 @@ import { activeEffects, effectRemaining } from "./effects.js";
 import { recordVisible, isCurrentlyVisible } from "./explored-vtt.js";
 import { visibleToPlayer } from "./visibility.js";
 import { lightIntensity } from "./light-types.js";
+import { visibilityPolygon, blockingSegments, polygonPath } from "./vision.js";
 import { darknessFor } from "./atmosphere.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const COLORS = ["#a94c3d", "#466c83", "#66774b", "#7a5a8a"];
+export const PC_VISION_CELLS = 6;   // how far a PC token sees by default
 export const TORCH_CELLS = 3;   // light radius of a held torch, in cells
 
 export function el(name, attrs = {}, parent) {
@@ -19,7 +21,7 @@ export function el(name, attrs = {}, parent) {
   parent?.appendChild(e); return e;
 }
 function drawObject(id, o, layer) {
-  const g = el("g", { class: `obj ${o.kind} state-${o.state} ${o.kind === "light" ? "light-" + o.state : ""} ${S.selected.has(id) ? "sel" : ""} ${o.hidden ? "hidden-obj" : ""}`, "data-id": id }, layer);
+  const g = el("g", { class: `obj ${o.kind} state-${o.state} ${o.kind === "light" ? "light-" + o.state : ""} ${S.selected.has(id) ? "sel" : ""} ${o.hidden ? "hidden-obj" : ""} ${o.locked ? "locked" : ""}`, "data-id": id }, layer);
   if (o.kind === "door") {
     const v = o.dir === "v";
     const dk = o.doorKind || o.kindName || (o.win ? "window" : "wood"), n = dk === "double" ? 40 : 20, x1 = o.x - (v ? 0 : n), x2 = o.x + (v ? 0 : n), y1 = o.y - (v ? n : 0), y2 = o.y + (v ? n : 0), cls = dk === "window" || o.win ? "windowbar" : `doorbar ${o.mat ? "m-" + o.mat : ""}`;
@@ -49,7 +51,7 @@ export function drawObjects() {
     if ((o.lv ?? 0) !== (S.level ?? S.map.level ?? 0)) continue;
     if (!visibleToPlayer(o, fog, S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) continue;
     if (o.kind === "light" && o.state === "on") el("circle", { cx: o.x, cy: o.y, r: o.radius || 120, fill: glowFor(o.color, o.intensity), "pointer-events": "none" }, $("#lights"));
-    drawObject(id, o, layer);
+    if (!(o.kind === "light" && !S.isGM)) drawObject(id, o, layer);   // players see the glow, not the light icon
   }   // players never see hidden objects
   updateFogMask(); updateLightingMask(); S.refresh3d?.();
 }
@@ -71,11 +73,19 @@ function updateFogMask() {
   const holes = [];
   for (const o of Object.values(S.objects)) if ((o.lv ?? 0) === (S.level ?? S.map.level ?? 0) && o.kind === "light" && o.state === "on" && o.fog > 0) holes.push([o.x, o.y, o.fog * 40]);
   for (const t of Object.values(S.tokens)) if ((t.lv ?? 0) === (S.level ?? S.map.level ?? 0) && t.torch && !t.hidden) holes.push([t.x, t.y, TORCH_CELLS * 40]);
+  if (!S.isGM) {   // per-token vision: every PC token sees as far as its vision range (cells; token.vision overrides), stopped by walls and closed doors
+    const lv = S.level ?? S.map.level ?? 0, doors = doorsList(), segs = blockingSegments(S.map.walls, doors, wallPieces, lv);
+    for (const t of Object.values(S.tokens)) {
+      if ((t.lv ?? 0) !== lv || t.hidden || !isPcToken(t)) continue;
+      const r = (t.vision != null ? Number(t.vision) : PC_VISION_CELLS) * 40; if (!(r > 0)) continue;
+      const poly = visibilityPolygon({ x: t.x, y: t.y }, r, segs); if (poly.length) holes.push([t.x, t.y, r, poly]);
+    }
+  }
   recordVisible(holes);
   if (holes.length) {
     const { cols, rows } = mapSize(), m = el("mask", { id: "sightmask", maskUnits: "userSpaceOnUse", x: 0, y: 0, width: cols * 40, height: rows * 40 }, $("#map defs"));
     el("rect", { x: 0, y: 0, width: cols * 40, height: rows * 40, fill: "#fff" }, m);
-    for (const [cx, cy, r] of holes) el("circle", { cx, cy, r, fill: "#000" }, m);
+    for (const [cx, cy, r, poly] of holes) { if (poly) el("path", { d: polygonPath(poly), fill: "#000" }, m); else el("circle", { cx, cy, r, fill: "#000" }, m); }
   }
   if (holes.length && !S.isGM) $("#fog").setAttribute("mask", "url(#sightmask)"); else $("#fog").removeAttribute("mask");
 }
@@ -105,19 +115,20 @@ export function drawTokens() {
 export function drawTray() {}   // HP is adjusted from the token right-click menu now
 
 // ---- static map: floors, walls, props, roofs -------------------------------
-const PROP_NAMES = `table chair stool bench bed barrel crate chest bookshelf torch_sconce campfire candelabra light rug statue cauldron coffin altar bone_pile gravestone skull_pillar iron_cage spike_trap chains guild_crest stairs ladder bush tree pine_tree dead_tree stump fallen_log rocks boulder mushrooms hearth_oven kitchen_counter pot_rack pantry_shelf butcher_block bar_counter keg_rack round_table fireplace mug_clutter desk lectern globe scroll_rack armchair alchemy_table crystal_pedestal book_pile summoning_circle_stones forge anvil grindstone workbench market_stall display_shelf pew holy_font brazier banner wardrobe dresser nightstand bunk_bed torture_rack stocks manacles_wall crystal_cluster stalagmite ore_pile mine_cart rope_coil anchor dock_post cannon blackship reeds flowers tall_grass_clump cliff_rock lamp_post standing_torch tall_brazier fountain water_trough hitching_post notice_board hay_bale shop_counter potion_shelf hat_stand hat_display mirror display_case jeweler_bench strongbox bridge fence well cart signpost tent woodpile sacks weapon_rack column pillar crate barrel table chest pillar statue bed rug tree pine bush rock stump well lamp fence decal_moss decal_cracks decal_blood_splatter decal_blood_pool decal_scorch decal_puddle decal_rubble decal_leaves decal_stains decal_rune_circle decal_footprints decal_ash`.split(" ");
-const CATS = { Furniture: "table chair stool bench bed bookshelf", Storage: "barrel crate chest", Lighting: "torch_sconce campfire candelabra light lamp", "Crypt & Death": "coffin altar bone_pile gravestone skull_pillar", "Traps & Dungeon": "iron_cage spike_trap chains", Decor: "guild_crest rug statue cauldron", Stairs: "stairs ladder", Nature: "bush tree pine_tree dead_tree stump fallen_log rocks boulder mushrooms", Kitchen: "hearth_oven kitchen_counter pot_rack pantry_shelf butcher_block", Tavern: "bar_counter keg_rack round_table fireplace mug_clutter", "Library & Study": "desk lectern globe scroll_rack armchair", "Alchemy & Wizard": "alchemy_table crystal_pedestal book_pile summoning_circle_stones", "Smithy & Shop": "forge anvil grindstone workbench market_stall display_shelf", Temple: "pew holy_font brazier banner", Bedroom: "wardrobe dresser nightstand bunk_bed", "Dungeon & Prison": "torture_rack stocks manacles_wall", "Mine & Cave": "crystal_cluster stalagmite ore_pile mine_cart", Docks: "rope_coil anchor dock_post cannon blackship", "Wild plants & cliffs": "reeds flowers tall_grass_clump cliff_rock", "Town & Street": "lamp_post standing_torch tall_brazier fountain water_trough hitching_post notice_board hay_bale", Shops: "shop_counter potion_shelf hat_stand hat_display mirror display_case jeweler_bench strongbox", Outdoor: "bridge fence well cart signpost tent woodpile sacks weapon_rack" };
+const PROP_NAMES = `table chair stool bench bed barrel crate chest bookshelf torch_sconce campfire candelabra light rug statue cauldron coffin altar bone_pile gravestone skull_pillar iron_cage spike_trap chains guild_crest stairs ladder bush tree pine_tree dead_tree stump fallen_log rocks boulder mushrooms hearth_oven kitchen_counter pot_rack pantry_shelf butcher_block bar_counter keg_rack round_table fireplace mug_clutter desk lectern globe scroll_rack armchair alchemy_table crystal_pedestal book_pile summoning_circle_stones forge anvil grindstone workbench market_stall display_shelf pew holy_font brazier banner wardrobe dresser nightstand bunk_bed torture_rack stocks manacles_wall crystal_cluster stalagmite ore_pile mine_cart rope_coil anchor dock_post cannon blackship reeds flowers tall_grass_clump cliff_rock lamp_post standing_torch tall_brazier fountain water_trough hitching_post notice_board hay_bale shop_counter potion_shelf hat_stand hat_display mirror display_case jeweler_bench strongbox bridge fence well cart signpost tent woodpile sacks weapon_rack column pillar crate barrel table chest pillar statue bed rug tree pine bush rock stump well lamp fence decal_moss decal_cracks decal_blood_splatter decal_blood_pool decal_scorch decal_puddle decal_rubble decal_leaves decal_stains decal_rune_circle decal_footprints decal_ash obelisk`.split(" ");
+const CATS = { Furniture: "table chair stool bench bed bookshelf", Storage: "barrel crate chest", Lighting: "torch_sconce campfire candelabra light lamp", "Crypt & Death": "coffin altar bone_pile gravestone skull_pillar", "Traps & Dungeon": "iron_cage spike_trap chains", Decor: "guild_crest rug statue cauldron", Stairs: "stairs ladder", Nature: "bush tree pine_tree dead_tree stump fallen_log rocks boulder mushrooms", Kitchen: "hearth_oven kitchen_counter pot_rack pantry_shelf butcher_block", Tavern: "bar_counter keg_rack round_table fireplace mug_clutter", "Library & Study": "desk lectern globe scroll_rack armchair", "Alchemy & Wizard": "alchemy_table crystal_pedestal book_pile summoning_circle_stones", "Smithy & Shop": "forge anvil grindstone workbench market_stall display_shelf", Temple: "pew holy_font brazier banner", Bedroom: "wardrobe dresser nightstand bunk_bed", "Dungeon & Prison": "torture_rack stocks manacles_wall", "Mine & Cave": "crystal_cluster stalagmite ore_pile mine_cart", Docks: "rope_coil anchor dock_post cannon blackship", "Wild plants & cliffs": "reeds flowers tall_grass_clump cliff_rock", "Town & Street": "lamp_post standing_torch tall_brazier fountain water_trough hitching_post notice_board hay_bale", Shops: "shop_counter potion_shelf hat_stand hat_display mirror display_case jeweler_bench strongbox", Obelisks: "obelisk", Outdoor: "bridge fence well cart signpost tent woodpile sacks weapon_rack" };
 const CAT_BY_PROP = Object.fromEntries(Object.entries(CATS).flatMap(([c, list]) => list.split(" ").map(k => [k, c])));
 const category = (k) => k.startsWith("decal_") ? "Decals" : CAT_BY_PROP[k] || "Decor";
 const sizeOf = (k) => k === "bed" || k === "bunk_bed" ? [1, 2] : k === "tent" ? [3, 3] : k === "blackship" ? [3, 6] : k === "bridge" ? [3, 1] : k === "table" || k === "round_table" ? [2, 1] : k === "bookshelf" || k === "wardrobe" ? [1, 2] : [1, 1];
-export const PROP_CATALOG = Object.fromEntries([...new Set(PROP_NAMES)].map((kind) => [kind, { label: kind.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase()), category: category(kind), size: sizeOf(kind), shape: kind.startsWith("decal_") ? "decal" : /tree|bush|flower|mushroom|reed|grass/.test(kind) ? "leaf" : /rock|boulder|ore|stalagmite|crystal/.test(kind) ? "rock" : /table|bed|bench|counter|shelf|desk|altar|bridge|fence|wall|bookshelf/.test(kind) ? "rect" : /barrel|well|pillar|column|stump|cauldron|keg|fountain/.test(kind) ? "round" : "mark" }]));
+export const PROP_CATALOG = Object.fromEntries([...new Set(PROP_NAMES)].map((kind) => [kind, { label: kind.replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase()), category: category(kind), size: sizeOf(kind), shape: kind.startsWith("decal_") ? "decal" : kind === "obelisk" ? "obelisk" : /tree|bush|flower|mushroom|reed|grass/.test(kind) ? "leaf" : /rock|boulder|ore|stalagmite|crystal/.test(kind) ? "rock" : /table|bed|bench|counter|shelf|desk|altar|bridge|fence|wall|bookshelf/.test(kind) ? "rect" : /barrel|well|pillar|column|stump|cauldron|keg|fountain/.test(kind) ? "round" : "mark" }]));
 // Old names remain valid; mapmaker names remain distinct for round-tripping.
 export const PROPS = Object.fromEntries(Object.entries(PROP_CATALOG).map(([k, v]) => [k, v.label]));
 function drawProp(kind, x, y, g) {
-  const spec = PROP_CATALOG[kind] || PROP_CATALOG.rock, p = (name, a) => el(name, { class: "pr", ...a }, g), c = spec.category === "nature" ? "leaf" : spec.category === "decal" ? "decal" : "solid";
+  const spec = PROP_CATALOG[kind] || PROP_CATALOG.rock, p = (name, a) => el(name, { ...a, class: `pr ${a.class || ""}` }, g), c = spec.shape === "obelisk" ? "crystal" : spec.category === "nature" ? "leaf" : spec.category === "decal" ? "decal" : "solid";
   if (spec.shape === "rect") { p("rect", { x: x - 16, y: y - 11, width: 32, height: 22, rx: 3, class: c }); p("line", { x1: x - 13, y1: y - 8, x2: x + 13, y2: y + 8 }); }
   else if (spec.shape === "round") { p("circle", { cx: x, cy: y, r: 14, class: c }); p("circle", { cx: x, cy: y, r: 7, fill: "none" }); }
   else if (spec.shape === "leaf") { p("circle", { cx: x - 7, cy: y + 2, r: 11, class: c }); p("circle", { cx: x + 7, cy: y - 2, r: 11, class: c }); p("circle", { cx: x, cy: y, r: 3, class: "solid" }); }
+  else if (spec.shape === "obelisk") { const hex = (r) => Array.from({ length: 6 }, (_, i) => `${x + r * Math.cos(i * Math.PI / 3 + Math.PI / 6)},${y + r * Math.sin(i * Math.PI / 3 + Math.PI / 6)}`).join(" "); p("polygon", { points: hex(18), class: "solid" }); p("polygon", { points: hex(11), class: c }); for (let i = 0; i < 3; i++) p("line", { x1: x, y1: y, x2: x + 11 * Math.cos(i * Math.PI / 3 + Math.PI / 6), y2: y + 11 * Math.sin(i * Math.PI / 3 + Math.PI / 6) }); }
   else if (spec.shape === "rock") p("polygon", { points: `${x - 15},${y + 8} ${x - 8},${y - 11} ${x + 8},${y - 13} ${x + 15},${y + 6} ${x + 4},${y + 13}`, class: c });
   else if (spec.shape === "decal") { p("ellipse", { cx: x, cy: y, rx: 16, ry: 9, class: "decal" }); p("line", { x1: x - 10, y1: y + 5, x2: x + 11, y2: y - 5 }); }
   else { p("circle", { cx: x, cy: y, r: 12, class: c }); p("line", { x1: x - 13, y1: y, x2: x + 13, y2: y }); p("line", { x1: x, y1: y - 13, x2: x, y2: y + 13 }); }
@@ -155,12 +166,12 @@ export function drawMap() {
     if (!visibleToPlayer(a, Object.values(fog), S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) continue;
     const g = el("g", { class: `prop ${a.hidden ? "hidden-obj" : ""}`, "data-id": id, transform: `translate(${a.x} ${a.y}) rotate(${a.rot || 0}) scale(${(a.flip ? -1 : 1) * (a.s || 1)} ${a.s || 1}) translate(${-a.x} ${-a.y})` }, pr);
     el("rect", { x: a.x - 20, y: a.y - 20, width: 40, height: 40, fill: "transparent" }, g);
-    drawProp(a.kind, a.x, a.y, g); el("title", {}, g).textContent = PROPS[a.kind] || a.kind;
+    drawProp(a.kind, a.x, a.y, g); if (a.color) g.querySelectorAll(".pr.leaf, .pr.crystal, .pr.decal").forEach((e) => e.style.fill = a.color); el("title", {}, g).textContent = PROPS[a.kind] || a.kind;
   }
   for (const [id, a] of Object.entries(props).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0) && a.kind?.startsWith("decal_"))) {
     if (!visibleToPlayer(a, Object.values(fog), S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) continue;
     const g = el("g", { class: "prop decal-prop", "data-id": id, transform: `translate(${a.x} ${a.y}) rotate(${a.rot || 0}) scale(${(a.flip ? -1 : 1) * (a.s || 1)} ${a.s || 1}) translate(${-a.x} ${-a.y})` }, f);
-    drawProp(a.kind, a.x, a.y, g);
+    drawProp(a.kind, a.x, a.y, g); if (a.color) g.querySelectorAll(".pr.leaf, .pr.crystal, .pr.decal").forEach((e) => e.style.fill = a.color);
   }
   for (const [id, a] of Object.entries(fog).filter(([, a]) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0))) {
     if (a.open && !S.isGM) continue;   // a revealed room shows what is in it

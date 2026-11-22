@@ -63,7 +63,8 @@ export function visibilityPolygon(origin, radius, segments = []) {
     angles.push(Math.atan2(s[1] - oy, s[0] - ox), Math.atan2(s[3] - oy, s[2] - ox));
   }
   const rays = [];
-  for (const angle of angles) rays.push(angle - ANGLE_EPSILON, angle, angle + ANGLE_EPSILON);
+  const TAU = Math.PI * 2, norm = (v) => ((v % TAU) + TAU) % TAU;   // one 0..2π range, or the fill rays sort out of order and the outline crosses itself
+  for (const angle of angles) rays.push(norm(angle - ANGLE_EPSILON), norm(angle), norm(angle + ANGLE_EPSILON));
   // Fill rays keep the range boundary round between sparse obstacle corners.
   for (let i = 0; i < CIRCLE_STEPS; i++) rays.push(i * Math.PI * 2 / CIRCLE_STEPS);
   rays.sort((a, b) => a - b);

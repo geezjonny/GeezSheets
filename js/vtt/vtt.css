@@ -124,6 +124,8 @@ footer { padding: .5rem 1rem .8rem; color: #d2c298; font: italic .96rem Georgia,
 .explored-memory { fill: #14100a; opacity: .42; pointer-events: none; }
 .fog.gm { opacity: .5; } .fog.gm.open { opacity: .12; stroke-dasharray: 6 4; stroke: #c8871c; }
 .ghost { fill: #c8871c44; stroke: #c8871c; stroke-width: 3; stroke-dasharray: 5 4; pointer-events: none; }
+.elevationghost { fill: #6ba8b844; stroke: #6ba8b8; }
+.elev-swatch { min-width: 2.3rem; color: #d8f0f0; background: #32606a !important; }
 line.ghost { fill: none; stroke-width: 6; }
 /* Windows-style menu bar: flat items; Build / VTT drop their tools down beneath them */
 #menubar { display: flex; height: 100%; }
@@ -382,3 +384,12 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 #win-chat .fwin-body { flex: 1; min-height: 0; padding: 0; display: flex; }
 #win-chat iframe { flex: 1; width: 100%; border: 0; min-height: 0; background: var(--leather-dk); }
 .fwin.drag iframe { pointer-events: none; }
+
+#floorsw { position: fixed; z-index: 8; right: .8rem; top: 3.2rem; display: grid; justify-items: stretch; gap: .2rem; padding: .3rem; background: linear-gradient(var(--leather), var(--leather-dk)); color: var(--paper); border: 1px solid var(--brass); border-radius: .35rem; box-shadow: 0 4px 12px #0008; text-align: center; font: 700 .85rem Georgia, serif; }
+#floorsw button { cursor: pointer; background: #0003; color: var(--paper); border: 1px solid var(--brass); border-radius: .25rem; padding: .15rem .6rem; }
+#floorsw button:hover { background: #b98f4566; }
+#floorsw .fl { padding: .1rem .3rem; min-width: 4.5rem; }
+.pr.crystal { fill: #7fe3f0cc; }
+
+.door.locked .doorbar { stroke: #8c2f2f; }
+.door.locked .doorbar.m-iron { stroke: #6b2a2a; }

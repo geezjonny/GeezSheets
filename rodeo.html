@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rodeo Table</title>
+  <link rel="stylesheet" href="js/rodeo/vtt.css">
+  <script src="js/firebase-config.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Dungeon Table</h1>
+    <nav id="menubar"><button id="file-btn" type="button" hidden>File</button><button id="add" hidden>Build</button><button id="table-btn" type="button" hidden>Table</button><button id="atmo-btn" type="button" hidden>Atmosphere</button><button id="audio-btn" type="button">Audio</button><button id="chat-btn" type="button">Chat</button><button id="journal-btn" type="button">Journal</button><button id="view-btn" type="button">View</button><button id="mode" hidden>Puzzle</button></nav>
+    <span class="grow"></span><span id="role"></span>
+  </header>
+  <div id="addmenu" hidden></div>
+  <div id="toolbar" hidden></div>
+  <main>
+    <div class="paper">
+      <svg id="map" viewBox="0 0 800 560" role="img" aria-label="A gridded dungeon map with floors, walls, doors, props and draggable player tokens">
+        <defs>
+          <pattern id="gridlines" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#0003" stroke-width="1"/></pattern>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="#eee8d6"/><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#c7bfaa" stroke-width="1"/></pattern>
+          <filter id="wobble" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.8" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <filter id="stamp" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="0.8" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <filter id="paper" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" seed="11" result="n"/><feColorMatrix in="n" type="matrix" values="0 0 0 0 0.35  0 0 0 0 0.27  0 0 0 0 0.15  0 0 0 0.28 0"/></filter>
+          <radialGradient id="glow"><stop offset="0%" stop-color="#ffc766" stop-opacity=".6"/><stop offset="55%" stop-color="#ffb347" stop-opacity=".25"/><stop offset="100%" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+          <pattern id="shingle" width="16" height="12" patternUnits="userSpaceOnUse"><rect width="16" height="12" fill="#8f6044"/><path d="M0 12 Q8 4 16 12 M-8 6 Q0 -2 8 6 M8 6 Q16 -2 24 6" fill="none" stroke="#5e3b27" stroke-width="1.4"/></pattern>
+          <radialGradient id="vignette" cx="50%" cy="50%" r="75%"><stop offset="60%" stop-color="#7a5a2a" stop-opacity="0"/><stop offset="100%" stop-color="#7a5a2a" stop-opacity=".35"/></radialGradient>
+        <clipPath id="tokclip"><circle r="16"/></clipPath>
+        </defs>
+        <rect id="mapbase" x="20" y="20" width="760" height="520" fill="#e8e1cd" stroke="#b4ab97" stroke-width="2"/>
+        <g id="floors"></g>
+        <g id="images"></g>
+        <g id="lights"></g>
+        <g id="props"></g>
+        <text x="42" y="52" fill="#5a554a" font-size="20">N</text>
+        <path d="M46 60 V94 M40 70 L46 60 L52 70" fill="none" stroke="#817b6e" stroke-width="2"/>
+        <rect class="fullrect" x="0" y="0" width="800" height="560" filter="url(#paper)" pointer-events="none"/>
+        <rect class="fullrect" x="0" y="0" width="800" height="560" fill="url(#vignette)" pointer-events="none"/>
+        <g id="refimage"></g>
+        <g id="walls"></g>
+        <g id="objects"></g>
+        <g id="tokens"></g>
+        <g id="annotations"></g>
+        <g id="roofs"></g>
+        <g id="explored-memory"></g>
+        <g id="fog"></g>
+        <g id="preview"></g>
+      </svg>
+    </div>
+  </main>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="panel">
+    <div class="row"><span id="hint">Pick a part to place, or click objects to select them.</span></div>
+    <div class="row" id="palette"></div>
+    <div id="inspector"></div>
+    <div class="zones"><div class="zone" id="z-pool" data-z="pool"><b>Selected</b></div>
+      <div class="zone" id="z-when" data-z="when"><b>When (all true)</b></div><div class="eq">=</div>
+      <div class="zone" id="z-then" data-z="then"><b>Then</b></div></div>
+    <div class="row"><button id="save">Save group</button> <button id="cancel-edit" hidden>Cancel edit</button> <button id="clear">Clear</button> <button id="reset" class="danger">Reset all</button></div>
+    <ul class="glist" id="glist"></ul>
+  </div>
+  <script type="module" src="js/rodeo/vtt.js"></script>
+</body>
+</html>

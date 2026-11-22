@@ -10,8 +10,9 @@ import { generateDungeon } from "./gen.js";
 import { segmentDoors } from "./door-segment.js";
 import { LIGHT_MATS, LIGHT_DEFAULT, lightSettings, clampIntensity, lightIntensity } from "./light-types.js";
 import { recentTokenRefs, tokenInitials } from "./token-palette.js";
+import { applyElevation } from "./elevation.js";
 
-const MENU = [["token", "Token"], ["wall", "Wall"], ["door", "Door"], ["floor", "Floor"], ["roof", "Roof"], ["fog", "Fog"], ["light", "Light"], ["object", "Object"], ["prop", "Prop"], ["label", "Label"], ["generator", "Generate dungeon"], ["puzzle", "Puzzle"]];
+const MENU = [["token", "Token"], ["wall", "Wall"], ["door", "Door"], ["floor", "Floor"], ["roof", "Roof"], ["elevation", "Elevation"], ["fog", "Fog"], ["light", "Light"], ["object", "Object"], ["prop", "Prop"], ["label", "Label"], ["generator", "Generate dungeon"], ["puzzle", "Puzzle"]];
 const HINT = {
   token: "Click a cell to drop a token.", wall: "Drag to draw a wall (snaps to the grid).", floor: "Drag to paint a floor area.",
   fog: "Drag to fog a room (snaps to cells). Right-click fog to reveal it to players.", roof: "Drag to cover an area with a roof. Right-click a roof to lift it.", prop: "Click a cell to place it. Drag props to move them.",
@@ -22,7 +23,7 @@ export const FLOOR_MATS = ["stone", "slab", "cobble", "marble", "tile", "wood", 
 export const LIGHT_COLORS = Object.fromEntries(LIGHT_MATS.map((m) => [m.color, m.label]));
 const matSel = (list) => `<select data-o="mat"><option value="">default</option>${list.map((m) => `<option value="${m}">${m}</option>`).join("")}</select>`;
 let wallsAround = true;   // the Floors window's "Draw walls around it" box
-let curMat = "", curMode = "", eraseOnly = "";   // floor flyout choices: material, shape/brush/bucket, floor-only erase
+let curMat = "", curMode = "", eraseOnly = "", curElev = 5;   // floor flyout choices: material, shape/brush/bucket, floor-only erase
 const matOf = () => opt("mat")?.value || curMat;
 const FLOOR_ACTS = [["select", "Select"], ["erase", "Erase"], ["shape", "Shape"], ["brush", "Paint brush"], ["bucket", "Paint bucket"]];
 export const ROOF_MATS = ["thatch", "slate", "tile", "flat", "wood", "stone"];
@@ -129,6 +130,7 @@ function showMenu() {
 const KP = {
   floor: { key: "floor", label: "Floors", mats: FLOOR_MATS, paint: true }, wall: { key: "wall", label: "Walls", mats: WALL_MATS, fixed: "line" },
   door: { key: "obj:door", label: "Doors", mats: WALL_MATS, fixed: "place", door: true }, roof: { key: "roof", label: "Roofs", mats: ROOF_MATS },
+  elevation: { key: "elevation", label: "Elevation", paint: true },
   light: { key: "obj:light", label: "Lights", mats: LIGHT_MATS, fixed: "place" }, object: { key: "obj:", label: "Objects", fixed: "place", object: true }, prop: { key: "prop", label: "Props", props: true, fixed: "place" },
   fog: { key: "fog", label: "Fog", paint: true }, label: { key: "label", label: "Labels", fixed: "place" },
 };
@@ -140,14 +142,14 @@ const MODE_ICONS = {   // line icons, drawn in the button's text colour
   bucket: "<path d='M4.5 11.5l7-7 7 7-6 6a2.1 2.1 0 01-3 0z'/><path d='M4.5 11.5h14'/><path d='M20.5 14c1.2 1.8 1.8 2.8 1.8 3.8a1.8 1.8 0 01-3.6 0c0-1 .6-2 1.8-3.8z'/>",
 };
 const MODES = [["select", "Select"], ["erase", "Erase"], ["shape", "Shape"], ["brush", "Paint brush"], ["bucket", "Paint bucket"]];
-let palObj = "plate", palProp = "crate", palLight = LIGHT_DEFAULT.id, palRot = 0, palScale = 1, palRandomRot = false, palRandomScale = false, palFlip = false;
+let palObj = "plate", palProp = "crate", palLight = LIGHT_DEFAULT.id, palRot = 0, palScale = 1, palColor = "", palRandomRot = false, palRandomScale = false, palFlip = false;
 let fogMode = "cover", labelEdit = null;
 const labelSettings = { text: "", size: 1, color: "#3d2632" };
 let labelRecent = [];
 try { labelRecent = JSON.parse(localStorage.getItem("vtt-recent-labels") || "[]"); } catch { /* first run */ }
 const lightValues = Object.fromEntries(LIGHT_MATS.map((m) => [m.id, lightSettings(m)]));
 const bt = { mode: "shape", kind: "floor", any: false, mats: {}, window: false };   // any = the menu's Erase (erases every kind)
-const SEED = { floor: ["default", "stone", "wood", "grass", "water"], wall: ["default", "stone", "brick", "wood", "plaster"], door: ["default", "wood", "iron", "stone", "brick"], roof: ["default", "thatch", "slate", "tile", "wood"], light: LIGHT_MATS.slice(0, 5).map((m) => m.id), prop: ["crate", "table", "chair", "barrel", "chest"], object: ["plate", "switch", "spawn", "tripwire", "dial"], fog: [] };
+const SEED = { floor: ["default", "stone", "wood", "grass", "water"], wall: ["default", "stone", "brick", "wood", "plaster"], door: ["default", "wood", "iron", "stone", "brick"], roof: ["default", "thatch", "slate", "tile", "wood"], elevation: [-10, 5, 10, 15, 20], light: LIGHT_MATS.slice(0, 5).map((m) => m.id), prop: ["crate", "table", "chair", "barrel", "chest"], object: ["plate", "switch", "spawn", "tripwire", "dial"], fog: [] };
 const OBJ_KINDS = Object.entries(KINDS).filter(([k]) => k !== "door" && k !== "light");
 const OBJ_GLYPH = { plate: "▣", tripwire: "┅", sight: "◉", gauge: "♥", switch: "⏻", dial: "◔", floor: "▦", spawn: "☠", stone: "●", catapult: "➶", initiative: "⚔" };
 const keyOf = (k) => (KP[k].object ? "obj:" + palObj : KP[k].key);
@@ -155,11 +157,12 @@ let recent = SEED;
 try { const r = JSON.parse(localStorage.getItem("vtt-recent-swatches") || "null"); if (r) recent = { ...SEED, ...r }; } catch { /* first run */ }
 let btWin = null; const kw = {};
 const remember = (kind, v) => { recent[kind] = [v, ...(recent[kind] || []).filter((x) => x !== v)].slice(0, 5); try { localStorage.setItem("vtt-recent-swatches", JSON.stringify(recent)); } catch { /* private mode */ } };
-const current = (k) => KP[k].object ? palObj : KP[k].props ? palProp : k === "light" ? palLight : bt.mats[k] || "default";
+const current = (k) => k === "elevation" ? curElev : KP[k].object ? palObj : KP[k].props ? palProp : k === "light" ? palLight : bt.mats[k] || "default";
 const propGlyph = (k) => { const s = PROP_CATALOG[k]?.shape || "mark"; return s === "rect" ? "<rect x='4' y='8' width='24' height='16' rx='3'/><path d='M7 11l18 10'/>" : s === "round" ? "<circle cx='16' cy='16' r='11'/><circle cx='16' cy='16' r='5' fill='none'/>" : s === "leaf" ? "<circle cx='10' cy='17' r='8'/><circle cx='22' cy='13' r='8'/><circle cx='16' cy='16' r='2'/>" : s === "rock" ? "<path d='M3 23l5-15 14-3 7 14-10 5z'/>" : "<circle cx='16' cy='16' r='9'/><path d='M4 16h24M16 4v24'/>"; };
 const chipHTML = (k, v) => KP[k].object ? `<button type="button" class="swatch ico" data-v="${v}" title="${KINDS[v]?.label || v}">${OBJ_GLYPH[v] || "?"}</button>`
   : KP[k].props ? `<button type="button" class="swatch ico" data-v="${v}" title="${PROPS[v] || v}"><svg viewBox="0 0 32 32" aria-label="${PROPS[v] || v}">${propGlyph(v)}</svg></button>`
   : k === "light" ? (() => { const m = LIGHT_MATS.find((x) => x.id === v) || LIGHT_DEFAULT; return `<button type="button" class="swatch ico" data-v="${v}" title="${m.label}"><svg viewBox="0 0 32 32" aria-label="${m.label}"><path d="M16 27c-6 0-8-4-6-8 1-2 3-3 3-7 4 3 7 6 7 10 0 3-1 5-4 5z" fill="${m.color}" stroke="currentColor"/></svg></button>`; })()
+  : k === "elevation" ? `<button type="button" class="swatch elev-swatch" data-elev="${v}" title="${v} feet">${v}</button>`
   : `<button type="button" class="swatch ico" data-v="${v}" title="${v}"><i style="background:${FLOOR_COL[v] || "#d8d0c0"}"></i></button>`;
 function optionsHTML(k) {
   const c = KP[k]; let h = `<option value="" selected disabled>more…</option>`;
@@ -169,19 +172,19 @@ function optionsHTML(k) {
   else h += ["default", ...(c.mats || [])].map((m) => `<option value="${m}">${m}</option>`).join("");
   return h;
 }
-const winHTML = (k) => { const c = KP[k]; return `<div class="bt-recent"></div><select data-more aria-label="More ${c.label}">${optionsHTML(k)}</select>`
+const winHTML = (k) => { const c = KP[k]; return k === "elevation" ? `<label class="elev-value">Height <input data-elev type="number" step="5" value="${curElev}"></label><div class="bt-recent elev-presets">${SEED.elevation.map((v) => chipHTML(k, v)).join("")}</div>` : `<div class="bt-recent"></div><select data-more aria-label="More ${c.label}">${optionsHTML(k)}</select>`
   + (c.door ? `<button type="button" class="swatch bt-win" data-win title="Windows never open; sight passes">Window</button>` : "")
   + (c.key === "floor" ? `<label class="bt-walls"><input type="checkbox" data-walls ${wallsAround ? "checked" : ""}> Draw walls around it</label>` : "")
   + (k === "light" ? `<div class="light-values"><label>Radius <input data-o="radius" type="number" min="1" max="12" step="1"></label><label>Fog <input data-o="fog" type="number" min="0" max="12" step="1"></label><label>Intensity <input data-o="intensity" type="range" min="0.2" max="1.5" step="0.05"><output data-intensity></output></label></div>` : "")
   + (k === "fog" ? `<div class="fog-modes"><button type="button" data-fog-mode="reveal">Reveal</button><button type="button" data-fog-mode="cover">Cover</button><button type="button" data-fog-mode="clear">Clear</button></div><div class="fog-actions"><button type="button" data-fog-all="reveal">Clear all</button><button type="button" data-fog-all="cover">Cover all</button></div>` : "")
-  + (c.props ? `<div class="prop-options"><label>Rotation <input data-pal="rot" type="number" min="0" max="359" value="${palRot}" style="width:4rem"></label><label><input data-pal="rrot" type="checkbox"> random</label><label>Scale <input data-pal="scale" type="range" min="0.5" max="2" step="0.05" value="${palScale}"></label><output data-scale>${palScale}</output><label><input data-pal="rscale" type="checkbox"> random</label><label><input data-pal="flip" type="checkbox"> Mirror</label></div>` : ""); };
+  + (c.props ? `<div class="prop-options"><label>Rotation <input data-pal="rot" type="number" min="0" max="359" value="${palRot}" style="width:4rem"></label><label><input data-pal="rrot" type="checkbox"> random</label><label>Scale <input data-pal="scale" type="number" min="0.1" max="30" step="0.1" value="${palScale}" style="width:4rem"></label><label>Color <input data-pal="color" type="color" value="${palColor || "#ffffff"}"></label><button type="button" data-pal-natural>natural</button><label><input data-pal="rscale" type="checkbox"> random</label><label><input data-pal="flip" type="checkbox"> Mirror</label></div>` : ""); };
 function renderRecent(k) { const box = kw[k]?.body.querySelector(".bt-recent"); if (box) box.innerHTML = (recent[k] || []).map((v) => chipHTML(k, v)).join(""); }
 function applyPal() {
   const c = KP[bt.kind];
   if (bt.mode === "select") return setTool(null, null, true);
   if (bt.mode === "erase") return setTool("erase", { eraseOnly: bt.any ? "" : keyOf(bt.kind) }, true);
   const mode = c.fixed || (bt.mode === "brush" || bt.mode === "bucket" ? (c.paint ? bt.mode : "shape") : "shape");
-  setTool(keyOf(bt.kind), { mode: c.door && bt.window ? "window" : mode, mat: bt.mats[bt.kind] || "" }, true);
+  setTool(keyOf(bt.kind), { mode: c.door && bt.window ? "window" : mode, mat: bt.mats[bt.kind] || "", elevation: curElev }, true);
 }
 function syncPalette() {
   tokWin?.el.classList.toggle("pal-active", S.tool === "token");
@@ -213,17 +216,20 @@ function toolsWin() {
 }
 function kindWin(kind) {
   if (kw[kind]) return kw[kind];
-  const c = KP[kind], at = { floor: [190, 90], wall: [370, 90], door: [550, 90], roof: [730, 90], light: [910, 90], prop: [190, 260], object: [370, 260] }[kind] || [190, 90];   // side by side
+  const c = KP[kind], at = { floor: [190, 90], wall: [370, 90], door: [550, 90], roof: [730, 90], light: [910, 90], elevation: [910, 260], prop: [190, 260], object: [370, 260] }[kind] || [190, 90];   // side by side
   const w = kw[kind] = floatWindow({ id: "pal-" + kind, title: c.label, x: at[0], y: at[1], hidden: true }); w.body.className += " palkind";
   w.body.innerHTML = winHTML(kind); renderRecent(kind);
   w.body.addEventListener("click", (e) => {
+    if (e.target.closest("[data-pal-natural]")) { palColor = ""; w.body.querySelector('[data-pal="color"]').value = "#ffffff"; return; }
     const fm = e.target.closest("[data-fog-mode]"); if (fm) { fogMode = fm.dataset.fogMode; syncPalette(); return; }
     const fa = e.target.closest("[data-fog-all]"); if (fa) { const changes = {}; for (const [id, a] of Object.entries(S.map.fog || {})) if ((a.lv ?? 0) === (S.level ?? 0)) changes[`map/fog/${id}`] = fa.dataset.fogAll === "cover" ? { ...a, open: false } : null; return patch(changes); }
     if (e.target.closest("[data-win]")) { bt.window = !bt.window; return pick(kind, current(kind)); }
     const chip = e.target.closest("[data-v]"); if (chip) pick(kind, chip.dataset.v);
+    const elev = e.target.closest("button[data-elev]"); if (elev) { curElev = Number(elev.dataset.elev); w.body.querySelector("input[data-elev]").value = curElev; bt.kind = kind; applyPal(); }
   });
-  w.body.addEventListener("change", (e) => { if (e.target.matches("[data-walls]")) { wallsAround = e.target.checked; return; } if (e.target.matches("[data-more]") && e.target.value) { pick(kind, e.target.value); e.target.value = ""; } });
-  w.body.addEventListener("input", (e) => { const p = e.target.dataset.pal; if (kind === "light" && e.target.dataset.o) { const s = lightValues[palLight]; s[e.target.dataset.o] = e.target.dataset.o === "intensity" ? clampIntensity(e.target.value) : Math.max(e.target.dataset.o === "fog" ? 0 : 1, Math.min(12, Number(e.target.value) || 0)); if (e.target.dataset.o === "intensity") e.target.value = s.intensity, w.body.querySelector("[data-intensity]").value = s.intensity.toFixed(2); return; } if (!p) return; if (p === "rot") palRot = +e.target.value || 0; if (p === "scale") { palScale = +e.target.value || 1; w.body.querySelector("[data-scale]").value = palScale; } if (p === "rrot") palRandomRot = e.target.checked; if (p === "rscale") palRandomScale = e.target.checked; if (p === "flip") palFlip = e.target.checked; });
+  w.body.addEventListener("change", (e) => { if (kind === "elevation" && e.target.matches("[data-elev]")) { curElev = Number(e.target.value) || 0; return; } if (e.target.matches("[data-walls]")) { wallsAround = e.target.checked; return; } if (e.target.matches("[data-more]") && e.target.value) { pick(kind, e.target.value); e.target.value = ""; } });
+  w.body.addEventListener("input", (e) => { const p = e.target.dataset.pal; if (kind === "light" && e.target.dataset.o) { const s = lightValues[palLight]; s[e.target.dataset.o] = e.target.dataset.o === "intensity" ? clampIntensity(e.target.value) : Math.max(e.target.dataset.o === "fog" ? 0 : 1, Math.min(12, Number(e.target.value) || 0)); if (e.target.dataset.o === "intensity") e.target.value = s.intensity, w.body.querySelector("[data-intensity]").value = s.intensity.toFixed(2); return; } if (!p) return; if (p === "rot") palRot = +e.target.value || 0; if (p === "scale") { palScale = Math.max(.1, Math.min(30, +e.target.value || 1)); e.target.value = palScale; } if (p === "color") palColor = e.target.value; if (p === "rrot") palRandomRot = e.target.checked; if (p === "rscale") palRandomScale = e.target.checked; if (p === "flip") palFlip = e.target.checked; });
+  if (kind === "elevation") w.body.addEventListener("input", (e) => { if (e.target.matches("input[data-elev]")) curElev = Number(e.target.value) || 0; });
   if (kind === "light") { w.body.querySelector("[data-more]").value = palLight; renderLightValues(); }
   w.el.addEventListener("pointerdown", () => activate(kind));   // touching a window makes it the one you draw with
   w.el.addEventListener("fwin-close", () => {
@@ -270,7 +276,7 @@ function placeMenu() {
 export function setTool(type, floor, keepPal) {
   S.tool = null; S.placing = null; drag = null; curMat = ""; curMode = ""; eraseOnly = ""; $("#preview").textContent = "";
   if (type?.startsWith("obj:")) S.placing = type.slice(4); else S.tool = type;
-  if (floor) { curMat = floor.mat || ""; curMode = floor.mode || ""; eraseOnly = floor.eraseOnly || ""; }
+  if (floor) { curMat = floor.mat || ""; curMode = floor.mode || ""; eraseOnly = floor.eraseOnly || ""; if (floor.elevation != null) curElev = Number(floor.elevation) || 0; }
   $("#addmenu").hidden = true; hideSub(); if (type !== "token") tokWin?.hide(); renderToolbar(); renderPanel();
   syncPalette();
 }
@@ -333,6 +339,50 @@ function beginSegment(type, e, p) {
   }
   $("#map").setPointerCapture(e.pointerId); preview();
 }
+// One wall per place: whatever part of an existing wall lies under a new wall (or a door) is cut away; the rest of it stays.
+// Cut the part of wall w that lies under the segment a-b: null if they don't overlap, else the leftover pieces of w.
+function cutWall(w, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy, L = Math.sqrt(L2); if (!L) return null;
+  const T = (x, y) => ((x - a.x) * dx + (y - a.y) * dy) / L2, off = (x, y) => Math.abs((x - a.x) * dy - (y - a.y) * dx) / L;
+  if (off(w.x1, w.y1) > 1 || off(w.x2, w.y2) > 1) return null;
+  const t1 = T(w.x1, w.y1), t2 = T(w.x2, w.y2), lo = Math.max(0, Math.min(t1, t2)), hi = Math.min(1, Math.max(t1, t2)), e = 0.5 / L;
+  if (hi - lo <= e) return null;
+  const [s0, s1] = t1 < t2 ? [t1, t2] : [t2, t1], q = (t) => ({ x: Math.round(a.x + dx * t), y: Math.round(a.y + dy * t) }), out = [];
+  for (const [u, v] of [[s0, lo], [hi, s1]]) if (v - u > e) { const p = q(u), r = q(v); out.push({ ...w, x1: p.x, y1: p.y, x2: r.x, y2: r.y }); }
+  return out;
+}
+function wallClear(a, b, changes) {
+  const lv = S.level ?? S.map.level ?? 0;
+  for (const [id, w] of Object.entries(S.map.walls || {})) {
+    if ((w.lv ?? 0) !== lv || changes[`map/walls/${id}`] === null) continue;
+    const pieces = cutWall(w, a, b); if (!pieces) continue;
+    changes[`map/walls/${id}`] = null; pieces.forEach((p, k) => { changes[`map/walls/${uid("w")}${k}`] = { ...p, lv }; });
+  }
+}
+// One-off tidy for maps built before walls were exclusive: newer walls replace older ones they overlap, and doors cut the wall under them.
+export function cleanOverlaps() {
+  const cur = new Map(Object.entries(S.map.walls || {})), changes = {}, before = cur.size; let n = 0;
+  const cutAll = (a, b, lv, except) => { for (const [oid, o] of [...cur]) { if (oid === except || (o.lv ?? 0) !== lv) continue; const pieces = cutWall(o, a, b); if (!pieces) continue; cur.delete(oid); changes[`map/walls/${oid}`] = null; pieces.forEach((p, k) => { const nid = `${uid("w")}c${n++}${k}`; cur.set(nid, p); changes[`map/walls/${nid}`] = p; }); } };
+  for (const [id, w] of [...cur].reverse()) if (cur.has(id)) cutAll({ x: w.x1, y: w.y1 }, { x: w.x2, y: w.y2 }, w.lv ?? 0, id);
+  for (const o of Object.values(S.objects)) { if (o.kind !== "door") continue; const v = o.dir === "v", m = (o.doorKind || o.kind) === "double" ? 40 : 20; cutAll({ x: o.x - (v ? 0 : m), y: o.y - (v ? m : 0) }, { x: o.x + (v ? 0 : m), y: o.y + (v ? m : 0) }, o.lv ?? 0, null); }
+  if (Object.keys(changes).length) patch(JSON.parse(JSON.stringify(changes)));
+  return { before, after: cur.size };
+}
+// Doors and windows sitting on a new wall's line are replaced by it.
+function doorsClear(a, b, changes) {
+  const vert = a.x === b.x, horiz = a.y === b.y; if (!vert && !horiz) return;
+  const lv = S.level ?? 0, ax = vert ? "y" : "x", lo = Math.min(a[ax], b[ax]), hi = Math.max(a[ax], b[ax]);
+  for (const [id, o] of Object.entries(S.objects)) {
+    if (o.kind !== "door" || (o.lv ?? 0) !== lv || (o.dir === "v") !== vert || (vert ? o.x : o.y) !== (vert ? a.x : a.y)) continue;
+    const n = (o.doorKind || o.kind) === "double" ? 40 : 20;
+    if (o[ax] + n > lo && o[ax] - n < hi) changes[`objects/${id}`] = null;
+  }
+}
+function placeWall(a, b, mat, extra = {}) {
+  const changes = {}; wallClear(a, b, changes); doorsClear(a, b, changes);
+  changes[`map/walls/${uid("w")}`] = { x1: a.x, y1: a.y, x2: b.x, y2: b.y, ...(mat ? { mat } : {}), ...extra };
+  patch(changes);
+}
 function placeDoors(d) {
   const segment = segmentDoors(d.a, d.b), cells = segment.cells;
   if (!cells.length) return;
@@ -343,6 +393,7 @@ function placeDoors(d) {
   const changes = {};
   cells.forEach((cell, i) => {
     const old = byEdge.get(`${cell.x},${cell.y},${cell.dir}`), id = old?.[0] || `do${Date.now().toString(36)}${i}`;
+    const dv = cell.dir === "v"; wallClear({ x: cell.x - (dv ? 0 : 20), y: cell.y - (dv ? 20 : 0) }, { x: cell.x + (dv ? 0 : 20), y: cell.y + (dv ? 20 : 0) }, changes);
     changes[`objects/${id}`] = { ...(old?.[1] || newObject("door", cell.x, cell.y, n + i + 1)), x: cell.x, y: cell.y, sx: cell.x, sy: cell.y, ...extra, lv: S.level ?? 0 };
   });
   patch(changes);
@@ -354,11 +405,13 @@ const distToSeg = (p, a) => {
 };
 const inRect = (p, a) => p.x >= a.x && p.x <= a.x + a.w && p.y >= a.y && p.y <= a.y + a.h;
 const onLevel = (a) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0);
+function paintElevation(rects, elev = curElev) { const changes = applyElevation(S.map.floors, rects, elev, S.level ?? S.map.level ?? 0); if (Object.keys(changes).length) patch(changes); }
 export function fogAt(p) { return Object.entries(S.map.fog || {}).find(([, a]) => onLevel(a) && inRect(p, a))?.[0]; }
 export function roofAt(p) { return Object.entries(S.map.roofs).find(([, a]) => onLevel(a) && inRect(p, a))?.[0]; }
 function erase(e, p) {
   const hit = (sel) => e.target.closest(sel)?.dataset.id;
   let id;
+  if (eraseOnly === "elevation") return paintElevation([{ x: cellOf(p).x - 20, y: cellOf(p).y - 20, w: 40, h: 40 }], 0);
   if (eraseOnly) {
     const k = eraseOnly, inMap = (m) => Object.entries(S.map[m] || {}).find(([, a]) => inRect(p, a))?.[0];
     if (k === "token" || k === "prop") { if ((id = hit("." + k))) put(`${k === "token" ? "tokens" : "map/props"}/${id}`, null); }
@@ -386,8 +439,8 @@ export function toolDown(e, p) {
     drag = { type: "propmove", id: el_.dataset.id, el: el_, x0: p.x, y0: p.y, moved: false };
     $("#map").setPointerCapture(e.pointerId); return true;
   }
-  if ((t === "floor" || t === "fog") && curMode === "bucket") bucketFill(t, p);
-  else if ((t === "floor" || t === "fog") && curMode === "brush") { const c = cellOf(p); drag = { type: "brush", kind: t, cells: new Map([[c.x + "," + c.y, c]]) }; $("#map").setPointerCapture(e.pointerId); preview(); }
+  if ((t === "floor" || t === "fog" || t === "elevation") && curMode === "bucket") bucketFill(t, p);
+  else if ((t === "floor" || t === "fog" || t === "elevation") && curMode === "brush") { const c = cellOf(p); drag = { type: "brush", kind: t, cells: new Map([[c.x + "," + c.y, c]]) }; $("#map").setPointerCapture(e.pointerId); preview(); }
   else if (t === "token") placeToken(cellOf(p));
   else if (t === "label") {
     const c = cellOf(p), text = labelSettings.text.trim(); if (!text) return true;
@@ -396,10 +449,10 @@ export function toolDown(e, p) {
     else put(`map/labels/${uid("l")}`, { x: c.x, y: c.y, text, size: labelSettings.size, color: labelSettings.color, rot: 0, lv: S.level ?? 0 });
     rememberLabel(text); renderLabelWindow();
   }
-  else if (t === "prop") { const c = cellOf(p), rot = palRandomRot ? Math.floor(Math.random() * 4) * 90 : palRot, s = palRandomScale ? .5 + Math.random() * 1.5 : palScale; put(`map/props/${uid("p")}`, { kind: opt("prop")?.value || palProp, x: c.x, y: c.y, lv: S.level ?? 0, rot, s, ...(palFlip ? { flip: true } : {}) }); }
+  else if (t === "prop") { const c = cellOf(p), rot = palRandomRot ? Math.floor(Math.random() * 4) * 90 : palRot, s = palRandomScale ? .5 + Math.random() * 1.5 : palScale; put(`map/props/${uid("p")}`, { kind: opt("prop")?.value || palProp, x: c.x, y: c.y, lv: S.level ?? 0, rot, s, ...(palColor ? { color: palColor } : {}), ...(palFlip ? { flip: true } : {}) }); }
   else if (t === "erase") erase(e, p);
   else if (t === "wall") beginSegment("wall", e, p);
-  else if (t === "floor" || t === "roof" || t === "fog") { const c = cellOf(p); drag = { type: t, a: c, b: c }; $("#map").setPointerCapture(e.pointerId); preview(); }
+  else if (t === "floor" || t === "roof" || t === "fog" || t === "elevation") { const c = cellOf(p); drag = { type: t, a: c, b: c }; $("#map").setPointerCapture(e.pointerId); preview(); }
   return true;
 }
 // Paint bucket: flood-fill the cells reachable from the click without crossing a wall or door, as row-run rectangles.
@@ -432,6 +485,7 @@ function bucketFill(type, p) {
       if (!blockedStep(cx, cy, nx, ny)) { seen.add(nx + "," + ny); q.push([nx, ny]); }
     }
   }
+  if (type === "elevation") { const rects = []; for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (seen.has(x + "," + y)) rects.push({ x: x * 40, y: y * 40, w: 40, h: 40 }); paintElevation(rects); return; }
   const changes = {}, base = type === "fog" ? "map/fog" : "map/floors"; let n = 0;
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
     if (!seen.has(x + "," + y) || (x && seen.has(x - 1 + "," + y))) continue;
@@ -468,11 +522,12 @@ export function toolUp() {
   if ((d.type === "wall" || d.type === "door") && d.pending && !d.moved) { preview(); return true; }
   drag = null; $("#preview").textContent = "";
   if (d.type === "propmove") { if (d.moved && d.to) patch({ [`map/props/${d.id}/x`]: d.to.x, [`map/props/${d.id}/y`]: d.to.y }); return true; }
-  if (d.type === "wall") { if (d.a.x !== d.b.x || d.a.y !== d.b.y) put(`map/walls/${uid("w")}`, { x1: d.a.x, y1: d.a.y, x2: d.b.x, y2: d.b.y, ...(matOf() ? { mat: matOf() } : {}) }); return true; }
+  if (d.type === "wall") { if (d.a.x !== d.b.x || d.a.y !== d.b.y) placeWall(d.a, d.b, matOf()); return true; }
   if (d.type === "door") { placeDoors(d); return true; }
-  if (d.type === "brush") { const fog = d.kind === "fog", base = fog ? "map/fog" : "map/floors", have = new Set(Object.values((fog ? S.map.fog : S.map.floors) || {}).filter((f) => f.w === 40 && f.h === 40 && (fog || (f.mat || "") === matOf())).map((f) => f.x + "," + f.y)); const ch = {}; let n = 0; for (const c of d.cells.values()) if (!have.has(c.x - 20 + "," + (c.y - 20))) ch[`${base}/${uid("f")}${n++}`] = { x: c.x - 20, y: c.y - 20, w: 40, h: 40, ...(fog ? { open: false } : matOf() ? { mat: matOf() } : {}) }; if (n) patch(ch); return true; }
+  if (d.type === "brush") { if (d.kind === "elevation") { paintElevation([...d.cells.values()].map((c) => ({ x: c.x - 20, y: c.y - 20, w: 40, h: 40 }))); return true; } const fog = d.kind === "fog", base = fog ? "map/fog" : "map/floors", have = new Set(Object.values((fog ? S.map.fog : S.map.floors) || {}).filter((f) => f.w === 40 && f.h === 40 && (fog || (f.mat || "") === matOf())).map((f) => f.x + "," + f.y)); const ch = {}; let n = 0; for (const c of d.cells.values()) if (!have.has(c.x - 20 + "," + (c.y - 20))) ch[`${base}/${uid("f")}${n++}`] = { x: c.x - 20, y: c.y - 20, w: 40, h: 40, ...(fog ? { open: false } : matOf() ? { mat: matOf() } : {}) }; if (n) patch(ch); return true; }
   const r = rectOf(d);
-  if (d.type === "roof") put(`map/roofs/${uid("r")}`, { ...r, open: false, lv: S.level ?? 0, ...(matOf() ? { mat: matOf() } : {}) });
+  if (d.type === "elevation") paintElevation([r]);
+  else if (d.type === "roof") put(`map/roofs/${uid("r")}`, { ...r, open: false, lv: S.level ?? 0, ...(matOf() ? { mat: matOf() } : {}) });
   else if (d.type === "fog") {
     if (fogMode === "clear") Object.entries(S.map.fog || {}).filter(([, a]) => (a.lv ?? 0) === (S.level ?? 0) && inRect({ x: a.x + a.w / 2, y: a.y + a.h / 2 }, r)).forEach(([id]) => put(`map/fog/${id}`, null));
     else put(`map/fog/${uid("g")}`, { ...r, open: fogMode === "reveal", lv: S.level ?? 0 });
@@ -480,7 +535,7 @@ export function toolUp() {
   else {
     put(`map/floors/${uid("f")}`, { ...r, lv: S.level ?? 0, ...(matOf() ? { mat: matOf() } : {}) });
     if (curMode === "shape" && wallsAround) [[r.x, r.y, r.x + r.w, r.y], [r.x + r.w, r.y, r.x + r.w, r.y + r.h], [r.x + r.w, r.y + r.h, r.x, r.y + r.h], [r.x, r.y + r.h, r.x, r.y]]
-      .forEach(([x1, y1, x2, y2]) => put(`map/walls/${uid("w")}`, { x1, y1, x2, y2 }));
+      .forEach(([x1, y1, x2, y2]) => placeWall({ x: x1, y: y1 }, { x: x2, y: y2 }, ""));
   }
   return true;
 }
@@ -495,7 +550,7 @@ export function settingsFor(type, id) {
   if (type === "wall") return { title: "Wall", fields: [F("Material", `map/walls/${id}/mat`, S.map.walls[id].mat || "", { opts: matOpts(WALL_MATS) })] };
   if (type === "floor") return { title: "Floor", fields: [F("Material", `map/floors/${id}/mat`, S.map.floors[id].mat || "", { opts: matOpts(FLOOR_MATS) }), F("Height", `map/floors/${id}/elev`, S.map.floors[id].elev || 0, { type: "number" })] };
   if (type === "label") { const a = S.map.labels[id]; return { title: "Label", fields: [F("Text", `map/labels/${id}/text`, a.text || "", { type: "text" }), F("Size", `map/labels/${id}/size`, a.size || 1, { type: "number", min: .25, max: 10 }), F("Colour", `map/labels/${id}/color`, a.color || "#3d2632", { type: "color" }), F("Rotation", `map/labels/${id}/rot`, a.rot || 0, { type: "number" })] }; }
-  if (type === "prop") { const p = S.map.props[id]; return { title: "Prop", fields: [F("Kind", `map/props/${id}/kind`, p.kind, { opts: Object.entries(PROPS) }), F("Rotation", `map/props/${id}/rot`, p.rot || 0, { type: "number" }), F("Scale", `map/props/${id}/s`, p.s || 1, { type: "number", min: .1, max: 10 })] }; }
+  if (type === "prop") { const p = S.map.props[id]; return { title: "Prop", fields: [F("Kind", `map/props/${id}/kind`, p.kind, { opts: Object.entries(PROPS) }), F("Rotation", `map/props/${id}/rot`, p.rot || 0, { type: "number" }), F("Scale", `map/props/${id}/s`, p.s || 1, { type: "number", min: .1, max: 30 }), F("Color", `map/props/${id}/color`, p.color || "", { type: "color" })] }; }
   if (type === "token") { const t = S.tokens[id]; return { title: t.label || id, fields: [F("Name", `tokens/${id}/label`, t.label || "", { type: "text" }),
     F("Colour", `tokens/${id}/color`, t.color || "", { opts: [["", "auto"], ["#a94c3d", "red"], ["#466c83", "blue"], ["#66774b", "green"], ["#7a5a8a", "purple"], ["#c8871c", "gold"]] }),
     F("Picture URL", `tokens/${id}/img`, t.img || "", { type: "text" })] }; }

@@ -6,8 +6,9 @@ import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { S, $, mapSize } from "./state.js";
 import { isPcToken, wallPieces } from "./draw.js";
 import { visibleToPlayer } from "./visibility.js";
+import { getRefImage } from "./refimage.js";
 
-const U = 40, WALL_H = 2, WALL_T = 0.16, MAX_SHADOW_LIGHTS = 6;
+const U = 40, WALL_H = 2, WALL_T = 0.16, MAX_SHADOW_LIGHTS = 10;
 // Wind Waker-style palette: saturated, sunny colours with dark purple-ink outlines.
 const INK = 0x2a1a33, PARCHMENT = 0xd49a45, SOLID = 0xd8d2ea, BRASS = 0xe0b13a;
 const WALL_COL = { stone: 0xa7a0b8, ashlar: 0xaaa69d, marble: 0xd8d8d0, brick: 0x9c5547, fieldstone: 0x817c75, plaster: 0xc8bca4, timber: 0x80552e, wood: 0xa8602a, palisade: 0x69462c, cave: 0x635d61, hedge: 0x50713f, earth: 0x795b3f, cobble: 0x7d6f8f, iron: 0x5d7488 }, WALL_DEF = 0xc9b48a;
@@ -79,14 +80,14 @@ function init() {
   camera = new THREE.PerspectiveCamera(50, 1, .1, 200);
   controls = new OrbitControls(camera, renderer.domElement); controls.maxPolarAngle = Math.PI / 2 - .03; controls.enableDamping = true; controls.enabled = !toolBlock;
   // wheel zooms, middle-drag orbits, Space + middle-drag pans
-  const midBtn = (pan) => { controls.mouseButtons = { LEFT: null, MIDDLE: pan ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, RIGHT: null }; };
+  const midBtn = (pan) => { midPan = pan; controls.mouseButtons = { LEFT: orbitTool ? THREE.MOUSE.ROTATE : null, MIDDLE: pan ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE, RIGHT: null }; };
   midBtn(false);
   document.addEventListener("keydown", (e) => { if (e.code === "Space") midBtn(true); });
   document.addEventListener("keyup", (e) => { if (e.code === "Space") midBtn(false); });
   controls.addEventListener("change", () => (dirty = true));
-  scene.add(new THREE.AmbientLight(0xaab4e8, .55), new THREE.HemisphereLight(0xcfe6ff, 0xffc98a, .8));
+  scene.add(new THREE.AmbientLight(0xaab4e8, .22), new THREE.HemisphereLight(0xcfe6ff, 0xffc98a, .3));
   root = new THREE.Group(); scene.add(root);
-  new ResizeObserver(resize).observe(host);
+  fpLook(renderer.domElement); new ResizeObserver(resize).observe(host);
 }
 function resize() {
   const hb = document.querySelector("header")?.getBoundingClientRect().bottom; if (hb) host.style.top = hb + "px";   // sit right under the menu bar, filling the window
@@ -129,23 +130,34 @@ function roofMesh(a) {   // a gabled roof over a map rectangle: ridge along the 
   return m;
 }
 
+let refTex = null;
 function build() {
   root.clear(); buildGrid();
   const { floors = {}, walls = {}, props = {} } = S.map, gm = S.isGM;
   const fog = Object.values(S.map.fog || {}).filter((a) => (a.lv ?? 0) === (S.level ?? S.map.level ?? 0));
   const playerCanSee = (record) => visibleToPlayer(record, fog, gm, S.currentVisible, S.map.exploredEnabled !== false);
   const level = S.level ?? S.map.level ?? 0, floorAt = (x, z) => Object.values(floors).find(a => (a.lv ?? 0) === level && x >= a.x && x <= a.x + a.w && z >= a.y && z <= a.y + a.h)?.elev || 0;
-  let sx = 0, sz = 0, n = 0, minX = 1e9, minZ = 1e9, maxX = -1e9, maxZ = -1e9;
+  let floorTop = .03, sx = 0, sz = 0, n = 0, minX = 1e9, minZ = 1e9, maxX = -1e9, maxZ = -1e9;
+  const hasPic = !!getRefImage();
   for (const [fi, a] of Object.values(floors).filter(a => (a.lv ?? 0) === level).entries()) {
+    if (hasPic && !(a.mat in FLOOR_COL)) { minX = Math.min(minX, a.x); minZ = Math.min(minZ, a.y); maxX = Math.max(maxX, a.x + a.w); maxZ = Math.max(maxZ, a.y + a.h); continue; }   // parchment floor: hidden under a map picture
     const elev = Number(a.elev) || 0, m = new THREE.Mesh(new THREE.BoxGeometry(a.w / U, Math.max(.04, Math.abs(elev) / U), a.h / U), mat(FLOOR_COL[a.mat] ?? FLOOR_DEF, "f:" + (a.mat && a.mat in FLOOR_COL ? a.mat : "paper")));
     uvScale(m.geometry, a.w / U, a.h / U);
     m.position.set((a.x + a.w / 2) / U, elev ? elev / U / 2 : fi * .003, (a.y + a.h / 2) / U); m.receiveShadow = true; root.add(m);
-    minX = Math.min(minX, a.x); minZ = Math.min(minZ, a.y); maxX = Math.max(maxX, a.x + a.w); maxZ = Math.max(maxZ, a.y + a.h);
+    floorTop = Math.max(floorTop, (elev ? elev / U / 2 : fi * .003) + Math.max(.04, Math.abs(elev) / U) / 2); minX = Math.min(minX, a.x); minZ = Math.min(minZ, a.y); maxX = Math.max(maxX, a.x + a.w); maxZ = Math.max(maxZ, a.y + a.h);
   }
   {   // ground: the whole map area in paper, under any floors; also frames the camera when a map has no floors (e.g. an import of walls, doors and lights only)
     const { cols, rows } = mapSize(), gw = cols * 40, gh = rows * 40;
+    if (!getRefImage()) {   // the map picture replaces the parchment ground
     const g = new THREE.Mesh(new THREE.PlaneGeometry(gw / U, gh / U), mat(FLOOR_DEF, "f:paper")); uvScale(g.geometry, gw / U, gh / U);
     g.rotation.x = -Math.PI / 2; g.position.set(gw / 2 / U, -.01, gh / 2 / U); g.receiveShadow = true; root.add(g);
+    }
+    const ref = getRefImage();   // the dd2vtt map picture, laid on the floor
+    if (ref) {
+      if (refTex?.url !== ref.dataUrl) { refTex?.tex.dispose(); const tex = new THREE.TextureLoader().load(ref.dataUrl, () => { dirty = true; }); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; refTex = { url: ref.dataUrl, tex }; }
+      const w = ref.cols * 40, h = ref.rows * 40, m = new THREE.Mesh(new THREE.PlaneGeometry(w / U, h / U), new THREE.MeshStandardMaterial({ map: refTex.tex, roughness: 1, metalness: 0, transparent: ref.opacity < 1, opacity: ref.opacity }));
+      m.rotation.x = -Math.PI / 2; m.position.set(w / 2 / U, floorTop + .01, h / 2 / U); m.renderOrder = 1; m.receiveShadow = true; root.add(m);
+    }
     if (!(maxX > minX)) { minX = 0; minZ = 0; maxX = gw; maxZ = gh; }
   }
   const doors = Object.entries(S.objects).filter(([, o]) => o.kind === "door" && (o.lv ?? 0) === level && playerCanSee(o)).map(([id, o]) => ({ ...o, _id: id }));
@@ -176,9 +188,16 @@ function build() {
   }
   if (!gm) {   // The 3D view has no SVG fog layer, so cover each unrevealed fog cell explicitly.
     const fogMat = new THREE.MeshBasicMaterial({ color: 0x17131b, transparent: true, opacity: .96, depthWrite: false, side: THREE.DoubleSide });
-    for (const a of fog) for (let x = a.x; x < a.x + a.w; x += U) for (let z = a.y; z < a.y + a.h; z += U) {
-      if (S.currentVisible?.has(`${Math.floor(x / U)},${Math.floor(z / U)}`)) continue;
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), fogMat); m.rotation.x = -Math.PI / 2; m.position.set((x + U / 2) / U, WALL_H + .1, (z + U / 2) / U); m.renderOrder = 8; root.add(m);
+    const shown = new Set(), cover = (cx, cz, mat) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat); m.rotation.x = -Math.PI / 2; m.position.set(cx + .5, WALL_H + .1, cz + .5); m.renderOrder = 8; root.add(m); };
+    for (const a of fog) { if (a.open) continue;   // same as 2D: a revealed room shows what is in it
+      for (let x = a.x; x < a.x + a.w; x += U) for (let z = a.y; z < a.y + a.h; z += U) {
+        const c = `${Math.floor(x / U)},${Math.floor(z / U)}`;
+        if (S.currentVisible?.has(c) || shown.has(c)) continue;
+        shown.add(c); cover(Math.floor(x / U), Math.floor(z / U), fogMat);
+      } }
+    if (S.map.exploredEnabled !== false) {   // 2D dims cells you have seen but cannot see now; do the same here
+      const memMat = new THREE.MeshBasicMaterial({ color: 0x14100a, transparent: true, opacity: .42, depthWrite: false, side: THREE.DoubleSide }), { cols, rows } = mapSize();
+      for (const c of S.exploredCells || []) { const [x, z] = c.split(",").map(Number); if (x >= 0 && z >= 0 && x < cols && z < rows && !S.currentVisible?.has(c) && !shown.has(c)) cover(x, z, memMat); }
     }
   }
   const structural = [];
@@ -188,7 +207,7 @@ function build() {
   for (const [i, [tid, t]] of Object.entries(S.tokens).entries()) {
     if ((t.lv ?? 0) !== level || !playerCanSee(t)) continue;
     const col = t.color ? new THREE.Color(t.color) : t.hp != null ? new THREE.Color(0x5a2a24) : new THREE.Color(TOKEN_COLS[i % 4]);
-    const g = new THREE.Group(); g.position.set(t.x / U, floorAt(t.x, t.y), t.y / U); g.userData.pick = { type: "token", id: tid }; root.add(g);
+    const g = new THREE.Group(); g.position.set(t.x / U, floorAt(t.x, t.y), t.y / U); g.userData.pick = { type: "token", id: tid }; if (fp?.id === tid) g.visible = false; root.add(g);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(.4, .4, .08, 24), mat(col.getHex())); base.position.y = .04; g.add(base);
     const body = new THREE.Mesh(new THREE.CylinderGeometry(.18, .26, .8, 16), mat(col.getHex())); body.position.y = .48; body.castShadow = true; g.add(body);
     const head = new THREE.Mesh(new THREE.SphereGeometry(.17, 16, 12), mat(0xffd9b0)); head.position.y = 1.05; head.castShadow = true; g.add(head);
@@ -201,11 +220,11 @@ function build() {
   let shadowed = 0;
   for (const [oid, o] of Object.entries(S.objects)) {
     if (o.kind !== "light" || o.state !== "on" || (o.lv ?? 0) !== level || !playerCanSee(o)) continue;
-    const r = (o.radius || 120) / U, intensity = Math.max(.2, Math.min(1.5, Number(o.intensity) || 1)), l = new THREE.PointLight(new THREE.Color(o.color || "#ffb347"), 14 * r * .6 * intensity, r * 1.6, 1.4);
+    const r = (o.radius || 120) / U, intensity = Math.max(.2, Math.min(1.5, Number(o.intensity) || 1)), l = new THREE.PointLight(new THREE.Color(o.color || "#ffb347"), 14 * r * .6 * intensity * .55, r * 1.6, 1.4);
     l.position.set(o.x / U, 1.3, o.y / U);
-    if (shadowed < MAX_SHADOW_LIGHTS) { l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -.002; l.shadow.radius = 3; shadowed++; }
+    if (shadowed < MAX_SHADOW_LIGHTS) { l.castShadow = true; l.shadow.mapSize.set(1024, 1024); l.shadow.bias = -.002; l.shadow.normalBias = .03; l.shadow.radius = 3; shadowed++; } else l.intensity *= .3;   // no shadow map left: keep it faint so it cannot glow through walls
     root.add(l);
-    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.09, 12, 8), new THREE.MeshBasicMaterial({ color: o.color || "#ffb347" })); bulb.position.copy(l.position); bulb.userData.pick = { type: "object", id: oid }; root.add(bulb);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(.09, 12, 8), new THREE.MeshBasicMaterial({ color: o.color || "#ffb347" })); bulb.visible = gm; bulb.position.copy(l.position); bulb.userData.pick = { type: "object", id: oid }; root.add(bulb);
   }
   if (!fitted && maxX > minX) {   // first time: frame the whole map
     fitted = true; const cx = (minX + maxX) / 2 / U, cz = (minZ + maxZ) / 2 / U, span = Math.max(maxX - minX, maxZ - minZ) / U;
@@ -259,6 +278,12 @@ function prop(p, pid) {   // chunky, outlined Wind Waker-style prop kit
     cyl(.08, .45, 0x8a5a2c, 0, 0, 0, "wood", 7); for (const [r, h, y] of [[.55, .72, .55], [.43, .65, 1.0], [.3, .58, 1.42]]) part(carved(new THREE.ConeGeometry(r, h, 7), .025), 0x3fbf3a, 0, y, 0, "leaves");
   } else if (K === "bush") {
     for (let i = 0; i < 3; i++) part(carved(new THREE.IcosahedronGeometry(.25 + R() * .1, 0), .03), pick([0x3fbf3a, 0x55cf45, 0x299c38]), (R() - .5) * .45, .23, (R() - .5) * .4, "leaves");
+  } else if (K === "obelisk") {   // glowing crystal obelisk on a stepped stone plinth, with orbiting shards
+    const GLOW = 0x5fe8ff, glow = (geo, x, y, z) => { const m = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ color: GLOW, emissive: GLOW, emissiveIntensity: .75, gradientMap: toonRamp(), transparent: true, opacity: .92 })); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+    cyl(.5, .1, SOLID, 0, 0, 0, "stone", 6); cyl(.4, .1, SOLID, 0, .1, 0, "stone", 6);
+    glow(new THREE.CylinderGeometry(.2, .3, 1.7, 6), 0, 1.15, 0); glow(new THREE.ConeGeometry(.2, .45, 6), 0, 2.225, 0);
+    for (const [a, r, y, s] of [[0, .55, 1.0, .1], [2.1, .5, 1.5, .08], [4.2, .58, .7, .09]]) { const sh = glow(new THREE.OctahedronGeometry(s, 0), Math.cos(a) * r, y, Math.sin(a) * r); sh.scale.y = 1.8; }
+    const lamp = new THREE.PointLight(GLOW, 1.2, 4); lamp.position.set(0, 1.2, 0); g.add(lamp);
   } else if (K === "rock") {
     const m = part(carved(new THREE.DodecahedronGeometry(.36, 0), .06), pick([0x8b91a6, 0xa7a0b8, 0x747b91]), 0, .25, 0, "stone"); m.scale.y = .7;
   } else if (K === "stump") {
@@ -271,6 +296,7 @@ function prop(p, pid) {   // chunky, outlined Wind Waker-style prop kit
     for (const x of [-.45, 0, .45]) b(.08, .62, .08, PARCHMENT, x, .31, 0, "wood"); for (const y of [.22, .45]) b(1, .07, .05, PARCHMENT, 0, y, 0, "wood");
   }
   if (!g.children.length) b(.65, .35, .65, K.startsWith("decal_") ? 0x9b6b62 : 0xb79a63, 0, .175, 0, undefined, K.startsWith("decal_"));
+  if (p.color) g.traverse((n) => { if (n.isMesh && !n.userData.noInk) { const tint = Array.isArray(n.material) ? n.material.map((m) => m.clone()) : n.material.clone(); (Array.isArray(tint) ? tint : [tint]).forEach((m) => { m.color?.set(p.color); if (m.emissive?.getHex()) m.emissive.set(p.color); }); n.material = tint; } else if (n.isLight) n.color.set(p.color); });
   const meshes = []; g.traverse((n) => { if (n.isMesh && !n.userData.noInk) meshes.push(n); }); meshes.forEach(ink);
 }
 
@@ -279,6 +305,8 @@ const anims = new Set(), ray = new THREE.Raycaster(), ground = new THREE.Plane(n
 export const isOpen = () => !!host && !host.hidden;
 export function zoom(f) { const o = camera.position.clone().sub(controls.target).multiplyScalar(Math.max(.3, Math.min(3, f))); camera.position.copy(controls.target).add(o); controls.update(); dirty = true; }
 export function fit() { fitted = false; build(); }
+let orbitTool = false, midPan = false;   // Orbit tool: left-drag turns the camera
+export function setOrbit(on) { orbitTool = !!on; if (controls) controls.mouseButtons.LEFT = orbitTool ? THREE.MOUSE.ROTATE : null; }
 let toolBlock = false;   // an active ruler/ping tool pauses the camera
 const applyControls = () => { if (controls) controls.enabled = !toolBlock; };
 export const controlsBlocked = () => toolBlock;
@@ -318,7 +346,7 @@ export function pickAt(clientX, clientY) {
     let o = h.object; while (o && !o.userData.pick) o = o.parent;
     if (!o) continue;
     const box = new THREE.Box3().setFromObject(o), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
-    const rad = Math.min(3, Math.max(.45, Math.max(sz.x, sz.z) / 2 + .15));
+    const rad = Math.max(.45, Math.max(sz.x, sz.z) / 2 + .15);
     if (selRing) scene.remove(selRing);
     selRing = new THREE.Mesh(new THREE.RingGeometry(rad - .07, rad, 40), new THREE.MeshBasicMaterial({ color: BRASS, depthTest: false, side: THREE.DoubleSide }));
     selRing.rotation.x = -Math.PI / 2; selRing.position.set(c.x, .07, c.z); selRing.renderOrder = 10; scene.add(selRing); dirty = true;
@@ -355,7 +383,29 @@ export function ping(p) {   // expanding ring + beacon at a map point
   anims.add(a);
 }
 
-function loop() { raf = requestAnimationFrame(loop); for (const a of anims) a(); if (controls.update() || dirty || anims.size) { dirty = false; renderer.render(scene, camera); } }
+// First person: the camera sits at a token's eye and looks where it last moved; drag to look around.
+let fp = null, fpSaved = null;
+export const isFirstPerson = () => !!fp;
+export const facing = () => fp ? { x: -Math.sin(fp.yaw), y: -Math.cos(fp.yaw) } : null;   // map direction the camera looks along
+export function turn(rad) { if (fp) { fp.yaw += rad; dirty = true; } }
+export function setFirstPerson(id) {
+  if (!camera) return;
+  if (id && S.tokens[id]) { if (!fp) fpSaved = { pos: camera.position.clone(), fov: camera.fov }; fp = { id, yaw: Math.PI, pitch: -.05, last: null }; camera.fov = 75; }
+  else if (fp) { fp = null; camera.fov = fpSaved?.fov || 50; camera.rotation.set(0, 0, 0); fitted = false; }
+  camera.updateProjectionMatrix(); controls.enabled = !fp && !toolBlock; build(); dirty = true;
+}
+function fpFrame() {
+  const t = S.tokens[fp.id]; if (!t) { setFirstPerson(null); return; }
+  const target = new THREE.Vector3(t.x / U, 1.15, t.y / U); camera.position.lerp(target, .35);
+  camera.rotation.set(fp.pitch, fp.yaw, 0, "YXZ"); dirty = true;
+}
+function fpLook(el) {
+  let down = null;
+  el.addEventListener("pointerdown", (e) => { if (fp && e.button === 0) { down = { x: e.clientX, y: e.clientY }; el.setPointerCapture(e.pointerId); } });
+  el.addEventListener("pointermove", (e) => { if (!fp || !down) return; fp.yaw -= (e.clientX - down.x) * .005; fp.pitch = Math.max(-1.2, Math.min(1.2, fp.pitch - (e.clientY - down.y) * .004)); down = { x: e.clientX, y: e.clientY }; dirty = true; });
+  const up = () => { down = null; }; el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+}
+function loop() { raf = requestAnimationFrame(loop); for (const a of anims) a(); if (fp) fpFrame(); if ((!fp && controls.update()) || dirty || anims.size) { dirty = false; renderer.render(scene, camera); } }
 
 export function open() { if (!renderer) init(); host.hidden = false; resize(); build(); S.refresh3d = () => { if (!host.hidden) { clearTimeout(open.t); open.t = setTimeout(build, 30); } }; if (!raf) loop(); }
-export function close() { if (!host) return; clearSelection(); host.hidden = true; cancelAnimationFrame(raf); raf = 0; S.refresh3d = null; }
+export function close() { if (!host) return; if (fp) setFirstPerson(null); clearSelection(); host.hidden = true; cancelAnimationFrame(raf); raf = 0; S.refresh3d = null; }

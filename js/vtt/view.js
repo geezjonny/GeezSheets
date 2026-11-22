@@ -79,8 +79,9 @@ export function initView() {
   document.addEventListener("keyup", (e) => { if (e.code === "Space") { space = false; svg.classList.remove("pannable"); } });
   let busy = false;
   const off = (...ids) => { busy = true; ids.forEach((i) => { const b = document.getElementById("bar-" + i); if (b?.classList.contains("on")) b.click(); }); busy = false; };
-  const sel = addBarButton({ quick: true, id: "select", icon: "👆", label: "Select", title: "Select: click things to select them (3D: opens their menu)", toggle: true, onClick: (e, b) => { S.select3d = b.classList.contains("on"); if (S.select3d) off("ruler", "ping"); S.v3d?.clearSelection(); } });
-  setTimeout(() => ["ruler", "ping"].forEach((i) => document.getElementById("bar-" + i)?.addEventListener("click", () => { if (S.select3d && !busy) sel.click(); })), 0);
+  const sel = addBarButton({ quick: true, id: "select", icon: "👆", label: "Select", title: "Select: click things to select them (3D: opens their menu)", toggle: true, onClick: (e, b) => { S.select3d = b.classList.contains("on"); if (S.select3d) off("ruler", "ping", "orbit"); S.v3d?.clearSelection(); } });
+  addBarButton({ quick: true, id: "orbit", icon: "🔄", label: "Orbit", title: "Orbit (3D): drag anywhere to turn the camera; tokens will not be picked up", toggle: true, onClick: (e, b) => { S.orbit = b.classList.contains("on"); S.v3d?.setOrbit(S.orbit); if (S.orbit) off("ruler", "ping", "select"); } });
+  setTimeout(() => ["ruler", "ping"].forEach((i) => document.getElementById("bar-" + i)?.addEventListener("click", () => { if (S.select3d && !busy) sel.click(); if (S.orbit && !busy) document.getElementById("bar-orbit")?.click(); })), 0);
   addBarButton({ quick: true, id: "fit", icon: "⤢", label: "Fit", title: "Show the whole map", onClick: fitView });
   addBarButton({ quick: true, id: "grid", icon: "▦", label: "Grid", title: "Show the grid; drag the map edge to make it bigger or smaller", gmOnly: true, toggle: true, onClick: (e, b) => {
     if (S.v3d) { S.v3d.setGrid(b.classList.contains("on")); return; }   // 3D: show / hide the grid lines
