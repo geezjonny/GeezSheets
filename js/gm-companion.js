@@ -120,4 +120,21 @@ if (!GM) {
     $('#weather-current').textContent = 'Could not load weather: ' + err.message;
   });
 
+// Token spawner: pushes a request to Firebase gmspawn/gaia; the GeezOBR extension (GM client) places the tokens.
+const SPAWN = 'https://geezsheets-default-rtdb.firebaseio.com/gmspawn/gaia.json';
+fetch('tokens/index.json').then((r) => r.json()).then((list) => {
+  $('#spawn-list').innerHTML = list.map((t) => `<option value="${esc(t.replace(/\.png$/i, ''))}">`).join('');
+  window.spawnTokens = new Set(list);
+}).catch(() => {});
+$('#spawn-go').addEventListener('click', async () => {
+  const name = $('#spawn-token').value.trim().toLowerCase().replace(/\s+/g, '_'), token = name + '.png';
+  if (!window.spawnTokens?.has(token)) return toast('Unknown token: pick one from the list');
+  const count = Math.max(1, Math.min(20, Math.trunc(Number($('#spawn-count').value)) || 1));
+  try {
+    const r = await fetch(SPAWN, { method: 'POST', body: JSON.stringify({ token, count, at: Date.now() }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    $('#spawn-status').textContent = `Sent ${count} × ${name.replace(/_/g, ' ')}.`;
+  } catch (e) { toast('Spawn failed: ' + e.message); }
+});
+
 }

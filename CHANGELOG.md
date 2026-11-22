@@ -3,6 +3,7 @@
 ## 2026-11-22
 
 ### GM Companion (`gm-companion.html`)
+- **Spawn tokens:** search a token, set a count and send it to Owlbear from the GM page.
 - **New GM page:** control every PC's HP (-5 to +5, damage, heal) and spell-slot pips from one screen, next to the players' sheets.
 - **Weather control:** pick clear, rain, snow, fog or storm with intensity and wind; the Owlbear extension draws it for everyone.
 

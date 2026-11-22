@@ -45,6 +45,18 @@ button,input,select{font:inherit;color:var(--text);border:1px solid var(--border
         <p id="weather-current" class="weather-current muted" role="status">Loading current weather…</p>
       </div>
     </section>
+    <section aria-labelledby="spawn-title">
+      <div class="section-head"><h2 id="spawn-title">Spawn tokens</h2><span class="muted">Owlbear</span></div>
+      <div class="card">
+        <div class="hp-controls" style="grid-template-columns:minmax(0,1fr) 90px auto">
+          <input id="spawn-token" list="spawn-list" placeholder="Search token, e.g. goblin" aria-label="Token">
+          <input id="spawn-count" type="number" min="1" max="20" value="1" inputmode="numeric" aria-label="Count">
+          <button id="spawn-go" class="primary">Spawn</button>
+        </div>
+        <datalist id="spawn-list"></datalist>
+        <p id="spawn-status" class="muted" role="status">Tokens appear in the middle of the GM's Owlbear view.</p>
+      </div>
+    </section>
   </div>
   <p id="access" class="empty">Loading GM companion…</p>
 </main>
