@@ -63,7 +63,7 @@ async function roll(label, expr) {
   // Also publish the latest roll per character to plain Firebase, so the Owlbear extension can show it on the token.
   if (id) fetch(`https://geezsheets-default-rtdb.firebaseio.com/gmroll/gaia/${encodeURIComponent(id)}.json`, { method: 'PUT',
     body: JSON.stringify({ name: pc?.name || '', label, total: r.total, nat: r.nat ?? null, detail: r.detail, ts: Date.now() }) }).catch(() => {});
-  try { if (pc?.campaign) await push(ref(db, `geezvtt/live/${pc.campaign}/rolls`), { by: pc.name, char: id, expr: `${label} ${rolled}`, detail: r.detail, total: r.total, nat: r.nat ?? null, dice: r.dice, ts: Date.now() }); } catch (e) { toast('Roll not shown to the table: ' + esc(e.message)); }
+  try { if (pc?.campaign) await push(ref(db, `geezvtt/live/${pc.campaign}/rolls`), { by: pc.name, char: id, expr: `${label} ${rolled}`, detail: r.detail, total: r.total, nat: r.nat ?? null, dice: r.dice, ts: Date.now() }); } catch {}
   return r;
 }
 
