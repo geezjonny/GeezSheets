@@ -174,6 +174,15 @@ export function planCharacter(raw, target, srd, custom) {
   const man = Object.values(abilities).filter((a) => /^maneuver/i.test(a?.label || '')).length;
   if (man > MANEUVERS(target)) review.push(`Knows ${man} maneuvers; a Battle Master of level ${target} gets ${MANEUVERS(target)}.`);
 
+  // ---- spell and cantrip cards listed under attacks keep their damage dice in step with the level (cantrips scale at 5/11/17)
+  for (const a of arr(d.attacks)) {
+    const m = /^(.*?)\s*\((cantrip|spell)\)/i.exec(a.name || ''); if (!m) continue;
+    const ref = srd.spells.find((x) => norm(x.name) === norm(m[1])); if (!ref) continue;
+    const want = ref.level === 0 ? upTo(ref.damage?.damage_at_character_level, target) : null;
+    const old = /\d+d\d+/.exec(a.damage || '')?.[0];
+    if (want && old && old !== want) { log.push(`${a.name}: damage ${old} -> ${want}`); a.notes = String(a.notes || '').split(old).join(want); a.damage = a.damage.replace(old, want); }
+  }
+
   // ---- saves, skills and passive scores recomputed from the rules (every change is logged).
   // A skill or save counts as proficient when EITHER the flag OR the stored number says so, so real proficiency is never taken away.
   const resilient = /resilient \((str|dex|con|int|wis|cha)\)/i.exec(String(d.origin_feat || '') + ' ' + String(d.text_blocks?.features_traits || ''));
