@@ -393,3 +393,7 @@ body.is3d #add { display: none; }   /* build in 2D, run the game in 3D */
 
 .door.locked .doorbar { stroke: #8c2f2f; }
 .door.locked .doorbar.m-iron { stroke: #6b2a2a; }
+
+.charwin .tokctl { border-bottom: 1px solid var(--brass, #8b6f35); background: #17130f; max-height: 40%; overflow: auto; }
+.charwin .tokctl > summary { cursor: pointer; padding: .3rem .6rem; font-size: .8rem; opacity: .85; }
+.charwin .tokctl .tokwin-box { padding: .3rem .6rem .5rem; }

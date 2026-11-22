@@ -2,6 +2,11 @@
 
 ## 2026-11-22
 
+### Companion built into the table VTT
+- **One place for characters:** right-clicking a PC token now opens the companion in a compact window (Character, Actions, Spells, Inventory, Features) with every roll built in. Rolls show in the VTT's dice tray for everyone. The GM keeps a collapsed "Token controls" strip on top.
+- **Compact Character tab:** HP with -/+, AC / Init / Spd / Prof / Passive, inspiration and exhaustion, a conditions dropdown, abilities, saves, skills and a short rest. Every section folds up and remembers how you left it.
+- **Synced with the companion:** the VTT now reads and writes character data (HP, inventory, equipment, conditions) from the same place the companion does, so healing in the companion updates the token on the map. A PC token shows the sheet's HP, not an old number stored on the token.
+
 ### Table VTT (`index.html`)
 - **Map pictures from dd2vtt:** the picture inside a .dd2vtt now loads and is saved for everyone, from the battlemap/ library or an uploaded file (WebP and JPEG pictures are recognised too). It shows on the 3D floor, which no longer draws the parchment under it.
 - **Per-token vision (player view):** each PC token sees about 6 cells, stopped by walls and closed doors. Fixed a bug that cut the view north of a token when walls sat close behind it.

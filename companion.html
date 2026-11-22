@@ -34,6 +34,7 @@ details{border-color:var(--border)}summary{font-family:var(--serif);color:var(--
 @media(max-width:379px){.stats{font-size:12px}.stat .label{font-size:9px}.view{padding:12px}.ability-grid{gap:6px}}
 @media(min-width:700px){body{display:flex;justify-content:center}.app{width:560px}.view{padding:18px}.tabs{width:560px}}
 
+body.embed [data-act=picker],body.embed [data-act=party]{display:none}body.embed .app{min-height:0}
 /* ---- 2026-11-22 reshape: 5 tabs, dice button, party view */
 .tabs{grid-template-columns:repeat(5,1fr)}
 .fab{position:fixed;z-index:6;right:max(12px,calc(50% - 268px));bottom:calc(84px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;border:2px solid #c9a24b;background:#241e17;color:#e9dfc7;font-size:24px;box-shadow:0 4px 14px #0008}
@@ -58,6 +59,23 @@ select,input[type=number],input[type=text],input:not([type]){min-height:40px}
 .recipe label{display:flex;gap:8px;align-items:center}
 select{background:#17130f;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px}
 .overlay{justify-items:center}
+
+/* ---- compact mode: companion inside the VTT window */
+body.embed{overflow-x:hidden}body.embed .cmp>*,body.embed .cmp .r>*{min-width:0}
+body.embed{font-size:14px}body.embed .mini-hp,body.embed .fab{display:none}body.embed .top{height:38px}body.embed .view{padding:8px}body.embed .tabs button{min-height:40px}
+body.embed .cmp{display:grid;gap:7px}.cmp .r{display:flex;align-items:center;gap:6px}.cmp .wrap{flex-wrap:wrap}.cmp .grow{flex:1}.cmp button{min-height:32px;padding:2px 10px;font-size:13px}
+.cmp .hpr button{width:40px;font-size:20px;padding:0}.cmp .hpr input{width:44px;flex:none;min-height:32px;text-align:center}.cmp .hpbar{flex:1;position:relative;height:32px;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:#17130f}
+.cmp .hpbar i{position:absolute;inset:0 auto 0 0;opacity:.55}.cmp .hpbar b{position:relative;display:block;text-align:center;line-height:30px}
+.cmp .stats5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.cmp .st{text-align:center;border:1px solid var(--border);border-radius:8px;padding:3px 0;background:#17130f}.cmp .st small{display:block;color:var(--dim);font-size:10px;text-transform:uppercase}.cmp .st b,.cmp .st button{font-size:15px}
+.cmp .pip{width:26px;height:26px;min-height:26px;padding:0}.cmp .sq{width:30px;padding:0}.cmp .pill{min-height:26px;font-size:12px;padding:1px 8px}.cmp select{min-height:30px;font-size:13px;padding:2px 6px}
+.cmp .lbl{font-family:var(--serif);font-variant:small-caps;letter-spacing:.08em;color:var(--gold);font-size:12px;margin-top:2px}
+.cmp .six{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.cmp .ab{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:3px 0}.cmp .ab small{color:var(--dim);font-size:10px}.cmp .ab b{font-size:15px}.cmp .ab span{font-size:10px;color:var(--dim)}
+.cmp .skl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}.cmp .skl .mini{display:flex;justify-content:space-between;gap:4px;font-size:11.5px;padding:2px 6px;min-height:28px;text-align:left}.cmp .skl .mini span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+
+.sec>summary{cursor:pointer;list-style:none;display:flex;justify-content:flex-start;text-align:left;align-items:center;gap:8px;min-height:26px}.sec>summary .muted{margin-left:auto}.sec>summary::-webkit-details-marker{display:none}
+.sec>summary:before{content:"▸";color:var(--gold);margin-right:4px;display:inline-block;transition:transform .12s}.sec[open]>summary:before{transform:rotate(90deg)}
+.sec>summary.lbl,.cmp .sec>summary{margin-bottom:4px}.sec .muted{font-family:var(--font);font-variant:normal;letter-spacing:0;font-size:12px}.cmp .sec>*:not(summary){margin-top:6px}.cmp .sec>.r+.r,.cmp .sec>.r+div{margin-top:6px}
+body.embed details.card.sec>summary{display:flex}
 </style></head>
 <body><main id="app" class="app"><div class="empty">Loading companion…</div></main><div id="toasts"></div>
 <script src="js/firebase-config.js"></script>

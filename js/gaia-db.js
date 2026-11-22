@@ -13,14 +13,14 @@
     if (v == null) delete o[ks.at(-1)]; else o[ks.at(-1)] = copy(v);
   }
   const snap = (key, v) => ({ key, val: () => copy(v), exists: () => v != null });
-  window.GeezGaiaDb = function (base = 'http://127.0.0.1:8740') {
+  window.GeezGaiaDb = function (base = 'http://127.0.0.1:8740', opts = {}) {   // opts: { gm: true } to act as the GM, { pc } to pick the player's PC (the VTT passes these)
     base = base.replace(/\/$/, '');
     let tree, raw, queue = Promise.resolve(), loadQueue=Promise.resolve(), loading=false, writing=false;
     const pendingEvents=[];
     const watchers = new Set(), oldToNew = new Map(), newToOld = new Map(), sheetIds = new Map();
     const qs = new URLSearchParams(location.search);
-    const player = qs.has('player') || !(qs.get('gm') === 'jonny' || qs.has('gmjonny'));
-    let selected = qs.get('pc') || qs.get('char') || localStorage.getItem('geezvtt.player.'+(qs.get('campaign')||localStorage.getItem('geezvtt.player.lastCampaign')||'world__daddies')+'.name') || '';
+    const player = opts.gm ? false : qs.has('player') || !(qs.get('gm') === 'jonny' || qs.has('gmjonny'));
+    let selected = opts.pc || qs.get('pc') || qs.get('char') || localStorage.getItem('geezvtt.player.'+(qs.get('campaign')||localStorage.getItem('geezvtt.player.lastCampaign')||'world__daddies')+'.name') || '';
     const selectedId = () => oldToNew.get(selected) || raw?.entities.find(e=>e.kind==='pc'&&e.name===selected)?.id || selected;
     const identity = () => player ? 'player:' + selectedId() : 'gm';
     // Campaign for player projection: ?campaign / ?live, else the selected PC's own campaign (so sheet.html?char=<pc> is enough).

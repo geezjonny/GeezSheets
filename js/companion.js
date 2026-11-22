@@ -8,6 +8,7 @@ import { attacksPerAction, planCharacter, spellCard, mod as abMod } from './leve
 const $ = (s, r = document) => r.querySelector(s);
 const app = $('#app'), params = new URLSearchParams(location.search);
 const GM = params.get('gm') === 'jonny';
+if (params.has('embed')) document.body.classList.add('embed');   // inside the VTT's character window
 const ENTITIES = 'https://geezsheets-default-rtdb.firebaseio.com/v2/worlds/gaia/entities';
 const AB = ['str', 'dex', 'con', 'int', 'wis', 'cha'], AL = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
 const TABS = [['char', 'Character'], ['actions', 'Actions'], ['spells', 'Spells'], ['inv', 'Inventory'], ['feats', 'Features']];
@@ -63,6 +64,11 @@ async function roll(label, expr) {
   // Also publish the latest roll per character to plain Firebase, so the Owlbear extension can show it on the token.
   if (id) fetch(`https://geezsheets-default-rtdb.firebaseio.com/gmroll/gaia/${encodeURIComponent(id)}.json`, { method: 'PUT',
     body: JSON.stringify({ name: pc?.name || '', label, total: r.total, nat: r.nat ?? null, detail: r.detail, ts: Date.now() }) }).catch(() => {});
+  // And in the table VTT's own format (test/rolls), so index.html shows it in its dice tray. Plain REST: the Gaia layer has no such path.
+  if (id) { const kept = r.dice.filter((d) => !d.drop), mod = r.total - kept.reduce((a, d) => a + d.v, 0), rid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    vr = { id: rid, by: pc?.name || 'Player', dice: kept.map((d) => ({ sides: d.s, result: d.v })), mod, total: r.total, ts: Date.now(), sub: label };
+    const base = 'https://geezsheets-default-rtdb.firebaseio.com/test/rolls';
+    fetch(base + '/last.json', { method: 'PUT', body: JSON.stringify(vr) }).catch(() => {}); fetch(base + '/log/' + rid + '.json', { method: 'PUT', body: JSON.stringify(vr) }).catch(() => {}); }
   try { if (pc?.campaign) await push(ref(db, `geezvtt/live/${pc.campaign}/rolls`), { by: pc.name, char: id, expr: `${label} ${rolled}`, detail: r.detail, total: r.total, nat: r.nat ?? null, dice: r.dice, ts: Date.now() }); } catch {}
   return r;
 }
@@ -115,7 +121,44 @@ function chargeRows(filter) {
 }
 
 // ---------- Character tab
+// Collapsible sections (VTT window): open/closed is remembered per section.
+const openKey = (k) => 'companion.open.' + k;
+const isOpen = (k, dflt = true) => { try { const v = localStorage.getItem(openKey(k)); return v == null ? dflt : v === '1'; } catch { return dflt; } };
+const sec = (k, title, body, dflt = true, cls = '') => `<details class="sec ${cls}" data-k="${k}" ${isOpen(k, dflt) ? 'open' : ''}><summary class="lbl">${title}</summary>${body}</details>`;
+document.addEventListener('toggle', (e) => { const k = e.target?.dataset?.k; if (k) try { localStorage.setItem(openKey(k), e.target.open ? '1' : '0'); } catch { /* fine */ } }, true);
+// Other tabs, in the VTT window: every card with a heading folds up under it.
+function collapsify() {
+  if (!document.body.classList.contains('embed')) return;
+  document.querySelectorAll('.view > .card').forEach((card, i) => {
+    const h = card.firstElementChild; if (!h || !h.classList.contains('section-title') || card.matches('details')) return;
+    const key = tab + '.' + (h.textContent.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || i), d = document.createElement('details');
+    d.className = card.className + ' sec'; d.dataset.k = key; d.open = isOpen(key); const s = document.createElement('summary'); s.className = 'section-title'; s.innerHTML = h.innerHTML; h.remove();
+    d.append(s, ...card.childNodes); card.replaceWith(d);
+  });
+}
+// Compact Character tab for the VTT window: HP, AC row, inspiration / exhaustion, conditions, abilities, saves, skills, short rest.
+function charTabCompact() {
+  const c = pc.combat || {}, hp = Number(c.hp_current ?? 0), max = Math.max(1, Number(c.hp_max ?? 1)), pct = Math.max(0, Math.min(100, hp / max * 100)), col = pct > 50 ? 'var(--green)' : pct > 25 ? 'var(--warn)' : 'var(--red)';
+  const conds = list(c.conditions), conc = c.concentration || {}, d = c.death_saves || {};
+  const req = (r) => esc(JSON.stringify(r));
+  const skills = SKILLS.map(([k, l, a]) => { const s = pc.skills?.[k] || {}; return `<button class="mini" data-req='${req({ kind: 'skill', key: k })}'><span>${s.expertise ? '◉' : s.proficient ? '●' : '○'} ${esc(l)}</span><b>${bon(s.bonus ?? abMod(stat(a)))}</b></button>`; }).join('');
+  const stats = [['AC', c.ac ?? '—', ''], ['Init', bon(c.initiative_bonus ?? abMod(stat('dex'))), 'init'], ['Spd', c.speed ?? '—', ''], ['Prof', bon(profB()), ''], ['Pass', pc.senses?.passive_perception ?? 10 + abMod(stat('wis')), '']];
+  return `<section class="view cmp">
+${sec('c.vitals', 'Vitals <span class="muted">' + hp + '/' + max + ' · AC ' + esc(c.ac ?? '—') + '</span>', `<div class="r hpr"><button class="danger" data-act="damage" aria-label="Damage">−</button><div class="hpbar"><i style="width:${pct}%;background:${col}"></i><b>${hp} / ${max}${Number(c.temp_hp || 0) ? ` +${Number(c.temp_hp)}` : ''}</b></div><button class="primary" data-act="heal" aria-label="Heal">+</button><input id="hp-amount" inputmode="numeric" type="number" min="1" placeholder="1" value="${esc(keepHp)}" aria-label="Amount"></div>
+${hp === 0 ? `<div class="r">${['success', 'fail'].map((k) => `<span class="muted">${k}</span>${[1, 2, 3].map((n) => `<button class="pip ${count(d[k]) >= n ? 'on' : ''}" data-act="death" data-kind="${k}" data-n="${n}">${count(d[k]) >= n ? '●' : '○'}</button>`).join('')}`).join('')}${rbtn({ kind: 'death' }, 'Roll', 'mini')}</div>` : ''}
+<div class="r stats5">${stats.map(([l, v, k]) => `<div class="st"><small>${l}</small>${k ? rbtn({ kind: 'initiative' }, v, 'mini') : `<b>${esc(v)}</b>`}</div>`).join('')}</div>`)}
+${sec('c.status', 'Status' + (conds.length ? ' <span class="muted">' + conds.length + ' condition' + (conds.length > 1 ? 's' : '') + '</span>' : ''), `<div class="r"><button class="pip ${c.inspiration ? 'on' : ''}" data-act="inspiration" aria-label="Inspiration">${c.inspiration ? '●' : '○'}</button><span>Inspiration</span><span class="grow"></span><span class="muted">Exhaustion</span><button class="mini sq" data-act="exhaust" data-delta="-1">−</button><b>${Number(c.exhaustion || 0)}</b><button class="mini sq" data-act="exhaust" data-delta="1">+</button></div>
+<div class="r wrap">${conds.map((x) => `<button class="pill" data-act="condition-remove" data-name="${esc(x)}">${esc(x)} ×</button>`).join('')}<select data-cond-add aria-label="Add condition"><option value="">Conditions…</option>${D.conditions.filter((x) => !conds.includes(x.name)).map((x) => `<option>${esc(x.name)}</option>`).join('')}</select></div>
+${conc.active ? `<div class="r conc"><span class="grow">Concentrating: <b>${esc(conc.spell)}</b></span><button class="mini" data-act="conc-drop">Drop</button></div>` : ''}
+${conc.check ? `<div class="r"><span class="grow">Conc. save CON DC ${esc(conc.check.dc)}</span>${rbtn({ kind: 'save', key: 'con' }, 'Roll', 'mini')}<button class="mini" data-act="conc-keep">Keep</button><button class="mini" data-act="conc-drop">Drop</button></div>` : ''}`)}
+${sec('c.abilities', 'Abilities', `<div class="six">${AB.map((k) => `<button class="mini ab" data-req='${req({ kind: 'ability', key: k })}'><small>${AL[k]}</small><b>${bon(abMod(stat(k)))}</b><span>${stat(k)}</span></button>`).join('')}</div>`)}
+${sec('c.saves', 'Saving throws', `<div class="six">${AB.map((k) => `<button class="mini ab" data-req='${req({ kind: 'save', key: k })}'><small>${AL[k]}${list(pc.saves?.proficient).includes(k) ? ' ●' : ''}</small><b>${bon(pc.saves?.[k] ?? abMod(stat(k)))}</b></button>`).join('')}</div>`)}
+${sec('c.skills', 'Skills', `<div class="skl">${skills}</div>`)}
+${sec('c.rest', 'Rest', `<div class="r"><button class="mini grow" data-act="short-rest">Short rest</button></div>`, true)}</section>`;
+}
+
 function charTab() {
+  if (document.body.classList.contains('embed')) return charTabCompact();
   const c = pc.combat || {}, hp = Number(c.hp_current ?? 0), max = Math.max(1, Number(c.hp_max ?? 1)), pct = Math.max(0, Math.min(100, hp / max * 100)), col = pct > 50 ? 'var(--green)' : pct > 25 ? 'var(--warn)' : 'var(--red)';
   const sub = `Lv ${pc.level ?? '?'} ${pc.class || ''}${pc.subclass ? ' (' + pc.subclass + ')' : ''} · ${pc.species || ''}`;
   const conds = list(c.conditions), conc = c.concentration || {}, d = c.death_saves || {};
@@ -351,7 +394,7 @@ function picker() {
   get(ref(db, 'characters/pcs')).then((s) => { const l = Object.entries(s.val() || {}).map(([i, x]) => ({ ...x, id: i })).filter((x) => x.name && x.id !== '__oracle__' && x.campaign !== '__oracle__' && x.type !== 'npc' && x.record_type !== 'npc').sort((a, b) => (a.campaign || '').localeCompare(b.campaign || '') || a.name.localeCompare(b.name)); $('#pick-list').innerHTML = l.map((x) => `<button data-act="pick" data-id="${esc(x.id)}"><b>${esc(x.name)}</b><br><span class="muted">Lv ${esc(x.level ?? '?')} ${esc(x.class || '')} · ${esc(x.campaign || '')}</span></button>`).join('') || '<p class="error">No characters found.</p>'; }).catch((e) => { $('#pick-list').textContent = 'Could not load characters: ' + e.message; });
 }
 function select(cid) {
-  id = cid; localStorage.setItem('companion.char', id); history.replaceState(null, '', location.pathname + `?char=${encodeURIComponent(id)}` + (GM ? '&gm=jonny' : '') + location.hash);
+  id = cid; localStorage.setItem('companion.char', id); history.replaceState(null, '', location.pathname + `?char=${encodeURIComponent(id)}` + (GM ? '&gm=jonny' : '') + (params.has('embed') ? '&embed=1' : '') + location.hash);
   if (db.selectPC && !GM) db.selectPC(id); unsubPc?.(); pc = null; view = 'char';
   unsubPc = onValue(ref(db, 'characters/pcs/' + id), (s) => { pc = s.val() ? { ...s.val(), id } : null; if (pc) { document.title = pc.name + ' · Companion'; followCall(); render(); } else { toast('That character was not found'); picker(); } });
 }
@@ -364,6 +407,7 @@ function render() {
   if (!pc) return picker();
   const body = { char: charTab, actions: actionsTab, spells: spellsTab, inv: invTab, feats: featsTab }[tab] || charTab;
   app.innerHTML = header() + callBanner() + body() + tabsBar();
+  collapsify();
   if (keepHp && $('#hp-amount')) $('#hp-amount').value = keepHp;
   if (GM && view === 'char') { const b = document.createElement('div'); b.className = 'card gmbar'; b.innerHTML = '<button data-act="gm-levelup">Level up</button>'; $('.view')?.append(b); }
 }
@@ -418,3 +462,8 @@ await loadData();
 if (GM) gmStart();
 const chosen = params.get('char') || (GM ? null : localStorage.getItem('companion.char'));
 if (chosen) select(chosen); else if (GM) render(); else picker();
+
+document.addEventListener('change', async (e) => {   // compact Character tab: add a condition from the dropdown
+  const sel = e.target.closest?.('[data-cond-add]'); if (!sel || !sel.value || !pc) return; const n = sel.value;
+  await write(() => update(path('combat'), { conditions: [...list(pc.combat?.conditions).filter((x) => x !== n), n] }));
+});

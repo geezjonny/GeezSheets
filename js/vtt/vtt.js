@@ -220,7 +220,7 @@ const release = () => {
 let tokMenu = null;
 const closeTokMenu = () => { tokMenu?.remove(); tokMenu = null; };
 document.addEventListener("pointerdown", (e) => { if (tokMenu && !tokMenu.contains(e.target)) closeTokMenu(); });
-const SHEET_URL = "https://geezjonny.github.io/GeezSheets/sheet.html";   // GeezSheets (sheet.html?char=<pc id>); change if hosted elsewhere
+const SHEET_URL = "companion.html";   // GeezSheets (sheet.html?char=<pc id>); change if hosted elsewhere
 let pcs = null;   // player characters from the main app (read only): [{ id, name }]
 async function loadPcs() {
   if (pcs) return pcs; pcs = [];
@@ -268,20 +268,26 @@ function openSheetWindow(pc) {
 }
 // Right-click a PC token: a floating, draggable window (stays open, refreshes itself). Other tokens get the quick popup.
 const tokWins = {};
-function openTokenWindow(e, id) {
-  const name = S.tokens[id].label || id;
+async function openTokenWindow(e, id) {
+  const t = S.tokens[id], name = t.label || id, pcId = isPcToken(t) ? await pcIdFor(t) : null;
   let w = tokWins[id];
   if (!w) {
-    w = tokWins[id] = floatWindow({ id: "token-" + id, title: name, x: Math.max(0, Math.min(innerWidth - 280, e.clientX + 12)), y: Math.max(40, Math.min(innerHeight - 260, e.clientY + 12)) });
+    w = tokWins[id] = floatWindow({ id: "token-" + id, title: name, x: Math.max(0, Math.min(innerWidth - (pcId ? 410 : 280), e.clientX + 12)), y: Math.max(40, Math.min(innerHeight - (pcId ? 620 : 260), e.clientY + 12)) });
     w.body.classList.add("tokwin");
   }
   w.el.querySelector(".fwin-title").textContent = name;
+  if (pcId && w.charPc !== pcId) {   // a PC: the whole companion (Character, Actions, Spells, Inventory, Features, with every roll) lives in the window
+    w.charPc = pcId; w.body.classList.remove("tokwin"); w.body.classList.add("charwin");
+    w.body.style.cssText = "width:min(390px,92vw);height:min(600px,84vh);padding:0;display:flex;flex-direction:column;overflow:hidden;resize:both";
+    w.body.innerHTML = `${S.isGM ? '<details class="tokctl"><summary>Token controls</summary><div class="tokwin-box"></div></details>' : ""}<iframe src="${SHEET_URL}?char=${encodeURIComponent(pcId)}&embed=1" style="flex:1;width:100%;border:0;min-height:0" title="${name.replace(/[&<>"]/g, "")}"></iframe>`;
+  }
   w.show(); fillTokenWindow(w, id);
 }
 function fillTokenWindow(w, id) {
   if (!S.tokens[id] || !visibleToPlayer(S.tokens[id], Object.values(S.map.fog || {}), S.isGM, S.currentVisible, S.map.exploredEnabled !== false)) { w.hide(); return; }
-  const box = document.createElement("div"); box.className = "tokwin-box"; w.body.replaceChildren(box);
   w.el.querySelector(".fwin-title").textContent = S.tokens[id].label || id;
+  if (w.charPc) { const ctl = w.body.querySelector(".tokwin-box"); if (ctl && !w.body.querySelector("details.tokctl")?.contains(document.activeElement)) { ctl.replaceChildren(); buildTokenMenu(ctl, id, () => setTimeout(() => fillTokenWindow(w, id), 250), () => ctl.isConnected && !w.el.hidden); } return; }   // the companion iframe stays put
+  const box = document.createElement("div"); box.className = "tokwin-box"; w.body.replaceChildren(box);
   buildTokenMenu(box, id, () => setTimeout(() => fillTokenWindow(w, id), 250), () => w.body.firstChild === box && !w.el.hidden);
 }
 document.addEventListener("turnchanged", drawTokens);
@@ -303,7 +309,7 @@ async function buildTokenMenu(menu, id, done, alive) {
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const name = t.label || id;
   menu.innerHTML = `<div><b>${esc(name)}</b></div><div>HP: ${t.hp != null ? `${t.hp} / ${t.max ?? t.hp}` : "—"}</div>`;
-  if (S.isGM && t.hp != null) {   // GM: adjust an enemy's HP
+  if (S.isGM && t.hp != null && !S.pcLive?.[S.tokPc?.[id]]?.hp_max) {   // GM: adjust an enemy's HP (a PC's HP lives on the sheet)
     menu.insertAdjacentHTML("beforeend", `<div><button data-d="-1">−</button> <button data-d="1">+</button></div>`);
     menu.addEventListener("click", (ev) => { const b = ev.target.closest("[data-d]"); if (!b) return; const k = S.tokens[id]; if (!k) return;
       const hp = Math.max(0, Math.min(k.max ?? k.hp, k.hp + +b.dataset.d)); put(`tokens/${id}/hp`, hp); menu.children[1].textContent = `HP: ${hp} / ${k.max ?? k.hp}`; });
@@ -407,7 +413,7 @@ async function applyTokenDamage(tid, amt, type = "") {
   amt = adjusted.amount;
   if (adjusted.reason !== "normal") { const toast = document.getElementById("toast"); if (toast) { toast.textContent = `${t.label || tid}: ${adjusted.reason} to ${type || "damage"}`; toast.style.display = "block"; setTimeout(() => (toast.style.display = "none"), 2500); } }
   if (!(amt > 0)) return;
-  if (t.hp != null) return put(`tokens/${tid}/hp`, Math.max(0, t.hp - amt));
+  if (t.hp != null && !S.pcLive?.[S.tokPc?.[tid]]?.hp_max) return put(`tokens/${tid}/hp`, Math.max(0, t.hp - amt));
   const pcId = await pcIdFor(t); if (!pcId) return;
   try { await txnAt(`characters/pcs/${pcId}/combat`, (c) => sheetHpChange(c, amt, false)); } catch (err) { console.warn("HP not saved", err); }
 }

@@ -106,8 +106,9 @@ export function drawTokens() {
     el("circle", { r: 17, fill: t.color || (t.hp != null ? "#5a2a24" : COLORS[i % COLORS.length]), class: "stamp" }, b);
     if (t.img) el("image", { href: t.img, x: -17, y: -17, width: 34, height: 34, preserveAspectRatio: "xMidYMid slice", "clip-path": "url(#tokclip)", "pointer-events": "none" }, b);
     else { el("circle", { r: 12.5, class: "stamp-ring" }, b); el("text", { y: 1 }, b).textContent = (t.label || id).slice(0, 2); }
-    if (t.hp != null) el("text", { y: 28, class: "hp" }, b).textContent = `${t.hp}/${t.max}`;
-    else { const c = S.pcLive?.[S.tokPc?.[id]]; if (c?.hp_max) el("text", { y: 28, class: "hp" }, b).textContent = `${c.hp_current ?? c.hp_max}/${c.hp_max}`; }
+    const sheetHp = S.pcLive?.[S.tokPc?.[id]];   // a PC's sheet is the truth, even if the token also carries an old hp number
+    if (sheetHp?.hp_max) el("text", { y: 28, class: "hp" }, b).textContent = `${sheetHp.hp_current ?? sheetHp.hp_max}/${sheetHp.hp_max}`;
+    else if (t.hp != null) el("text", { y: 28, class: "hp" }, b).textContent = `${t.hp}/${t.max}`;
     const effects = activeEffects(t, S.round || 1), timed = effects.filter((x) => x.rounds != null);
     if (effects.length) { const badge = el("text", { y: -25, class: "effect-badge" }, b); badge.textContent = timed.length ? timed.map((x) => effectRemaining(x, S.round || 1)).join("/") : "✦"; const title = document.createElementNS(NS, "title"); title.textContent = effects.map((x) => `${x.name}${x.rounds == null ? "" : ` (${effectRemaining(x, S.round || 1)})`}`).join(", "); badge.append(title); }
   });
