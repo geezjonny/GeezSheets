@@ -35,7 +35,8 @@ Run `node tools/audit-pcs.mjs --to-level daddies=5,disney=4` (dry run). Check th
 - ASI at level 4 is not auditable: report "check ability scores" without changing stats.
 Write the human-readable report to `docs/pc-audit-2026-11-21.md`. Then tell the user to run `node tools/audit-pcs.mjs --to-level daddies=5,disney=4 --apply` themselves. Do not run it.
 
-## Task 3: roll recipes (pure module) `js/recipes.js` + tests
+## Task 3: DONE (Claude, 2026-11-21): `js/recipes.js` + `js/test/recipes.test.mjs`
+API (see the header comment of js/recipes.js): `recipeFor(pc, {kind:'spell',name}|{kind:'attack',attack}|{kind:'skill'|'save'|'ability',key}|{kind:'initiative'}|{kind:'death'}, {spells, slot, round1})` returns `{label, rolls:[{name, expr:'1d8+7', text, parts, riders:[{label,expr,note}]}], notes, dc?, slotOptions?, attacks?}`. `expr` is ready for the dice roller; riders are optional toggles. The original task text follows for reference.
 `recipeFor(pc, thing, options)` returns `{label, parts:[{text, dice?, flat?, source}], summary, notes}` where parts are the dice and labelled modifiers to roll and add. Spells use `data/spells.json`:
 `heal_at_slot_level` ("1d8 + MOD"), `damage.damage_at_slot_level`, `damage.damage_at_character_level` (cantrips scale at 5/11/17), `dc`, `attack_type`, `higher_level` text, `area_of_effect`.
 Support: spell attack ("d20 + prof + casting mod"), save spells ("DC = 8 + prof + casting mod, target rolls DEX save"), healing with MOD = casting ability mod, upcasting per slot level (offer a slot-level selector for leveled spells),
