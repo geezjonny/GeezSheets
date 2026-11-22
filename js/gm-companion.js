@@ -55,7 +55,8 @@ async function changeHp(id, action, n) {
   });
 }
 
-const weatherRef = ref(db, 'gmweather/gaia');
+// Weather lives outside the Gaia tree, so it goes straight to the Firebase REST API (the Owlbear extension reads the same URL).
+const WEATHER = 'https://geezsheets-default-rtdb.firebaseio.com/gmweather/gaia.json';
 const TYPES = ['clear', 'rain', 'snow', 'fog', 'storm'];
 const percent = (n) => Math.max(0, Math.min(100, Math.trunc(Number(n) || 0)));
 let weather = { type: 'clear', intensity: 0, wind: 0 }, weatherQueue = Promise.resolve();
@@ -73,7 +74,7 @@ function saveWeather(type = weather.type) {
   const value = { type, intensity: percent($('#intensity').value), wind: percent($('#wind').value), at: Date.now() };
   weather.type = type;
   // Serialize local changes so rapid clicks cannot finish out of order.
-  weatherQueue = weatherQueue.then(() => set(weatherRef, value)).catch((e) => toast('Weather not saved: ' + e.message));
+  weatherQueue = weatherQueue.then(async () => { const r = await fetch(WEATHER, { method: 'PUT', body: JSON.stringify(value) }); if (!r.ok) throw new Error('HTTP ' + r.status); showWeather(value); }).catch((e) => toast('Weather not saved: ' + e.message));
 }
 
 if (!GM) {
@@ -114,8 +115,9 @@ if (!GM) {
     const camps = campaigns(); if (!camps.includes(gmCamp)) gmCamp = camps[0] || '';
     renderParty();
   }, (err) => { $('#party').textContent = 'Could not load party: ' + err.message; });
-  onValue(weatherRef, (s) => showWeather(s.val()), (err) => {
+  fetch(WEATHER).then((r) => r.json()).then(showWeather).catch((err) => {
     $('#weather-controls').disabled = true;
     $('#weather-current').textContent = 'Could not load weather: ' + err.message;
   });
+
 }
