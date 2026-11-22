@@ -2,6 +2,10 @@
 
 ## 2026-11-22
 
+### GM Companion (`gm-companion.html`)
+- **New GM page:** control every PC's HP (-5 to +5, damage, heal) and spell-slot pips from one screen, next to the players' sheets.
+- **Weather control:** pick clear, rain, snow, fog or storm with intensity and wind; the Owlbear extension draws it for everyone.
+
 ### Companion: simplified to 5 tabs, GM party screen, rests, spell preparation, level up
 - **Simpler layout:** Character, Actions, Spells, Inventory and Features, plus a floating dice button. Skills, saves and abilities moved onto the Character tab; equipment, coin and consumables are in Inventory (with a Use button that takes one off the count); notes live at the bottom of Features.
 - **Actions tab:** what you do on your turn: attack count, weapons with attack and damage recipes, cantrips, and limited-use features with pips.

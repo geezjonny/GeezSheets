@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<script>
+  // GeezSheets on Gaia (data in Firebase /v2). Always Firebase, also when opened from this PC; ?gaia=... overrides (tests).
+  (function(){const q=new URLSearchParams(location.search);if(q.get('db')==='gaia'&&q.has('gaia'))return;q.set('db','gaia');
+  if(!q.has('gaia'))q.set('gaia','firebase');
+  location.replace(location.pathname+'?'+q.toString().replace(/=(&|$)/g,'$1')+location.hash);})();
+</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GM Companion · GeezSheets</title><link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+/* Parchment and brass presentation, copied from companion.html. */
+:root{--bg:#12100e;--panel:#1d1814;--panel2:#262019;--border:#4a3f2a;--gold:#c9a24b;--gold-dim:#8b6f35;--text:#e9dfc7;--dim:#a39a85;--red:#b3412f;--green:#4f9d69;--font:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;--serif:Georgia,'Iowan Old Style',serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(ellipse at 50% -20%,#2b2118 0,#12100e 55%);color:var(--text);font:16px var(--font)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px);mix-blend-mode:soft-light}
+button,input,select{font:inherit;color:var(--text);border:1px solid var(--border);border-radius:10px;min-height:44px;padding:8px 12px}button{cursor:pointer;background:#2a231b}button:hover{border-color:var(--gold);color:#f1dfae}button:active{transform:translateY(1px) scale(.985)}button:disabled{cursor:wait;opacity:.5}input,select{background:#15120f}button.primary{background:rgba(79,157,105,.2);border-color:#4f9d69;color:#a7d8b4}button.danger{background:rgba(179,65,47,.2);border-color:#9a3c2d;color:#f1aaa0}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.app{max-width:1440px;margin:auto;padding:0 24px 48px}.top{display:flex;align-items:center;gap:12px;padding:24px 0;border-bottom:1px solid var(--border)}h1,h2,h3{font-family:var(--serif);margin:0}h1{font-size:1.8rem;color:var(--gold)}h2{font-size:1.4rem;color:var(--gold)}h3{font-size:1.4rem;overflow-wrap:anywhere}.muted{color:var(--dim)}.top .muted{margin-left:auto}.section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:24px 0 16px}.section-head label{display:flex;align-items:center;gap:10px}select{max-width:65vw}
+.party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));gap:16px;align-items:start}.card{background:linear-gradient(145deg,rgba(38,32,25,.98),rgba(29,24,20,.98));border:1px solid var(--border);border-radius:13px;padding:18px;box-shadow:inset 0 1px rgba(255,255,255,.035),0 16px 35px -28px #000}.hp-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:16px}.hp-num{font:bold 22px var(--mono)}.temp{color:#c4b5fd;font:14px var(--mono)}.bar{height:28px;background:#130f0c;border:1px solid #3b3021;border-radius:99px;overflow:hidden;margin:12px 0}.bar i{display:block;height:100%;background:var(--green);border-radius:99px}.bar.low i{background:var(--red)}.quick-chips{display:flex;gap:8px;margin-bottom:8px}.quick-chips button{flex:1;font-family:var(--mono)}.hp-controls{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px}.hp-controls input{width:100%;text-align:center}.slots{margin-top:18px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #3c3224}.row:last-child{border:0}.pips{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.pip{width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;background:transparent;border-color:#79633a}.pip.on{background:var(--gold);border-color:#e0bd6a;box-shadow:0 0 10px #c9a24b66;color:#251c0d}.slot-label{white-space:nowrap}.empty{color:var(--dim);padding:24px}
+.weather-types{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}.weather-types [aria-pressed=true]{outline:2px solid var(--gold);background:#3a2e1d;color:#e0bd6a}.weather-sliders{display:grid;grid-template-columns:1fr 1fr;gap:24px}.weather-sliders label{display:grid;grid-template-columns:1fr auto;gap:8px}.weather-sliders input{grid-column:1/-1;width:100%;padding:0;accent-color:var(--gold)}.weather-current{margin:20px 0 0;line-height:1.6;overflow-wrap:anywhere}.toast{position:fixed;z-index:20;left:50%;bottom:24px;transform:translateX(-50%);background:#292119;border:1px solid var(--gold-dim);border-radius:10px;padding:12px 16px;max-width:92vw;box-shadow:0 10px 30px #0008}.error{color:#e49b8e}
+@media(max-width:600px){.app{padding:0 14px 32px}.top{align-items:start}.top .muted{font-size:14px}.weather-sliders{grid-template-columns:1fr}.hp-num{font-size:20px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+</style></head>
+<body>
+<main id="app" class="app">
+  <header class="top"><h1>GM Companion</h1><span class="muted">GeezSheets · GM only</span></header>
+  <div id="dashboard" hidden>
+    <section aria-labelledby="party-title">
+      <div class="section-head"><h2 id="party-title">Party</h2><label>Campaign <select id="gm-camp" disabled><option>Loading…</option></select></label></div>
+      <div id="party" class="party-grid"><p class="muted">Loading party…</p></div>
+    </section>
+    <section aria-labelledby="weather-title">
+      <div class="section-head"><h2 id="weather-title">Weather</h2><span class="muted">Gaia</span></div>
+      <div class="card">
+        <fieldset id="weather-controls" disabled style="border:0;padding:0;margin:0;min-width:0">
+          <legend class="muted">Weather type</legend>
+          <div class="weather-types">
+            <button data-weather="clear" aria-pressed="false">Clear</button><button data-weather="rain" aria-pressed="false">Rain</button><button data-weather="snow" aria-pressed="false">Snow</button><button data-weather="fog" aria-pressed="false">Fog</button><button data-weather="storm" aria-pressed="false">Storm</button>
+          </div>
+          <div class="weather-sliders">
+            <label for="intensity">Intensity <output id="intensity-value" for="intensity">0</output><input id="intensity" type="range" min="0" max="100" value="0"></label>
+            <label for="wind">Wind <output id="wind-value" for="wind">0</output><input id="wind" type="range" min="0" max="100" value="0"></label>
+          </div>
+        </fieldset>
+        <p id="weather-current" class="weather-current muted" role="status">Loading current weather…</p>
+      </div>
+    </section>
+  </div>
+  <p id="access" class="empty">Loading GM companion…</p>
+</main>
+<div id="toasts" role="status" aria-live="polite"></div>
+<script src="js/firebase-config.js"></script>
+<script type="module" src="js/gm-companion.js"></script>
+</body></html>
