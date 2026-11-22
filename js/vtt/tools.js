@@ -405,17 +405,31 @@ export function toolDown(e, p) {
 // Paint bucket: flood-fill the cells reachable from the click without crossing a wall or door, as row-run rectangles.
 function bucketFill(type, p) {
   const { cols: COLS, rows: ROWS } = mapSize(), c0 = cellOf(p), start = [(c0.x - 20) / 40, (c0.y - 20) / 40];
-  const walls = Object.values(S.map.walls || {}), doors = Object.values(S.objects).filter((o) => o.kind === "door");
-  const vWall = (X, y0) => walls.some((w) => w.x1 === X && w.x2 === X && Math.min(w.y1, w.y2) <= y0 && Math.max(w.y1, w.y2) >= y0 + 40) || doors.some((d) => d.dir === "v" && d.x === X && d.y === y0 + 20);
-  const hWall = (Y, x0) => walls.some((w) => w.y1 === Y && w.y2 === Y && Math.min(w.x1, w.x2) <= x0 && Math.max(w.x1, w.x2) >= x0 + 40) || doors.some((d) => d.dir === "h" && d.y === Y && d.x === x0 + 20);
+  // A step between two neighbouring cells is blocked when any wall or door segment crosses the line between their centres.
+  // (Works for diagonal / off-grid walls such as imported cave maps, not just walls lying on cell edges.)
+  const lv = S.level ?? S.map.level ?? 0, segs = [];
+  for (const w of Object.values(S.map.walls || {})) if ((w.lv ?? 0) === lv) segs.push([w.x1, w.y1, w.x2, w.y2]);
+  for (const d of Object.values(S.objects)) if (d.kind === "door" && (d.lv ?? 0) === lv) { const n = d.doorKind === "double" ? 40 : 20, v = d.dir === "v"; segs.push([d.x - (v ? 0 : n), d.y - (v ? n : 0), d.x + (v ? 0 : n), d.y + (v ? n : 0)]); }
+  const byCell = new Map();   // cell "cx,cy" -> segments whose bounding box touches it
+  for (const s of segs) {
+    const x0 = Math.max(0, Math.floor(Math.min(s[0], s[2]) / 40)), x1 = Math.min(COLS - 1, Math.floor(Math.max(s[0], s[2]) / 40));
+    const y0 = Math.max(0, Math.floor(Math.min(s[1], s[3]) / 40)), y1 = Math.min(ROWS - 1, Math.floor(Math.max(s[1], s[3]) / 40));
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const k = x + "," + y; (byCell.get(k) || byCell.set(k, []).get(k)).push(s); }
+  }
+  const orient = (ax, ay, bx, by, cx, cy) => Math.sign((bx - ax) * (cy - ay) - (by - ay) * (cx - ax));
+  const crosses = (ax, ay, bx, by, [cx, cy, dx, dy]) => orient(ax, ay, bx, by, cx, cy) * orient(ax, ay, bx, by, dx, dy) <= 0 && orient(cx, cy, dx, dy, ax, ay) * orient(cx, cy, dx, dy, bx, by) <= 0
+    && !(orient(ax, ay, bx, by, cx, cy) === 0 && orient(ax, ay, bx, by, dx, dy) === 0);   // collinear overlap is not a crossing
+  const blockedStep = (cx, cy, nx, ny) => {
+    const ax = cx * 40 + 20, ay = cy * 40 + 20, bx = nx * 40 + 20, by = ny * 40 + 20;
+    return (byCell.get(cx + "," + cy) || []).some((s) => crosses(ax, ay, bx, by, s)) || (byCell.get(nx + "," + ny) || []).some((s) => crosses(ax, ay, bx, by, s));
+  };
   const seen = new Set([start.join()]), q = [start];
   while (q.length) {
     const [cx, cy] = q.pop();
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = cx + dx, ny = cy + dy;
       if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || seen.has(nx + "," + ny)) continue;
-      const blocked = dx ? vWall(40 * (dx > 0 ? cx + 1 : cx), 40 * cy) : hWall(40 * (dy > 0 ? cy + 1 : cy), 40 * cx);
-      if (!blocked) { seen.add(nx + "," + ny); q.push([nx, ny]); }
+      if (!blockedStep(cx, cy, nx, ny)) { seen.add(nx + "," + ny); q.push([nx, ny]); }
     }
   }
   const changes = {}, base = type === "fog" ? "map/fog" : "map/floors"; let n = 0;

@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-21
+
+### VTT: old dd2vtt maps import, reference picture, Replace tool, bucket fix
+- **dd2vtt import works again:** maps with doors (24 of the 40 in `battlemap/`) were silently failing to import. They load now, including bloom-castlegrounds.
+- **Reference picture:** importing a dd2vtt can show its picture behind the grid so you can trace walls, doors and lights over it. It is never saved: scenes and exports stay picture-free. Show / hide and opacity are in the View menu and the Reference button, with an info panel and Copy base64.
+- **Replace tool (View > Replace...):** swap a material or kind across the scene while keeping the category (walls, floors, roofs, doors, props, lights), e.g. every stone wall to brick or every wood door to iron. Pick From / To, see how many items change, apply in one undoable step. An eyedropper picks from the map, and right-click gives "Replace all like this...".
+- **Paint bucket respects walls:** it leaked across the whole map on imported cave maps with diagonal walls. It now stops at any wall or door.
+- **Still to do:** 3D view is lackluster and needs a pass (see the to-do list); the View menu's Reference line has no tick; the Replace window layout is cramped.
+
 ## 2026-11-20
 
 ### VTT: new tools and tidy-up (built with Codex, tests pass, not clicked through yet)

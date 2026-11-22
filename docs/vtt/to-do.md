@@ -49,6 +49,9 @@ Written by Codex jobs, node-tested only. The page loads with no console errors; 
 - [ ] `GeezSheets/js/stamps.js` ink props for 2D.
 - [ ] Underground / linked scenes (`zoom-ink-test/underground.js`) as a v2 of Scene.
 
+- [ ] 3D view is lackluster: improve it (look, lighting, props, camera).
+- [ ] View menu: tick the Reference line when shown; tidy the Replace window layout.
+
 ## Decided to skip (keeps it simple)
 - Atlas ink post-process and paper shader, `texel.js` pixel textures, the GeezSheets realistic textures (dark, clash with the parchment, ink and Wind Waker look), world / settlement generators, Owlbear extension code.
 

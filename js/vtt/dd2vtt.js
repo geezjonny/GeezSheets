@@ -164,33 +164,31 @@ export async function applyDD2VTT(data, mode = "merge") {
   if (data.floorKeys?.length) changes["map/level"] = Number(data.floorKeys[0]) || 0;
   if (data.light) { changes["map/light"] = data.light; if (data.light === "dark") for (let y = 0; y < data.rows; y++) changes[`map/fog/${id("g", n++)}`] = { x: 0, y: y * 40, w: data.cols * 40, h: 40, open: false, lv: 0 }; }
   changes.seeded = true;
-  await store.patch(changes);
+  await store.patch(JSON.parse(JSON.stringify(changes))); // Firebase rejects undefined values (e.g. door mat)
   if (data.atmosphere?.time != null) await store.put("atmosphere", { time: data.atmosphere.time, weather: data.atmosphere.weather, color: "#4d86b8" });
   return data;
 }
 
 // Ask where an import should go. Resolves "merge", "new" or null (cancelled).
-export async function askMode(label) {
+export async function askMode(label, hasImage = false) {
   const { floatWindow } = await import("./ui.js");
   return new Promise((resolve) => {
     const w = floatWindow({ id: "import-mode", title: "Import map", x: 300, y: 170 });
     const done = (v) => { resolve(v); w.hide(); w.el.remove(); };
-    w.body.innerHTML = `<div class="import-mode"><b></b><span>Imports the map and all supported floors.</span><label><input type="checkbox" data-atmo checked> Also set time, weather and light</label><button type="button" data-m="merge">Add to current scene</button><button type="button" data-m="new">New scene (current one is saved first)</button><button type="button" data-m="">Cancel</button></div>`;
+    w.body.innerHTML = `<div class="import-mode"><b></b><span>Imports the map and all supported floors.</span><label><input type="checkbox" data-atmo checked> Also set time, weather and light</label>${hasImage ? `<label><input type="checkbox" data-ref checked> Show the picture as a reference (not saved)</label>` : ""}<button type="button" data-m="merge">Add to current scene</button><button type="button" data-m="new">New scene (current one is saved first)</button><button type="button" data-m="">Cancel</button></div>`;
     w.body.querySelector("b").textContent = label;
     const st = document.createElement("style"); st.textContent = ".import-mode{display:grid;gap:.4rem;max-width:18rem}.import-mode span{font-size:.8rem;opacity:.8}"; w.body.append(st);
-    w.body.addEventListener("click", (e) => { const b = e.target.closest("[data-m]"); if (b) { askMode.lastAtmo = !!w.body.querySelector("[data-atmo]")?.checked; done(b.dataset.m || null); } });
+    w.body.addEventListener("click", (e) => { const b = e.target.closest("[data-m]"); if (b) { askMode.lastAtmo = !!w.body.querySelector("[data-atmo]")?.checked; askMode.showReference = !!w.body.querySelector("[data-ref]")?.checked; done(b.dataset.m || null); } });
     w.el.querySelector(".fwin-x")?.addEventListener("click", () => resolve(null));
   });
 }
 async function importWithChoice(label, load) {
-  const mode = await askMode(label); if (!mode) return;
-  try { await applyDD2VTT(await load(), mode); toast(`Imported ${label} (${mode === "new" ? "new scene" : "added to scene"})`); } catch (e) { toast(e.message); }
+  try { const data = await load(), mode = await askMode(label, !!data.imageDataUrl); if (!mode) return; const { setRefImage, clearRefImage } = await import("./refimage.js"); await applyDD2VTT(data, mode); if (mode === "new") clearRefImage(); if (data.imageDataUrl && askMode.showReference) setRefImage(data.imageDataUrl, data); toast(`Imported ${label} (${mode === "new" ? "new scene" : "added to scene"})`); } catch (e) { toast(e.message); }
 }
 async function importGeezChoice(file, button) {
   const { parseGeezMap, applyGeezMap } = await import("./geezmap.js");
-  const mode = await askMode(file.name); if (!mode) return;
   try {
-    const data = parseGeezMap(JSON.parse(await file.text())); if (!askMode.lastAtmo) data.atmosphere = null; await applyGeezMap(data, mode);
+    const data = parseGeezMap(JSON.parse(await file.text())), mode = await askMode(file.name, !!data.imageDataUrl); if (!mode) return; if (!askMode.lastAtmo) data.atmosphere = null; const { setRefImage, clearRefImage } = await import("./refimage.js"); await applyGeezMap(data, mode); if (mode === "new") clearRefImage(); if (data.imageDataUrl && askMode.showReference) setRefImage(data.imageDataUrl, data);
     const skipped = Object.entries(data.skipped).filter(([, n]) => n).map(([k, n]) => `${n} ${k}`).join(", ") || "none";
     toast(`Imported ${data.name}: ${data.counts?.objects ?? data.doors.length + data.lights.length} objects, ${data.counts?.rules || 0} rules, ${data.counts?.fog || 0} fog cells; skipped ${skipped}`);
   } catch (e) { toast(e.message); }

@@ -32,6 +32,8 @@ import { openTokenPicker } from "./tokenpics.js";
 import { openInventory } from "./inventory.js";
 import { openEquipment } from "./equipment.js";
 import { initDD2VTT } from "./dd2vtt.js";
+import { initRefImage } from "./refimage.js";
+import { initReplace, openReplace } from "./replace.js";
 import { addBarButton, dropMenu, orderQuickBar, floatWindow } from "./ui.js";
 import { drawObjects, drawTokens, drawTray, drawMap, drawWalls, isPcToken, doorsList, wallPieces } from "./draw.js";
 import { initTools, snapFor, toolDown, toolMove, toolUp, roofAt, fogAt, wallAt, floorAt, settingsFor } from "./tools.js";
@@ -65,7 +67,7 @@ const loadedAt = Date.now();
 for (const part of ["floors", "walls", "roofs", "props", "labels", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); drawObjects(); drawTokens(); document.dispatchEvent(new Event("vttvisibilitychange")); });
 watch("map/level", (v) => { S.level = S.map.level = Number(v) || 0; drawMap(); drawObjects(); drawTokens(); drawWalls(); });
 watch("map/levelNames", (v) => { S.map.levelNames = v || {}; });
-initTools(); initView(); initInitiative(); initScenes(); initImages(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd(); initTable(); initAnnotations(); initExplored();
+initTools(); initView(); initInitiative(); initScenes(); initImages(); initRefImage(); initReplace(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd(); initTable(); initAnnotations(); initExplored();
 S.exploredRedraw = () => { drawMap(); drawTokens(); };
 if (S.isGM) {
   const floorButton = (delta) => addBarButton({ id: `floor-${delta > 0 ? "up" : "down"}`, icon: delta > 0 ? "↑" : "↓", label: "Floor", gmOnly: true, onClick: () => { const lv = (S.level ?? 0) + delta; S.level = lv; rawPut("map/level", lv); } });
@@ -339,24 +341,24 @@ map.addEventListener("contextmenu", (e) => {
   const objEl = e.target.closest(".obj"), propEl = e.target.closest(".prop"), p = mapPoint(e);
   if (objEl) {
     const id = objEl.dataset.id, o = S.objects[id]; if (!o) return; e.preventDefault();
-    return showActionMenu(e, o.label || o.kind, [...(o.kind === "door" ? [[o.state === "open" ? "Close" : "Open", () => put(`objects/${id}/state`, o.state === "open" ? "closed" : "open")]] : []), ...(o.kind !== "door" && o.kind !== "light" ? [["Logic", () => openLogic(id)]] : []), [o.hidden ? "Reveal to players" : "Hide from players", () => put(`objects/${id}/hidden`, !o.hidden)], ["Delete", () => put(`objects/${id}`, null)]], settingsFor("object", id).fields);
+    return showActionMenu(e, o.label || o.kind, [...(o.kind === "door" ? [[o.state === "open" ? "Close" : "Open", () => put(`objects/${id}/state`, o.state === "open" ? "closed" : "open")]] : []), ...(o.kind !== "door" && o.kind !== "light" ? [["Logic", () => openLogic(id)]] : []), ...(o.kind === "door" ? [["Replace all like this...", () => openReplace({ category: "door", from: o.doorKind || (o.win ? "window" : "wood") })]] : o.kind === "light" ? [["Replace all like this...", () => openReplace({ category: "light", from: o.color })]] : []), [o.hidden ? "Reveal to players" : "Hide from players", () => put(`objects/${id}/hidden`, !o.hidden)], ["Delete", () => put(`objects/${id}`, null)]], settingsFor("object", id).fields);
   }
   if (propEl) {
     const id = propEl.dataset.id, a = S.map.props[id]; if (!a) return; e.preventDefault();
-    return showActionMenu(e, a.kind, [[a.hidden ? "Reveal to players" : "Hide from players", () => put(`map/props/${id}/hidden`, a.hidden ? null : true)], ["Delete", () => put(`map/props/${id}`, null)]], settingsFor("prop", id).fields);
+    return showActionMenu(e, a.kind, [["Replace all like this...", () => openReplace({ category: "prop", from: a.kind })], [a.hidden ? "Reveal to players" : "Hide from players", () => put(`map/props/${id}/hidden`, a.hidden ? null : true)], ["Delete", () => put(`map/props/${id}`, null)]], settingsFor("prop", id).fields);
   }
   const labelEl = e.target.closest(".map-label");
   if (labelEl) { const id = labelEl.dataset.id, a = S.map.labels?.[id]; if (!a) return; e.preventDefault(); return showActionMenu(e, a.text || "Label", [["Delete", () => put(`map/labels/${id}`, null)]], settingsFor("label", id).fields); }
   const wl = wallAt(p);
-  if (wl) { e.preventDefault(); return showActionMenu(e, "Wall", [["Delete", () => put(`map/walls/${wl}`, null)]], settingsFor("wall", wl).fields); }
+  if (wl) { e.preventDefault(); return showActionMenu(e, "Wall", [["Replace all like this...", () => openReplace({ category: "wall", from: S.map.walls[wl]?.mat || "" })], ["Delete", () => put(`map/walls/${wl}`, null)]], settingsFor("wall", wl).fields); }
   const fg = fogAt(p);
   if (fg) { e.preventDefault(); const f = S.map.fog[fg]; return showActionMenu(e, "Fog", [[f.open ? "Re-fog room" : "Reveal room", () => put(`map/fog/${fg}/open`, !f.open)], ["Delete", () => put(`map/fog/${fg}`, null)]]); }
   const r = roofAt(p);
-  if (r) { e.preventDefault(); const rf = S.map.roofs[r]; return showActionMenu(e, "Roof", [[rf.open ? "Drop roof" : "Lift roof", () => put(`map/roofs/${r}/open`, !rf.open)], ["Delete", () => put(`map/roofs/${r}`, null)]]); }
+  if (r) { e.preventDefault(); const rf = S.map.roofs[r]; return showActionMenu(e, "Roof", [["Replace all like this...", () => openReplace({ category: "roof", from: rf.mat || "" })], [rf.open ? "Drop roof" : "Lift roof", () => put(`map/roofs/${r}/open`, !rf.open)], ["Delete", () => put(`map/roofs/${r}`, null)]]); }
   const im = imageAt(p);
   if (im) { e.preventDefault(); return showActionMenu(e, "Image", [["Delete", () => removeImage(im)]], imageFields(im).map((f) => ({ ...f, path: `map/images/${im}/${f.key}`, to: (v) => (f.key === "op" ? Math.max(0, Math.min(1, v)) : Math.max(f.key === "w" || f.key === "h" ? 1 : -99, v) * 40) }))); }
   const fl = floorAt(p);
-  if (fl) { e.preventDefault(); showActionMenu(e, "Floor", [["Delete", () => put(`map/floors/${fl}`, null)]], settingsFor("floor", fl).fields); }
+  if (fl) { e.preventDefault(); showActionMenu(e, "Floor", [["Replace all like this...", () => openReplace({ category: "floor", from: S.map.floors[fl]?.mat || "" })], ["Delete", () => put(`map/floors/${fl}`, null)]], settingsFor("floor", fl).fields); }
 });
 // Attack picker: one row per weapon / cantrip / spell; picking one starts aiming on the map.
 function showAttackMenu(e, id, opts) {
@@ -432,7 +434,7 @@ async function setView(on) {
   document.addEventListener("view3dchange", () => v3.classList.toggle("on", !!S.v3d));
   orderQuickBar(["select", "ruler", "ping", "dice", "grid", "fit", "v3d", "me"]);
 }
-$("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b = e.currentTarget; b.classList.add("on"); dropMenu(b, [[(S.v3d ? "   " : "✓ ") + "2D", () => setView(false)], [(S.v3d ? "✓ " : "   ") + "3D", () => setView(true)]]); setTimeout(() => document.addEventListener("pointerdown", () => b.classList.remove("on"), { once: true }), 0); });
+$("#view-btn").addEventListener("click", (e) => { e.stopPropagation(); const b = e.currentTarget; b.classList.add("on"); dropMenu(b, [[(S.v3d ? "   " : "✓ ") + "2D", () => setView(false)], [(S.v3d ? "✓ " : "   ") + "3D", () => setView(true)], ...(S.isGM ? [["Reference", () => import("./refimage.js").then((m) => m.toggleRefImage())], ["Reference opacity…", () => import("./refimage.js").then((m) => m.openRefControls())], ["Replace…", () => openReplace()]] : [])]); setTimeout(() => document.addEventListener("pointerdown", () => b.classList.remove("on"), { once: true }), 0); });
 
 // Drag a token in 3D: press on it, drag along the floor, release to snap to the cell (same rules as 2D).
 {
