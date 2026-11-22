@@ -1,0 +1,219 @@
+# PC audit (APPLY)
+
+Snapshot: docs/backup-pcs-2026-11-21.json. Rules: 2014. Targets: {"daddies":5,"disney":4}
+
+## Ashara (daddies) Cleric / Life Domain, level 5 -> 5
+Attacks: 1 per Attack action
+- FIX Hit dice 4d8 -> 5d8
+- FIX Proficiency bonus +2 -> +3
+- FIX Preserve Life: text updated for level 5
+- FIX Spell save DC 14 -> 15, spell attack 6 -> +7
+- FIX Removed duplicate entry "Cure Wounds (2nd level)" (cast it with a higher slot instead)
+- FIX Added always-prepared spell Spiritual Weapon
+- FIX Added always-prepared spell Beacon of Hope
+- FIX Added always-prepared spell Revivify
+- FIX Added cantrips: Light (4 known at level 5)
+- FIX Added spells: Spirit Guardians (3), Aid (2), Shield of Faith (1), Dispel Magic (3), Hold Person (2), Sanctuary (1) (9 prepared at level 5, not counting always-prepared)
+- FIX Added feature Destroy Undead
+- FIX Saving throws corrected: WIS 6->7, CHA 3->4
+- FIX Skills corrected: History 2->3, Insight 6->7, Medicine 6->7, Perception 4->7, Persuasion 3->4, Religion 4->3
+- FIX passive_perception 14->17
+- FIX passive_insight 16->17
+- REVIEW Check ability scores: confirm the level 4 (and later) ability score increases were taken.
+Sections changed: abilities, attacks, combat, saves, senses, skills, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Kairon (daddies) Druid / Circle of the Land (Forest), level 4 -> 5
+Attacks: 1 per Attack action
+- FIX Level 4 -> 5: +7 max HP (average d8 + CON 2 per level)
+- FIX Hit dice 4d8 -> 5d8
+- FIX Proficiency bonus +2 -> +3
+- FIX Spell slots 4/3 -> 4/3/2
+- FIX Spell save DC 14 -> 15, spell attack 6 -> +7
+- FIX Added always-prepared spell Barkskin
+- FIX Added always-prepared spell Spider Climb
+- FIX Added always-prepared spell Plant Growth
+- FIX Added cantrips: Shillelagh (3 known at level 5)
+- FIX Added spells: Dispel Magic (3), Flaming Sphere (2), Healing Word (1), Conjure Animals (3), Lesser Restoration (2) (9 prepared at level 5, not counting always-prepared)
+- FIX CON saves proficient (Resilient feat)
+- FIX Saving throws corrected: CON 4->5, INT 2->5, WIS 6->7
+- FIX Skills corrected: Animal Handling 6->7, Arcana 4->5, Insight 6->7, Medicine 4->7, Nature 6->5, Perception 4->7, Survival 6->7
+- FIX passive_perception 14->17
+- FIX passive_insight 16->17
+- REVIEW Shocking Grasp is not on the druid spell list (left in place, not counted).
+- REVIEW Land's Stride is a level 6 feature but this character is level 5.
+- REVIEW Timeless Body is a level 18 feature but this character is level 5.
+Sections changed: attacks, combat, level, saves, senses, skills, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Lark (daddies) Bard / College of Glamour, level 5 -> 5
+Attacks: 1 per Attack action
+- FIX Hit dice 4d8 -> 5d8
+- FIX Proficiency bonus +2 -> +3
+- FIX Bardic Inspiration die d6 -> d8
+- FIX Bardic Inspiration: text updated for level 5
+- FIX Spell save DC 14 -> 15, spell attack 6 -> +7
+- FIX Hypnotic Pattern: level 1 -> 3
+- FIX Added spells: Dispel Magic (3), Hold Person (2), Healing Word (1) (8 known at level 5, not counting always-prepared)
+- FIX Added feature Font of Inspiration
+- FIX Saving throws corrected: DEX 4->5, CHA 6->7
+- FIX Skills corrected: Acrobatics 4->5, Animal Handling 1->2, Arcana 1->2, Athletics 0->1, Deception 4->7, History 1->2, Insight 3->4, Intimidation 4->7, Investigation 1->2, Medicine 1->2, Nature 1->2, Perception 3->4, Performance 6->10, Persuasion 6->10, Religion 1->2, Sleight of Hand 2->3, Stealth 2->3, Survival 1->2
+- FIX passive_perception 13->14
+- FIX passive_insight 13->14
+- FIX passive_investigation 11->12
+- REVIEW Check ability scores: confirm the level 4 (and later) ability score increases were taken.
+Sections changed: abilities, attacks, combat, saves, senses, skills, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Liora (daddies) Ranger / Gloomstalker, level 5 -> 5
+Attacks: 2 per Attack action, 3 on round 1
+- FIX Hit dice 4d10 -> 5d10
+- FIX Proficiency bonus +2 -> +3
+- FIX Spell save DC 13 -> 14, spell attack 5 -> +6
+- FIX Pass Without Trace: level 1 -> 2
+- FIX Added always-prepared spell Disguise Self
+- FIX Added always-prepared spell Rope Trick
+- FIX Added spells: Lesser Restoration (2) (4 known at level 5, not counting always-prepared)
+- FIX Added feature Extra Attack
+- FIX Initiative +4 -> +7 (Dread Ambusher adds WIS)
+- FIX Saving throws corrected: STR 4->5, DEX 6->7
+- FIX Skills corrected: Animal Handling 5->6, Athletics 4->5, Nature 3->4, Perception 5->6, Stealth 6->7, Survival 5->6
+- FIX passive_perception 15->16
+- FIX Longbow: to hit +7 -> +9 (Archery +2)
+- REVIEW Check ability scores: confirm the level 4 (and later) ability score increases were taken.
+Sections changed: abilities, attacks, combat, saves, senses, skills, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Rurik (daddies) Bard / College of Lore, level 5 -> 5
+Attacks: 1 per Attack action
+- FIX Hit dice 4d8 -> 5d8
+- FIX Proficiency bonus +2 -> +3
+- FIX Bardic Inspiration die d6 -> d8
+- FIX Bardic Inspiration: text updated for level 5
+- FIX Spell save DC 14 -> 15, spell attack 6 -> +7
+- FIX Added spells: Hypnotic Pattern (3), Suggestion (2), Healing Word (1) (8 known at level 5, not counting always-prepared)
+- FIX Added feature Font of Inspiration
+- FIX Saving throws corrected: STR none->0, DEX none->5, CON none->2, INT none->1, WIS none->1, CHA none->7
+- FIX Skills corrected: Arcana none->4, Deception none->10, History none->4, Insight none->4, Intimidation none->7, Perception none->4, Performance none->10, Persuasion none->7
+- FIX passive_perception 13->14
+- REVIEW Check ability scores: confirm the level 4 (and later) ability score increases were taken.
+Sections changed: abilities, attacks, combat, saves, senses, skills, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Seris (daddies) Fighter / Battle Master, level 5 -> 5
+Attacks: 2 per Attack action
+- REVIEW Check ability scores: confirm the level 4 (and later) ability score increases were taken.
+- REVIEW Knows 4 maneuvers; a Battle Master of level 5 gets 3.
+Sections changed: none
+
+## Esmeralda (disney) Bard / College of Dance, level 3 -> 4
+Attacks: 1 per Attack action
+- FIX Level 3 -> 4: +6 max HP (average d8 + CON 1 per level)
+- FIX Hit dice 3d8 -> 4d8
+- FIX Spell slots 4/2 -> 4/3
+- FIX Added cantrips: Minor Illusion (3 known at level 4)
+- FIX Added spells: Hold Person (2), Faerie Fire (1), Suggestion (2) (7 known at level 4, not counting always-prepared)
+- FIX Skills corrected: Acrobatics 5->7, Animal Handling 1->2, Arcana 1->2, Athletics 0->1, Deception 3->5, History 1->2, Insight 1->2, Intimidation 3->5, Investigation 1->2, Medicine 1->2, Nature 1->2, Perception 1->2, Religion 1->2, Sleight of Hand 3->5, Stealth 3->5, Survival 1->2
+- FIX passive_perception 11->12
+- FIX passive_insight 11->12
+- FIX passive_investigation 11->12
+- CHOOSE Level 4: ability score increase (or a feat). Stats were not changed.
+- REVIEW Fire Bolt is not on the bard spell list (left in place, not counted).
+Sections changed: combat, level, senses, skills, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Jasmine (disney) Ranger / Gloomstalker, level 3 -> 4
+Attacks: 1 per Attack action, 2 on round 1
+- FIX Level 3 -> 4: +8 max HP (average d10 + CON 2 per level)
+- FIX Hit dice 3d10 -> 4d10
+- FIX Pass Without Trace: level 1 -> 2
+- FIX Added always-prepared spell Disguise Self
+- FIX Initiative +4 -> +7 (Dread Ambusher adds WIS)
+- FIX Saving throws corrected: STR 3->4
+- FIX Skills corrected: Athletics 3->4
+- CHOOSE Level 4: ability score increase (or a feat). Stats were not changed.
+Sections changed: abilities, combat, level, saves, skills, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Kristoff (disney) Fighter / Eldritch Knight, level 3 -> 4
+Attacks: 1 per Attack action
+- FIX Level 3 -> 4: +9 max HP (average d10 + CON 3 per level)
+- FIX Hit dice 3d10 -> 4d10
+- FIX Second Wind: text updated for level 4
+- FIX Spell slots 2 -> 3
+- FIX Added cantrips: Ray of Frost (2 known at level 4)
+- FIX Added spells: Magic Missile (1), Burning Hands (1), Thunderwave (1) (4 known at level 4, not counting always-prepared)
+- FIX Added feature Weapon Bond
+- CHOOSE Level 4: ability score increase (or a feat). Stats were not changed.
+- REVIEW Eldritch Blast is not on the wizard spell list (left in place, not counted).
+- REVIEW Shield of Faith is not on the wizard spell list (left in place, not counted).
+- REVIEW Eldritch Strike is a level 10 feature but this character is level 4.
+- REVIEW War Magic is a level 7 feature but this character is level 4.
+Sections changed: abilities, combat, level, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Merlin (disney) Wizard / Transmuter, level 3 -> 4
+Attacks: 1 per Attack action
+- FIX Level 3 -> 4: +6 max HP (average d6 + CON 2 per level)
+- FIX Hit dice 3d6 -> 4d6
+- FIX Spell slots 4/2 -> 4/3
+- FIX Spell save DC 13 -> 13, spell attack none -> +5
+- FIX Added cantrips: Fire Bolt (4 known at level 4)
+- FIX Added spells: Misty Step (2), Shield (1), Invisibility (2), Magic Missile (1), Scorching Ray (2), Mage Armor (1), Hold Person (2) (7 prepared at level 4, not counting always-prepared)
+- FIX Added feature Arcane Recovery
+- FIX Added feature Transmutation Savant
+- FIX Saving throws corrected: STR none->-1, DEX none->2, CON none->2, INT none->5, WIS none->3, CHA none->1
+- CHOOSE Level 4: ability score increase (or a feat). Stats were not changed.
+Sections changed: combat, level, saves, spellcasting, abilities
+
+Verified: second pass finds nothing left to fix
+
+## Mushu (disney) Rogue / Assassin, level 3 -> 4
+Attacks: 1 per Attack action
+- FIX Level 3 -> 4: +6 max HP (average d8 + CON 1 per level)
+- FIX Hit dice 3d8 -> 4d8
+- FIX Added feature Sneak Attack
+- FIX Added feature Cunning Action
+- FIX Added feature Assassinate
+- FIX Saving throws corrected: STR none->0, DEX none->5, CON none->1, INT none->3, WIS none->-1, CHA none->2
+- CHOOSE Level 4: ability score increase (or a feat). Stats were not changed.
+- REVIEW Has 5 spells but Rogue / Assassin has no spellcasting. Left unchanged (homebrew, feat or multiclass?).
+Sections changed: combat, level, saves, abilities
+
+Verified: second pass finds nothing left to fix
+
+## Wendy Darling (disney) Cleric / War Domain, level 3 -> 4
+Attacks: 1 per Attack action
+- FIX Level 3 -> 4: +7 max HP (average d8 + CON 2 per level)
+- FIX Hit dice 3d8 -> 4d8
+- FIX Spell slots 4/2 -> 4/3
+- FIX Added cantrips: Spare the Dying (4 known at level 4)
+- FIX Added spells: Lesser Restoration (2), Cure Wounds (1), Aid (2), Sanctuary (1) (7 prepared at level 4, not counting always-prepared)
+- FIX Skills corrected: Acrobatics 0->1, Arcana -1->0, History -1->0, Investigation -1->0, Nature -1->0, Persuasion 3->3, Sleight of Hand 0->1, Stealth 0->1
+- CHOOSE Level 4: ability score increase (or a feat). Stats were not changed.
+Sections changed: combat, level, skills, spellcasting
+
+Verified: second pass finds nothing left to fix
+
+## Summary
+
+- Ashara: 15 fixes, 1 to review
+- Kairon: 15 fixes, 3 to review
+- Lark: 13 fixes, 1 to review
+- Liora: 13 fixes, 1 to review
+- Rurik: 10 fixes, 1 to review
+- Seris: 0 fixes, 2 to review
+- Esmeralda: 9 fixes, 1 to review
+- Jasmine: 7 fixes, 0 to review
+- Kristoff: 7 fixes, 4 to review
+- Merlin: 9 fixes, 0 to review
+- Mushu: 6 fixes, 1 to review
+- Wendy Darling: 6 fixes, 0 to review

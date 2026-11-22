@@ -19,10 +19,12 @@ Repo: `C:\Users\jonge\Documents\GitHub\GeezSheets` (git, remote geezjonny/GeezSh
 - Briefs that built it, for context: `docs/handoff/01-companion-first-build-brief.md`, `02-companion-ui-brief.md`. Engine brief (not yet confirmed built): `03-levelup-engine-brief.md`.
 - Backup of every entity before any data change: `docs/backup-pcs-2026-11-21.json`.
 
-## Task 1: level-up engine and audit tool
+## Task 1: level-up engine and audit tool: DONE (Claude, 2026-11-21)
+Built: `js/levelup.js`, `data/subclass_features.json`, `tools/audit-pcs.mjs`, `js/test/levelup.test.mjs` (9 tests pass). Usage in the file header of `tools/audit-pcs.mjs`. The brief below is kept for reference only.
 Build exactly what `docs/handoff/03-levelup-engine-brief.md` says (`js/levelup.js`, `js/test/levelup.test.mjs`, `data/subclass_features.json`, `tools/audit-pcs.mjs`). If any of those files already exist, review and finish them rather than starting over. Tests must pass: `node --test js/test`.
 
-## Task 2: review the dry run, then the user applies
+## Task 2: DONE (applied to live Firebase 2026-11-21, daddies = 5, disney = 4, all 12 PCs verified)
+Report: `docs/pc-audit-2026-11-21.md` (dry run) and `docs/pc-audit-2026-11-21-applied.md`. Rollback for one PC: `node tools/audit-pcs.mjs --restore <Name>` (puts the whole `data` back from the backup, so it also undoes player progress since). Remaining REVIEW items need the user's decision (see the report). The text below is the original checklist.
 Run `node tools/audit-pcs.mjs --to-level daddies=5,disney=4` (dry run). Check the report against these known problems; every one must be fixed by the patch or listed as "needs decision":
 - All level-5 PCs (Ashara, Lark, Liora, Rurik, Seris) have `proficiency_bonus` 2; should be +3. Spell DC, spell attack, saves, skills, passive scores, weapon `to_hit` (and the "d20+N" text in `notes`), maneuver DCs ("DC 14" in Seris's maneuvers -> 15) all follow.
 - Kairon is level 4 (needs level 5: 2 third-level slots, HP, hit dice 5d8). Disney campaign PCs (Esmeralda, Jasmine, Kristoff, Merlin, Mushu, Wendy Darling) are level 3 and the user wants them at **level 4** (average HP; level 4 is an ASI level, so report "ability score increase pending", do not change stats). Target levels are per campaign: **daddies = 5, disney = 4**. Make `--to-level` accept `daddies=5,disney=4` (default these) instead of one number.

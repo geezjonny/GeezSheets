@@ -1,0 +1,476 @@
+{
+  "_note": "Hand-written (2014 rules, plus Tasha/Xanathar subclasses already on the sheets). Used by js/levelup.js. Verify against your books.",
+  "classFeatures": {
+    "fighter": {
+      "5": [
+        {
+          "name": "Extra Attack",
+          "desc": "When you take the Attack action on your turn you attack twice instead of once. With Action Surge you take a second Attack action, so you can attack four times that turn.",
+          "kind": "passive"
+        }
+      ]
+    },
+    "ranger": {
+      "5": [
+        {
+          "name": "Extra Attack",
+          "desc": "When you take the Attack action on your turn you attack twice instead of once.",
+          "kind": "passive"
+        }
+      ]
+    },
+    "bard": {
+      "5": [
+        {
+          "name": "Font of Inspiration",
+          "desc": "You regain all your expended uses of Bardic Inspiration when you finish a short or long rest (not just a long rest).",
+          "kind": "passive"
+        }
+      ]
+    },
+    "cleric": {
+      "5": [
+        {
+          "name": "Destroy Undead",
+          "desc": "When an undead of CR 1/2 or lower fails its save against your Turn Undead, it is destroyed instead of turned.",
+          "kind": "passive"
+        }
+      ]
+    },
+    "rogue": {
+      "1": [
+        {
+          "name": "Sneak Attack",
+          "desc": "Once per turn, add {SNEAK}d6 damage to one attack that hits, if you have advantage on it or another enemy of the target is within 5 ft of it (and you do not have disadvantage). The attack must use a finesse or ranged weapon.",
+          "kind": "passive"
+        }
+      ],
+      "2": [
+        {
+          "name": "Cunning Action",
+          "desc": "Bonus action: Dash, Disengage or Hide.",
+          "kind": "passive",
+          "activation": "bonus_action"
+        }
+      ],
+      "5": [
+        {
+          "name": "Uncanny Dodge",
+          "desc": "Reaction: when an attacker you can see hits you with an attack, halve the damage.",
+          "kind": "passive",
+          "activation": "reaction"
+        }
+      ]
+    },
+    "wizard": {
+      "1": [
+        {
+          "name": "Arcane Recovery",
+          "desc": "Once per day when you finish a short rest, recover expended spell slots with a combined level up to half your wizard level (rounded up). None of them can be 6th level or higher.",
+          "kind": "charge",
+          "max": 1,
+          "recharge": "long_rest"
+        }
+      ]
+    }
+  },
+  "subclasses": {
+    "life domain": {
+      "class": "cleric",
+      "spells": {
+        "1": [
+          "Bless",
+          "Cure Wounds"
+        ],
+        "3": [
+          "Lesser Restoration",
+          "Spiritual Weapon"
+        ],
+        "5": [
+          "Beacon of Hope",
+          "Revivify"
+        ]
+      },
+      "features": {}
+    },
+    "war domain": {
+      "class": "cleric",
+      "spells": {
+        "1": [
+          "Divine Favor",
+          "Shield of Faith"
+        ],
+        "3": [
+          "Magic Weapon",
+          "Spiritual Weapon"
+        ],
+        "5": [
+          "Crusader's Mantle",
+          "Spirit Guardians"
+        ]
+      },
+      "features": {}
+    },
+    "circle of the land (forest)": {
+      "class": "druid",
+      "spells": {
+        "3": [
+          "Barkskin",
+          "Spider Climb"
+        ],
+        "5": [
+          "Call Lightning",
+          "Plant Growth"
+        ]
+      },
+      "features": {}
+    },
+    "gloomstalker": {
+      "class": "ranger",
+      "spells": {
+        "3": [
+          "Disguise Self"
+        ],
+        "5": [
+          "Rope Trick"
+        ]
+      },
+      "features": {}
+    },
+    "college of glamour": {
+      "class": "bard",
+      "spells": {},
+      "features": {}
+    },
+    "college of lore": {
+      "class": "bard",
+      "spells": {},
+      "features": {}
+    },
+    "college of dance": {
+      "class": "bard",
+      "spells": {},
+      "features": {}
+    },
+    "battle master": {
+      "class": "fighter",
+      "spells": {},
+      "features": {
+        "3": [
+          {
+            "name": "Student of War",
+            "desc": "You gain proficiency with one type of artisan's tools of your choice.",
+            "kind": "passive"
+          }
+        ]
+      }
+    },
+    "eldritch knight": {
+      "class": "fighter",
+      "caster": "third",
+      "spells": {},
+      "features": {
+        "3": [
+          {
+            "name": "Weapon Bond",
+            "desc": "Ritual (1 hour) to bond with up to two weapons. A bonded weapon cannot be disarmed, and you can summon it to your hand as a bonus action if it is on the same plane.",
+            "kind": "passive"
+          }
+        ]
+      }
+    },
+    "transmuter": {
+      "class": "wizard",
+      "spells": {},
+      "features": {
+        "2": [
+          {
+            "name": "Transmutation Savant",
+            "desc": "Gold and time to copy a transmutation spell into your spellbook is halved.",
+            "kind": "passive"
+          }
+        ]
+      }
+    },
+    "assassin": {
+      "class": "rogue",
+      "spells": {},
+      "features": {
+        "3": [
+          {
+            "name": "Assassinate",
+            "desc": "You have advantage on attack rolls against any creature that has not taken a turn in combat yet. Any hit you score against a surprised creature is a critical hit.",
+            "kind": "passive"
+          }
+        ]
+      }
+    }
+  },
+  "minLevel": {
+    "land's stride": 6,
+    "timeless body": 18,
+    "eldritch strike": 10,
+    "war magic": 7
+  },
+  "thirdCaster": {
+    "cantrips": {
+      "3": 2,
+      "10": 3
+    },
+    "spellsKnown": {
+      "3": 3,
+      "4": 4,
+      "5": 4,
+      "6": 4,
+      "7": 5,
+      "8": 6,
+      "9": 6,
+      "10": 7
+    },
+    "slots": {
+      "3": [
+        2
+      ],
+      "4": [
+        3
+      ],
+      "5": [
+        3
+      ],
+      "6": [
+        3
+      ],
+      "7": [
+        4,
+        2
+      ],
+      "8": [
+        4,
+        2
+      ],
+      "9": [
+        4,
+        2
+      ],
+      "10": [
+        4,
+        3
+      ]
+    }
+  },
+  "castingAbility": {
+    "cleric": "wis",
+    "druid": "wis",
+    "ranger": "wis",
+    "paladin": "cha",
+    "bard": "cha",
+    "sorcerer": "cha",
+    "warlock": "cha",
+    "wizard": "int",
+    "eldritch knight": "int"
+  },
+  "preparedCasters": [
+    "cleric",
+    "druid",
+    "wizard",
+    "paladin"
+  ],
+  "picks": {
+    "cleric": {
+      "0": [
+        "Sacred Flame",
+        "Guidance",
+        "Spare the Dying",
+        "Light",
+        "Thaumaturgy",
+        "Resistance",
+        "Mending"
+      ],
+      "1": [
+        "Bless",
+        "Cure Wounds",
+        "Healing Word",
+        "Guiding Bolt",
+        "Shield of Faith",
+        "Sanctuary",
+        "Command"
+      ],
+      "2": [
+        "Spiritual Weapon",
+        "Lesser Restoration",
+        "Aid",
+        "Hold Person",
+        "Prayer of Healing",
+        "Silence"
+      ],
+      "3": [
+        "Spirit Guardians",
+        "Revivify",
+        "Beacon of Hope",
+        "Dispel Magic",
+        "Mass Healing Word",
+        "Bestow Curse"
+      ]
+    },
+    "bard": {
+      "0": [
+        "Vicious Mockery",
+        "Minor Illusion",
+        "Prestidigitation",
+        "Mage Hand",
+        "Dancing Lights",
+        "Friends"
+      ],
+      "1": [
+        "Healing Word",
+        "Dissonant Whispers",
+        "Faerie Fire",
+        "Thunderwave",
+        "Charm Person",
+        "Heroism",
+        "Sleep"
+      ],
+      "2": [
+        "Hold Person",
+        "Shatter",
+        "Suggestion",
+        "Invisibility",
+        "Heat Metal",
+        "Enhance Ability"
+      ],
+      "3": [
+        "Hypnotic Pattern",
+        "Dispel Magic",
+        "Fear",
+        "Bestow Curse",
+        "Major Image",
+        "Tongues"
+      ]
+    },
+    "druid": {
+      "0": [
+        "Guidance",
+        "Shillelagh",
+        "Produce Flame",
+        "Poison Spray",
+        "Druidcraft",
+        "Resistance"
+      ],
+      "1": [
+        "Entangle",
+        "Cure Wounds",
+        "Healing Word",
+        "Goodberry",
+        "Faerie Fire",
+        "Thunderwave",
+        "Fog Cloud"
+      ],
+      "2": [
+        "Barkskin",
+        "Flaming Sphere",
+        "Lesser Restoration",
+        "Moonbeam",
+        "Pass Without Trace",
+        "Heat Metal"
+      ],
+      "3": [
+        "Call Lightning",
+        "Dispel Magic",
+        "Plant Growth",
+        "Conjure Animals",
+        "Protection from Energy"
+      ]
+    },
+    "ranger": {
+      "1": [
+        "Hunter's Mark",
+        "Cure Wounds",
+        "Goodberry",
+        "Fog Cloud",
+        "Speak with Animals",
+        "Longstrider",
+        "Jump"
+      ],
+      "2": [
+        "Pass Without Trace",
+        "Lesser Restoration",
+        "Spike Growth",
+        "Silence",
+        "Barkskin",
+        "Darkvision"
+      ],
+      "3": [
+        "Conjure Animals",
+        "Daylight",
+        "Water Breathing",
+        "Protection from Energy"
+      ]
+    },
+    "wizard": {
+      "0": [
+        "Fire Bolt",
+        "Mage Hand",
+        "Ray of Frost",
+        "Prestidigitation",
+        "Minor Illusion",
+        "Light",
+        "Shocking Grasp"
+      ],
+      "1": [
+        "Shield",
+        "Magic Missile",
+        "Mage Armor",
+        "Sleep",
+        "Find Familiar",
+        "Detect Magic",
+        "Feather Fall",
+        "Identify"
+      ],
+      "2": [
+        "Misty Step",
+        "Invisibility",
+        "Scorching Ray",
+        "Hold Person",
+        "Levitate",
+        "Web",
+        "Alter Self",
+        "Enlarge/Reduce"
+      ],
+      "3": [
+        "Fireball",
+        "Counterspell",
+        "Haste",
+        "Fly",
+        "Dispel Magic"
+      ]
+    },
+    "eldritch knight": {
+      "0": [
+        "Fire Bolt",
+        "Ray of Frost",
+        "Shocking Grasp",
+        "Light"
+      ],
+      "1": [
+        "Shield",
+        "Magic Missile",
+        "Burning Hands",
+        "Thunderwave"
+      ],
+      "2": [
+        "Shatter",
+        "Scorching Ray",
+        "Misty Step"
+      ],
+      "3": [
+        "Fireball",
+        "Counterspell"
+      ]
+    }
+  },
+  "extraOnList": {
+    "bard": [
+      "Faerie Fire"
+    ]
+  }
+}
