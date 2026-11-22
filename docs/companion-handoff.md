@@ -59,12 +59,7 @@ Unit tests for: Ashara Cure Wounds level 1 and level 2 (1d8/2d8 + WIS + 2 + leve
 - GM tools: give item (copy `giveItem` from `sheet.html`), call roll (copy the GM side from the VTT or `js/rollcall.js`: initiative, save, skill, optional DC; writes the rollcall record), damage/heal any PC.
 - **Level up** button (GM, and a read-only "Level up available" hint for players): uses `planLevelUp` from `js/levelup.js`, shows the summary and the remaining choices (new spells, ASI, subclass), then writes the patch (through the same adapter, wrap writes in try/catch with toasts). Needs the data arguments (`data/*.json`) loaded in the page.
 
-## Task 6: Owlbear extension (folder `C:\Users\jonge\Documents\GitHub\owlbear`)
-Existing: `background.html` (OBR SDK 3.1.0 via jsdelivr), `hp.js` (HP bars from the Firebase REST stream), `manifest.json` (URLs point at geezjonny.github.io/GeezSheets/owlbear/...).
-- **Roll feed:** in `background.html` stream `geezvtt/live/<campaign>/rolls` (REST EventSource like `hp.js` `stream()`), show `OBR.notification.show("Name: Label, total")` for each new roll (ignore rolls older than 10 s on connect), and a popover/action panel `rolls.html` with the scrolling log. Campaign key = the GM's open game (`geezvtt/live/_dmCampaign` -> `{id,name}`).
-- **GM "Call roll":** `OBR.tool.createAction` or context-menu entry (GM only) opening a small popover (kind: initiative/save/skill, ability or skill, DC, who) that writes the same rollcall record as the companion. Players answer from their companion.
-- Optional (only after the above works): transparent click-through overlay with `js/dice3d.js`.
-- **Hosting decision needed from the user** (do not decide yourself): the `owlbear/` folder is deleted from the GeezSheets working tree while `manifest.json` URLs expect it under GitHub Pages `GeezSheets/owlbear/`. Report this and leave deployment alone.
+## Task 6: CANCELLED (user, 2026-11-21): no OBR extension work. Call roll lives in the companion GM view (Task 5).
 
 ## Task 7: verification (needs a real browser)
 Open `http://127.0.0.1:8000/companion.html?char=kairon` at 360x740 (and 1024 wide), no console errors, every tab renders for a caster (Ashara `pc_bdjqq6jmqmcq`), a martial (Seris `pc_kdgtscbrzakl`) and a PC with no spellcasting. Check the layout (no horizontal scroll at 320 px, tab bar usable, nothing under the safe area). Test writes only against `?db=local` or a throwaway `/v2-test/<run-id>` target (see `js/gaia-firebase.mjs`), never `/v2`.

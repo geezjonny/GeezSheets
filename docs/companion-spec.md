@@ -1,7 +1,7 @@
 # GeezSheets Companion: spec (agreed 2026-11-21)
 
 `companion.html` is the player's mobile character companion at the table. `sheet.html` stays untouched as the fallback.
-The Owlbear Rodeo (OBR) extension stays small: token-to-sheet link, HP bars, a roll feed and a GM "Call roll". The real UI lives here.
+**Decision 2026-11-21: no new OBR extension work.** Players use stock Owlbear Rodeo for the map and this companion for everything else (sheet, rolls, roll calls). The existing extension in `GitHub/owlbear` is left alone.
 
 ## Principles
 - **Automate and spell out.** Every spell, attack, check and feature shows exactly what to roll and what to add, worked out for this character
@@ -26,7 +26,7 @@ Martial characters get an "Attack action" banner: 2 attacks at level 5, +1 on ro
 
 ## GM
 Party overview (everyone's HP, conditions, slots), open any character, give items, call a roll.
-**Call roll:** the GM calls an initiative, save or skill roll (OBR button or the GM view). It uses the existing roll-call record `geezvtt/live/<campaign>/rollcall`.
+**Call roll:** the GM calls an initiative, save or skill roll from the companion's GM view. It uses the existing roll-call record `geezvtt/live/<campaign>/rollcall`.
 Each companion shows the call with that character's numbers worked out.
 
 ## Leveling
@@ -34,9 +34,8 @@ One button applies the new level: proficiency, slots, hit dice, HP (average), cl
 It lists what is left to choose (new spells, ability score increase, subclass). Engine: `js/levelup.js`. Data check and fix tool: `tools/audit-pcs.mjs`
 (dry run by default; `--apply` writes to Firebase only after checking the live data against the snapshot). Backup before any fix: `docs/backup-pcs-2026-11-21.json`.
 
-## OBR extension (lives in `GitHub/owlbear`, separate from this repo)
-- Keep: token link, HP bars (`hp.js`), dd2vtt import, movement range.
-- Add: roll feed window and notification from the shared roll log; GM "Call roll" button; optional transparent 3D dice overlay (`js/dice3d.js`), untested.
+## Owlbear Rodeo
+Stock OBR only. Rolls made in the companion are posted to the shared roll log (`geezvtt/live/<campaign>/rolls`) so the GM sees them in the companion's GM view; nothing is shown inside OBR.
 
 ## Out of scope
 OBR's own dice tray (no extension API). Dice+ / dddice integration is unverified and not needed.
