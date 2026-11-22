@@ -2,6 +2,12 @@
 
 ## 2026-11-21
 
+### Companion: new mobile character page (companion.html), spec agreed
+- **New page `companion.html`:** a phone-friendly character companion for the table. Front page has portrait, HP (damage, heal, temp HP, death saves), spell slot pips, core stats, conditions and concentration. Tabs for Skills, Spells, Gear and Items. `sheet.html` is untouched and stays as the fallback.
+- **Spec written (`docs/companion-spec.md`):** every spell, attack and feature will spell out what to roll and what to add (upcasting and subclass bonuses worked out), the sheet does the rolling and posts to the shared roll log, and Owlbear shows that feed plus a GM "Call roll". Tabs will be Home, Skills, Feats, Spells (cantrips first), Gear, Items and Notes. A GM party view and one-button leveling are planned.
+- **Audit of the 12 player characters:** most level-5 characters have proficiency +2 instead of +3 (so spell DCs and attack bonuses are one low), Kairon is level 4, several casters are missing 3rd-level or known spells, and Seris and Liora have no Extra Attack card (Liora should make 3 attacks on round 1). Fixes come next, after a full backup (`docs/backup-pcs-2026-11-21.json`).
+- **Still to do:** roll recipes and roll buttons in the companion, Feats and Notes tabs, GM view and Call roll, level-up button, applying the data fixes, the Owlbear roll feed. The companion has not been opened in a browser yet.
+
 ### VTT: old dd2vtt maps import, reference picture, Replace tool, bucket fix
 - **dd2vtt import works again:** maps with doors (24 of the 40 in `battlemap/`) were silently failing to import. They load now, including bloom-castlegrounds.
 - **Reference picture:** importing a dd2vtt can show its picture behind the grid so you can trace walls, doors and lights over it. It is never saved: scenes and exports stay picture-free. Show / hide and opacity are in the View menu and the Reference button, with an info panel and Copy base64.
