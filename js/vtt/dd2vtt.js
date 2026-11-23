@@ -142,30 +142,30 @@ export async function applyDD2VTT(data, mode = "merge") {
   const [{ S, mapSize }, { newObject }, store] = await Promise.all([
     import("./state.js"), import("../puzzle/objects.js"), import("../store.js"),
   ]);
-  const cur = mapSize(), changes = {};
+  const cur = mapSize(), changes = {}, L = mode === "floor" ? (S.level ?? S.map.level ?? 0) : null, onFloor = L == null ? {} : { lv: L };   // "floor": everything lands on the floor you are viewing
   if (mode === "new") {
-    const [map, objects, tokens, groups] = await Promise.all(["map", "objects", "tokens", "groups"].map((p) => store.read(p)));
+    const [map, objects, tokens, groups, mapimg] = await Promise.all(["map", "objects", "tokens", "groups", "mapimg"].map((p) => store.read(p)));
     if (Object.keys(map?.walls || {}).length || Object.keys(map?.floors || {}).length || Object.keys(objects || {}).length) {
       const stamp = new Date().toLocaleString(), key = `before-import-${Date.now().toString(36)}`;
-      await store.put(`scenes/${key}`, { name: `Before import ${stamp}`, ts: Date.now(), data: { map: map || {}, objects: objects || {}, tokens: tokens || {}, groups: groups || {} } });
+      await store.put(`scenes/${key}`, { name: `Before import ${stamp}`, ts: Date.now(), data: { map: map || {}, objects: objects || {}, tokens: tokens || {}, groups: groups || {}, mapimg: mapimg || null } });
     }
     await Promise.all([store.put("map", null), store.put("objects", null), store.put("tokens", null), store.put("groups", null)]);
     changes["map/size"] = { cols: Math.max(10, Math.min(100, data.cols)), rows: Math.max(10, Math.min(100, data.rows)) };
   } else changes["map/size"] = { cols: Math.max(cur.cols, Math.min(100, data.cols)), rows: Math.max(cur.rows, Math.min(100, data.rows)) };
   let n = 0;
-  for (const f of data.floors || []) changes[`map/floors/${id("f", n++)}`] = { lv: 0, ...f };
-  for (const w of data.walls) changes[`map/walls/${id("w", n++)}`] = { lv: 0, ...w };
-  for (const r of data.roofs || []) changes[`map/roofs/${id("r", n++)}`] = { lv: 0, ...r };
-  for (const p of data.props || []) changes[`map/props/${id("p", n++)}`] = { lv: 0, ...p };
-  for (const l of data.labels || []) changes[`map/labels/${id("l", n++)}`] = { lv: 0, ...l };
-  for (const d of data.doors) if (!data.objects?.[d.id]) changes[`objects/${d.id || id("d", n++)}`] = { ...newObject("door", d.x, d.y, n, { dir: d.dir, state: d.state, mat: d.mat, doorKind: d.kind || (d.win ? "window" : "wood"), ...(d.win ? { win: true } : {}) }), lv: d.lv ?? 0 };
-  for (const l of data.lights) if (!data.objects?.[l.id]) changes[`objects/${l.id || id("l", n++)}`] = { ...newObject("light", l.x, l.y, n, { radius: l.radius, color: l.color, fog: 0, state: "on", ...(l.intensity != null ? { intensity: l.intensity } : {}) }), lv: l.lv ?? 0 };
+  for (const f of data.floors || []) changes[`map/floors/${id("f", n++)}`] = { lv: 0, ...f, ...onFloor };
+  for (const w of data.walls) changes[`map/walls/${id("w", n++)}`] = { lv: 0, ...w, ...onFloor };
+  for (const r of data.roofs || []) changes[`map/roofs/${id("r", n++)}`] = { lv: 0, ...r, ...onFloor };
+  for (const p of data.props || []) changes[`map/props/${id("p", n++)}`] = { lv: 0, ...p, ...onFloor };
+  for (const l of data.labels || []) changes[`map/labels/${id("l", n++)}`] = { lv: 0, ...l, ...onFloor };
+  for (const d of data.doors) if (!data.objects?.[d.id]) changes[`objects/${d.id || id("d", n++)}`] = { ...newObject("door", d.x, d.y, n, { dir: d.dir, state: d.state, mat: d.mat, doorKind: d.kind || (d.win ? "window" : "wood"), ...(d.win ? { win: true } : {}) }), lv: L ?? d.lv ?? 0 };
+  for (const l of data.lights) if (!data.objects?.[l.id]) changes[`objects/${l.id || id("l", n++)}`] = { ...newObject("light", l.x, l.y, n, { radius: l.radius, color: l.color, fog: 0, state: "on", ...(l.intensity != null ? { intensity: l.intensity } : {}) }), lv: L ?? l.lv ?? 0 };
   for (const [oid, o] of Object.entries(data.objects || {})) changes[`objects/${oid}`] = o;
   for (const [gid, g] of Object.entries(data.groups || {})) changes[`groups/${gid}`] = g;
   for (const [fid, f] of Object.entries(data.fog || {})) changes[`map/fog/${id("g", n++)}`] = { open: false, ...f };
   if (data.floorNames) changes["map/levelNames"] = data.floorNames;
   if (data.floorKeys?.length) changes["map/level"] = Number(data.floorKeys[0]) || 0;
-  if (data.light) { changes["map/light"] = data.light; if (data.light === "dark") for (let y = 0; y < data.rows; y++) changes[`map/fog/${id("g", n++)}`] = { x: 0, y: y * 40, w: data.cols * 40, h: 40, open: false, lv: 0 }; }
+  if (data.light) { changes["map/light"] = data.light; if (data.light === "dark") for (let y = 0; y < data.rows; y++) changes[`map/fog/${id("g", n++)}`] = { x: 0, y: y * 40, w: data.cols * 40, h: 40, open: false, lv: L ?? 0 }; }
   changes.seeded = true;
   await store.patch(JSON.parse(JSON.stringify(changes))); // Firebase rejects undefined values (e.g. door mat)
   if (data.atmosphere?.time != null) await store.put("atmosphere", { time: data.atmosphere.time, weather: data.atmosphere.weather, color: "#4d86b8" });
@@ -173,12 +173,12 @@ export async function applyDD2VTT(data, mode = "merge") {
 }
 
 // Ask where an import should go. Resolves "merge", "new" or null (cancelled).
-export async function askMode(label, hasImage = false) {
+export async function askMode(label, hasImage = false, allowFloor = false) {
   const { floatWindow } = await import("./ui.js");
   return new Promise((resolve) => {
     const w = floatWindow({ id: "import-mode", title: "Import map", x: 300, y: 170 });
     const done = (v) => { resolve(v); w.hide(); w.el.remove(); };
-    w.body.innerHTML = `<div class="import-mode"><b></b><span>Imports the map and all supported floors.</span><label><input type="checkbox" data-atmo checked> Also set time, weather and light</label>${hasImage ? `<label><input type="checkbox" data-ref checked> Show the picture as a reference (not saved)</label>` : ""}<button type="button" data-m="merge">Add to current scene</button><button type="button" data-m="new">New scene (current one is saved first)</button><button type="button" data-m="">Cancel</button></div>`;
+    w.body.innerHTML = `<div class="import-mode"><b></b><span>Imports the map and all supported floors.</span><label><input type="checkbox" data-atmo checked> Also set time, weather and light</label>${hasImage ? `<label><input type="checkbox" data-ref checked> Show the picture as a reference (not saved)</label>` : ""}<button type="button" data-m="merge">Add to current scene</button>${allowFloor ? `<button type="button" data-m="floor">Add to current scene, this floor only</button>` : ""}<button type="button" data-m="new">New scene (current one is saved first)</button><button type="button" data-m="">Cancel</button></div>`;
     w.body.querySelector("b").textContent = label;
     const st = document.createElement("style"); st.textContent = ".import-mode{display:grid;gap:.4rem;max-width:18rem}.import-mode span{font-size:.8rem;opacity:.8}"; w.body.append(st);
     w.body.addEventListener("click", (e) => { const b = e.target.closest("[data-m]"); if (b) { askMode.lastAtmo = !!w.body.querySelector("[data-atmo]")?.checked; askMode.showReference = !!w.body.querySelector("[data-ref]")?.checked; done(b.dataset.m || null); } });
@@ -187,11 +187,11 @@ export async function askMode(label, hasImage = false) {
 }
 async function importWithChoice(label, load, src = null) {
   try {
-    const data = await load(), mode = await askMode(label, false); if (!mode) return;
+    const data = await load(), mode = await askMode(label, false, true); if (!mode) return;
     const { saveMapImage } = await import("./mapimg.js"), store = await import("../store.js");
     await applyDD2VTT(data, mode);
-    if (data.imageDataUrl) await saveMapImage(data, src); else if (mode === "new") await store.put("mapimg", null);
-    toast(`Imported ${label} (${mode === "new" ? "new scene" : "added to scene"})`);
+    if (data.imageDataUrl) await saveMapImage(data, src, { replaceAll: mode === "new" }); else if (mode === "new") await store.put("mapimg", null);
+    toast(`Imported ${label} (${mode === "new" ? "new scene" : mode === "floor" ? "this floor" : "added to scene"})`);
   } catch (e) { toast(e.message); }
 }
 async function importGeezChoice(file, button) {

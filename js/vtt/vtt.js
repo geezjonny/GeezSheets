@@ -89,7 +89,7 @@ const loadedAt = Date.now();
   }
 })();
 for (const part of ["floors", "walls", "roofs", "props", "labels", "fog"]) watch(`map/${part}`, (v) => { S.map[part] = v || {}; drawMap(); drawObjects(); drawTokens(); document.dispatchEvent(new Event("vttvisibilitychange")); });
-watch("map/level", (v) => { S.level = S.map.level = Number(v) || 0; drawMap(); drawObjects(); drawTokens(); drawWalls(); });
+watch("map/level", (v) => { S.level = S.map.level = Number(v) || 0; drawMap(); drawObjects(); drawTokens(); drawWalls(); document.dispatchEvent(new Event("levelchange")); });
 watch("map/levelNames", (v) => { S.map.levelNames = v || {}; });
 initTools(); initView(); initInitiative(); initScenes(); initImages(); initRefImage(); initMapImage(); initReplace(); initMeasure(); initDice(); initDD2VTT(); initAudio(); initHandouts(); initRollCall(); initAtmosphere(); initAttack(); initCmd(); initTable(); initAnnotations(); initExplored();
 S.exploredRedraw = () => { drawMap(); drawTokens(); };
@@ -98,7 +98,7 @@ S.exploredRedraw = () => { drawMap(); drawTokens(); };
   box.innerHTML = (S.isGM ? '<button type="button" data-d="1" title="Floor up">▲</button>' : "") + '<span class="fl"></span>' + (S.isGM ? '<button type="button" data-d="-1" title="Floor down">▼</button>' : "");
   document.body.append(box);
   const label = () => { const lv = S.level ?? S.map.level ?? 0; box.querySelector(".fl").textContent = S.map.levelNames?.[lv] || (lv === 0 ? "Ground" : `Floor ${lv}`); };
-  box.addEventListener("click", (e) => { const d = Number(e.target.closest("button")?.dataset.d); if (!d) return; const lv = (S.level ?? 0) + d; S.level = lv; rawPut("map/level", lv); label(); });
+  box.addEventListener("click", (e) => { const d = Number(e.target.closest("button")?.dataset.d); if (!d) return; const lv = (S.level ?? 0) + d; S.level = lv; rawPut("map/level", lv); label(); document.dispatchEvent(new Event("levelchange")); });
   box.addEventListener("pointerdown", (e) => e.stopPropagation());
   watch("map/level", label); watch("map/levelNames", label); label();
   document.addEventListener("keydown", (e) => { if (!S.isGM || e.target.closest?.("input,textarea,select,[contenteditable]")) return; if (e.key === "PageUp" || e.key === "PageDown") { box.querySelector(`button[data-d="${e.key === "PageUp" ? 1 : -1}"]`)?.click(); e.preventDefault(); } });
