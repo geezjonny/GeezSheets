@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-25
+
+### Companion sound
+- The companion now plays the table's soundboard: whatever music, ambience and sound effects are set for the table plays on each player's phone, with a speaker button for volume and mute. The button pulses until the first tap, because phones block autoplay.
+- The GM companion has a Sound section with the same board (music, ambience, effects, stop all), so the GM can run sound from there as well as from the table VTT. Both control the same sound.
+- Not yet tried live with a second device.
+
 ## 2026-11-22
 
 ### Companion built into the table VTT

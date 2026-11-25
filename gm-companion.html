@@ -45,6 +45,15 @@ button,input,select{font:inherit;color:var(--text);border:1px solid var(--border
         <p id="weather-current" class="weather-current muted" role="status">Loading current weather…</p>
       </div>
     </section>
+    <section aria-labelledby="audio-title">
+      <div class="section-head"><h2 id="audio-title">Sound</h2><span class="muted">Plays on every companion and the table VTT</span></div>
+      <div class="card" id="audio-board">
+        <h3>Music</h3><div id="audio-music" class="weather-types"></div>
+        <h3>Ambience</h3><div id="audio-amb" class="weather-types"></div>
+        <h3>Sound effects</h3><div id="audio-sfx" class="weather-types"></div>
+        <button id="audio-stop">Stop all sound</button>
+      </div>
+    </section>
     <section aria-labelledby="spawn-title">
       <div class="section-head"><h2 id="spawn-title">Spawn tokens</h2><span class="muted">Owlbear</span></div>
       <div class="card">

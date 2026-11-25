@@ -1,5 +1,6 @@
 // GM dashboard. Uses the same GM mode, party filter and writes as companion.js.
 import { db, ref, get, set, update, onValue, runTransaction } from './rodeo-firebase.js';
+import { initGmAudio } from './gm-audio.js';
 
 const $ = (s, root = document) => root.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -105,6 +106,7 @@ if (!GM) {
     } catch (err) { toast('Not saved: ' + err.message); }
     finally { busy.delete(id); renderParty(); }
   });
+  initGmAudio(toast);
   document.querySelectorAll('[data-weather]').forEach((b) => b.addEventListener('click', () => saveWeather(b.dataset.weather)));
   for (const key of ['intensity', 'wind']) {
     $('#' + key).addEventListener('input', (e) => { $('#' + key + '-value').textContent = e.target.value; });

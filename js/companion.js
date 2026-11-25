@@ -3,6 +3,7 @@
 import { callTitle, callMod, answerCall, newCall, EXTRAS, passed, sgn, SKILLS, ABIL } from './rollcall.js';
 import { db, ref, get, set, update, remove, push, onValue, runTransaction } from './rodeo-firebase.js';
 import { recipeFor } from './recipes.js';
+import { initCompanionAudio } from './companion-audio.js';
 import { attacksPerAction, planCharacter, spellCard, mod as abMod } from './levelup.js';
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -459,6 +460,7 @@ addEventListener('hashchange', () => { const h = location.hash.slice(1); if (TAB
 
 // ---------- start
 await loadData();
+if (!GM && !params.has('embed')) initCompanionAudio();   // the VTT window (embed) already plays the table's sound
 if (GM) gmStart();
 const chosen = params.get('char') || (GM ? null : localStorage.getItem('companion.char'));
 if (chosen) select(chosen); else if (GM) render(); else picker();
