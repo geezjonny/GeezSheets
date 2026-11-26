@@ -1,0 +1,9 @@
+{
+  "name": "Companion",
+  "short_name": "Companion",
+  "start_url": "companion.html",
+  "display": "standalone",
+  "background_color": "#12100e",
+  "theme_color": "#12100e",
+  "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

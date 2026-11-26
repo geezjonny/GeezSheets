@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Character Workshop · GeezSheets</title>
+  <link rel="stylesheet" href="css/creator-sheet.css">
+  <link rel="stylesheet" href="creator.css">
+</head>
+<body>
+  <main>
+    <header><h1>Character Workshop</h1></header>
+    <p id="creator-status" role="status">Loading…</p>
+    <section id="creator" hidden>
+      <div class="creator-selection">
+        <label>Character<select id="creator-character"></select></label>
+        <button id="creator-reload" type="button">Reload</button>
+        <label>Type<select id="creator-kind"></select></label>
+        <label>Record<select id="creator-record"></select></label>
+      </div>
+      <form id="creator-form" class="sheet-inventory-add">
+        <fieldset id="creator-fields" disabled></fieldset>
+        <p id="creator-summary" class="creator-summary" hidden></p>
+        <button id="creator-save" type="submit" disabled>Save to character</button>
+      </form>
+      <p class="creator-note">Descriptions record custom rules. Numeric modifiers, uses, spell slots, and attack rolls use the sheet’s existing systems.</p>
+    </section>
+  </main>
+  <script src="js/firebase-config.js"></script>
+  <script type="module" src="js/geez/character-creator.js"></script>
+</body>
+</html>

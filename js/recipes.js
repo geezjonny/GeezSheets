@@ -5,6 +5,7 @@
 //   kind 'skill'      {key:'perception'}  kind 'save' {key:'dex'}  kind 'ability' {key:'str'}  kind 'initiative'  kind 'death'
 // `expr` is a plain dice expression the roller can evaluate ("1d20+7"); `riders` are optional extras the player may toggle on.
 import { mod, profBonus, attacksPerAction } from './levelup.js';
+import { asList, bonusFor } from './geez/effective.js';
 
 const NAME = { str: 'STR', dex: 'DEX', con: 'CON', int: 'INT', wis: 'WIS', cha: 'CHA' };
 const SKILLS = { acrobatics: 'dex', animal_handling: 'wis', arcana: 'int', athletics: 'str', deception: 'cha', history: 'int', insight: 'wis', intimidation: 'cha', investigation: 'int', medicine: 'wis', nature: 'int', perception: 'wis', performance: 'cha', persuasion: 'cha', religion: 'int', sleight_of_hand: 'dex', stealth: 'dex', survival: 'wis' };
@@ -22,6 +23,7 @@ function roll(name, parts, riders = []) {
   return { name, expr, text, parts: ps, riders };
 }
 const rider = (label, dice, note) => ({ label, expr: dice, note });
+const extraPart = (pc, target, base) => { const n = bonusFor(pc, target, base); return n ? [F(n, 'items and effects')] : []; };
 const ctx = (pc) => {
   const stats = pc.stats || {}, M = Object.fromEntries(Object.keys(NAME).map((a) => [a, mod(stats[a] ?? 10)]));
   const level = Number(pc.level) || 1, prof = Number(pc.combat?.proficiency_bonus) || profBonus(level);
@@ -29,20 +31,22 @@ const ctx = (pc) => {
   const sub = norm(pc.subclass), cls = norm(pc.class);
   return { M, level, prof, has, sub, cls, sc: pc.spellcasting || {}, flavour: String(pc.text_blocks?.features_traits || '') };
 };
-const spellNames = (pc) => (pc.spellcasting?.spells || []).map((s) => norm(s.name));
+const spellNames = (pc) => asList(pc.spellcasting?.spells).map((s) => norm(s.name));
 
 function spellRecipe(pc, req, opts) {
-  const c = ctx(pc), entry = c.sc.spells?.find((s) => norm(s.name) === norm(req.name)) || { name: req.name, level: 0 };
-  const srd = (opts.spells || []).find((s) => norm(s.name) === norm(req.name));
+  const c = ctx(pc), entry = asList(c.sc.spells).find((s) => norm(s.name) === norm(req.name)) || { name: req.name, level: 0 };
+  const srd = entry.custom ? undefined : (opts.spells || []).find((s) => norm(s.name) === norm(req.name)); // a custom spell never borrows SRD text or dice
   const level = srd ? srd.level : Number(entry.level) || 0;
   const slot = level ? Math.max(level, Number(opts.slot) || level) : 0;
-  const ab = c.sc.ability || 'wis', cm = c.M[ab], dc = 8 + c.prof + cm;
+  const ab = c.sc.ability || 'wis', cm = c.M[ab], baseDc = 8 + c.prof + cm, dc = entry.custom && entry.save_dc != null ? entry.save_dc : baseDc + bonusFor(pc, 'spell_dc', baseDc);
+  const own = entry.custom && entry.to_hit != null && entry.to_hit !== ''; // a custom spell may carry its own attack bonus
+  const extra = own ? 0 : bonusFor(pc, 'spell_attack', c.prof + cm);
   const rolls = [], notes = [], out = { label: req.name, kind: 'spell', level, slot, castTime: srd?.casting_time || entry.cast_time, range: srd?.range, duration: srd?.duration || entry.duration, concentration: srd ? !!srd.concentration : !!entry.concentration, rolls, notes };
-  const isAttack = srd ? !!srd.attack_type : /^\+\d+$/.test(entry.to_hit || '');
-  if (isAttack) rolls.push(roll('Spell attack', [D('1d20'), F(c.prof, 'proficiency'), F(cm, `${NAME[ab]} (casting ability)`)]));
+  const isAttack = srd ? !!srd.attack_type : own || /^\+\d+$/.test(entry.to_hit || '');
+  if (isAttack) rolls.push(roll('Spell attack', own ? [D('1d20'), F(Number(entry.to_hit), 'spell attack bonus')] : [D('1d20'), F(c.prof, 'proficiency'), F(cm, `${NAME[ab]} (casting ability)`), ...(extra ? [F(extra, 'items and effects')] : [])]));
   const saveAb = srd?.dc?.dc_type?.index || entry.save_stat;
   if (saveAb) { out.dc = dc; notes.push(`Targets make a ${NAME[saveAb] || saveAb.toUpperCase()} save against DC ${dc} (8 + ${c.prof} proficiency ${sg(cm)} ${NAME[ab]})${srd?.dc?.dc_success === 'half' ? '; half damage on a success' : ''}.`); }
-  const heal = srd && level ? at(srd.heal_at_slot_level, slot) : undefined;
+  const heal = srd && level ? at(srd.heal_at_slot_level, slot) : entry.custom ? entry.healing || undefined : undefined;
   if (heal) {
     const dm = /(\d+d\d+)/.exec(heal), parts = dm ? [D(dm[1], 'healing')] : [F(parseInt(heal, 10) || 0, 'healing')];
     if (/MOD/.test(heal)) parts.push(F(cm, NAME[ab]));
@@ -50,7 +54,7 @@ function spellRecipe(pc, req, opts) {
     rolls.push(roll('Healing', parts));
   }
   let dmg = srd ? (level ? at(srd.damage?.damage_at_slot_level, slot) : at(srd.damage?.damage_at_character_level, c.level)) : entry.damage;
-  if (!heal && dmg) {
+  if ((!heal || entry.custom) && dmg) {
     const m = /(\d+d\d+)(?:\s*\+\s*(\d+))?/.exec(dmg);
     if (m) rolls.push(roll('Damage', [D(m[1], (srd?.damage?.damage_type?.name || entry.damage_type || '').toLowerCase() + ' damage'), ...(m[2] ? [F(+m[2], 'bonus')] : [])]));
   }
@@ -107,12 +111,12 @@ function checkRecipe(pc, req) {
     const dex = c.M.dex, wis = /gloom/.test(c.sub) && c.has(/dread ambusher/i) ? c.M.wis : 0, total = Number(pc.combat?.initiative_bonus ?? dex), other = total - dex - wis;
     return { label: 'Initiative', kind, rolls: [roll('Initiative', [D('1d20'), F(dex, 'DEX'), ...(wis ? [F(wis, 'WIS (Dread Ambusher)')] : []), ...(other ? [F(other, 'other bonuses')] : [])])], notes: [] };
   }
-  if (kind === 'save') return { label: `${NAME[key]} saving throw`, kind, rolls: [roll('Save', [D('1d20'), F(c.M[key], NAME[key]), ...(pc.saves?.proficient?.includes?.(key) ? [F(c.prof, 'proficiency')] : [])], [guidance === null ? null : rider('Bless', '1d4', 'if blessed'), insp].filter(Boolean))], notes: [] };
+  if (kind === 'save') return { label: `${NAME[key]} saving throw`, kind, rolls: [roll('Save', [D('1d20'), F(c.M[key], NAME[key]), ...(pc.saves?.proficient?.includes?.(key) ? [F(c.prof, 'proficiency')] : []), ...extraPart(pc, `save:${key}`, c.M[key] + (pc.saves?.proficient?.includes?.(key) ? c.prof : 0))], [guidance === null ? null : rider('Bless', '1d4', 'if blessed'), insp].filter(Boolean))], notes: [] };
   if (kind === 'ability') return { label: `${NAME[key]} check`, kind, rolls: [roll('Check', [D('1d20'), F(c.M[key], NAME[key])], [guidance, insp])], notes: [] };
   const s = pc.skills?.[key] || {}, ab = SKILLS[key], jat = !s.proficient && c.cls === 'bard' && c.level >= 2 ? Math.floor(c.prof / 2) : 0;
   const bonus = s.expertise ? 2 * c.prof : s.proficient ? c.prof : jat;
   const label = key.replace(/_/g, ' ').replace(/\b\w/g, (x) => x.toUpperCase());
-  return { label: `${label} (${NAME[ab]})`, kind: 'skill', rolls: [roll('Check', [D('1d20'), F(c.M[ab], NAME[ab]), ...(bonus ? [F(bonus, s.expertise ? 'expertise (double proficiency)' : s.proficient ? 'proficiency' : 'Jack of All Trades (half proficiency)')] : [])], [guidance, insp])], notes: [] };
+  return { label: `${label} (${NAME[ab]})`, kind: 'skill', rolls: [roll('Check', [D('1d20'), F(c.M[ab], NAME[ab]), ...(bonus ? [F(bonus, s.expertise ? 'expertise (double proficiency)' : s.proficient ? 'proficiency' : 'Jack of All Trades (half proficiency)')] : []), ...extraPart(pc, `skill:${key}`, c.M[ab] + bonus)], [guidance, insp])], notes: [] };
 }
 
 export function recipeFor(pc, req, opts = {}) {

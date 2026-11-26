@@ -16,8 +16,20 @@
 body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.16;background:repeating-linear-gradient(0deg,rgba(255,255,255,.025) 0 1px,transparent 1px 4px);mix-blend-mode:soft-light}
 button,input,select{font:inherit;color:var(--text);border:1px solid var(--border);border-radius:10px;min-height:44px;padding:8px 12px}button{cursor:pointer;background:#2a231b}button:hover{border-color:var(--gold);color:#f1dfae}button:active{transform:translateY(1px) scale(.985)}button:disabled{cursor:wait;opacity:.5}input,select{background:#15120f}button.primary{background:rgba(79,157,105,.2);border-color:#4f9d69;color:#a7d8b4}button.danger{background:rgba(179,65,47,.2);border-color:#9a3c2d;color:#f1aaa0}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
 .app{max-width:1440px;margin:auto;padding:0 24px 48px}.top{display:flex;align-items:center;gap:12px;padding:24px 0;border-bottom:1px solid var(--border)}h1,h2,h3{font-family:var(--serif);margin:0}h1{font-size:1.8rem;color:var(--gold)}h2{font-size:1.4rem;color:var(--gold)}h3{font-size:1.4rem;overflow-wrap:anywhere}.muted{color:var(--dim)}.top .muted{margin-left:auto}.section-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:24px 0 16px}.section-head label{display:flex;align-items:center;gap:10px}select{max-width:65vw}
-.party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));gap:16px;align-items:start}.card{background:linear-gradient(145deg,rgba(38,32,25,.98),rgba(29,24,20,.98));border:1px solid var(--border);border-radius:13px;padding:18px;box-shadow:inset 0 1px rgba(255,255,255,.035),0 16px 35px -28px #000}.hp-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:16px}.hp-num{font:bold 22px var(--mono)}.temp{color:#c4b5fd;font:14px var(--mono)}.bar{height:28px;background:#130f0c;border:1px solid #3b3021;border-radius:99px;overflow:hidden;margin:12px 0}.bar i{display:block;height:100%;background:var(--green);border-radius:99px}.bar.low i{background:var(--red)}.quick-chips{display:flex;gap:8px;margin-bottom:8px}.quick-chips button{flex:1;font-family:var(--mono)}.hp-controls{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px}.hp-controls input{width:100%;text-align:center}.slots{margin-top:18px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #3c3224}.row:last-child{border:0}.pips{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.pip{width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;background:transparent;border-color:#79633a}.pip.on{background:var(--gold);border-color:#e0bd6a;box-shadow:0 0 10px #c9a24b66;color:#251c0d}.slot-label{white-space:nowrap}.empty{color:var(--dim);padding:24px}
+.party-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));gap:16px;align-items:start}
+.hp-cell{display:inline-flex;align-items:center;gap:6px}.updown{display:inline-grid;gap:2px}.updown button{width:32px;height:22px;min-height:22px;padding:0;font-size:11px;line-height:1;border-radius:6px}
+td:last-child{white-space:normal}.conditions{display:flex;flex-wrap:wrap;gap:4px;align-items:center}.conditions button,.conditions select{min-height:36px;padding:2px 6px;font-size:13px}.conditions select{max-width:96px}.conditions small{flex-basis:100%;color:var(--dim)}
+.card{background:linear-gradient(145deg,rgba(38,32,25,.98),rgba(29,24,20,.98));border:1px solid var(--border);border-radius:13px;padding:18px;box-shadow:inset 0 1px rgba(255,255,255,.035),0 16px 35px -28px #000}.hp-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:16px}.hp-num{font:bold 22px var(--mono)}.temp{color:#c4b5fd;font:14px var(--mono)}.bar{height:28px;background:#130f0c;border:1px solid #3b3021;border-radius:99px;overflow:hidden;margin:12px 0}.bar i{display:block;height:100%;background:var(--green);border-radius:99px}.bar.low i{background:var(--red)}.quick-chips{display:flex;gap:8px;margin-bottom:8px}.quick-chips button{flex:1;font-family:var(--mono)}.hp-controls{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px}.hp-controls input{width:100%;text-align:center}.slots{margin-top:18px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #3c3224}.row:last-child{border:0}.pips{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.pip{width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;background:transparent;border-color:#79633a}.pip.on{background:var(--gold);border-color:#e0bd6a;box-shadow:0 0 10px #c9a24b66;color:#251c0d}.slot-label{white-space:nowrap}.empty{color:var(--dim);padding:24px}
 .weather-types{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}.weather-types [aria-pressed=true]{outline:2px solid var(--gold);background:#3a2e1d;color:#e0bd6a}.weather-sliders{display:grid;grid-template-columns:1fr 1fr;gap:24px}.weather-sliders label{display:grid;grid-template-columns:1fr auto;gap:8px}.weather-sliders input{grid-column:1/-1;width:100%;padding:0;accent-color:var(--gold)}.weather-current{margin:20px 0 0;line-height:1.6;overflow-wrap:anywhere}.toast{position:fixed;z-index:20;left:50%;bottom:24px;transform:translateX(-50%);background:#292119;border:1px solid var(--gold-dim);border-radius:10px;padding:12px 16px;max-width:92vw;box-shadow:0 10px 30px #0008}.error{color:#e49b8e}
+.tablist{position:sticky;top:0;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:10px 0;background:#12100e;border-bottom:1px solid var(--border)}.tablist button{white-space:nowrap}.tablist [aria-selected=true]{background:#3a2e1d;border-color:var(--gold);color:#e0bd6a}[hidden]{display:none!important}
+[role=tabpanel]{padding-top:8px}iframe{width:100%;height:calc(100vh - 190px);min-height:520px;border:1px solid var(--border);border-radius:13px;background:#12100e;margin-top:12px}
+.table-wrap{overflow-x:auto;margin:16px 0 4px}table{width:100%;border-collapse:collapse;font-size:15px}th,td{padding:6px 5px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}thead th{color:var(--gold);font-size:13px}
+.status-row,.row-actions,.statline{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;align-items:center}.status-row [aria-pressed=true]{border-color:var(--gold);color:#e0bd6a}.statline{gap:14px}details>summary{cursor:pointer;min-height:44px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}details.card{margin-bottom:12px}
+.npc-line{display:flex;justify-content:space-between;gap:16px;padding:6px 0;border-bottom:1px solid #3c3224}.npc-line span:last-child{text-align:right;overflow-wrap:anywhere;white-space:pre-wrap}.skill-grid{display:grid;grid-template-columns:1fr auto;gap:4px 12px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;align-items:start}.stack,.stack form,.card form{display:grid;gap:10px}.stack label,.card form label{display:grid;gap:4px}textarea{font:inherit;color:var(--text);background:#15120f;border:1px solid var(--border);border-radius:10px;padding:8px 12px;width:100%}input,select{max-width:100%;min-width:0}
+.numbers{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px}.numbers input{width:100%}label.check{display:flex!important;align-items:center;gap:8px;min-height:44px}label.check input{min-height:22px;width:22px}
+#loot-pile{list-style:none;padding:0;margin:0}#loot-pile li{display:flex;justify-content:space-between;align-items:center;gap:8px;border-bottom:1px solid #3c3224;padding:6px 0}
+fieldset{border:1px solid var(--border);border-radius:10px;padding:10px;min-width:0}.card-row,.effect-modifier{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}.card-row>*{flex:1 1 140px}.card-row>button{flex:0 0 auto}.effect-modifier>*{flex:1 1 120px}
 @media(max-width:600px){.app{padding:0 14px 32px}.top{align-items:start}.top .muted{font-size:14px}.weather-sliders{grid-template-columns:1fr}.hp-num{font-size:20px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style></head>
@@ -25,10 +37,16 @@ button,input,select{font:inherit;color:var(--text);border:1px solid var(--border
 <main id="app" class="app">
   <header class="top"><h1>GM Companion</h1><span class="muted">GeezSheets · GM only</span></header>
   <div id="dashboard" hidden>
-    <section aria-labelledby="party-title">
-      <div class="section-head"><h2 id="party-title">Party</h2><label>Campaign <select id="gm-camp" disabled><option>Loading…</option></select></label></div>
+    <div class="section-head"><label>Campaign <select id="gm-camp" disabled><option>Loading…</option></select></label></div>
+    <nav class="tablist" role="tablist" aria-label="GM tools"><button role="tab" id="tab-party" data-tab="party" aria-controls="panel-party" aria-selected="false">Party</button><button role="tab" id="tab-rolls" data-tab="rolls" aria-controls="panel-rolls" aria-selected="false">Rolls</button><button role="tab" id="tab-table" data-tab="table" aria-controls="panel-table" aria-selected="false">Table</button><button role="tab" id="tab-loot" data-tab="loot" aria-controls="panel-loot" aria-selected="false">Items and loot</button><button role="tab" id="tab-npc" data-tab="npc" aria-controls="panel-npc" aria-selected="false">NPCs</button><button role="tab" id="tab-create" data-tab="create" aria-controls="panel-create" aria-selected="false">Create</button><button role="tab" id="tab-cards" data-tab="cards" aria-controls="panel-cards" aria-selected="false">Cards</button><button role="tab" id="tab-deck" data-tab="deck" aria-controls="panel-deck" aria-selected="false">Deck of Chance</button></nav>
+    <div id="panel-party" role="tabpanel" aria-labelledby="tab-party" hidden>
+      <div id="summary"></div>
       <div id="party" class="party-grid"><p class="muted">Loading party…</p></div>
-    </section>
+    </div>
+    <div id="panel-rolls" role="tabpanel" aria-labelledby="tab-rolls" hidden>
+      <iframe title="Call rolls, recent rolls, give items and level up"></iframe>
+    </div>
+    <div id="panel-table" role="tabpanel" aria-labelledby="tab-table" hidden>
     <section aria-labelledby="weather-title">
       <div class="section-head"><h2 id="weather-title">Weather</h2><span class="muted">Gaia</span></div>
       <div class="card">
@@ -45,15 +63,6 @@ button,input,select{font:inherit;color:var(--text);border:1px solid var(--border
         <p id="weather-current" class="weather-current muted" role="status">Loading current weather…</p>
       </div>
     </section>
-    <section aria-labelledby="audio-title">
-      <div class="section-head"><h2 id="audio-title">Sound</h2><span class="muted">Plays on every companion and the table VTT</span></div>
-      <div class="card" id="audio-board">
-        <h3>Music</h3><div id="audio-music" class="weather-types"></div>
-        <h3>Ambience</h3><div id="audio-amb" class="weather-types"></div>
-        <h3>Sound effects</h3><div id="audio-sfx" class="weather-types"></div>
-        <button id="audio-stop">Stop all sound</button>
-      </div>
-    </section>
     <section aria-labelledby="spawn-title">
       <div class="section-head"><h2 id="spawn-title">Spawn tokens</h2><span class="muted">Owlbear</span></div>
       <div class="card">
@@ -66,10 +75,79 @@ button,input,select{font:inherit;color:var(--text);border:1px solid var(--border
         <p id="spawn-status" class="muted" role="status">Tokens appear in the middle of the GM's Owlbear view.</p>
       </div>
     </section>
+
+    </div>
+    <div id="panel-loot" role="tabpanel" aria-labelledby="tab-loot" hidden>
+      <div class="cols">
+        <section class="card stack"><h2>Loot pile</h2>
+          <ul id="loot-pile"></ul>
+          <div id="loot-coins" class="numbers"></div>
+          <h3>Send to</h3><div id="loot-who" class="status-row"></div>
+          <label class="check"><input type="checkbox" id="loot-split">Split the coins between them (items go to the first one ticked)</label>
+          <div class="row-actions"><button id="loot-send" class="primary">Send</button><button id="loot-clear">Empty the pile</button></div>
+          <p id="loot-status" class="muted" role="status"></p>
+        </section>
+        <section class="card stack"><h2>Add from the rules</h2>
+          <form id="loot-srd"><label>Item<input id="loot-name" list="loot-names" autocomplete="off" required></label><datalist id="loot-names"></datalist><label>Quantity<input id="loot-qty" type="number" min="1" max="9999" value="1"></label><button>Add to pile</button></form>
+          <h3>Random treasure</h3><select id="loot-tier" aria-label="Treasure tier"></select><button id="loot-random">Roll treasure</button>
+        </section>
+        <section class="card"><h2>New item</h2>
+          <form id="item-form">
+            <label>Name<input name="itemName" maxlength="100" required></label>
+            <label>Type<select name="category"><option>Adventuring Gear</option><option>Consumable</option><option>Armor</option><option>Weapon</option></select></label>
+            <label>Description<textarea name="desc" rows="3" maxlength="20000"></textarea></label>
+            <div class="numbers"><label>Quantity<input name="qty" type="number" min="1" max="9999" value="1"></label><label>Weight (lb)<input name="weight" type="number" min="0" step="any"></label><label>Healing dice<input name="dice" placeholder="2d4+2"></label></div>
+            <fieldset id="item-weapon" hidden><legend>Weapon</legend><div class="numbers"><label>To hit<input name="to_hit" type="number" min="-999" max="999" value="0"></label><label>Damage<input name="damage" value="1d6"></label><label>Damage type<input name="damage_type" maxlength="100"></label><label>Ability<select name="ability"><option value="str">STR</option><option value="dex">DEX</option><option value="">None</option></select></label></div></fieldset>
+            <details><summary>Bonuses while equipped (not for weapons)</summary><div class="numbers"><label>AC<input name="ac" type="number" min="-999" max="999" value="0"></label><span id="item-stats" style="display:contents"></span></div></details>
+            <button class="primary">Add to pile</button>
+          </form>
+        </section>
+      </div>
+    </div>
+    <div id="panel-npc" role="tabpanel" aria-labelledby="tab-npc" hidden>
+      <div class="cols">
+        <section class="card stack"><h2>Random NPC</h2>
+          <select id="npc-race" aria-label="Ancestry"></select><select id="npc-job" aria-label="Profession"></select>
+          <button id="npc-roll" class="primary" disabled>Roll an NPC</button>
+          <div id="npc-result" class="stack" hidden><h3 id="npc-name"></h3><label>Stat block<select id="npc-block"></select></label><div id="npc-detail"></div>
+            <div class="row-actions"><button id="npc-save" class="primary">Save to campaign</button><button id="npc-token">Put token in Owlbear</button></div></div>
+          <p id="npc-status" class="muted" role="status"></p>
+        </section>
+        <section class="card"><h2>Saved NPCs</h2><div id="npc-saved"></div></section>
+      </div>
+    </div>
+    <div id="panel-create" role="tabpanel" aria-labelledby="tab-create" hidden>
+      <iframe title="Create spells, weapons, items, effects, feats and stats"></iframe>
+    </div>
+    <div id="panel-cards" role="tabpanel" aria-labelledby="tab-cards" hidden>
+      <section class="card"><h2>Card Creator</h2>
+        <form id="card-form">
+          <label>Character<select id="card-pc" required></select></label>
+          <label>Name<input name="cardName" maxlength="100" required></label>
+          <label>Description<textarea name="description" rows="2" maxlength="20000"></textarea></label>
+          <fieldset><legend>Ability scores</legend><div id="card-stats" class="numbers"></div></fieldset>
+          <fieldset><legend>Skill modifiers</legend><div id="card-skill-rows"></div><button type="button" data-card-add="skill">Add skill</button></fieldset>
+          <fieldset><legend>Stat changes</legend><div id="card-change-rows"></div><button type="button" data-card-add="change">Add stat change</button></fieldset>
+          <fieldset><legend>Effects</legend><div id="card-effect-rows"></div><button type="button" data-card-add="effect">Add effect</button></fieldset>
+          <fieldset><legend>Feats</legend><div id="card-feat-rows"></div><button type="button" data-card-add="feat">Add feat</button></fieldset>
+          <fieldset><legend>Conditions</legend><div id="card-condition-rows"></div><button type="button" data-card-add="condition">Add condition</button></fieldset>
+          <label class="check"><input name="equip" type="checkbox" checked>Equip to card slot</label>
+          <button id="card-submit" class="primary">Give card</button>
+          <output id="card-status" role="status" aria-live="polite"></output>
+        </form>
+      </section>
+    </div>
+    <div id="panel-deck" role="tabpanel" aria-labelledby="tab-deck" hidden>
+      <div class="cols">
+        <section class="card stack"><h2>Push a draw</h2><label>Character<select id="deck-pc"></select></label><button id="deck-push" class="primary">Push three cards</button><p id="deck-status" class="muted" role="status"></p>
+          <details><summary>AI writer settings (Ollama on this PC)</summary><label>Address<input id="deck-url" value="http://localhost:11434"></label><label>Model<input id="deck-model" value="llama3.2"></label></details></section>
+        <section><h2>Draws</h2><div id="deck-table"></div></section>
+      </div>
+    </div>
   </div>
   <p id="access" class="empty">Loading GM companion…</p>
 </main>
 <div id="toasts" role="status" aria-live="polite"></div>
 <script src="js/firebase-config.js"></script>
-<script type="module" src="js/gm-companion.js"></script>
+<script type="module" src="js/gm-companion.js?v=2"></script>
 </body></html>

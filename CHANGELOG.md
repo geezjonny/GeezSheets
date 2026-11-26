@@ -2,10 +2,30 @@
 
 ## 2026-11-25
 
-### Companion sound
-- The companion now plays the table's soundboard: whatever music, ambience and sound effects are set for the table plays on each player's phone, with a speaker button for volume and mute. The button pulses until the first tap, because phones block autoplay.
-- The GM companion has a Sound section with the same board (music, ambience, effects, stop all), so the GM can run sound from there as well as from the table VTT. Both control the same sound.
-- Not yet tried live with a second device.
+### Player companion (`companion.html`)
+- **Redesigned for play:** name, AC, hit points and conditions stay on screen, with five tabs: Play (what you can do as an action, bonus action or reaction), Spells, Skills, Bag and Me.
+- **"?" explanations** on stats, skills, conditions, rolling, rests and items, in plain language.
+- **Rolling:** the result shows in the same panel, advantage resets after each roll, and a natural 20 offers critical damage.
+- **Undo** for damage, healing, spell slots and using or removing an item.
+- **Bag:** each item shows what it does and what it is worth, packs list their contents line by line, and an Armor class card shows what makes up the number. Items can be equipped, unequipped, used, sent to a party member or removed. Healing potions roll and heal whoever drinks them.
+- **Coins:** players see them; only the GM changes them.
+- **Feats** are spelled out. Custom spells, all feats, effects, equipped item bonuses, cards and Deck of Chance draws now work here.
+- Can be added to a phone's home screen, and can keep the screen on while playing.
+- Fixed: the Actions screen could crash, open sections snapped shut on live updates, and a phone holding the old page showed an unstyled screen.
+
+### GM companion (`gm-companion.html`)
+- **One place to run the session**, in tabs: Party, Rolls, Table, Items and loot, NPCs, Create, Cards and Deck of Chance.
+- **Party:** a comparison table with up/down buttons for HP and a condition dropdown, plus a card per character with the rest of the sheet.
+- **Items and loot:** create items and weapons, roll random treasure, and send items and coins to players, who get a notice.
+- **NPCs:** roll a random character with a stat block, save them to the campaign, or send a token to Owlbear.
+- **Authoring moved here from GeezVTT:** spells, weapons, items, effects, feats, stats, cards and the Deck of Chance, all on the same character data. Fixed a GeezVTT bug where new spells and weapons were silently lost.
+
+### Sound
+- The soundboard added to the companions earlier today has been removed; sound runs in Kenku.fm.
+
+### Not yet tried
+- Not yet used on a real phone or in a live session. Saving was tested against a stand-in database, not the live one.
+- The Bag layout added last was not checked by eye. The rule explanations are worth a read-through, especially where the 2014 and 2024 rules differ.
 
 ## 2026-11-22
 

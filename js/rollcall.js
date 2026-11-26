@@ -13,6 +13,8 @@
 // relative to the campaign's live root:
 //   api = { txn(path, fn) -> Promise<boolean committed>, update(path, obj), push(path, obj) }
 
+import { bonusFor } from './geez/effective.js';
+
 export const ABIL = { str: 'Strength', dex: 'Dexterity', con: 'Constitution', int: 'Intelligence', wis: 'Wisdom', cha: 'Charisma' };
 export const SKILLS = [
     ['acrobatics', 'Acrobatics', 'dex'], ['animal_handling', 'Animal Handling', 'wis'], ['arcana', 'Arcana', 'int'], ['athletics', 'Athletics', 'str'],
@@ -39,6 +41,7 @@ export function callMod(c, call) {
     } else if (call.kind === 'save') {
         parts.push([call.key.toUpperCase(), abMod(statOf(c, call.key))]);
         if (asList(c?.saves?.proficient).includes(call.key)) parts.push(['Proficient', prof]);
+        const extra = bonusFor(c, `save:${call.key}`, parts.reduce((n, p) => n + p[1], 0)); if (extra) parts.push(['Items and effects', extra]);
     } else if (call.kind === 'skill') {
         const sk = SKILLS.find((s) => s[0] === call.key), data = c?.skills?.[call.key] || {};
         if (data.bonus != null && data.bonus !== '') parts.push([sk?.[1] || 'Skill', Number(data.bonus) || 0]);

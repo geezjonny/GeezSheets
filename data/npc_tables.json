@@ -1,0 +1,3046 @@
+{
+ "tables": {
+  "Race": [
+   "Human",
+   "Dwarf",
+   "Elf",
+   "Halfling",
+   "Gnome",
+   "Orc",
+   "Goblin",
+   "Tiefling",
+   "Dragonborn",
+   "Centaur",
+   "Minotaur",
+   "Tabaxi",
+   "Kenku",
+   "Aasimar",
+   "Goliath",
+   "Firbolg",
+   "Fairy",
+   "Warforged",
+   "Lizardfolk",
+   "Tortle",
+   "Vampire",
+   "Mushroomkin",
+   "Zombie"
+  ],
+  "Profession": [
+   "Shopkeeper",
+   "Baker",
+   "Tavernkeeper",
+   "Blacksmith",
+   "Farmer",
+   "Thief",
+   "Carpenter",
+   "Miller",
+   "Weaver",
+   "Tailor",
+   "Cobbler",
+   "Fisher",
+   "Butcher",
+   "Brewer",
+   "Cook",
+   "Stablehand",
+   "Messenger",
+   "Guard",
+   "Sailor",
+   "Miner",
+   "Mason",
+   "Potter",
+   "Chandler",
+   "Herbalist",
+   "Apothecary",
+   "Scribe",
+   "Bookbinder",
+   "Gravedigger",
+   "Hunter",
+   "Shepherd",
+   "Merchant",
+   "Beggar",
+   "Jeweler",
+   "Barber",
+   "Servant",
+   "Ferryman",
+   "Tanner",
+   "Ropemaker",
+   "Cooper",
+   "Cartwright"
+  ],
+  "Hero class": [
+   "Barbarian",
+   "Bard",
+   "Cleric",
+   "Druid",
+   "Fighter",
+   "Monk",
+   "Paladin",
+   "Ranger",
+   "Rogue",
+   "Sorcerer",
+   "Warlock",
+   "Wizard",
+   "Artificer"
+  ],
+  "Armor": [
+   "None",
+   "None",
+   "None",
+   "None",
+   "None",
+   "None",
+   "None",
+   "Padded armor",
+   "Leather armor",
+   "Hide armor",
+   "Chain shirt",
+   "Scale mail",
+   "Breastplate",
+   "Chain mail",
+   "Plate armor"
+  ],
+  "Weapon": [
+   "None",
+   "None",
+   "None",
+   "None",
+   "None",
+   "Dagger",
+   "Club",
+   "Quarterstaff",
+   "Sling",
+   "Shortbow",
+   "Spear",
+   "Handaxe",
+   "Shortsword",
+   "Longsword",
+   "Crossbow"
+  ],
+  "Hair color": [
+   "Black",
+   "Brown",
+   "Blond",
+   "Auburn",
+   "Red",
+   "White",
+   "Gray",
+   "Silver",
+   "Blue",
+   "Green",
+   "Purple",
+   "Pink",
+   "Bald"
+  ],
+  "Facial hair": [
+   "None",
+   "Stubble",
+   "Short beard",
+   "Long beard",
+   "Braided beard",
+   "Mustache",
+   "Goatee",
+   "Sideburns",
+   "Patchy beard",
+   "Waxed mustache"
+  ],
+  "Facial features": [
+   "Broad nose and heavy brows",
+   "Sharp cheekbones and narrow eyes",
+   "Round cheeks and dimples",
+   "Freckles and a crooked smile",
+   "Deep-set eyes and a square jaw",
+   "Gap between front teeth",
+   "Hooked nose and thin lips",
+   "Large eyes and a soft jawline",
+   "Uneven eyebrows and a wide mouth",
+   "Prominent ears and a pointed chin",
+   "One cloudy eye",
+   "Distinctive fangs"
+  ],
+  "Height": [
+   "Small",
+   "Medium",
+   "Tall"
+  ],
+  "Age": [
+   "Child",
+   "Teenage",
+   "Adult",
+   "Old"
+  ],
+  "Demeanor": [
+   "Warm and welcoming",
+   "Suspicious",
+   "Boisterous",
+   "Quiet and observant",
+   "Impatient",
+   "Formal and polite",
+   "Sarcastic",
+   "Nervous",
+   "Playful",
+   "Weary",
+   "Blunt",
+   "Absent-minded",
+   "Overly curious",
+   "Proud",
+   "Gentle",
+   "Evasive"
+  ],
+  "Secret": [
+   "Hides a fugitive",
+   "Works for a rival faction",
+   "Stole something valuable",
+   "Uses a false identity",
+   "Owes a dangerous debt",
+   "Can hear an unknown voice",
+   "Is protecting a monster",
+   "Knows where someone disappeared",
+   "Has an illegal sideline",
+   "Betrayed a close friend",
+   "Keeps a forbidden relic",
+   "Is planning to leave town",
+   "Secretly supports an enemy",
+   "Has a hidden family connection",
+   "Witnessed a crime",
+   "Is being blackmailed"
+  ],
+  "Discernible feature": [
+   "Missing one hand",
+   "Missing an ear",
+   "Wooden leg",
+   "Distinctive facial tattoo",
+   "Glowing birthmark",
+   "Tiny bird nesting in their hair",
+   "Pet rat peeking from a pocket",
+   "Insect living in a hollow tooth",
+   "Mushrooms growing from one shoulder",
+   "Mismatched eyes",
+   "Always wears a cracked silver mask",
+   "A small snake coiled around their wrist",
+   "A second shadow moves independently",
+   "Identifiable brass prosthetic fingers",
+   "Old burn across one side of the face",
+   "Carries a cage containing an invisible creature",
+   "Unusual antlers",
+   "A living eye embedded in their palm",
+   "Wears a bright feathered hat",
+   "No obvious unusual feature"
+  ]
+ },
+ "names": {
+  "Human": {
+   "first": [
+    "Alden",
+    "Mara",
+    "Tobin",
+    "Elise",
+    "Gareth",
+    "Anya",
+    "Cedric",
+    "Lena",
+    "Roland",
+    "Tessa",
+    "Edwin",
+    "Clara",
+    "Hugo",
+    "Nora",
+    "Oswin",
+    "Petra",
+    "Julian",
+    "Sylvia",
+    "Bennet",
+    "Isolde"
+   ],
+   "begin": [
+    "Al",
+    "Mar",
+    "Tob",
+    "El",
+    "Gar",
+    "An",
+    "Ced",
+    "Le",
+    "Rol",
+    "Tes",
+    "Edw",
+    "Cla",
+    "Hu",
+    "No",
+    "Osw",
+    "Pet",
+    "Jul",
+    "Syl",
+    "Ben",
+    "Iso"
+   ],
+   "end": [
+    "den",
+    "ara",
+    "in",
+    "ise",
+    "eth",
+    "ya",
+    "ric",
+    "na",
+    "and",
+    "sa",
+    "in",
+    "ra",
+    "go",
+    "ra",
+    "in",
+    "ra",
+    "ian",
+    "via",
+    "net",
+    "lde"
+   ],
+   "sur": [
+    "Ashford",
+    "Reed",
+    "Thorne",
+    "Vale",
+    "Ashford",
+    "Reed",
+    "Thorne",
+    "Vale",
+    "Ashford",
+    "Reed",
+    "Thorne",
+    "Vale",
+    "Ashford",
+    "Reed",
+    "Thorne",
+    "Vale",
+    "Ashford",
+    "Reed",
+    "Thorne",
+    "Vale"
+   ]
+  },
+  "Dwarf": {
+   "first": [
+    "Borin",
+    "Helga",
+    "Dagna",
+    "Thrain",
+    "Brunor",
+    "Hilda",
+    "Korgan",
+    "Vistra",
+    "Durnan",
+    "Sigrid",
+    "Harbek",
+    "Torvi",
+    "Orsik",
+    "Amber",
+    "Garun",
+    "Frida",
+    "Baldrik",
+    "Katla",
+    "Morgran",
+    "Runa"
+   ],
+   "begin": [
+    "Stone",
+    "Iron",
+    "Thra",
+    "Bor",
+    "Bru",
+    "Hil",
+    "Kor",
+    "Vis",
+    "Dur",
+    "Sig",
+    "Har",
+    "Tor",
+    "Ors",
+    "Amb",
+    "Gar",
+    "Fri",
+    "Bald",
+    "Kat",
+    "Morg",
+    "Ru"
+   ],
+   "end": [
+    "gran",
+    "rik",
+    "drin",
+    "grom",
+    "nor",
+    "da",
+    "gan",
+    "tra",
+    "nan",
+    "rid",
+    "bek",
+    "vi",
+    "ik",
+    "er",
+    "un",
+    "da",
+    "rik",
+    "la",
+    "ran",
+    "na"
+   ],
+   "sur": [
+    "Ironbeard",
+    "Stonehammer",
+    "Deepdelve",
+    "Anvilborn",
+    "Ironbeard",
+    "Stonehammer",
+    "Deepdelve",
+    "Anvilborn",
+    "Ironbeard",
+    "Stonehammer",
+    "Deepdelve",
+    "Anvilborn",
+    "Ironbeard",
+    "Stonehammer",
+    "Deepdelve",
+    "Anvilborn",
+    "Ironbeard",
+    "Stonehammer",
+    "Deepdelve",
+    "Anvilborn"
+   ]
+  },
+  "Elf": {
+   "first": [
+    "Aelar",
+    "Seren",
+    "Thalion",
+    "Naeris",
+    "Lethariel",
+    "Faelora",
+    "Caelynn",
+    "Vaelis",
+    "Ilyana",
+    "Eryndor",
+    "Sylvara",
+    "Lorien",
+    "Maerith",
+    "Elowen",
+    "Arannis",
+    "Lirael",
+    "Thaelis",
+    "Isilwen",
+    "Vaerion",
+    "Nimriel"
+   ],
+   "begin": [
+    "Ae",
+    "Ser",
+    "Thal",
+    "Nae",
+    "Letha",
+    "Fael",
+    "Cael",
+    "Vae",
+    "Ily",
+    "Eryn",
+    "Sylv",
+    "Lor",
+    "Maer",
+    "Elo",
+    "Aran",
+    "Lir",
+    "Thae",
+    "Isil",
+    "Vaer",
+    "Nimr"
+   ],
+   "end": [
+    "lar",
+    "riel",
+    "ion",
+    "ris",
+    "riel",
+    "ora",
+    "ynn",
+    "lis",
+    "ana",
+    "dor",
+    "ara",
+    "ien",
+    "ith",
+    "wen",
+    "nis",
+    "ael",
+    "lis",
+    "wen",
+    "ion",
+    "iel"
+   ],
+   "sur": [
+    "Moonwhisper",
+    "Silverleaf",
+    "Starbough",
+    "Dawnweaver",
+    "Moonwhisper",
+    "Silverleaf",
+    "Starbough",
+    "Dawnweaver",
+    "Moonwhisper",
+    "Silverleaf",
+    "Starbough",
+    "Dawnweaver",
+    "Moonwhisper",
+    "Silverleaf",
+    "Starbough",
+    "Dawnweaver",
+    "Moonwhisper",
+    "Silverleaf",
+    "Starbough",
+    "Dawnweaver"
+   ]
+  },
+  "Halfling": {
+   "first": [
+    "Pip",
+    "Merri",
+    "Tansy",
+    "Corin",
+    "Rosie",
+    "Wendel",
+    "Bree",
+    "Milo",
+    "Poppy",
+    "Finnan",
+    "Clover",
+    "Osbert",
+    "Daisy",
+    "Perrin",
+    "Hazel",
+    "Wilby",
+    "Marigold",
+    "Lyle",
+    "Posy",
+    "Reggie"
+   ],
+   "begin": [
+    "Pip",
+    "Merr",
+    "Tan",
+    "Cor",
+    "Ros",
+    "Wen",
+    "Br",
+    "Mi",
+    "Pop",
+    "Fin",
+    "Clo",
+    "Osb",
+    "Dai",
+    "Per",
+    "Haz",
+    "Wil",
+    "Mari",
+    "Ly",
+    "Po",
+    "Reg"
+   ],
+   "end": [
+    "foot",
+    "berry",
+    "kin",
+    "blossom",
+    "ie",
+    "del",
+    "ee",
+    "lo",
+    "py",
+    "nan",
+    "ver",
+    "ert",
+    "sy",
+    "rin",
+    "el",
+    "by",
+    "gold",
+    "le",
+    "sy",
+    "gie"
+   ],
+   "sur": [
+    "Goodbarrel",
+    "Underhill",
+    "Greenbottle",
+    "Brushgather",
+    "Goodbarrel",
+    "Underhill",
+    "Greenbottle",
+    "Brushgather",
+    "Goodbarrel",
+    "Underhill",
+    "Greenbottle",
+    "Brushgather",
+    "Goodbarrel",
+    "Underhill",
+    "Greenbottle",
+    "Brushgather",
+    "Goodbarrel",
+    "Underhill",
+    "Greenbottle",
+    "Brushgather"
+   ]
+  },
+  "Gnome": {
+   "first": [
+    "Nim",
+    "Tilli",
+    "Boddyn",
+    "Fenna",
+    "Fizzik",
+    "Zanna",
+    "Dobbin",
+    "Wrenn",
+    "Alston",
+    "Nyssa",
+    "Jorbin",
+    "Bimble",
+    "Quilla",
+    "Orryn",
+    "Dixi",
+    "Frug",
+    "Gimble",
+    "Roswyn",
+    "Zeebo",
+    "Tinket"
+   ],
+   "begin": [
+    "Nim",
+    "Till",
+    "Bod",
+    "Fen",
+    "Fiz",
+    "Zan",
+    "Dob",
+    "Wre",
+    "Als",
+    "Nys",
+    "Jor",
+    "Bim",
+    "Qui",
+    "Orr",
+    "Di",
+    "Fr",
+    "Gim",
+    "Ros",
+    "Zee",
+    "Tin"
+   ],
+   "end": [
+    "wick",
+    "bert",
+    "lebit",
+    "nix",
+    "zik",
+    "na",
+    "bin",
+    "nn",
+    "ton",
+    "sa",
+    "bin",
+    "ble",
+    "lla",
+    "yn",
+    "xi",
+    "ug",
+    "ble",
+    "wyn",
+    "bo",
+    "ket"
+   ],
+   "sur": [
+    "Copperkettle",
+    "Fizzlegear",
+    "Thistletop",
+    "Sparkspindle",
+    "Copperkettle",
+    "Fizzlegear",
+    "Thistletop",
+    "Sparkspindle",
+    "Copperkettle",
+    "Fizzlegear",
+    "Thistletop",
+    "Sparkspindle",
+    "Copperkettle",
+    "Fizzlegear",
+    "Thistletop",
+    "Sparkspindle",
+    "Copperkettle",
+    "Fizzlegear",
+    "Thistletop",
+    "Sparkspindle"
+   ]
+  },
+  "Orc": {
+   "first": [
+    "Gorak",
+    "Ursa",
+    "Mog",
+    "Shura",
+    "Grash",
+    "Murga",
+    "Thokk",
+    "Yagra",
+    "Karg",
+    "Nura",
+    "Drog",
+    "Vola",
+    "Gromm",
+    "Shava",
+    "Ruk",
+    "Mazra",
+    "Horg",
+    "Zura",
+    "Brug",
+    "Ugra"
+   ],
+   "begin": [
+    "Gor",
+    "Ur",
+    "Mog",
+    "Shur",
+    "Gra",
+    "Mur",
+    "Tho",
+    "Yag",
+    "Ka",
+    "Nu",
+    "Dr",
+    "Vo",
+    "Gro",
+    "Sha",
+    "Ru",
+    "Maz",
+    "Ho",
+    "Zu",
+    "Br",
+    "Ug"
+   ],
+   "end": [
+    "ak",
+    "ga",
+    "og",
+    "ra",
+    "sh",
+    "ga",
+    "kk",
+    "ra",
+    "rg",
+    "ra",
+    "og",
+    "la",
+    "mm",
+    "va",
+    "k",
+    "ra",
+    "rg",
+    "ra",
+    "ug",
+    "ra"
+   ],
+   "sur": [
+    "Bonebreaker",
+    "Ashfang",
+    "Ironjaw",
+    "Redtusk",
+    "Bonebreaker",
+    "Ashfang",
+    "Ironjaw",
+    "Redtusk",
+    "Bonebreaker",
+    "Ashfang",
+    "Ironjaw",
+    "Redtusk",
+    "Bonebreaker",
+    "Ashfang",
+    "Ironjaw",
+    "Redtusk",
+    "Bonebreaker",
+    "Ashfang",
+    "Ironjaw",
+    "Redtusk"
+   ]
+  },
+  "Goblin": {
+   "first": [
+    "Nib",
+    "Skrik",
+    "Vexa",
+    "Grub",
+    "Zib",
+    "Fikka",
+    "Snag",
+    "Yip",
+    "Nix",
+    "Kribble",
+    "Skab",
+    "Tiz",
+    "Brikk",
+    "Zogga",
+    "Pik",
+    "Wizzle",
+    "Grek",
+    "Jibba",
+    "Snik",
+    "Rigga"
+   ],
+   "begin": [
+    "Nib",
+    "Skr",
+    "Vex",
+    "Grub",
+    "Zi",
+    "Fik",
+    "Sn",
+    "Yi",
+    "Ni",
+    "Krib",
+    "Sk",
+    "Ti",
+    "Bri",
+    "Zog",
+    "Pi",
+    "Wiz",
+    "Gr",
+    "Jib",
+    "Sn",
+    "Rig"
+   ],
+   "end": [
+    "bit",
+    "ik",
+    "xa",
+    "nak",
+    "b",
+    "ka",
+    "ag",
+    "p",
+    "x",
+    "ble",
+    "ab",
+    "z",
+    "kk",
+    "ga",
+    "k",
+    "zle",
+    "ek",
+    "ba",
+    "ik",
+    "ga"
+   ],
+   "sur": [
+    "Sootnose",
+    "Rattlepot",
+    "Scraptooth",
+    "Muckfinger",
+    "Sootnose",
+    "Rattlepot",
+    "Scraptooth",
+    "Muckfinger",
+    "Sootnose",
+    "Rattlepot",
+    "Scraptooth",
+    "Muckfinger",
+    "Sootnose",
+    "Rattlepot",
+    "Scraptooth",
+    "Muckfinger",
+    "Sootnose",
+    "Rattlepot",
+    "Scraptooth",
+    "Muckfinger"
+   ]
+  },
+  "Tiefling": {
+   "first": [
+    "Vesper",
+    "Azra",
+    "Nerezza",
+    "Damien",
+    "Nyx",
+    "Malrik",
+    "Velora",
+    "Ixen",
+    "Sariel",
+    "Zevra",
+    "Lucara",
+    "Mephra",
+    "Orien",
+    "Vaasha",
+    "Caligo",
+    "Zarielith",
+    "Desra",
+    "Infern",
+    "Ravena",
+    "Sableth"
+   ],
+   "begin": [
+    "Ves",
+    "Az",
+    "Ner",
+    "Dam",
+    "Ny",
+    "Mal",
+    "Vel",
+    "Ix",
+    "Sar",
+    "Zev",
+    "Luc",
+    "Mep",
+    "Ori",
+    "Vaa",
+    "Cal",
+    "Zarie",
+    "Des",
+    "Inf",
+    "Rav",
+    "Sabl"
+   ],
+   "end": [
+    "per",
+    "ra",
+    "ezza",
+    "ien",
+    "x",
+    "rik",
+    "ora",
+    "en",
+    "iel",
+    "ra",
+    "ara",
+    "hra",
+    "en",
+    "sha",
+    "igo",
+    "lith",
+    "ra",
+    "ern",
+    "ena",
+    "eth"
+   ],
+   "sur": [
+    "Embermark",
+    "Duskveil",
+    "Cinderheart",
+    "Ashmantle",
+    "Embermark",
+    "Duskveil",
+    "Cinderheart",
+    "Ashmantle",
+    "Embermark",
+    "Duskveil",
+    "Cinderheart",
+    "Ashmantle",
+    "Embermark",
+    "Duskveil",
+    "Cinderheart",
+    "Ashmantle",
+    "Embermark",
+    "Duskveil",
+    "Cinderheart",
+    "Ashmantle"
+   ]
+  },
+  "Dragonborn": {
+   "first": [
+    "Arjhan",
+    "Balasar",
+    "Akra",
+    "Surina",
+    "Rhogar",
+    "Nadarr",
+    "Perra",
+    "Shavax",
+    "Drakara",
+    "Medrash",
+    "Vezira",
+    "Torinn",
+    "Kavax",
+    "Shesra",
+    "Kriv",
+    "Harann",
+    "Zorath",
+    "Mishann",
+    "Verath",
+    "Nala"
+   ],
+   "begin": [
+    "Arj",
+    "Bal",
+    "Ak",
+    "Sur",
+    "Rho",
+    "Nad",
+    "Per",
+    "Sha",
+    "Drak",
+    "Medr",
+    "Vez",
+    "Tor",
+    "Kav",
+    "She",
+    "Kr",
+    "Har",
+    "Zor",
+    "Mish",
+    "Ver",
+    "Na"
+   ],
+   "end": [
+    "han",
+    "asar",
+    "ra",
+    "ina",
+    "gar",
+    "arr",
+    "ra",
+    "vax",
+    "ara",
+    "ash",
+    "ira",
+    "inn",
+    "ax",
+    "sra",
+    "iv",
+    "ann",
+    "ath",
+    "ann",
+    "ath",
+    "la"
+   ],
+   "sur": [
+    "Flamescale",
+    "Bronzefang",
+    "Stormcrest",
+    "Emberclaw",
+    "Flamescale",
+    "Bronzefang",
+    "Stormcrest",
+    "Emberclaw",
+    "Flamescale",
+    "Bronzefang",
+    "Stormcrest",
+    "Emberclaw",
+    "Flamescale",
+    "Bronzefang",
+    "Stormcrest",
+    "Emberclaw",
+    "Flamescale",
+    "Bronzefang",
+    "Stormcrest",
+    "Emberclaw"
+   ]
+  },
+  "Centaur": {
+   "first": [
+    "Kallion",
+    "Thessa",
+    "Orion",
+    "Melia",
+    "Phylos",
+    "Callista",
+    "Daeron",
+    "Ianthe",
+    "Kyron",
+    "Anthea",
+    "Phaedon",
+    "Nysa",
+    "Leontes",
+    "Althea",
+    "Theron",
+    "Selene",
+    "Pyrros",
+    "Dione",
+    "Lykon",
+    "Chloe"
+   ],
+   "begin": [
+    "Kall",
+    "Thess",
+    "Ori",
+    "Mel",
+    "Phy",
+    "Call",
+    "Dae",
+    "Ian",
+    "Kyr",
+    "Ant",
+    "Phae",
+    "Ny",
+    "Leon",
+    "Alt",
+    "The",
+    "Sel",
+    "Pyr",
+    "Dio",
+    "Lyk",
+    "Chl"
+   ],
+   "end": [
+    "ion",
+    "a",
+    "on",
+    "ia",
+    "los",
+    "ista",
+    "ron",
+    "the",
+    "on",
+    "hea",
+    "don",
+    "sa",
+    "tes",
+    "hea",
+    "ron",
+    "ene",
+    "ros",
+    "ne",
+    "on",
+    "oe"
+   ],
+   "sur": [
+    "Windrunner",
+    "Meadowstride",
+    "Oakmane",
+    "Cloudhoof",
+    "Windrunner",
+    "Meadowstride",
+    "Oakmane",
+    "Cloudhoof",
+    "Windrunner",
+    "Meadowstride",
+    "Oakmane",
+    "Cloudhoof",
+    "Windrunner",
+    "Meadowstride",
+    "Oakmane",
+    "Cloudhoof",
+    "Windrunner",
+    "Meadowstride",
+    "Oakmane",
+    "Cloudhoof"
+   ]
+  },
+  "Minotaur": {
+   "first": [
+    "Tauron",
+    "Varka",
+    "Boros",
+    "Nera",
+    "Kragos",
+    "Velka",
+    "Torvak",
+    "Brinna",
+    "Mardos",
+    "Orya",
+    "Grond",
+    "Tavra",
+    "Rhul",
+    "Zethra",
+    "Korrun",
+    "Myra",
+    "Vorgath",
+    "Helka",
+    "Dromos",
+    "Ulda"
+   ],
+   "begin": [
+    "Taur",
+    "Var",
+    "Bor",
+    "Ner",
+    "Kra",
+    "Vel",
+    "Tor",
+    "Bri",
+    "Mar",
+    "Or",
+    "Gro",
+    "Tav",
+    "Rh",
+    "Zet",
+    "Kor",
+    "My",
+    "Vorg",
+    "Hel",
+    "Dro",
+    "Ul"
+   ],
+   "end": [
+    "on",
+    "ka",
+    "os",
+    "a",
+    "gos",
+    "ka",
+    "vak",
+    "nna",
+    "dos",
+    "ya",
+    "nd",
+    "ra",
+    "ul",
+    "hra",
+    "run",
+    "ra",
+    "ath",
+    "ka",
+    "mos",
+    "da"
+   ],
+   "sur": [
+    "Ironhorn",
+    "Stonehoof",
+    "Redmane",
+    "Labyrinth",
+    "Ironhorn",
+    "Stonehoof",
+    "Redmane",
+    "Labyrinth",
+    "Ironhorn",
+    "Stonehoof",
+    "Redmane",
+    "Labyrinth",
+    "Ironhorn",
+    "Stonehoof",
+    "Redmane",
+    "Labyrinth",
+    "Ironhorn",
+    "Stonehoof",
+    "Redmane",
+    "Labyrinth"
+   ]
+  },
+  "Tabaxi": {
+   "first": [
+    "Sable",
+    "Nettle",
+    "Ember",
+    "Whisper",
+    "Cinder",
+    "Bristle",
+    "Velvet",
+    "Pounce",
+    "Ripple",
+    "Dapple",
+    "Flicker",
+    "Willow",
+    "Thistle",
+    "Shiver",
+    "Marble",
+    "Drizzle",
+    "Goldeneye",
+    "Fernwhisker",
+    "Cloudtip",
+    "Quickpaw"
+   ],
+   "begin": [
+    "Sab",
+    "Net",
+    "Em",
+    "Whis",
+    "Cin",
+    "Bris",
+    "Vel",
+    "Pou",
+    "Rip",
+    "Dap",
+    "Flic",
+    "Wil",
+    "This",
+    "Shi",
+    "Mar",
+    "Driz",
+    "Golde",
+    "Fernwh",
+    "Clou",
+    "Quic"
+   ],
+   "end": [
+    "le",
+    "tle",
+    "ber",
+    "per",
+    "der",
+    "tle",
+    "vet",
+    "nce",
+    "ple",
+    "ple",
+    "ker",
+    "low",
+    "tle",
+    "ver",
+    "ble",
+    "zle",
+    "neye",
+    "isker",
+    "dtip",
+    "kpaw"
+   ],
+   "sur": [
+    "Moonpounce",
+    "Silvertail",
+    "Softstep",
+    "Dusktuft",
+    "Moonpounce",
+    "Silvertail",
+    "Softstep",
+    "Dusktuft",
+    "Moonpounce",
+    "Silvertail",
+    "Softstep",
+    "Dusktuft",
+    "Moonpounce",
+    "Silvertail",
+    "Softstep",
+    "Dusktuft",
+    "Moonpounce",
+    "Silvertail",
+    "Softstep",
+    "Dusktuft"
+   ]
+  },
+  "Kenku": {
+   "first": [
+    "Click",
+    "Rattle",
+    "Whistle",
+    "Caw",
+    "Tink",
+    "Clatter",
+    "Rustle",
+    "Drip",
+    "Knock",
+    "Peep",
+    "Chirp",
+    "Snip",
+    "Crackle",
+    "Creek",
+    "Hiss",
+    "Tap",
+    "Squeak",
+    "Thrum",
+    "Snap",
+    "Whoosh"
+   ],
+   "begin": [
+    "Cli",
+    "Rat",
+    "Whis",
+    "Ka",
+    "Ti",
+    "Clat",
+    "Rus",
+    "Dr",
+    "Kno",
+    "Pe",
+    "Chi",
+    "Sn",
+    "Crac",
+    "Cre",
+    "Hi",
+    "Ta",
+    "Squ",
+    "Thr",
+    "Sn",
+    "Who"
+   ],
+   "end": [
+    "ck",
+    "tle",
+    "tle",
+    "aw",
+    "nk",
+    "ter",
+    "tle",
+    "ip",
+    "ck",
+    "ep",
+    "rp",
+    "ip",
+    "kle",
+    "ek",
+    "ss",
+    "p",
+    "eak",
+    "um",
+    "ap",
+    "osh"
+   ],
+   "sur": [
+    "Blackfeather",
+    "Roofwalker",
+    "Echo",
+    "Inkscratch",
+    "Blackfeather",
+    "Roofwalker",
+    "Echo",
+    "Inkscratch",
+    "Blackfeather",
+    "Roofwalker",
+    "Echo",
+    "Inkscratch",
+    "Blackfeather",
+    "Roofwalker",
+    "Echo",
+    "Inkscratch",
+    "Blackfeather",
+    "Roofwalker",
+    "Echo",
+    "Inkscratch"
+   ]
+  },
+  "Aasimar": {
+   "first": [
+    "Auriel",
+    "Cassian",
+    "Elara",
+    "Lucen",
+    "Solara",
+    "Evren",
+    "Liora",
+    "Caelum",
+    "Seraphiel",
+    "Amara",
+    "Oriel",
+    "Theon",
+    "Lumira",
+    "Adriel",
+    "Estara",
+    "Cyran",
+    "Virelle",
+    "Aster",
+    "Elyon",
+    "Miriel"
+   ],
+   "begin": [
+    "Aur",
+    "Cass",
+    "El",
+    "Luc",
+    "Sol",
+    "Evr",
+    "Lio",
+    "Cae",
+    "Serap",
+    "Ama",
+    "Ori",
+    "The",
+    "Lum",
+    "Adr",
+    "Est",
+    "Cyr",
+    "Vire",
+    "Ast",
+    "Ely",
+    "Mir"
+   ],
+   "end": [
+    "iel",
+    "ian",
+    "ara",
+    "en",
+    "ara",
+    "en",
+    "ra",
+    "lum",
+    "hiel",
+    "ra",
+    "el",
+    "on",
+    "ira",
+    "iel",
+    "ara",
+    "an",
+    "lle",
+    "er",
+    "on",
+    "iel"
+   ],
+   "sur": [
+    "Dawnward",
+    "Sunveil",
+    "Lightborne",
+    "Goldwing",
+    "Dawnward",
+    "Sunveil",
+    "Lightborne",
+    "Goldwing",
+    "Dawnward",
+    "Sunveil",
+    "Lightborne",
+    "Goldwing",
+    "Dawnward",
+    "Sunveil",
+    "Lightborne",
+    "Goldwing",
+    "Dawnward",
+    "Sunveil",
+    "Lightborne",
+    "Goldwing"
+   ]
+  },
+  "Goliath": {
+   "first": [
+    "Keoth",
+    "Gautha",
+    "Thorek",
+    "Vimak",
+    "Aukan",
+    "Eglath",
+    "Gaeal",
+    "Kavaki",
+    "Lo-Kag",
+    "Manneo",
+    "Nalla",
+    "Paavu",
+    "Pethani",
+    "Thalai",
+    "Uthal",
+    "Vaunea",
+    "Gorath",
+    "Kelva",
+    "Oruk",
+    "Vasha"
+   ],
+   "begin": [
+    "Keo",
+    "Gau",
+    "Thor",
+    "Vim",
+    "Auk",
+    "Egl",
+    "Gae",
+    "Kav",
+    "Lo-",
+    "Man",
+    "Nal",
+    "Paa",
+    "Peth",
+    "Tha",
+    "Uth",
+    "Vau",
+    "Gor",
+    "Kel",
+    "Or",
+    "Vas"
+   ],
+   "end": [
+    "th",
+    "tha",
+    "ek",
+    "ak",
+    "an",
+    "ath",
+    "al",
+    "aki",
+    "kag",
+    "neo",
+    "la",
+    "vu",
+    "ani",
+    "lai",
+    "al",
+    "nea",
+    "ath",
+    "va",
+    "uk",
+    "ha"
+   ],
+   "sur": [
+    "Stonepeak",
+    "Cloudbreaker",
+    "Highridge",
+    "Skywatcher",
+    "Stonepeak",
+    "Cloudbreaker",
+    "Highridge",
+    "Skywatcher",
+    "Stonepeak",
+    "Cloudbreaker",
+    "Highridge",
+    "Skywatcher",
+    "Stonepeak",
+    "Cloudbreaker",
+    "Highridge",
+    "Skywatcher",
+    "Stonepeak",
+    "Cloudbreaker",
+    "Highridge",
+    "Skywatcher"
+   ]
+  },
+  "Firbolg": {
+   "first": [
+    "Bramble",
+    "Rowan",
+    "Moss",
+    "Fern",
+    "Alder",
+    "Bracken",
+    "Briar",
+    "Cedar",
+    "Clover",
+    "Hawthorn",
+    "Juniper",
+    "Linden",
+    "Maple",
+    "Nettle",
+    "Sorrel",
+    "Thorn",
+    "Willow",
+    "Yarrow",
+    "Acorn",
+    "Heather"
+   ],
+   "begin": [
+    "Bram",
+    "Row",
+    "Mo",
+    "Fer",
+    "Ald",
+    "Brac",
+    "Bri",
+    "Ced",
+    "Clo",
+    "Hawt",
+    "Juni",
+    "Lin",
+    "Map",
+    "Net",
+    "Sor",
+    "Tho",
+    "Wil",
+    "Yar",
+    "Aco",
+    "Heat"
+   ],
+   "end": [
+    "ble",
+    "an",
+    "ss",
+    "n",
+    "er",
+    "ken",
+    "ar",
+    "ar",
+    "ver",
+    "horn",
+    "per",
+    "den",
+    "le",
+    "tle",
+    "rel",
+    "rn",
+    "low",
+    "row",
+    "rn",
+    "her"
+   ],
+   "sur": [
+    "Oakheart",
+    "Stillgrove",
+    "Rootkeeper",
+    "Mistbough",
+    "Oakheart",
+    "Stillgrove",
+    "Rootkeeper",
+    "Mistbough",
+    "Oakheart",
+    "Stillgrove",
+    "Rootkeeper",
+    "Mistbough",
+    "Oakheart",
+    "Stillgrove",
+    "Rootkeeper",
+    "Mistbough",
+    "Oakheart",
+    "Stillgrove",
+    "Rootkeeper",
+    "Mistbough"
+   ]
+  },
+  "Fairy": {
+   "first": [
+    "Perri",
+    "Luma",
+    "Twig",
+    "Nissa",
+    "Pippa",
+    "Tanselle",
+    "Dewi",
+    "Flick",
+    "Posie",
+    "Lilac",
+    "Zephyr",
+    "Peony",
+    "Sprig",
+    "Lumi",
+    "Bell",
+    "Pollen",
+    "Glint",
+    "Wisp",
+    "Flora",
+    "Twinkle"
+   ],
+   "begin": [
+    "Per",
+    "Lum",
+    "Twi",
+    "Nis",
+    "Pip",
+    "Tans",
+    "De",
+    "Fli",
+    "Pos",
+    "Lil",
+    "Zep",
+    "Peo",
+    "Spr",
+    "Lu",
+    "Be",
+    "Pol",
+    "Gli",
+    "Wi",
+    "Flo",
+    "Twin"
+   ],
+   "end": [
+    "ri",
+    "a",
+    "g",
+    "sa",
+    "pa",
+    "elle",
+    "wi",
+    "ck",
+    "ie",
+    "ac",
+    "hyr",
+    "ny",
+    "ig",
+    "mi",
+    "ll",
+    "len",
+    "nt",
+    "sp",
+    "ra",
+    "kle"
+   ],
+   "sur": [
+    "Dewdrop",
+    "Petalwing",
+    "Thistlelight",
+    "Moonmoth",
+    "Dewdrop",
+    "Petalwing",
+    "Thistlelight",
+    "Moonmoth",
+    "Dewdrop",
+    "Petalwing",
+    "Thistlelight",
+    "Moonmoth",
+    "Dewdrop",
+    "Petalwing",
+    "Thistlelight",
+    "Moonmoth",
+    "Dewdrop",
+    "Petalwing",
+    "Thistlelight",
+    "Moonmoth"
+   ]
+  },
+  "Warforged": {
+   "first": [
+    "Anvil",
+    "Flint",
+    "Echo",
+    "Rivet",
+    "Bastion",
+    "Cog",
+    "Slate",
+    "Prism",
+    "Anchor",
+    "Sprocket",
+    "Temper",
+    "Cinder",
+    "Chisel",
+    "Gauge",
+    "Quill",
+    "Bolt",
+    "Hammer",
+    "Beacon",
+    "Piston",
+    "Circuit"
+   ],
+   "begin": [
+    "An",
+    "Fl",
+    "Ech",
+    "Riv",
+    "Bast",
+    "Co",
+    "Sla",
+    "Pri",
+    "Anc",
+    "Spro",
+    "Tem",
+    "Cin",
+    "Chi",
+    "Gau",
+    "Qui",
+    "Bo",
+    "Ham",
+    "Bea",
+    "Pis",
+    "Circ"
+   ],
+   "end": [
+    "vil",
+    "int",
+    "o",
+    "et",
+    "ion",
+    "g",
+    "te",
+    "sm",
+    "hor",
+    "cket",
+    "per",
+    "der",
+    "sel",
+    "ge",
+    "ll",
+    "lt",
+    "mer",
+    "con",
+    "ton",
+    "uit"
+   ],
+   "sur": [
+    "Brassward",
+    "Steelmark",
+    "Forgeheart",
+    "Copperbound",
+    "Brassward",
+    "Steelmark",
+    "Forgeheart",
+    "Copperbound",
+    "Brassward",
+    "Steelmark",
+    "Forgeheart",
+    "Copperbound",
+    "Brassward",
+    "Steelmark",
+    "Forgeheart",
+    "Copperbound",
+    "Brassward",
+    "Steelmark",
+    "Forgeheart",
+    "Copperbound"
+   ]
+  },
+  "Lizardfolk": {
+   "first": [
+    "Sskara",
+    "Veth",
+    "Kes",
+    "Thassa",
+    "Sethra",
+    "Rassk",
+    "Kethra",
+    "Thriss",
+    "Vask",
+    "Zesska",
+    "Issk",
+    "Tesk",
+    "Shess",
+    "Rithka",
+    "Kass",
+    "Ulthra",
+    "Nessk",
+    "Voss",
+    "Ssil",
+    "Tassra"
+   ],
+   "begin": [
+    "Ssk",
+    "Vet",
+    "Ke",
+    "Thas",
+    "Set",
+    "Ras",
+    "Ket",
+    "Thr",
+    "Va",
+    "Zes",
+    "Is",
+    "Te",
+    "She",
+    "Rit",
+    "Ka",
+    "Ult",
+    "Nes",
+    "Vo",
+    "Ss",
+    "Tas"
+   ],
+   "end": [
+    "ara",
+    "h",
+    "ss",
+    "sa",
+    "hra",
+    "sk",
+    "hra",
+    "iss",
+    "sk",
+    "ska",
+    "sk",
+    "sk",
+    "ss",
+    "hka",
+    "ss",
+    "hra",
+    "sk",
+    "ss",
+    "il",
+    "sra"
+   ],
+   "sur": [
+    "Reedscale",
+    "Marshfang",
+    "Stillwater",
+    "Mudclaw",
+    "Reedscale",
+    "Marshfang",
+    "Stillwater",
+    "Mudclaw",
+    "Reedscale",
+    "Marshfang",
+    "Stillwater",
+    "Mudclaw",
+    "Reedscale",
+    "Marshfang",
+    "Stillwater",
+    "Mudclaw",
+    "Reedscale",
+    "Marshfang",
+    "Stillwater",
+    "Mudclaw"
+   ]
+  },
+  "Tortle": {
+   "first": [
+    "Koro",
+    "Uma",
+    "Toba",
+    "Shella",
+    "Banto",
+    "Noku",
+    "Omba",
+    "Paku",
+    "Qola",
+    "Sunto",
+    "Umi",
+    "Wabu",
+    "Yora",
+    "Zulo",
+    "Doba",
+    "Kuma",
+    "Lopo",
+    "Muna",
+    "Taku",
+    "Welo"
+   ],
+   "begin": [
+    "Kor",
+    "Um",
+    "Tob",
+    "Shell",
+    "Ban",
+    "No",
+    "Om",
+    "Pa",
+    "Qo",
+    "Sun",
+    "Um",
+    "Wa",
+    "Yo",
+    "Zu",
+    "Do",
+    "Ku",
+    "Lo",
+    "Mu",
+    "Ta",
+    "We"
+   ],
+   "end": [
+    "o",
+    "a",
+    "ba",
+    "la",
+    "to",
+    "ku",
+    "ba",
+    "ku",
+    "la",
+    "to",
+    "i",
+    "bu",
+    "ra",
+    "lo",
+    "ba",
+    "ma",
+    "po",
+    "na",
+    "ku",
+    "lo"
+   ],
+   "sur": [
+    "Mossback",
+    "Tidewalker",
+    "Sandshell",
+    "Coralward",
+    "Mossback",
+    "Tidewalker",
+    "Sandshell",
+    "Coralward",
+    "Mossback",
+    "Tidewalker",
+    "Sandshell",
+    "Coralward",
+    "Mossback",
+    "Tidewalker",
+    "Sandshell",
+    "Coralward",
+    "Mossback",
+    "Tidewalker",
+    "Sandshell",
+    "Coralward"
+   ]
+  },
+  "Vampire": {
+   "first": [
+    "Valerian",
+    "Carmilla",
+    "Severin",
+    "Lenora",
+    "Alaric",
+    "Marcella",
+    "Dorian",
+    "Isadora",
+    "Lysander",
+    "Octavia",
+    "Cassimir",
+    "Violetta",
+    "Lucan",
+    "Rosalia",
+    "Silas",
+    "Drusilla",
+    "Adrian",
+    "Mirella",
+    "Viktor",
+    "Esmera"
+   ],
+   "begin": [
+    "Vale",
+    "Carm",
+    "Seve",
+    "Len",
+    "Ala",
+    "Marc",
+    "Dor",
+    "Isad",
+    "Lysa",
+    "Octa",
+    "Cass",
+    "Viol",
+    "Luc",
+    "Rosa",
+    "Sil",
+    "Drus",
+    "Adr",
+    "Mire",
+    "Vik",
+    "Esm"
+   ],
+   "end": [
+    "rian",
+    "illa",
+    "rin",
+    "ora",
+    "ric",
+    "ella",
+    "ian",
+    "ora",
+    "nder",
+    "via",
+    "imir",
+    "etta",
+    "an",
+    "lia",
+    "as",
+    "illa",
+    "ian",
+    "lla",
+    "tor",
+    "era"
+   ],
+   "sur": [
+    "Nightveil",
+    "Ravenscar",
+    "Bloodmere",
+    "Duskworth",
+    "Nightveil",
+    "Ravenscar",
+    "Bloodmere",
+    "Duskworth",
+    "Nightveil",
+    "Ravenscar",
+    "Bloodmere",
+    "Duskworth",
+    "Nightveil",
+    "Ravenscar",
+    "Bloodmere",
+    "Duskworth",
+    "Nightveil",
+    "Ravenscar",
+    "Bloodmere",
+    "Duskworth"
+   ]
+  },
+  "Mushroomkin": {
+   "first": [
+    "Morel",
+    "Chanter",
+    "Porci",
+    "Enoki",
+    "Sporella",
+    "Myca",
+    "Truffa",
+    "Capper",
+    "Gillan",
+    "Hypha",
+    "Puffin",
+    "Shiitara",
+    "Amanita",
+    "Mosslip",
+    "Button",
+    "Veilkin",
+    "Bracka",
+    "Lamella",
+    "Rizzy",
+    "Boleta"
+   ],
+   "begin": [
+    "Mor",
+    "Chan",
+    "Por",
+    "Eno",
+    "Spor",
+    "My",
+    "Tru",
+    "Cap",
+    "Gil",
+    "Hyp",
+    "Puf",
+    "Shii",
+    "Aman",
+    "Moss",
+    "But",
+    "Veil",
+    "Bra",
+    "Lame",
+    "Riz",
+    "Bol"
+   ],
+   "end": [
+    "el",
+    "ter",
+    "ci",
+    "ki",
+    "ella",
+    "ca",
+    "ffa",
+    "per",
+    "lan",
+    "ha",
+    "fin",
+    "tara",
+    "ita",
+    "lip",
+    "ton",
+    "kin",
+    "cka",
+    "lla",
+    "zy",
+    "eta"
+   ],
+   "sur": [
+    "Dewcap",
+    "Underlog",
+    "Sporeveil",
+    "Mosscircle",
+    "Dewcap",
+    "Underlog",
+    "Sporeveil",
+    "Mosscircle",
+    "Dewcap",
+    "Underlog",
+    "Sporeveil",
+    "Mosscircle",
+    "Dewcap",
+    "Underlog",
+    "Sporeveil",
+    "Mosscircle",
+    "Dewcap",
+    "Underlog",
+    "Sporeveil",
+    "Mosscircle"
+   ]
+  },
+  "Zombie": {
+   "first": [
+    "Garrick",
+    "Mabel",
+    "Orson",
+    "Edna",
+    "Hector",
+    "Agnes",
+    "Rufus",
+    "Mavis",
+    "Walter",
+    "Ida",
+    "Norman",
+    "Bertha",
+    "Ernest",
+    "Maude",
+    "Wilfred",
+    "Ethel",
+    "Harold",
+    "Doris",
+    "Albert",
+    "Florence"
+   ],
+   "begin": [
+    "Garr",
+    "Mab",
+    "Ors",
+    "Ed",
+    "Hec",
+    "Agn",
+    "Ruf",
+    "Mav",
+    "Wal",
+    "Id",
+    "Nor",
+    "Ber",
+    "Ern",
+    "Mau",
+    "Wilf",
+    "Eth",
+    "Har",
+    "Dor",
+    "Alb",
+    "Flor"
+   ],
+   "end": [
+    "ick",
+    "el",
+    "on",
+    "na",
+    "tor",
+    "es",
+    "us",
+    "is",
+    "ter",
+    "a",
+    "man",
+    "tha",
+    "est",
+    "de",
+    "red",
+    "el",
+    "old",
+    "is",
+    "ert",
+    "ence"
+   ],
+   "sur": [
+    "Gravesend",
+    "Holloway",
+    "Coldwell",
+    "Dustford",
+    "Gravesend",
+    "Holloway",
+    "Coldwell",
+    "Dustford",
+    "Gravesend",
+    "Holloway",
+    "Coldwell",
+    "Dustford",
+    "Gravesend",
+    "Holloway",
+    "Coldwell",
+    "Dustford",
+    "Gravesend",
+    "Holloway",
+    "Coldwell",
+    "Dustford"
+   ]
+  }
+ },
+ "skins": {
+  "Human": [
+   "Fair peach skin",
+   "Warm tan skin",
+   "Deep brown skin",
+   "Dark umber skin"
+  ],
+  "Dwarf": [
+   "Warm tan skin",
+   "Copper-brown skin",
+   "Deep brown skin",
+   "Pale rosy skin"
+  ],
+  "Elf": [
+   "Fair ivory skin",
+   "Warm bronze skin",
+   "Deep brown skin",
+   "Cool pale skin"
+  ],
+  "Halfling": [
+   "Warm tan skin",
+   "Fair peach skin",
+   "Brown skin",
+   "Deep brown skin"
+  ],
+  "Gnome": [
+   "Warm brown skin",
+   "Fair rosy skin",
+   "Deep brown skin",
+   "Golden tan skin"
+  ],
+  "Orc": [
+   "Olive-green skin",
+   "Moss-green skin",
+   "Gray-green skin",
+   "Muted slate-gray skin"
+  ],
+  "Goblin": [
+   "Leaf-green skin",
+   "Olive-green skin",
+   "Yellow-green skin",
+   "Gray-green skin"
+  ],
+  "Tiefling": [
+   "Crimson-red skin",
+   "Burgundy-red skin",
+   "Muted violet skin",
+   "Copper-brown skin"
+  ],
+  "Dragonborn": [
+   "Bronze scales",
+   "Copper scales",
+   "Red scales",
+   "Blue scales",
+   "Silver scales"
+  ],
+  "Centaur": [
+   "Warm tan skin and chestnut coat",
+   "Deep brown skin and black coat",
+   "Fair skin and bay coat",
+   "Bronze skin and gray coat"
+  ],
+  "Minotaur": [
+   "Chestnut-brown fur",
+   "Dark brown fur",
+   "Black fur",
+   "Warm tawny fur"
+  ],
+  "Tabaxi": [
+   "Golden tawny fur",
+   "Gray fur",
+   "Black fur",
+   "Cream-colored fur"
+  ],
+  "Kenku": [
+   "Black feathers",
+   "Charcoal-gray feathers",
+   "Dark brown feathers",
+   "Blue-black feathers"
+  ],
+  "Aasimar": [
+   "Warm bronze skin",
+   "Fair golden skin",
+   "Deep brown skin",
+   "Pale ivory skin"
+  ],
+  "Goliath": [
+   "Slate-gray skin",
+   "Stone-gray skin",
+   "Cool blue-gray skin",
+   "Warm gray skin"
+  ],
+  "Firbolg": [
+   "Soft blue-gray skin",
+   "Gray-brown skin",
+   "Muted sage-green skin",
+   "Warm tan skin"
+  ],
+  "Fairy": [
+   "Fair peach skin",
+   "Warm brown skin",
+   "Soft lavender skin",
+   "Pale mint-green skin"
+  ],
+  "Warforged": [
+   "Warm brass metal",
+   "Dark iron metal",
+   "Weathered copper metal",
+   "Brushed steel metal"
+  ],
+  "Lizardfolk": [
+   "Moss-green scales",
+   "Olive-green scales",
+   "Sandy tan scales",
+   "Charcoal-gray scales"
+  ],
+  "Tortle": [
+   "Olive-green skin",
+   "Moss-green skin",
+   "Sandy tan skin",
+   "Gray-green skin"
+  ],
+  "Vampire": [
+   "Pale ivory skin",
+   "Cool gray skin",
+   "Pale blue-gray skin",
+   "Pale olive skin"
+  ],
+  "Mushroomkin": [
+   "Cream-colored fungal skin",
+   "Pale lavender fungal skin",
+   "Muted ochre fungal skin",
+   "Soft brown fungal skin"
+  ],
+  "Zombie": [
+   "Ash-gray skin",
+   "Sallow green-gray skin",
+   "Pale gray skin",
+   "Mottled brown-gray skin"
+  ]
+ },
+ "weapons": {
+  "Shopkeeper": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Baker": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Tavernkeeper": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Blacksmith": [
+   [
+    "None",
+    65
+   ],
+   [
+    "Club",
+    25
+   ],
+   [
+    "Dagger",
+    10
+   ]
+  ],
+  "Farmer": [
+   [
+    "None",
+    65
+   ],
+   [
+    "Quarterstaff",
+    20
+   ],
+   [
+    "Dagger",
+    10
+   ],
+   [
+    "Sling",
+    5
+   ]
+  ],
+  "Thief": [
+   [
+    "Dagger",
+    65
+   ],
+   [
+    "None",
+    25
+   ],
+   [
+    "Shortsword",
+    10
+   ]
+  ],
+  "Carpenter": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Miller": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Weaver": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Tailor": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Cobbler": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Fisher": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Butcher": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Brewer": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Cook": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Stablehand": [
+   [
+    "None",
+    80
+   ],
+   [
+    "Dagger",
+    15
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Messenger": [
+   [
+    "None",
+    65
+   ],
+   [
+    "Dagger",
+    25
+   ],
+   [
+    "Quarterstaff",
+    10
+   ]
+  ],
+  "Guard": [
+   [
+    "Spear",
+    45
+   ],
+   [
+    "Shortsword",
+    30
+   ],
+   [
+    "Crossbow",
+    15
+   ],
+   [
+    "None",
+    10
+   ]
+  ],
+  "Sailor": [
+   [
+    "None",
+    45
+   ],
+   [
+    "Dagger",
+    35
+   ],
+   [
+    "Club",
+    15
+   ],
+   [
+    "Shortsword",
+    5
+   ]
+  ],
+  "Miner": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Mason": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Potter": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Chandler": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Herbalist": [
+   [
+    "None",
+    60
+   ],
+   [
+    "Dagger",
+    25
+   ],
+   [
+    "Quarterstaff",
+    15
+   ]
+  ],
+  "Apothecary": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Scribe": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Bookbinder": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Gravedigger": [
+   [
+    "None",
+    70
+   ],
+   [
+    "Club",
+    20
+   ],
+   [
+    "Dagger",
+    10
+   ]
+  ],
+  "Hunter": [
+   [
+    "Shortbow",
+    55
+   ],
+   [
+    "Crossbow",
+    25
+   ],
+   [
+    "Spear",
+    10
+   ],
+   [
+    "Dagger",
+    10
+   ]
+  ],
+  "Shepherd": [
+   [
+    "Quarterstaff",
+    50
+   ],
+   [
+    "None",
+    35
+   ],
+   [
+    "Sling",
+    15
+   ]
+  ],
+  "Merchant": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Beggar": [
+   [
+    "None",
+    80
+   ],
+   [
+    "Quarterstaff",
+    20
+   ]
+  ],
+  "Jeweler": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Barber": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Servant": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Ferryman": [
+   [
+    "None",
+    65
+   ],
+   [
+    "Quarterstaff",
+    30
+   ],
+   [
+    "Dagger",
+    5
+   ]
+  ],
+  "Tanner": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Ropemaker": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Cooper": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ],
+  "Cartwright": [
+   [
+    "None",
+    75
+   ],
+   [
+    "Dagger",
+    20
+   ],
+   [
+    "Quarterstaff",
+    5
+   ]
+  ]
+ },
+ "looks": {
+  "Human": "round human ears; ordinary human proportions",
+  "Dwarf": "short stocky broad build; thick sturdy limbs; round ears; large hands",
+  "Elf": "long pointed ears; slender graceful build; fine angular features",
+  "Halfling": "small stature with adult proportions; slightly pointed ears; large bare hairy feet",
+  "Gnome": "very small stature; oversized head; large round nose; pointed ears",
+  "Orc": "lower tusks jutting from the jaw; heavy brow ridge; muscular build; pointed ears",
+  "Goblin": "small wiry build; long pointed ears; sharp teeth; large eyes; long hooked nose",
+  "Tiefling": "curved horns on the head; long thin pointed tail; solid-colored eyes without pupils",
+  "Dragonborn": "dragon head with a long reptilian snout; scaled skin; clawed hands; small horn ridges",
+  "Centaur": "horse lower body with four hooved legs; human upper torso; flowing horse tail",
+  "Minotaur": "bull head with a broad snout; large curved horns; cloven hooves; bull tail; fur-covered body",
+  "Tabaxi": "cat head with a feline face and whiskers; cat ears; fur-covered body; long cat tail; clawed hands",
+  "Kenku": "raven head with a black beak; feathered body; bird talons for feet; flightless",
+  "Aasimar": "faintly glowing eyes; subtle radiant light on the skin; serene noble features",
+  "Goliath": "towering massively muscular build; stone-like patterned skin markings",
+  "Firbolg": "towering gentle build; broad bovine nose; long drooping pointed ears; light fur on the body",
+  "Fairy": "delicate translucent insect wings like a butterfly or dragonfly; tiny slender build; pointed ears; faint sparkle",
+  "Warforged": "constructed body of wood and metal plates; segmented mechanical joints; glowing eyes; living golem",
+  "Lizardfolk": "lizard head with a long reptilian snout; scaled body; long thick tail; clawed hands; spiny head frill",
+  "Tortle": "turtle head with a beaked snout; large domed shell on the back; scaly limbs; stubby clawed hands",
+  "Vampire": "elongated fangs; glowing red eyes; gaunt sharp features; dark circles under the eyes",
+  "Mushroomkin": "large mushroom cap as a head; gills under the cap; fibrous fungal body; drifting spores",
+  "Zombie": "rotting decayed flesh; exposed bone in places; sunken cloudy eyes; stitched wounds; tattered clothing"
+ },
+ "odds": {
+  "hybrid": 0.1,
+  "hero": 0.05
+ }
+}
