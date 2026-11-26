@@ -46,9 +46,10 @@ export function statLine(item, reference) {
   }
   const armor = item.armor_class || info.armor_class;
   if (armor && Number.isFinite(armor.base)) {
-    if (info.armor_category === 'Shield') parts.push(`+${armor.base} AC`);
+    const category = item.armor_category || info.armor_category; // homebrew armor carries its own
+    if (category === 'Shield') parts.push(`+${armor.base} AC`);
     else parts.push(`AC ${armor.base}${armor.dex_bonus ? ` + DEX${armor.max_bonus != null ? ` (max ${armor.max_bonus})` : ''}` : ''}`);
-    if (info.armor_category && info.armor_category !== 'Shield') parts.push(`${info.armor_category} armor`);
+    if (category && category !== 'Shield') parts.push(`${category} armor`);
     if (info.stealth_disadvantage) parts.push('Disadvantage on Stealth');
     if (info.str_minimum) parts.push(`Needs STR ${info.str_minimum}`);
   }

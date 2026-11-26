@@ -7,6 +7,7 @@ import { attacksPerAction, planCharacter, spellCard, mod as abMod } from './leve
 import { effectivePC, asList } from './geez/effective.js';
 import { $, esc, T, bon, rules, opened, fold, item, card, ask, sheet, toast } from './companion-ui.js';
 import { bagTab, bagAction, initBag } from './companion-bag.js';
+import { showDice, shareRoll, watchRolls } from './companion-dice.js';
 import { featText } from './companion-help.js';
 import { norm, turnOptions, openSlot, isPrepared, criticalDice, timing } from './companion-model.js';
 import { initExtras, onCharacter, featList, effectCards, featControls, extraAction, extraChange, restEffects } from './companion-extras.js';
@@ -75,15 +76,17 @@ function rollExpr(expr) {
   }
   return { total, nat, detail: parts.join(''), dice };
 }
+// What other phones need to draw this roll over the character's head.
+const rollRecord = (label, r) => ({ name: pc?.name || '', campaign: pc?.campaign || '', label, total: r.total, nat: r.nat ?? null, detail: r.detail, dice: r.dice, color: pc?.token_color || '', portrait: portrait() });
 // Rolls, shows the number to the caller, and shares it with the table (GM roll log and the Owlbear token).
 async function roll(label, expr, mode = 'normal') {
   let r; const rolled = mode === 'normal' ? expr : `${expr} ${mode}`;
   try { r = rollExpr(rolled); } catch { toast('Could not roll that'); return null; }
-  // Also publish the latest roll per character to plain Firebase, so the Owlbear extension can show it on the token.
-  if (id) fetch(`https://geezsheets-default-rtdb.firebaseio.com/gmroll/gaia/${encodeURIComponent(id)}.json`, { method: 'PUT',
-    body: JSON.stringify({ name: pc?.name || '', label, total: r.total, nat: r.nat ?? null, detail: r.detail, ts: Date.now() }) }).catch(() => {});
+  const shown = rollRecord(label, r);
+  shareRoll(id, shown);
   if (pc?.campaign) push(ref(db, `geezvtt/live/${pc.campaign}/rolls`), { by: pc.name, char: id, expr: `${label} ${rolled}`, detail: r.detail, total: r.total, nat: r.nat ?? null, dice: r.dice, ts: Date.now() }).catch(() => {});
   navigator.vibrate?.(r.nat === 20 ? [40, 60, 40] : 25);
+  await showDice(shown);
   return r;
 }
 const resultHTML = (label, r) => `<div class="result ${r.nat === 20 ? 'nat20' : r.nat === 1 ? 'nat1' : ''}"><small>${esc(label)}</small><strong>${r.total}</strong><span>${esc(r.detail)}${r.nat === 20 ? ' · Natural 20!' : r.nat === 1 ? ' · Natural 1' : ''}</span></div>`;
@@ -115,10 +118,14 @@ function alwaysSet() { const k = subKey(), out = new Set(); for (const [l, ns] o
 const onList = (s, cls) => s.classes?.some((x) => x.index === cls) || (D.custom.extraOnList?.[cls] || []).some((n) => norm(n) === norm(s.name));
 
 // ---------- always on screen
-function avatar() {
-  const a = pc?.sheets?.traits?.avatar; if (a) return `<img class="avatar" src="${esc(a)}" alt="">`;
+function portrait() {
+  const stored = pc?.sheets?.traits?.avatar; if (stored) return stored;
   const f = D.tokens.find((x) => norm(x) === norm(pc?.name).replace(/ /g, '_') + '.png' || norm(x.replace(/\.png$/, '')) === norm(pc?.name));
-  return f ? `<img class="avatar" src="tokens/${esc(f)}" alt="">` : `<span class="avatar initial" style="background:${esc(pc?.token_color || '#8b6f35')}">${esc((pc?.name || '?')[0])}</span>`;
+  return f ? `tokens/${f}` : '';
+}
+function avatar() {
+  const src = portrait();
+  return src ? `<img class="avatar" src="${esc(src)}" alt="">` : `<span class="avatar initial" style="background:${esc(pc?.token_color || '#8b6f35')}">${esc((pc?.name || '?')[0])}</span>`;
 }
 function hpBar(c) {
   const h = hpState(c);
@@ -599,7 +606,7 @@ document.addEventListener('click', async (e) => {
     if (a === 'long-rest') return void await rest(true);
     if (a === 'short-rest') return void await rest(false);
     if (a === 'prepare') return prepareSheet();
-    if (a === 'call-roll') { b.disabled = true; try { const r = await answerCall(liveApi(), liveCall, id, { name: pc.name, charId: id, c: fx, mode: callMode, extras: callExtras }); toast(r ? `<b>${esc(callTitle(liveCall))}</b>: ${esc(r.total)} (${esc(r.detail)})` : 'Someone already answered, or the call closed.'); } finally { b.disabled = false; } return; }
+    if (a === 'call-roll') { b.disabled = true; try { const r = await answerCall(liveApi(), liveCall, id, { name: pc.name, charId: id, c: fx, mode: callMode, extras: callExtras }); if (r) { const shown = rollRecord(callTitle(liveCall), r); shareRoll(id, shown); await showDice(shown); } toast(r ? `<b>${esc(callTitle(liveCall))}</b>: ${esc(r.total)} (${esc(r.detail)})` : 'Someone already answered, or the call closed.'); } finally { b.disabled = false; } return; }
     if (a === 'gm-call') return callSheet();
     if (a === 'gm-give') return giveSheet();
     if (a === 'gm-close-call') return void await write(() => update(ref(db, `geezvtt/live/${gmCamp}/rollcall`), { open: false }));
@@ -609,7 +616,7 @@ document.addEventListener('click', async (e) => {
 addEventListener('hashchange', () => { const name = tabFromHash(); if (name && name !== tab) goTab(name); });
 
 // ---------- start
-online(); stayAwake();
+online(); stayAwake(); watchRolls(() => pc?.campaign || (GM ? gmCamp : ''));
 try {
   await loadData();
   initExtras({ GM, D, toast, write, sheet });

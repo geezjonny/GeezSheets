@@ -6,6 +6,7 @@ import { findItem, worth, statLine, packContents, acBreakdown, healingDice } fro
 import { take, heal, sendItem, drinkHealing } from '../companion-transfer.js';
 import { featText } from '../companion-help.js';
 import { setPlayerIdentity } from '../geez/session-role.js';
+import { rechargeEffects } from '../geez/effects-model.js';
 import { encodeTree, decodeTree } from '../geez/firebase-codec.js';
 
 const json = async (p) => JSON.parse(await readFile(new URL(p, import.meta.url), 'utf8'));
@@ -94,4 +95,16 @@ test('sending moves the item, and a failed save never loses it', async () => {
     assert.equal(db.friend.data.combat.hp_current, 6);
     assert.equal(db.me.data.inventory.p.qty, 1);
   } finally { globalThis.fetch = original; }
+});
+
+test('homebrew armor shows its own category', () => {
+  assert.equal(statLine({ name: 'Pube Armor', armor_category: 'Light', armor_class: { base: 15, dex_bonus: true } }, reference), 'AC 15 + DEX · Light armor');
+});
+
+test('a long rest refills daily uses such as Bark Arm; a short rest does not', () => {
+  const arm = () => ({ effects: { bark_arm: { label: 'Bark Arm', mode: 'activated', max: 2, current: 0, recharge: 'daily', modifiers: [] } } });
+  const short = arm(), long = arm();
+  rechargeEffects(short, false); rechargeEffects(long, true);
+  assert.equal(short.effects.bark_arm.current, 0);
+  assert.equal(long.effects.bark_arm.current, 2);
 });

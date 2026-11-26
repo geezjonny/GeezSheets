@@ -2,7 +2,7 @@
 import { featEntries } from './geez/feats-model.js';
 import { spendable, canActivate } from './companion-model.js';
 import { esc, T, rules, fold, item, card } from './companion-ui.js';
-import { appliedEffects, effectDefinitions, changeEffects } from './geez/effects-model.js';
+import { appliedEffects, effectDefinitions, rechargeEffects } from './geez/effects-model.js';
 import { cardConditions } from './geez/equipment-modifiers.js';
 import { EQUIPMENT_SLOTS, fitsEquipment, equippedName, equippedItem } from './geez/inventory-model.js';
 import { modifierText } from './geez/item-modifiers.js';
@@ -104,7 +104,7 @@ export async function extraChange(target) {
 // After the companion's own rest: recharge creator-made abilities and feats, and run down timed effects.
 export async function restEffects(pc, long) {
   if (!effectDefinitions(pc).length && !pc.activeEffects) return;
-  await updatePCSheet(token(), (data) => changeEffects(data, { type: 'reset', recharge: long ? 'long_rest' : 'short_rest' }));
+  await updatePCSheet(token(), (data) => rechargeEffects(data, long));
 }
 
 // ---------- Deck of Chance

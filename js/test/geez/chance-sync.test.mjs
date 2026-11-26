@@ -6,7 +6,7 @@ import { encodeTree, decodeTree } from '../../geez/firebase-codec.js';
 globalThis.window = { GEEZ_FIREBASE_CONFIG: { databaseURL: 'https://example.test' }, addEventListener() {}, dispatchEvent() {} };
 globalThis.location = { search: '' };
 const { setPlayerIdentity } = await import('../../geez/session-role.js');
-const { pickChance, pushChance, closeChance } = await import('../../geez/chance-sync.js');
+const { pickChance, pushChance, closeChance, watchChance } = await import('../../geez/chance-sync.js');
 setPlayerIdentity({ campaign: 'disney', character: 'Liora', pcId: 'pc-1' });
 const offered = () => offerChance(null, { id: 'hand-1', pcId: 'pc-1', name: 'Liora', createdAt: 100,
   cards: [[1, 1, 1], [8, 6, 13], [50, 50, 50]] });
@@ -14,10 +14,12 @@ const offered = () => offerChance(null, { id: 'hand-1', pcId: 'pc-1', name: 'Lio
 // A tiny Firebase: GET returns a version, PUT succeeds only against the current one.
 function fakeFirebase(tree) {
   const versions = {}, writes = [];
+  const dropEmpty = value => JSON.parse(JSON.stringify(value, (key, v) => (v === null ? undefined : v))); // as Firebase stores it
+  for (const url of Object.keys(tree)) tree[url] = dropEmpty(tree[url]);
   const fetch = async (url, options = {}) => {
     if (options.method === 'PUT') {
       if (options.headers['If-Match'] !== `v${versions[url] || 0}`) return { ok: false, status: 412 };
-      versions[url] = (versions[url] || 0) + 1; writes.push(url); tree[url] = decodeTree(JSON.parse(options.body));
+      versions[url] = (versions[url] || 0) + 1; writes.push(url); tree[url] = dropEmpty(decodeTree(JSON.parse(options.body)));
       return { ok: true, status: 200 };
     }
     return { ok: true, headers: { get: () => `v${versions[url] || 0}` }, json: async () => encodeTree(structuredClone(tree[url] ?? null)) };
@@ -68,4 +70,14 @@ test('a signed-in player cannot select another character or issue dealer actions
     assert.throws(() => closeChance('pc-1', 'hand-1', 'handled'), /Only the GM/);
     assert.equal(requests, 0);
   } finally { globalThis.fetch = original; }
+});
+
+test('an open draw read back from the database is still shown to the player', () => {
+  let stream;
+  globalThis.EventSource = class { constructor() { this.on = {}; stream = this; } addEventListener(type, handler) { this.on[type] = handler; } close() {} };
+  const { chosen, ...hand } = offered().hand;
+  let shown;
+  watchChance((records) => { shown = records; });
+  stream.on.put({ type: 'put', data: JSON.stringify({ path: '/', data: encodeTree({ 'pc-1': { ...offered(), hand } }) }) });
+  assert.equal(shown['pc-1'].hand.chosen, null);
 });

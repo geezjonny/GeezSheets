@@ -7,9 +7,15 @@ import { databaseURL, readPC, updatePCSheet } from './pc-inventory.js';
 import { offerChance, chooseChance, receiveChanceCard, finishChance, validChanceRecord } from './chance-model.js';
 
 const base = () => `${databaseURL()}/v2/worlds/gaia/vtt/chance`;
+// Firebase does not store empty values, so an unpicked hand comes back without its "chosen" field.
+const restore = record => {
+  if (record?.hand && record.hand.chosen === undefined) record.hand.chosen = null;
+  return record;
+};
 async function change(pcId, edit) {
   if (typeof pcId !== 'string' || !/^[^.#$\[\]/\s]{1,200}$/.test(pcId) || ['__proto__', 'prototype', 'constructor'].includes(pcId)) throw new Error('Choose a linked character.');
-  return updateConditionally(`${base()}/${encodeKey(pcId)}.json`, record => {
+  return updateConditionally(`${base()}/${encodeKey(pcId)}.json`, stored => {
+    const record = restore(stored);
     if (record && record.pcId !== pcId) throw new Error('Character record does not match.');
     const next = edit(record);
     return { result: next, write: next === record ? null : next };
@@ -46,7 +52,7 @@ export function watchChance(onValue, onError) {
     try {
       value = applyFirebaseEvent(value, event.type, JSON.parse(event.data));
       const records = decodeTree(value) || {};
-      onValue(Object.fromEntries(Object.entries(records).filter(([id, record]) => record?.pcId === id && validChanceRecord(record))));
+      onValue(Object.fromEntries(Object.entries(records).filter(([id, record]) => record?.pcId === id && validChanceRecord(restore(record)))));
     } catch (error) { onError?.(`Sync failed: ${error.message}`); }
   };
   stream.addEventListener('put', update);

@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-11-26
+
+### Player companion (`companion.html`)
+- **Shared dice:** a roll now tosses an animated die over the character's head, and shows on every companion in the same campaign.
+- A long rest now also refills abilities that recharge daily.
+- Homebrew armor shows its armor type in the Bag.
+- **Fixed Deck of Chance:** an open draw never appeared when read from the live database.
+
+### Characters
+- **Level 5 party checked against the 2014 rules:** skills and passive scores, always-prepared spells, cantrip damage, species traits, class features and several attacks corrected.
+- Rurik's homebrew armor now gives AC 17 (15 + DEX) and counts as light armor.
+
+### Database
+- **Cleared old data** (test sandbox, minigames, old table scenes), from 18.6 MB to 1.5 MB, after a full backup. Character sheets, NPCs, connections and campaigns were kept. The old table, minigame and map pages no longer have their saved data.
+
+### Not yet tried
+- The dice animation has not been checked by eye or between two phones.
+
 ## 2026-11-25
 
 ### Player companion (`companion.html`)

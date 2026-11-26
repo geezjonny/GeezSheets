@@ -155,3 +155,9 @@ export function changeEffects(pc, action, recipient = pc) {
   recipient.activeEffects ||= {};
   recipient.activeEffects[activeId] = { remainingMinutes: effect.duration_minutes || -1 };
 }
+
+// What a rest gives back. A long rest also counts as a new day, so "daily" uses refill with it.
+export function rechargeEffects(pc, long) {
+  changeEffects(pc, { type: 'reset', recharge: long ? 'long_rest' : 'short_rest' });
+  if (long) changeEffects(pc, { type: 'reset', recharge: 'daily' });
+}
