@@ -33,6 +33,13 @@ export function heal(data, amount) {
   if (before === 0 && combat.hp_current > 0) combat.death_saves = { success: 0, fail: 0 };
 }
 
+// Opens one pack: it leaves the bag and its contents become separate entries, so each can be used, sent or removed.
+export function unpack(data, key, contents, reference = {}) {
+  take(data, key, 1, reference);
+  contents.forEach((c, i) => putBack(data, `${key}-${i}`, { name: c.name, qty: c.qty }));
+}
+export const openPack = (from, key, contents, reference) => updatePCSheet(token(from), (data) => unpack(data, key, contents, reference));
+
 export const removeItem = (from, key, qty, reference) => {
   let taken;
   return updatePCSheet(token(from), (data) => { taken = take(data, key, qty, reference); }).then(() => taken);

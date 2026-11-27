@@ -1,7 +1,7 @@
 // The Bag tab: coins, equipped gear and what makes up AC, packs spelled out, and Equip / Use / Send / Remove.
 import { $, esc, T, rules, item, card, ask, sheet, toast } from './companion-ui.js';
 import { findItem, worth, statLine, packContents, acBreakdown, healingDice } from './companion-items.js';
-import { sendItem, drinkHealing, removeItem, restoreItem } from './companion-transfer.js';
+import { sendItem, drinkHealing, removeItem, restoreItem, unpack, openPack } from './companion-transfer.js';
 import { gearRows, cardDetails } from './companion-extras.js';
 import { EQUIPMENT_SLOTS, fitsEquipment, equippedItem, itemEquipped } from './geez/inventory-model.js';
 import { effectDefinitions } from './geez/effects-model.js';
@@ -18,7 +18,7 @@ export function initBag(context) { ctx = context; }
 const entries = (pc) => Object.entries(pc.inventory || {}).filter(([, x]) => x && typeof x === 'object' && x.name);
 const effectFor = (pc, key) => effectDefinitions(pc).find((e) => e.mode === 'activated' && e.consume === true && e.inventoryKey === key);
 const consumable = (it) => !!healingDice(it) || /consumable/i.test(it.category || '') || (CONSUMABLE.test(it.name) && !findItem(it.name, ctx.D.ref).damage);
-const button = (act, key, label, cls = '') => `<button class="${cls}" data-act="${act}" data-key="${esc(key)}">${label}</button>`;
+const button = (act, key, label, cls = '', part = null) => `<button class="${cls}" data-act="${act}" data-key="${esc(key)}"${part === null ? '' : ` data-part="${part}"`}>${label}</button>`;
 
 function equipControl(pc, key, it) {
   const slot = Object.keys(EQUIPMENT_SLOTS).find((s) => fitsEquipment(s, it, ctx.D.ref));
@@ -46,8 +46,12 @@ ${stats ? `<p class="fact"><b>Does</b> ${T(stats)}</p>` : ''}${bonuses ? `<p cla
 // A pack becomes its own heading with one line for each thing inside.
 function packCard(pc, [key, it]) {
   const ref = ctx.D.ref, value = worth(it, ref), qty = Number(it.qty ?? 1) || 1;
-  const lines = packContents(it, ref).map((c) => item({ key: `pack:${key}:${c.name}`, title: `${T(c.name)}${c.qty > 1 ? ` <span class="qty">×${c.qty}</span>` : ''}`,
-    sub: T([c.stats, c.worth ? c.worth + (c.qty > 1 ? ' each' : '') : ''].filter(Boolean).join(' · ')), body: rules(findItem(c.name, ref).desc), search: `${c.name} ${it.name}` })).join('');
+  const lines = packContents(it, ref).map((c, i) => {
+    const use = consumable(c) ? button('use', key, 'Use', 'primary', i) : '';
+    return item({ key: `pack:${key}:${c.name}`, title: `${T(c.name)}${c.qty > 1 ? ` <span class="qty">×${c.qty}</span>` : ''}`,
+      sub: T([c.stats, c.worth ? c.worth + (c.qty > 1 ? ' each' : '') : ''].filter(Boolean).join(' · ')), search: `${c.name} ${it.name}`, side: use,
+      body: `${rules(findItem(c.name, ref).desc)}<div class="buttons">${button('send', key, 'Send', '', i)}${button('remove-item', key, 'Remove', '', i)}</div>` });
+  }).join('');
   return card(`${T(it.name)}${qty > 1 ? ` ×${qty}` : ''}`, `${lines}<div class="buttons">${button('send', key, 'Send pack')}${button('remove-item', key, 'Remove pack')}</div>`, T(value), 'pack');
 }
 
@@ -106,10 +110,17 @@ async function healSheet(key, it, dice) {
 
 export async function bagAction(act, target) {
   if (!['equip', 'unequip', 'use', 'send', 'remove-item'].includes(act)) return false;
-  const { pc, eid } = ctx.state(), key = target.dataset.key, it = pc?.inventory?.[key];
+  let { pc, eid } = ctx.state(), key = target.dataset.key, it = pc?.inventory?.[key];
   if (!it) return true;
   const ref = ctx.D.ref, token = { npcId: `v2:${eid}` };
   try {
+    if (target.dataset.part !== undefined) {   // something inside a pack: open the pack first, then act on that item
+      const contents = packContents(it, ref), i = Number(target.dataset.part), part = contents[i];
+      if (!part || !confirm(`Open the ${it.name} to ${act === 'remove-item' ? 'remove' : act} the ${part.name}? Everything in it becomes a separate item in your bag.`)) return true;
+      await ctx.write(() => openPack(eid, key, contents, ref));
+      pc = structuredClone(pc); unpack(pc, key, contents, ref);   // the live sheet may not have arrived yet
+      key = `${key}-${i}`; it = pc.inventory[key];
+    }
     if (act === 'equip' || act === 'unequip') {
       const slot = act === 'equip' ? Object.keys(EQUIPMENT_SLOTS).find((s) => fitsEquipment(s, it, ref))
         : Object.keys(EQUIPMENT_SLOTS).find((s) => equippedItem(pc, s, ref)?.name === it.name);

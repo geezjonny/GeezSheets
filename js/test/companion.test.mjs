@@ -35,3 +35,12 @@ test('every "?" in the companion has an explanation', async () => {
   assert.deepEqual([...new Set(all)].filter((key) => !HELP[key]), []);
   for (const key of Object.keys(HELP)) assert.match(ask(key), new RegExp(`data-help="${key}"`));
 });
+
+test('opening a pack turns its contents into separate bag entries', async () => {
+  const { unpack } = await import('../companion-transfer.js');
+  const data = { inventory: { p: { name: "Explorer's Pack", qty: 2 } } }, contents = [{ name: 'Torch', qty: 10 }];
+  unpack(data, 'p', contents);
+  assert.deepEqual(data.inventory, { p: { name: "Explorer's Pack", qty: 1 }, 'p-0': { name: 'Torch', qty: 10 } });
+  unpack(data, 'p', contents);
+  assert.deepEqual(data.inventory, { 'p-0': { name: 'Torch', qty: 20 } });
+});

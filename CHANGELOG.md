@@ -3,6 +3,8 @@
 ## 2026-11-26
 
 ### Player companion (`companion.html`)
+- **Items inside a pack can be used, sent or removed.** The first time, the pack is opened and its contents become
+  separate items in the bag.
 - **Shared dice:** a roll now tosses an animated die over the character's head, and shows on every companion in the same campaign.
 - A long rest now also refills abilities that recharge daily.
 - Homebrew armor shows its armor type in the Bag.
