@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { findItem, worth, statLine, packContents, acBreakdown, healingDice } from '../companion-items.js';
-import { take, heal, sendItem, drinkHealing } from '../companion-transfer.js';
+import { take, heal, sendItem, drinkHealing, unpack } from '../companion-transfer.js';
 import { featText } from '../companion-help.js';
 import { setPlayerIdentity } from '../geez/session-role.js';
 import { rechargeEffects } from '../geez/effects-model.js';
@@ -33,6 +33,15 @@ test("an entertainer's pack lists each thing on its own line", () => {
   assert.equal(lines.length, 7);
   assert.ok(lines.every((l) => l.name && l.qty >= 1));
   assert.ok(lines.some((l) => l.name === 'Candle' && l.qty === 5 && l.worth === '1 cp'));
+});
+
+test('unpacking swaps one pack for its things and adds to what is already carried', () => {
+  const data = { inventory: { p: { name: "Explorer's Pack", qty: 2 }, t: { name: 'torch', qty: 1 } } };
+  unpack(data, 'p', packContents(data.inventory.p, reference), reference, 'x');
+  assert.equal(data.inventory.p.qty, 1);
+  assert.equal(data.inventory.t.qty, 11);
+  assert.equal(Object.keys(data.inventory).length, 9);
+  assert.ok(Object.values(data.inventory).some((i) => i.name === 'Bedroll' && i.qty === 1));
 });
 
 test('the armor breakdown explains the number and flags a sheet that disagrees', () => {

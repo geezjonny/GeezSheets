@@ -1,7 +1,7 @@
 // The Bag tab: coins, equipped gear and what makes up AC, packs spelled out, and Equip / Use / Send / Remove.
 import { $, esc, T, rules, item, card, ask, sheet, toast } from './companion-ui.js';
 import { findItem, worth, statLine, packContents, acBreakdown, healingDice } from './companion-items.js';
-import { sendItem, drinkHealing, removeItem, restoreItem } from './companion-transfer.js';
+import { sendItem, drinkHealing, removeItem, restoreItem, unpackItem } from './companion-transfer.js';
 import { gearRows, cardDetails } from './companion-extras.js';
 import { EQUIPMENT_SLOTS, fitsEquipment, equippedItem, itemEquipped } from './geez/inventory-model.js';
 import { effectDefinitions } from './geez/effects-model.js';
@@ -48,7 +48,7 @@ function packCard(pc, [key, it]) {
   const ref = ctx.D.ref, value = worth(it, ref), qty = Number(it.qty ?? 1) || 1;
   const lines = packContents(it, ref).map((c) => item({ key: `pack:${key}:${c.name}`, title: `${T(c.name)}${c.qty > 1 ? ` <span class="qty">×${c.qty}</span>` : ''}`,
     sub: T([c.stats, c.worth ? c.worth + (c.qty > 1 ? ' each' : '') : ''].filter(Boolean).join(' · ')), body: rules(findItem(c.name, ref).desc), search: `${c.name} ${it.name}` })).join('');
-  return card(`${T(it.name)}${qty > 1 ? ` ×${qty}` : ''}`, `${lines}<div class="buttons">${button('send', key, 'Send pack')}${button('remove-item', key, 'Remove pack')}</div>`, T(value), 'pack');
+  return card(`${T(it.name)}${qty > 1 ? ` ×${qty}` : ''}`, `${lines}<p class="hint">To send or use one of these, unpack first.</p><div class="buttons">${button('unpack', key, 'Unpack', 'primary')}${button('send', key, 'Send pack')}${button('remove-item', key, 'Remove pack')}</div>`, T(value), 'pack');
 }
 
 export function bagTab(pc, fx, search) {
@@ -105,7 +105,7 @@ async function healSheet(key, it, dice) {
 }
 
 export async function bagAction(act, target) {
-  if (!['equip', 'unequip', 'use', 'send', 'remove-item'].includes(act)) return false;
+  if (!['equip', 'unequip', 'use', 'send', 'remove-item', 'unpack'].includes(act)) return false;
   const { pc, eid } = ctx.state(), key = target.dataset.key, it = pc?.inventory?.[key];
   if (!it) return true;
   const ref = ctx.D.ref, token = { npcId: `v2:${eid}` };
@@ -118,6 +118,11 @@ export async function bagAction(act, target) {
       await ctx.write(() => equipPCItem(token, slot, act === 'equip' ? key : '', ref));
       toast(`${act === 'equip' ? 'Equipped' : 'Unequipped'} ${esc(it.name)}.`);
     } else if (act === 'send') await sendSheet(key, it);
+    else if (act === 'unpack') {
+      if (!confirm(`Unpack ${it.name}? Everything in it becomes separate items in your bag.`)) return true;
+      await ctx.write(() => unpackItem(eid, key, packContents(it, ref), ref));
+      toast(`Unpacked ${esc(it.name)}.`);
+    }
     else if (act === 'remove-item') {
       const qty = Number(it.qty ?? 1) || 1;
       if (!confirm(`Remove ${it.name}${qty > 1 ? ` (all ${qty})` : ''} from your bag?`)) return true;

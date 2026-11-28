@@ -1,6 +1,7 @@
 // Dice tossed up over a character's head, tumbling and landing on the real roll, shown to everyone in the same campaign.
 // The motion comes from the GeezVTT minigames (drawRollDie in the removed horde and walking pages).
 import { diePoints } from './geez/die-shapes.js';
+import { live } from './geez/live.js';
 
 // The latest roll per character. The Owlbear extension reads the same records for its token labels.
 const ROLLS = 'https://geezsheets-default-rtdb.firebaseio.com/gmroll/gaia';
@@ -110,11 +111,15 @@ export function incoming(event, campaign, seen) {
   return roll;
 }
 
-export function watchRolls(campaign) {
-  const seen = new Set(), stream = new EventSource(`${ROLLS}.json`);
-  stream.addEventListener('put', (e) => {
-    let roll = null;
-    try { roll = incoming(JSON.parse(e.data), campaign(), seen); } catch { return; }
-    if (roll) showDice(roll);
+export function watchRolls(campaign, subscribe = live) {
+  const seen = new Set();
+  let history = true; // the first list is what was already there when the page opened
+  return subscribe('gmroll/gaia', (all) => {
+    for (const [id, data] of Object.entries(all || {})) {
+      if (history) { seen.add(data?.id); continue; }
+      const roll = incoming({ path: `/${id}`, data }, campaign(), seen);
+      if (roll) showDice(roll);
+    }
+    history = false;
   });
 }

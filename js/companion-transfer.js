@@ -33,6 +33,18 @@ export function heal(data, amount) {
   if (before === 0 && combat.hp_current > 0) combat.death_saves = { success: 0, fail: 0 };
 }
 
+// A pack's contents exist only in the rules: this swaps one pack for real bag entries, which can then be sent one by one.
+export function unpack(data, key, contents, reference = {}, id = crypto.randomUUID()) {
+  take(data, key, 1, reference);
+  const bag = data.inventory = { ...data.inventory };
+  contents.forEach(({ name, qty }, i) => {
+    const hit = Object.values(bag).find((x) => String(x?.name).toLowerCase() === name.toLowerCase());
+    if (hit) hit.qty = Number(hit.qty ?? 1) + qty;
+    else bag[`pack-${id}-${i}`] = { name, qty };
+  });
+}
+export const unpackItem = (from, key, contents, reference) => updatePCSheet(token(from), (data) => unpack(data, key, contents, reference));
+
 export const removeItem = (from, key, qty, reference) => {
   let taken;
   return updatePCSheet(token(from), (data) => { taken = take(data, key, qty, reference); }).then(() => taken);

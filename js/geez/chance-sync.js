@@ -1,7 +1,7 @@
 // Deck of Chance hands at v2/worlds/gaia/vtt/chance/<entity id>; the chosen card goes into the character's inventory.
 import { isGM, playerIdentity, canControlPC } from './session-role.js';
 import { encodeKey, decodeTree } from './firebase-codec.js';
-import { applyFirebaseEvent } from './firebase-events.js';
+import { live } from './live.js';
 import { updateConditionally } from './firebase-update.js';
 import { databaseURL, readPC, updatePCSheet } from './pc-inventory.js';
 import { offerChance, chooseChance, receiveChanceCard, finishChance, validChanceRecord } from './chance-model.js';
@@ -45,18 +45,14 @@ export function closeChance(pcId, handId, phase) {
   if (!isGM) throw new Error('Only the GM can finish a draw.');
   return change(pcId, record => finishChance(record, handId, phase));
 }
-export function watchChance(onValue, onError) {
-  const stream = new EventSource(`${base()}.json`);
-  let value = null;
-  const update = event => {
+export function watchChance(onValue, onError, subscribe = live) {
+  const failed = error => onError?.(`Sync failed: ${error.message}`);
+  const stop = Promise.resolve(subscribe('v2/worlds/gaia/vtt/chance', value => {
     try {
-      value = applyFirebaseEvent(value, event.type, JSON.parse(event.data));
       const records = decodeTree(value) || {};
       onValue(Object.fromEntries(Object.entries(records).filter(([id, record]) => record?.pcId === id && validChanceRecord(restore(record)))));
-    } catch (error) { onError?.(`Sync failed: ${error.message}`); }
-  };
-  stream.addEventListener('put', update);
-  stream.addEventListener('patch', update);
-  stream.addEventListener('error', () => onError?.('Deck sync disconnected; reconnecting…'));
-  return () => stream.close();
+    } catch (error) { failed(error); }
+  }, failed));
+  stop.catch(failed);
+  return () => { stop.then(off => off?.(), () => {}); };
 }

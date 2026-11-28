@@ -73,11 +73,8 @@ test('a signed-in player cannot select another character or issue dealer actions
 });
 
 test('an open draw read back from the database is still shown to the player', () => {
-  let stream;
-  globalThis.EventSource = class { constructor() { this.on = {}; stream = this; } addEventListener(type, handler) { this.on[type] = handler; } close() {} };
   const { chosen, ...hand } = offered().hand;
   let shown;
-  watchChance((records) => { shown = records; });
-  stream.on.put({ type: 'put', data: JSON.stringify({ path: '/', data: encodeTree({ 'pc-1': { ...offered(), hand } }) }) });
+  watchChance((records) => { shown = records; }, undefined, (path, onData) => onData(encodeTree({ 'pc-1': { ...offered(), hand } })));
   assert.equal(shown['pc-1'].hand.chosen, null);
 });

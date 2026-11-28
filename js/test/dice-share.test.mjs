@@ -1,7 +1,7 @@
 // Which shared rolls animate on this phone.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { incoming, showDice, tumblingFace, shareRoll } from '../companion-dice.js';
+import { incoming, showDice, tumblingFace, shareRoll, watchRolls } from '../companion-dice.js';
 
 const roll = { id: 'a', from: 'other-phone', campaign: 'daddies', dice: [{ s: 20, v: 12 }], total: 15 };
 
@@ -12,6 +12,17 @@ test('only new rolls from other phones in the same campaign are shown, once', ()
   assert.equal(incoming({ path: '/lark', data: { total: 3 } }, 'daddies', seen), null); // an old-style record
   assert.equal(incoming({ path: '/lark', data: roll }, 'daddies', seen), roll);
   assert.equal(incoming({ path: '/lark', data: roll }, 'daddies', seen), null);
+});
+
+test('rolls already there when the page opens are not replayed', () => {
+  let send, thrown = 0;
+  globalThis.document = { get hidden() { thrown++; return true; } }; // showDice looks here first
+  watchRolls(() => 'daddies', (path, onData) => { send = onData; });
+  send({ lark: roll });
+  send({ lark: roll });
+  assert.equal(thrown, 0);
+  send({ lark: { ...roll, id: 'b' } });
+  assert.equal(thrown, 1);
 });
 
 // A stand-in page and canvas: enough to run the whole animation and see what it writes.
