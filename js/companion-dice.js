@@ -92,10 +92,12 @@ export function showDice({ name = '', label = '', total, dice, color, portrait }
   return new Promise((resolve) => setTimeout(resolve, calm ? 0 : ROLL.tumble * 1000));
 }
 
-export function shareRoll(charId, record) {
+// Rejects when the roll did not get through, so the page can say so.
+export async function shareRoll(charId, record) {
   if (!charId) return;
-  fetch(`${ROLLS}/${encodeURIComponent(charId)}.json`, { method: 'PUT',
-    body: JSON.stringify({ ...record, from: device, id: crypto.randomUUID(), ts: Date.now() }) }).catch(() => {});
+  const res = await fetch(`${ROLLS}/${encodeURIComponent(charId)}.json`, { method: 'PUT',
+    body: JSON.stringify({ ...record, from: device, id: crypto.randomUUID(), ts: Date.now() }) });
+  if (!res.ok) throw Error(`roll not shared (${res.status})`);
 }
 
 // Which incoming records to animate: someone else's new roll in this campaign.

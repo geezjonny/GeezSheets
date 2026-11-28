@@ -876,9 +876,15 @@ function liveApi(camp=Dice.camp) {
  const r=p=>ref(db,`geezvtt/live/${camp}/${p}`);
  return {txn:(p,fn)=>runTransaction(r(p),fn).then(r=>r.committed),update:(p,o)=>update(r(p),o),push:(p,o)=>push(r(p),o)};
 }
+// The 3D table shows rolls it finds at gmroll/gaia/<character>, the same record companion.html writes.
+function toBoard(charId,r) {
+ const campaign=allPcs.find(c=>c.id===charId)?.campaign||'';
+ import('./js/companion-dice.js').then(m=>m.shareRoll(charId,{name:r.by,label:r.expr,total:r.total,nat:r.nat??null,detail:r.detail,dice:r.dice,campaign}))
+  .catch(()=>toast('Your roll did not reach the table board.'));
+}
 async function logPcRoll(pc,expr,r,camp) {
  const entry={by:pc.name,char:pc.id,expr,detail:r.detail,total:r.total,nat:r.nat??null,dice:r.dice,ts:Date.now()};
- if(camp)await liveApi(camp).push('rolls',entry);if(!EMBED||!camp)Dice.showRoll(entry);   // inside the VTT, the VTT shows it
+ toBoard(pc.id,entry);if(camp)await liveApi(camp).push('rolls',entry);if(!EMBED||!camp)Dice.showRoll(entry);   // inside the VTT, the VTT shows it
 }
 window.rollDeath=async id=>{
  const pc=allPcs.find(c=>c.id===id);if(!pc)return;
@@ -927,7 +933,7 @@ function callOptions(f) {
 async function submitCall(f) {
  const id=f.dataset.id,pc=allPcs.find(c=>c.id===id),call=activeCall;if(!pc||!call?.open)return;
  const btn=f.querySelector('button');btn.disabled=true;
- try {const r=await answerCall(liveApi(),call,id,{name:pc.name,charId:id,c:pc,...callOptions(f)});if(r&&!EMBED)Dice.showRoll({...r,by:pc.name,expr:callTitle(call)});}
+ try {const r=await answerCall(liveApi(),call,id,{name:pc.name,charId:id,c:pc,...callOptions(f)});if(r)toBoard(id,{...r,by:pc.name,expr:callTitle(call)});if(r&&!EMBED)Dice.showRoll({...r,by:pc.name,expr:callTitle(call)});}
  catch(e){f.querySelector('[data-error]').textContent=e.message;}finally{btn.disabled=false;}
 }
 window.answerSheetCall=btn=>submitCall(btn.closest('fieldset'));
@@ -1134,6 +1140,7 @@ const Dice = (() => {
     const w = who();
     const entry = { by: w.name, expr: expr || '1d20', detail: r.detail, total: r.total, nat: r.nat ?? null, dice:r.dice, ts: Date.now() };
     if (w.id) entry.char = w.id;
+    if (w.id && !(IS_GM && $('dicePrivate').checked)) toBoard(w.id, entry);
     // only the DM rolls in secret; players' rolls always go to the whole table
     if ((IS_GM && $('dicePrivate').checked) || !camp) {
       privateRolls.push({ ...entry, private: true }); renderLog(); showRoll({ ...entry, private: true });

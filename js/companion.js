@@ -78,12 +78,13 @@ function rollExpr(expr) {
 }
 // What other phones need to draw this roll over the character's head.
 const rollRecord = (label, r) => ({ name: pc?.name || '', campaign: pc?.campaign || '', label, total: r.total, nat: r.nat ?? null, detail: r.detail, dice: r.dice, color: pc?.token_color || '', portrait: portrait() });
+const toTable = (record) => shareRoll(id, record).catch(() => toast('Your roll did not reach the table board.'));
 // Rolls, shows the number to the caller, and shares it with the table (GM roll log and the Owlbear token).
 async function roll(label, expr, mode = 'normal') {
   let r; const rolled = mode === 'normal' ? expr : `${expr} ${mode}`;
   try { r = rollExpr(rolled); } catch { toast('Could not roll that'); return null; }
   const shown = rollRecord(label, r);
-  shareRoll(id, shown);
+  toTable(shown);
   if (pc?.campaign) push(ref(db, `geezvtt/live/${pc.campaign}/rolls`), { by: pc.name, char: id, expr: `${label} ${rolled}`, detail: r.detail, total: r.total, nat: r.nat ?? null, dice: r.dice, ts: Date.now() }).catch(() => {});
   navigator.vibrate?.(r.nat === 20 ? [40, 60, 40] : 25);
   await showDice(shown);
@@ -606,7 +607,7 @@ document.addEventListener('click', async (e) => {
     if (a === 'long-rest') return void await rest(true);
     if (a === 'short-rest') return void await rest(false);
     if (a === 'prepare') return prepareSheet();
-    if (a === 'call-roll') { b.disabled = true; try { const r = await answerCall(liveApi(), liveCall, id, { name: pc.name, charId: id, c: fx, mode: callMode, extras: callExtras }); if (r) { const shown = rollRecord(callTitle(liveCall), r); shareRoll(id, shown); await showDice(shown); } toast(r ? `<b>${esc(callTitle(liveCall))}</b>: ${esc(r.total)} (${esc(r.detail)})` : 'Someone already answered, or the call closed.'); } finally { b.disabled = false; } return; }
+    if (a === 'call-roll') { b.disabled = true; try { const r = await answerCall(liveApi(), liveCall, id, { name: pc.name, charId: id, c: fx, mode: callMode, extras: callExtras }); if (r) { const shown = rollRecord(callTitle(liveCall), r); toTable(shown); await showDice(shown); } toast(r ? `<b>${esc(callTitle(liveCall))}</b>: ${esc(r.total)} (${esc(r.detail)})` : 'Someone already answered, or the call closed.'); } finally { b.disabled = false; } return; }
     if (a === 'gm-call') return callSheet();
     if (a === 'gm-give') return giveSheet();
     if (a === 'gm-close-call') return void await write(() => update(ref(db, `geezvtt/live/${gmCamp}/rollcall`), { open: false }));

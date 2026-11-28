@@ -1,7 +1,7 @@
 // Which shared rolls animate on this phone.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { incoming, showDice, tumblingFace } from '../companion-dice.js';
+import { incoming, showDice, tumblingFace, shareRoll } from '../companion-dice.js';
 
 const roll = { id: 'a', from: 'other-phone', campaign: 'daddies', dice: [{ s: 20, v: 12 }], total: 15 };
 
@@ -37,4 +37,9 @@ test('the die rises over the head, shows the total and critical hit, then clears
   await new Promise((r) => setTimeout(r, 4500));
   assert.equal(boxes[0].children.length, 0);
   assert.ok(tumblingFace(0.5, 8, 3) >= 1 && tumblingFace(0.5, 8, 3) <= 8);
+});
+
+test('a roll the database refuses is reported, not swallowed', async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 401 });
+  await assert.rejects(shareRoll('lark', {}), /401/);
 });
